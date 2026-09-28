@@ -426,34 +426,73 @@ async function vsGetToken() {
   return token;
 }
 
+async function vsLoadSDK() {
+  // Load SDK script; it defines openViasocketConnection and viaSocket globals
+  if (window.openViasocketConnection || window.viaSocket) return;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://embed.viasocket.com/prod-connectcomponent.js';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Failed to fetch embed.viasocket.com/prod-connectcomponent.js'));
+    document.head.appendChild(s);
+  });
+  await new Promise(r => setTimeout(r, 300));
+  console.log('[HireRadar] openViasocketConnection:', typeof window.openViasocketConnection);
+  console.log('[HireRadar] viaSocket:', typeof window.viaSocket);
+}
+
 async function vsInitEmbed() {
   if (vsInitialised) return;
   if (!document.getElementById('page-connections').classList.contains('active')) return;
 
   try {
+    await vsLoadSDK();
     const embedToken = await vsGetToken();
 
-    // viaSocket prebuilt UI is iframe-based (embedfrontend.viasocket.com).
-    // Mount it by loading the SDK script which exposes openViasocketConnection,
-    // then create the iframe directly via the embed endpoint.
-    const mountDiv = document.getElementById('vs-embed-mount');
-    const iframe = document.createElement('iframe');
-    iframe.src = `https://embedfrontend.viasocket.com/?embedToken=${encodeURIComponent(embedToken)}&org_id=4160&project_id=proj9XH3L4TM&pageheading=Hiring%20Alert%20Flows&showEnabled=true`;
-    iframe.style.cssText = 'width:100%;height:100%;border:none;display:block';
-    iframe.allow = 'clipboard-write';
-    mountDiv.appendChild(iframe);
+    if (typeof window.viaSocket?.mount === 'function') {
+      // SDK exposes viaSocket.mount() — use it directly
+      const instance = window.viaSocket.mount({
+        embedToken,
+        parent: document.getElementById('vs-embed-mount'),
+        config: {
+          pageheading: 'Hiring Alert Flows',
+          pagesubheading: 'Connect LinkedIn, Naukri, Twitter and more to build job alert flows.',
+          showEnabled: true,
+        }
+      });
+      instance.on('flow', (flowData) => {
+        console.log('[HireRadar] flow event:', flowData);
+      });
+    } else {
+      // Fallback: postMessage-based iframe mount
+      // The SDK exposes openViasocketConnection for popups; for the embed UI
+      // we communicate the token via postMessage after the iframe loads.
+      const mountDiv = document.getElementById('vs-embed-mount');
+      const iframe = document.createElement('iframe');
+      iframe.src = 'https://embedfrontend.viasocket.com/';
+      iframe.style.cssText = 'width:100%;height:100%;border:none;display:block';
+      iframe.allow = 'clipboard-write';
+      mountDiv.appendChild(iframe);
 
-    // Receive flow events from the iframe (required listener)
-    window.addEventListener('message', (event) => {
-      if (event.origin === 'https://embedfrontend.viasocket.com') {
-        console.log('[HireRadar] viaSocket message:', event.data);
-        // event.data contains flow info: { id (script_id), service_id, status, webhook }
-      }
-    });
+      iframe.addEventListener('load', () => {
+        iframe.contentWindow.postMessage({
+          type: 'INIT_EMBED',
+          embedToken,
+          org_id: '4160',
+          project_id: 'proj9XH3L4TM',
+          config: { pageheading: 'Hiring Alert Flows', showEnabled: true }
+        }, 'https://embedfrontend.viasocket.com');
+      });
+
+      window.addEventListener('message', (event) => {
+        if (event.origin === 'https://embedfrontend.viasocket.com') {
+          console.log('[HireRadar] viaSocket message:', event.data);
+        }
+      });
+    }
 
     document.getElementById('vs-loading').style.display = 'none';
     document.getElementById('vs-embed-mount').style.display = 'block';
-
     vsInitialised = true;
   } catch (err) {
     console.error('[HireRadar] viaSocket embed error:', err);
