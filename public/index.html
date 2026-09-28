@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HireRadar</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap">
-<!-- viaSocket embed SDK -->
-<script src="https://embed.viasocket.com/prod-connectcomponent.js"></script>
+<!-- viaSocket SDK loaded dynamically inside vsInitEmbed() -->
 <style>
 /* ── Design tokens ── */
 :root {
@@ -430,11 +429,23 @@ async function vsGetToken() {
   return token;
 }
 
+async function vsLoadSDK() {
+  if (window.viaSocket) return;
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://embed.viasocket.com/prod-connectcomponent.js';
+    s.onload = () => { if (window.viaSocket) resolve(); else reject(new Error('viaSocket SDK loaded but viaSocket global not found')); };
+    s.onerror = () => reject(new Error('Failed to load viaSocket SDK — check network/CSP'));
+    document.head.appendChild(s);
+  });
+}
+
 async function vsInitEmbed() {
-  if (vsInitialised) return;           // already mounted — nothing to do
+  if (vsInitialised) return;
   if (!document.getElementById('page-connections').classList.contains('active')) return;
 
   try {
+    await vsLoadSDK();
     const embedToken = await vsGetToken();
 
     vsEmbedInstance = viaSocket.mount({
