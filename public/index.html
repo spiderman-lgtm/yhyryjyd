@@ -431,20 +431,16 @@ async function vsGetToken() {
 
 async function vsLoadSDK() {
   if (window.viaSocket) return;
-  const beforeKeys = new Set(Object.keys(window));
-  await new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://embed.viasocket.com/prod-connectcomponent.js';
-    s.onload = resolve;
-    s.onerror = () => reject(new Error('Failed to load viaSocket SDK from embed.viasocket.com'));
-    document.head.appendChild(s);
-  });
-  // Wait a tick for any async init
-  await new Promise(r => setTimeout(r, 200));
-  const newKeys = Object.keys(window).filter(k => !beforeKeys.has(k));
-  console.log('[HireRadar] New globals after SDK load:', newKeys);
-  if (!window.viaSocket) {
-    throw new Error('viaSocket not found. New globals: ' + (newKeys.join(', ') || 'none'));
+  try {
+    const mod = await import('https://embed.viasocket.com/prod-connectcomponent.js');
+    console.log('[HireRadar] SDK module keys:', Object.keys(mod));
+    // Assign whichever export looks like the mount API
+    window.viaSocket = mod.viaSocket || mod.default || mod;
+    if (typeof window.viaSocket?.mount !== 'function') {
+      throw new Error('SDK loaded but mount() not found. Keys: ' + Object.keys(mod).join(', '));
+    }
+  } catch (err) {
+    throw new Error('SDK import failed: ' + err.message);
   }
 }
 
