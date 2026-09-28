@@ -431,13 +431,21 @@ async function vsGetToken() {
 
 async function vsLoadSDK() {
   if (window.viaSocket) return;
-  return new Promise((resolve, reject) => {
+  const beforeKeys = new Set(Object.keys(window));
+  await new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = 'https://embed.viasocket.com/prod-connectcomponent.js';
-    s.onload = () => { if (window.viaSocket) resolve(); else reject(new Error('viaSocket SDK loaded but viaSocket global not found')); };
-    s.onerror = () => reject(new Error('Failed to load viaSocket SDK — check network/CSP'));
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Failed to load viaSocket SDK from embed.viasocket.com'));
     document.head.appendChild(s);
   });
+  // Wait a tick for any async init
+  await new Promise(r => setTimeout(r, 200));
+  const newKeys = Object.keys(window).filter(k => !beforeKeys.has(k));
+  console.log('[HireRadar] New globals after SDK load:', newKeys);
+  if (!window.viaSocket) {
+    throw new Error('viaSocket not found. New globals: ' + (newKeys.join(', ') || 'none'));
+  }
 }
 
 async function vsInitEmbed() {
