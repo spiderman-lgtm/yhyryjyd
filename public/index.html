@@ -427,18 +427,20 @@ async function vsGetToken() {
 }
 
 async function vsLoadSDK() {
-  // Load SDK script; it defines openViasocketConnection and viaSocket globals
-  if (window.openViasocketConnection || window.viaSocket) return;
+  if (window.openViasocketConnection) return;
   await new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = 'https://embed.viasocket.com/prod-connectcomponent.js';
     s.onload = resolve;
-    s.onerror = () => reject(new Error('Failed to fetch embed.viasocket.com/prod-connectcomponent.js'));
+    s.onerror = () => reject(new Error('Failed to load SDK'));
     document.head.appendChild(s);
   });
-  await new Promise(r => setTimeout(r, 300));
-  console.log('[HireRadar] openViasocketConnection:', typeof window.openViasocketConnection);
-  console.log('[HireRadar] viaSocket:', typeof window.viaSocket);
+  await new Promise(r => setTimeout(r, 400));
+  // Log every SDK-related global for debugging
+  const sdkKeys = Object.keys(window).filter(k => /via|socket|embed|connect/i.test(k));
+  console.log('[HireRadar] SDK-related globals:', sdkKeys);
+  console.log('[HireRadar] openViasocketConnection props:', Object.keys(window.openViasocketConnection || {}));
+  console.log('[HireRadar] openViasocketConnection.mount:', typeof window.openViasocketConnection?.mount);
 }
 
 async function vsInitEmbed() {
