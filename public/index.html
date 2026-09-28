@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HireRadar</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap">
+<!-- viaSocket embed SDK -->
+<script src="https://embed.viasocket.com/prod-connectcomponent.js"></script>
+<style>
+/* ── Design tokens ── */
+:root {
+  --bg: #F7F8FA; --surface: #FFFFFF; --surface-2: #F0F2F5;
+  --border: #E4E7EC; --border-2: #D0D5DD;
+  --fg: #101828; --fg-2: #475467; --fg-3: #98A2B3;
+  --accent: #0057FF; --accent-bg: #EEF3FF; --accent-2: #0040CC;
+  --success: #12B76A; --success-bg: #ECFDF3;
+  --warning: #F79009; --warning-bg: #FFFAEB;
+  --danger: #F04438; --danger-bg: #FEF3F2;
+  --purple: #7C3AED; --purple-bg: #F5F3FF;
+  --sidebar-w: 220px; --radius: 10px; --radius-sm: 6px;
+  --shadow: 0 1px 3px rgba(16,24,40,.07), 0 1px 2px rgba(16,24,40,.05);
+  --shadow-md: 0 4px 8px rgba(16,24,40,.06), 0 2px 4px rgba(16,24,40,.04);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0D1117; --surface: #161B22; --surface-2: #21262D;
+    --border: #30363D; --border-2: #3D444D;
+    --fg: #E6EDF3; --fg-2: #8B949E; --fg-3: #6E7681;
+    --accent: #4A90FF; --accent-bg: #0D1F3C; --accent-2: #79ABFF;
+    --success: #3FB950; --success-bg: #0D2B1A;
+    --warning: #D29922; --warning-bg: #2D2100;
+    --danger: #F85149; --danger-bg: #2D0F0E;
+    --purple: #9D71FF; --purple-bg: #1A0F33;
+    --shadow: 0 1px 3px rgba(0,0,0,.3);
+    --shadow-md: 0 4px 8px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--fg); }
+
+/* ── Layout ── */
+.app { display: flex; height: 100vh; overflow: hidden; }
+
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; padding: 16px 12px;
+  overflow-y: auto;
+}
+.logo {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px 20px;
+}
+.logo-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-icon svg { width: 18px; height: 18px; }
+.logo-name { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 17px; }
+
+.nav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 13.5px; font-weight: 500;
+  color: var(--fg-2); margin-bottom: 2px; transition: all .12s;
+  user-select: none; border: none; background: none; width: 100%; text-align: left;
+}
+.nav-item:hover { background: var(--surface-2); color: var(--fg); }
+.nav-item.active { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+.nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+.nav-section {
+  font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--fg-3); padding: 12px 10px 6px;
+}
+
+.main {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+}
+.topbar {
+  height: 56px; border-bottom: 1px solid var(--border); background: var(--surface);
+  display: flex; align-items: center; padding: 0 24px; gap: 12px; flex-shrink: 0;
+}
+.topbar-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; flex: 1; }
+
+.page-content { flex: 1; overflow-y: auto; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: var(--radius-sm); font-size: 13px;
+  font-weight: 600; cursor: pointer; border: none; font-family: inherit;
+  transition: all .12s;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-2); }
+.btn-ghost { background: var(--surface-2); color: var(--fg-2); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--surface); color: var(--fg); }
+
+/* ── Connections page specific ── */
+.conn-header {
+  padding: 20px 24px 0;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.conn-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700; font-size: 16px;
+  display: flex; align-items: center; gap: 10px;
+}
+.vs-badge {
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  color: #fff; letter-spacing: .04em;
+}
+.conn-sub { font-size: 12px; color: var(--fg-3); margin-top: 3px; }
+
+/* ── viaSocket embed container ── */
+#vs-embed-root {
+  margin: 0 24px 24px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  background: var(--surface);
+  /* Height fills remaining viewport */
+  height: calc(100vh - 56px - 80px);
+  min-height: 480px;
+  position: relative;
+}
+
+/* viaSocket's own component fills this perfectly */
+#vs-embed-mount { width: 100%; height: 100%; }
+
+/* Loading / error states */
+.vs-state {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px; text-align: center; padding: 32px;
+}
+.vs-state-icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+@keyframes vsDot { 0%,100%{opacity:.3;transform:translateY(0)} 50%{opacity:1;transform:translateY(-4px)} }
+
+/* ── Feed cards (other pages) ── */
+.feed { padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; }
+.job-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+  box-shadow: var(--shadow); transition: all .15s;
+}
+.job-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+.job-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.job-source {
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+  background: var(--accent-bg); color: var(--accent);
+}
+.job-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.job-company { font-size: 13px; color: var(--fg-2); margin-bottom: 10px; }
+.job-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag {
+  font-size: 11px; padding: 2px 8px; border-radius: 20px;
+  background: var(--surface-2); color: var(--fg-2); border: 1px solid var(--border);
+}
+.job-footer { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.job-time { font-size: 11px; color: var(--fg-3); flex: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.95a2 2 0 012-2.18h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L9.91 14a16 16 0 006 6l.41-.41a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+      </div>
+      <span class="logo-name">HireRadar</span>
+    </div>
+
+    <div class="nav-section">Discover</div>
+    <button class="nav-item active" data-page="feed">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Live Feed
+    </button>
+    <button class="nav-item" data-page="alerts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      Alerts
+    </button>
+    <button class="nav-item" data-page="saved">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+      Saved Jobs
+    </button>
+
+    <div class="nav-section">Integrations</div>
+    <button class="nav-item" data-page="connections">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      Connections
+    </button>
+
+    <div class="nav-section">Insights</div>
+    <button class="nav-item" data-page="trends">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Trends
+    </button>
+    <button class="nav-item" data-page="companies">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      Companies
+    </button>
+  </nav>
+
+  <!-- Main content -->
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title" id="pageTitle">Live Feed</span>
+      <button class="btn btn-primary" id="topbarNewFlow" style="display:none" onclick="vsOpenNewFlow()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Flow
+      </button>
+    </div>
+
+    <div class="page-content">
+
+      <!-- === LIVE FEED PAGE === -->
+      <div class="page active" id="page-feed">
+        <div class="feed">
+          <div class="job-card">
+            <div class="job-meta">
+              <span class="job-source">LinkedIn</span>
+              <span style="font-size:11px;color:var(--fg-3)">12 min ago</span>
+              <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--success-bg);color:var(--success)">NEW</span>
+            </div>
+            <div class="job-title">Senior React Developer</div>
+            <div class="job-company">Razorpay · Bangalore, Karnataka</div>
+            <div class="job-tags">
+              <span class="tag">React</span><span class="tag">TypeScript</span>
+              <span class="tag">Node.js</span><span class="tag">₹25–40 LPA</span>
+            </div>
+            <div class="job-footer">
+              <span class="job-time">Full-time · Hybrid · 3–5 yrs exp</span>
+              <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px">Save</button>
+              <button class="btn btn-primary" style="font-size:12px;padding:5px 10px">Apply</button>
+            </div>
+          </div>
+          <div class="job-card">
+            <div class="job-meta">
+              <span class="job-source" style="background:var(--warning-bg);color:var(--warning)">Naukri</span>
+              <span style="font-size:11px;color:var(--fg-3)">34 min ago</span>
+            </div>
+            <div class="job-title">Frontend Engineer — React + NextJS</div>
+            <div class="job-company">Swiggy · Bangalore / Remote</div>
+            <div class="job-tags">
+              <span class="tag">React</span><span class="tag">Next.js</span>
+              <span class="tag">GraphQL</span><span class="tag">₹18–28 LPA</span>
+            </div>
+            <div class="job-footer">
+              <span class="job-time">Full-time · Remote · 2–4 yrs exp</span>
+              <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px">Save</button>
+              <button class="btn btn-primary" style="font-size:12px;padding:5px 10px">Apply</button>
+            </div>
+          </div>
+          <div class="job-card">
+            <div class="job-meta">
+              <span class="job-source" style="background:#E7F5FD;color:#1DA1F2">Twitter / X</span>
+              <span style="font-size:11px;color:var(--fg-3)">1h ago</span>
+              <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--accent-bg);color:var(--accent)">LIVE</span>
+            </div>
+            <div class="job-title">React Developer (3–5 yrs)</div>
+            <div class="job-company">Licious · Bangalore</div>
+            <div class="job-tags">
+              <span class="tag">React</span><span class="tag">Redux</span><span class="tag">#hiring</span>
+            </div>
+            <div class="job-footer">
+              <span class="job-time">Posted via #hiring monitor</span>
+              <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px">Save</button>
+              <button class="btn btn-primary" style="font-size:12px;padding:5px 10px">Apply</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- === CONNECTIONS PAGE (viaSocket embed) === -->
+      <div class="page" id="page-connections">
+        <div class="conn-header">
+          <div>
+            <div class="conn-title">
+              Automation Flows
+              <span class="vs-badge">Powered by viaSocket</span>
+            </div>
+            <div class="conn-sub">Connect job platforms and build flows that fetch listings and send alerts.</div>
+          </div>
+        </div>
+
+        <!--
+          viaSocket.mount() renders its full prebuilt UI inside #vs-embed-mount.
+          The root div gives the frame; the mount div is where the SDK renders.
+        -->
+        <div id="vs-embed-root">
+
+          <!-- Loading state — shown until SDK is ready -->
+          <div class="vs-state" id="vs-loading">
+            <div class="vs-state-icon" style="background:linear-gradient(135deg,var(--accent),var(--purple))">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" style="width:24px;height:24px">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+              </svg>
+            </div>
+            <div>
+              <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;margin-bottom:4px">Loading viaSocket…</div>
+              <div style="font-size:12px;color:var(--fg-3)">Connecting to your automation workspace</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;animation:vsDot .9s ease-in-out infinite"></span>
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;animation:vsDot .9s ease-in-out .2s infinite"></span>
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;animation:vsDot .9s ease-in-out .4s infinite"></span>
+            </div>
+          </div>
+
+          <!-- Error state -->
+          <div class="vs-state" id="vs-error" style="display:none">
+            <div class="vs-state-icon" style="background:var(--danger-bg)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" style="width:22px;height:22px">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:14px;margin-bottom:4px">Could not load embed</div>
+              <div id="vs-error-msg" style="font-size:12px;color:var(--fg-3);max-width:320px">
+                Make sure <code>server.js</code> is running with <code>VIASOCKET_EMBED_SECRET</code> set in <code>.env</code>.
+              </div>
+            </div>
+            <button class="btn btn-ghost" style="font-size:12px" onclick="vsInitEmbed()">Retry</button>
+          </div>
+
+          <!-- viaSocket SDK renders its full UI here -->
+          <div id="vs-embed-mount" style="width:100%;height:100%;display:none"></div>
+
+        </div>
+      </div>
+
+      <!-- === ALERTS PAGE === -->
+      <div class="page" id="page-alerts">
+        <div class="feed">
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:16px;margin-bottom:4px">Your Alerts</div>
+          <div style="font-size:13px;color:var(--fg-3)">Alerts are managed through your automation flows on the Connections page.</div>
+        </div>
+      </div>
+
+      <!-- === SAVED PAGE === -->
+      <div class="page" id="page-saved">
+        <div class="feed">
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:16px;margin-bottom:4px">Saved Jobs</div>
+          <div style="font-size:13px;color:var(--fg-3)">Your bookmarked listings appear here.</div>
+        </div>
+      </div>
+
+      <!-- === TRENDS PAGE === -->
+      <div class="page" id="page-trends">
+        <div class="feed">
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:16px;margin-bottom:4px">Market Trends</div>
+        </div>
+      </div>
+
+      <!-- === COMPANIES PAGE === -->
+      <div class="page" id="page-companies">
+        <div class="feed">
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:16px;margin-bottom:4px">Companies</div>
+        </div>
+      </div>
+
+    </div><!-- /page-content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ── Navigation ──────────────────────────────────────────────────────────────
+const pageTitles = {
+  feed: 'Live Feed', connections: 'Connections', alerts: 'Alerts',
+  saved: 'Saved Jobs', trends: 'Trends', companies: 'Companies'
+};
+
+document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    const page = item.dataset.page;
+    document.getElementById('page-' + page)?.classList.add('active');
+    document.getElementById('pageTitle').textContent = pageTitles[page] || page;
+
+    // Show/hide "New Flow" topbar button on Connections page
+    document.getElementById('topbarNewFlow').style.display =
+      page === 'connections' ? 'inline-flex' : 'none';
+
+    // Mount viaSocket embed when user first opens the Connections page
+    if (page === 'connections') {
+      setTimeout(vsInitEmbed, 60);
+    }
+  });
+});
+
+// ── viaSocket Embed ──────────────────────────────────────────────────────────
+// Docs: https://flow.viasocket.com/documentation/embed.md?org=4160&project=proj9XH3L4TM
+// org_id: 4160 | project_id: proj9XH3L4TM
+// Token: issued by POST /api/embed-token (server.js signs HS256 JWT with VIASOCKET_EMBED_SECRET)
+
+let vsEmbedInstance = null;
+let vsInitialised = false;
+
+async function vsGetToken() {
+  // Your backend signs { org_id, project_id, unique_identifier } with VIASOCKET_EMBED_SECRET.
+  // Replace 'demo-user-001' with your actual authenticated user's stable id.
+  const res = await fetch('/api/embed-token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: 'demo-user-001' })
+  });
+  if (!res.ok) throw new Error('/api/embed-token returned ' + res.status);
+  const { token } = await res.json();
+  return token;
+}
+
+async function vsInitEmbed() {
+  if (vsInitialised) return;           // already mounted — nothing to do
+  if (!document.getElementById('page-connections').classList.contains('active')) return;
+
+  try {
+    const embedToken = await vsGetToken();
+
+    vsEmbedInstance = viaSocket.mount({
+      embedToken,
+      parent: document.getElementById('vs-embed-mount'),
+      config: {
+        pageheading: 'Hiring Alert Flows',
+        pagesubheading: 'Connect LinkedIn, Naukri, Twitter and more. Build flows that fetch jobs and send you alerts.',
+        showEnabled: true,
+
+        // To open on a specific app (get service_id from the search endpoint):
+        // GET https://flow.sokt.io/func/scri12BSufQM?key=LinkedIn
+        // open: { serviceId: '<service_id>' },
+        // filteredServices: ['<linkedin_service_id>', '<naukri_service_id>'],
+      }
+    });
+
+    // Required: listen for every flow the user creates/edits/deletes.
+    // Store script_id per user so you can:
+    //   pause:  PUT /embed/updatestatus/<script_id>?status=0
+    //   resume: PUT /embed/updatestatus/<script_id>?status=1
+    //   update: PUT /embed/update-subscribed-event/<script_id> { code }
+    vsEmbedInstance.on('flow', (flowData) => {
+      console.log('[HireRadar] viaSocket flow event:', flowData);
+      // flowData: { id (script_id), service_id, status, webhook }
+      // TODO: POST to your backend to persist the script_id for this user
+    });
+
+    // Show the mounted component, hide the loading spinner
+    document.getElementById('vs-loading').style.display = 'none';
+    document.getElementById('vs-embed-mount').style.display = 'block';
+
+    vsInitialised = true;
+  } catch (err) {
+    console.error('[HireRadar] viaSocket embed error:', err);
+    document.getElementById('vs-loading').style.display = 'none';
+    document.getElementById('vs-error').style.display = 'flex';
+    const msgEl = document.getElementById('vs-error-msg');
+    if (msgEl) msgEl.textContent = err.message;
+  }
+}
+
+function vsOpenNewFlow() {
+  // viaSocket's own UI has a "New Flow" button built in.
+  // Clicking here navigates to the Connections page and opens the embed.
+  const connNav = document.querySelector('.nav-item[data-page="connections"]');
+  if (connNav) connNav.click();
+}
+</script>
+</body>
+</html>
