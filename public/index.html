@@ -360,6 +360,58 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .auto-tmpl-tag{font-size:9px;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:20px;background:var(--vsbg);color:var(--vs);flex-shrink:0;white-space:nowrap;border:1px solid var(--vs);opacity:.8}
 .auto-tmpl-arr{font-size:16px;color:var(--fg-3);flex-shrink:0;transition:transform .12s}
 .auto-tmpl:hover .auto-tmpl-arr{transform:translateX(2px);color:var(--vs)}
+/* ATS Score Card */
+.ats-card{border:1.5px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-top:14px;background:var(--surface-2)}
+.ats-top{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.ats-ring-wrap{position:relative;width:64px;height:64px;flex-shrink:0}
+.ats-ring-wrap svg{transform:rotate(-90deg)}
+.ats-ring-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--fg)}
+.ats-info{flex:1;min-width:0}
+.ats-label{font-size:11px;font-weight:700;color:var(--fg-3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px}
+.ats-grade{font-size:22px;font-weight:800;color:var(--fg)}
+.ats-grade-desc{font-size:11px;color:var(--fg-2);margin-top:1px}
+.ats-sections{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.ats-sec{font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;border:1.5px solid}
+.ats-sec.ok{background:#f0fdf4;color:#16a34a;border-color:#86efac}
+.ats-sec.miss{background:#fef2f2;color:#dc2626;border-color:#fca5a5}
+.ats-skills-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ats-skill-chip{font-size:10px;padding:2px 8px;border-radius:20px;border:1px solid}
+.ats-skill-chip.found{background:var(--vsbg);color:var(--vs);border-color:var(--vs)}
+.ats-skill-chip.miss{background:#fef3c7;color:#92400e;border-color:#fcd34d}
+.ats-tips{margin-top:10px}
+.ats-tip{font-size:11px;color:var(--fg-2);padding:5px 0;border-bottom:1px solid var(--border);display:flex;gap:7px;align-items:flex-start}
+.ats-tip:last-child{border-bottom:none}
+.ats-tip-icon{flex-shrink:0;color:var(--vs)}
+/* Onboarding wizard */
+.ob-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
+.ob-modal{background:var(--bg);border-radius:16px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.35);display:flex;flex-direction:column}
+.ob-header{padding:24px 24px 0;display:flex;align-items:center;gap:10px}
+.ob-logo{font-size:22px;font-weight:900;color:var(--vs);letter-spacing:-.02em}
+.ob-step-pills{display:flex;gap:5px;margin:0 24px;padding:14px 0 0}
+.ob-pill{flex:1;height:4px;border-radius:2px;background:var(--border);transition:background .3s}
+.ob-pill.done{background:var(--vs)}
+.ob-pill.active{background:var(--accent)}
+.ob-body{padding:20px 24px 24px;flex:1}
+.ob-step-title{font-size:18px;font-weight:800;color:var(--fg);margin-bottom:4px}
+.ob-step-sub{font-size:13px;color:var(--fg-2);margin-bottom:18px;line-height:1.45}
+.ob-field{margin-bottom:14px}
+.ob-field label{font-size:12px;font-weight:600;color:var(--fg-2);display:block;margin-bottom:4px}
+.ob-field input,.ob-field select{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-size:13px;box-sizing:border-box;outline:none;font-family:inherit}
+.ob-field input:focus,.ob-field select:focus{border-color:var(--vs)}
+.ob-btns{display:flex;gap:10px;margin-top:20px}
+.ob-btn-primary{flex:1;padding:11px;background:var(--vs);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.ob-btn-skip{padding:11px 16px;background:transparent;color:var(--fg-3);border:1.5px solid var(--border);border-radius:9px;font-size:13px;cursor:pointer;font-family:inherit}
+.ob-platform-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.ob-plat{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;cursor:pointer;background:var(--surface-2);transition:border-color .12s,background .12s}
+.ob-plat.sel{border-color:var(--vs);background:var(--vsbg)}
+.ob-plat-icon{font-size:18px;flex-shrink:0}
+.ob-plat-name{font-size:12px;font-weight:700;color:var(--fg)}
+.ob-plat-desc{font-size:10px;color:var(--fg-2)}
+.ob-automate-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ob-auto-btn{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;cursor:pointer;background:var(--surface-2);transition:border-color .12s,background .12s}
+.ob-auto-btn.sel{border-color:var(--vs);background:var(--vsbg)}
+.ob-auto-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.ob-auto-label{font-size:11px;font-weight:700;color:var(--fg)}
 /* Quick Connect buttons */
 .auto-qc-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
 .auto-qc-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--surface-2);cursor:pointer;transition:border-color .12s,background .12s;font-family:inherit;position:relative}
@@ -726,6 +778,28 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
             <div class="resume-state err" id="resume-err">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               <span id="resume-err-text">Could not parse resume. Fill manually.</span>
+            </div>
+            <!-- ATS Score Card -->
+            <div class="ats-card" id="ats-card" style="display:none">
+              <div class="ats-top">
+                <div class="ats-ring-wrap">
+                  <svg width="64" height="64" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="26" fill="none" stroke="var(--border)" stroke-width="6"/>
+                    <circle id="ats-arc" cx="32" cy="32" r="26" fill="none" stroke="var(--vs)" stroke-width="6"
+                      stroke-dasharray="163.4" stroke-dashoffset="163.4" stroke-linecap="round" style="transition:stroke-dashoffset .7s ease"/>
+                  </svg>
+                  <div class="ats-ring-val" id="ats-score-val">—</div>
+                </div>
+                <div class="ats-info">
+                  <div class="ats-label">ATS Score</div>
+                  <div class="ats-grade" id="ats-grade">—</div>
+                  <div class="ats-grade-desc" id="ats-grade-desc"></div>
+                </div>
+              </div>
+              <div class="ats-sections" id="ats-sections"></div>
+              <div style="font-size:11px;font-weight:700;color:var(--fg-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Skills</div>
+              <div class="ats-skills-row" id="ats-skills-row"></div>
+              <div class="ats-tips" id="ats-tips"></div>
             </div>
           </div>
 
@@ -2385,6 +2459,7 @@ function resumeFileSelected(file) {
   document.getElementById('resume-loading').style.display = 'flex';
   document.getElementById('resume-done').style.display = 'none';
   document.getElementById('resume-err').style.display = 'none';
+  document.getElementById('ats-card').style.display = 'none';
 
   const fd = new FormData();
   fd.append('resume', file);
@@ -2405,6 +2480,7 @@ function resumeFileSelected(file) {
         `Filled: ${[p.role, p.skills && (p.skills.split(',').slice(0,3).join(', ')+'…')].filter(Boolean).join(' · ')} — review and save!`;
       document.getElementById('resume-done').style.display = 'flex';
       document.getElementById('resume-idle').style.display = 'block';
+      if (data.ats) renderAtsCard(data.ats);
     })
     .catch(err => {
       document.getElementById('resume-loading').style.display = 'none';
@@ -2414,6 +2490,60 @@ function resumeFileSelected(file) {
     });
 }
 
+function renderAtsCard(ats) {
+  const card = document.getElementById('ats-card');
+  if (!card || !ats) return;
+  const score = Math.min(100, Math.max(0, ats.score || 0));
+  const circ = 2 * Math.PI * 26;
+  document.getElementById('ats-score-val').textContent = score;
+  const arc = document.getElementById('ats-arc');
+  arc.style.strokeDashoffset = circ * (1 - score / 100);
+  const gradeColors = { A:'#16a34a', B:'#2563eb', C:'#d97706', D:'#dc2626' };
+  arc.style.stroke = gradeColors[ats.grade] || 'var(--vs)';
+  document.getElementById('ats-grade').textContent = 'Grade ' + (ats.grade || '—');
+  document.getElementById('ats-grade').style.color = gradeColors[ats.grade] || 'var(--fg)';
+  const gradeDesc = { A:'Excellent — ATS-friendly resume', B:'Good — minor improvements needed', C:'Fair — key gaps to address', D:'Needs work — high rejection risk' };
+  document.getElementById('ats-grade-desc').textContent = gradeDesc[ats.grade] || '';
+  const secEl = document.getElementById('ats-sections');
+  secEl.innerHTML = '';
+  if (ats.sections) {
+    const labels = { contact:'Contact', summary:'Summary', experience:'Experience', education:'Education', skills:'Skills', projects:'Projects' };
+    for (const [k, ok] of Object.entries(ats.sections)) {
+      const chip = document.createElement('span');
+      chip.className = 'ats-sec ' + (ok ? 'ok' : 'miss');
+      chip.textContent = (ok ? '✓ ' : '✗ ') + labels[k];
+      secEl.appendChild(chip);
+    }
+  }
+  const skillsEl = document.getElementById('ats-skills-row');
+  skillsEl.innerHTML = '';
+  (ats.found_skills || []).slice(0,8).forEach(s => {
+    const c = document.createElement('span');
+    c.className = 'ats-skill-chip found'; c.textContent = s;
+    skillsEl.appendChild(c);
+  });
+  (ats.missing_skills || []).slice(0,5).forEach(s => {
+    const c = document.createElement('span');
+    c.className = 'ats-skill-chip miss'; c.textContent = '+ ' + s;
+    skillsEl.appendChild(c);
+  });
+  const tipsEl = document.getElementById('ats-tips');
+  tipsEl.innerHTML = '';
+  if ((ats.suggestions || []).length) {
+    const h = document.createElement('div');
+    h.style.cssText = 'font-size:11px;font-weight:700;color:var(--fg-3);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 4px';
+    h.textContent = 'Suggestions';
+    tipsEl.appendChild(h);
+    ats.suggestions.forEach(tip => {
+      const d = document.createElement('div');
+      d.className = 'ats-tip';
+      d.innerHTML = `<span class="ats-tip-icon">→</span><span>${tip}</span>`;
+      tipsEl.appendChild(d);
+    });
+  }
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
 // ─── Preferences ─────────────────────────────────────────────────────────────
 function loadPrefsForm() {
   const p = getPrefs();
@@ -2615,6 +2745,239 @@ vsInit();
 renderRightPanel([]);
 refreshFeed();
 setInterval(refreshFeed, 5*60*1000);
+
+// ─── Onboarding Wizard ────────────────────────────────────────────────────
+const OB_STEPS = ['resume','ats','platforms','automate'];
+let _obStep = 0;
+let _obAts = null;
+
+const OB_PLATFORM_OPTS = [
+  { id:'linkedin', icon:'🔗', name:'LinkedIn', desc:'Jobs & Easy Apply' },
+  { id:'indeed',   icon:'🔍', name:'Indeed',   desc:'India postings' },
+  { id:'naukri',   icon:'📋', name:'Naukri',   desc:'India tech jobs' },
+  { id:'github',   icon:'💻', name:'GitHub Jobs', desc:'Developer roles' },
+  { id:'angellist',icon:'🚀', name:'AngelList', desc:'Startups & SaaS' },
+  { id:'freshteam',icon:'🌱', name:'Freshteam', desc:'SMBs & mid-market' },
+];
+
+const OB_AUTO_OPTS = [
+  { id:'slack',    icon:'💼', bg:'#4A154B', label:'Slack',          desc:'Job alerts in channel' },
+  { id:'gmail',    icon:'📧', bg:'#EA4335', label:'Email / Gmail',  desc:'Alerts to your inbox' },
+  { id:'sheets',   icon:'📊', bg:'#0F9D58', label:'Google Sheets',  desc:'Track jobs in a sheet' },
+  { id:'whatsapp', icon:'💬', bg:'#25D366', label:'WhatsApp',       desc:'Instant WhatsApp alert' },
+];
+
+function obShouldShow() {
+  try { return !localStorage.getItem('hr_onboarded'); } catch { return false; }
+}
+function obMarkDone() {
+  try { localStorage.setItem('hr_onboarded','1'); } catch {}
+}
+function obOpen() {
+  _obStep = 0; _obAts = null;
+  obRender();
+  document.getElementById('ob-overlay').style.display = 'flex';
+}
+function obClose() {
+  document.getElementById('ob-overlay').style.display = 'none';
+  obMarkDone();
+}
+function obOverlayClick(e) {
+  if (e.target === document.getElementById('ob-overlay')) obClose();
+}
+function obRender() {
+  for (let i = 0; i < 4; i++) {
+    const p = document.getElementById('ob-pill-' + i);
+    p.className = 'ob-pill' + (i < _obStep ? ' done' : i === _obStep ? ' active' : '');
+  }
+  const body = document.getElementById('ob-body');
+  body.innerHTML = obStepHtml(_obStep);
+  if (_obStep === 0) {
+    const zone = document.getElementById('ob-rz');
+    if (zone) {
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if (f) obHandleResume(f); });
+    }
+    const inp = document.getElementById('ob-resume-inp');
+    if (inp) inp.addEventListener('change', () => { if (inp.files[0]) obHandleResume(inp.files[0]); });
+  }
+}
+function obStepHtml(step) {
+  if (step === 0) return `
+    <div class="ob-step-title">Upload your resume</div>
+    <div class="ob-step-sub">AI will read it and fill your job preferences automatically — takes under 10 seconds.</div>
+    <div class="resume-zone" id="ob-rz" style="margin-bottom:10px">
+      <input type="file" id="ob-resume-inp" accept=".pdf,.txt,application/pdf,text/plain">
+      <div id="ob-rz-idle">
+        <div class="resume-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <div class="resume-zone-title">Drop PDF / TXT here</div>
+        <div class="resume-zone-sub">or click to browse · up to 10 MB</div>
+      </div>
+      <div class="resume-state loading" id="ob-loading" style="display:none;position:relative"><div class="resume-spinner"></div><span>AI reading your resume…</span></div>
+    </div>
+    <div class="ob-btns">
+      <button class="ob-btn-skip" onclick="obStep(1)">Skip for now</button>
+    </div>`;
+
+  if (step === 1) {
+    if (!_obAts) return `
+      <div class="ob-step-title">ATS Score</div>
+      <div class="ob-step-sub">Upload your resume on the previous step to see how ATS systems rate it. You can do it anytime from Settings → Resume.</div>
+      <div class="ob-btns"><button class="ob-btn-primary" onclick="obStep(2)">Next →</button></div>`;
+    const ats = _obAts;
+    const score = Math.min(100, Math.max(0, ats.score || 0));
+    const circ = 163.4;
+    const offset = (circ * (1 - score / 100)).toFixed(1);
+    const gC = { A:'#16a34a', B:'#2563eb', C:'#d97706', D:'#dc2626' };
+    const color = gC[ats.grade] || '#6366f1';
+    const gD = { A:'Excellent — ATS-ready', B:'Good — minor tweaks needed', C:'Fair — key gaps found', D:'Needs work — high rejection risk' };
+    const secHtml = ats.sections ? Object.entries(ats.sections).map(([k,ok])=>
+      `<span class="ats-sec ${ok?'ok':'miss'}">${ok?'✓ ':'✗ '}${k[0].toUpperCase()+k.slice(1)}</span>`).join(''):'';
+    const fHtml=(ats.found_skills||[]).slice(0,6).map(s=>`<span class="ats-skill-chip found">${s}</span>`).join('');
+    const mHtml=(ats.missing_skills||[]).slice(0,4).map(s=>`<span class="ats-skill-chip miss">+ ${s}</span>`).join('');
+    const tHtml=(ats.suggestions||[]).slice(0,3).map(t=>`<div class="ats-tip"><span class="ats-tip-icon">→</span><span>${t}</span></div>`).join('');
+    return `
+      <div class="ob-step-title">Your ATS Score</div>
+      <div class="ob-step-sub">How well your resume passes automated screening systems.</div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+        <div class="ats-ring-wrap">
+          <svg width="64" height="64" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="26" fill="none" stroke="var(--border)" stroke-width="6"/>
+            <circle cx="32" cy="32" r="26" fill="none" stroke="${color}" stroke-width="6"
+              stroke-dasharray="${circ}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+          </svg>
+          <div class="ats-ring-val">${score}</div>
+        </div>
+        <div><div class="ats-grade" style="color:${color}">Grade ${ats.grade||'—'}</div><div class="ats-grade-desc">${gD[ats.grade]||''}</div></div>
+      </div>
+      <div class="ats-sections">${secHtml}</div>
+      <div class="ats-skills-row" style="margin-top:8px">${fHtml}${mHtml}</div>
+      ${tHtml?`<div class="ats-tips" style="margin-top:8px">${tHtml}</div>`:''}
+      <div class="ob-btns" style="margin-top:14px">
+        <button class="ob-btn-primary" onclick="obStep(2)">Next: Choose Platforms →</button>
+      </div>`;
+  }
+  if (step === 2) {
+    const chips = OB_PLATFORM_OPTS.map(p=>`
+      <div class="ob-plat" id="obp-${p.id}" onclick="obTogglePlat('${p.id}')">
+        <div class="ob-plat-icon">${p.icon}</div>
+        <div><div class="ob-plat-name">${p.name}</div><div class="ob-plat-desc">${p.desc}</div></div>
+      </div>`).join('');
+    return `
+      <div class="ob-step-title">Where to fetch jobs?</div>
+      <div class="ob-step-sub">Pick all the platforms you want to monitor. You can toggle them anytime in Settings.</div>
+      <div class="ob-platform-grid" id="ob-plat-grid">${chips}</div>
+      <div class="ob-btns" style="margin-top:14px">
+        <button class="ob-btn-skip" onclick="obStep(3)">Skip</button>
+        <button class="ob-btn-primary" onclick="obSavePlatforms()">Next: Set Up Alerts →</button>
+      </div>`;
+  }
+  if (step === 3) {
+    const btns = OB_AUTO_OPTS.map(a=>`
+      <div class="ob-auto-btn" id="oba-${a.id}" onclick="obToggleAuto('${a.id}')">
+        <div class="ob-auto-icon" style="background:${a.bg}">${a.icon}</div>
+        <div><div class="ob-auto-label">${a.label}</div><div style="font-size:10px;color:var(--fg-2)">${a.desc}</div></div>
+      </div>`).join('');
+    return `
+      <div class="ob-step-title">Get automatic alerts</div>
+      <div class="ob-step-sub">Connect once — get notified the moment a matching job appears. Powered by viaSocket.</div>
+      <div class="ob-automate-grid" id="ob-auto-grid">${btns}</div>
+      <div style="font-size:11px;color:var(--fg-3);margin-top:10px;text-align:center">You can connect more apps anytime in Settings → Automations.</div>
+      <div class="ob-btns" style="margin-top:14px">
+        <button class="ob-btn-skip" onclick="obFinish()">Maybe later</button>
+        <button class="ob-btn-primary" onclick="obConnectSelected()">Connect & Finish →</button>
+      </div>`;
+  }
+  return '';
+}
+
+let _obSelectedPlats = new Set(['linkedin','indeed','naukri']);
+let _obSelectedAutos = new Set();
+
+function obTogglePlat(id) {
+  _obSelectedPlats.has(id) ? _obSelectedPlats.delete(id) : _obSelectedPlats.add(id);
+  document.getElementById('obp-'+id)?.classList.toggle('sel', _obSelectedPlats.has(id));
+}
+function obToggleAuto(id) {
+  _obSelectedAutos.has(id) ? _obSelectedAutos.delete(id) : _obSelectedAutos.add(id);
+  document.getElementById('oba-'+id)?.classList.toggle('sel', _obSelectedAutos.has(id));
+}
+function obStep(n) {
+  _obStep = n;
+  obRender();
+  if (n === 2) _obSelectedPlats.forEach(id => document.getElementById('obp-'+id)?.classList.add('sel'));
+  if (n === 3) _obSelectedAutos.forEach(id => document.getElementById('oba-'+id)?.classList.add('sel'));
+}
+function obSavePlatforms() {
+  try {
+    const p = getPrefs();
+    const plats = {};
+    OB_PLATFORM_OPTS.forEach(o => { plats[o.id] = _obSelectedPlats.has(o.id); });
+    p.platforms = plats;
+    setPrefs_(p);
+  } catch (e) {}
+  obStep(3);
+}
+function obConnectSelected() {
+  obFinish();
+  if (_obSelectedAutos.size > 0) {
+    setTimeout(() => {
+      showPage('connections');
+      document.getElementById('vs-context-banner')?.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 300);
+  }
+}
+function obFinish() {
+  obClose();
+  const p = getPrefs();
+  if (!p.role && !p.skills) showPage('prefs');
+}
+async function obHandleResume(file) {
+  const loading = document.getElementById('ob-loading');
+  const idle = document.getElementById('ob-rz-idle');
+  if (loading) { loading.style.display = 'flex'; loading.style.position = 'static'; }
+  if (idle) idle.style.display = 'none';
+  const fd = new FormData();
+  fd.append('resume', file);
+  try {
+    const data = await fetch('/api/parse-resume', { method:'POST', body:fd }).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    _obAts = data.ats || null;
+    const p = data.prefs || {};
+    const fields = { 'p-role':'role','p-skills':'skills','p-exp':'exp','p-type':'type','p-loc':'location','p-sal-min':'salMin' };
+    for (const [elId, key] of Object.entries(fields)) {
+      if (p[key]) try { document.getElementById(elId).value = p[key]; } catch {}
+    }
+    setPrefs_(p);
+    obStep(1);
+  } catch (err) {
+    if (loading) loading.style.display = 'none';
+    if (idle) idle.style.display = 'block';
+    document.getElementById('ob-rz').style.borderColor = '#dc2626';
+    alert('Could not parse resume: ' + err.message);
+  }
+}
+
+if (obShouldShow()) setTimeout(obOpen, 900);
 </script>
+
+<!-- ── Onboarding Modal ──────────────────────────────────────── -->
+<div class="ob-overlay" id="ob-overlay" style="display:none" onclick="obOverlayClick(event)">
+  <div class="ob-modal" id="ob-modal">
+    <div class="ob-header">
+      <div class="ob-logo">HireRadar</div>
+      <div style="flex:1"></div>
+      <button onclick="obClose()" style="background:none;border:none;cursor:pointer;color:var(--fg-3);font-size:18px;line-height:1">✕</button>
+    </div>
+    <div class="ob-step-pills" id="ob-pills">
+      <div class="ob-pill active" id="ob-pill-0"></div>
+      <div class="ob-pill" id="ob-pill-1"></div>
+      <div class="ob-pill" id="ob-pill-2"></div>
+      <div class="ob-pill" id="ob-pill-3"></div>
+    </div>
+    <div class="ob-body" id="ob-body"></div>
+  </div>
+</div>
 </body>
 </html>

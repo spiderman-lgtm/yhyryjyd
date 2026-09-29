@@ -541,21 +541,80 @@ app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
 
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
+      max_tokens: 2048,
       messages: [{ role:'user', content: [
         { type:'document', source:{ type:'base64', media_type:mime, data:base64 } },
-        { type:'text', text:`Extract job preferences from this resume as JSON only:
-{"role":"<job title>","skills":"<top 6 skills comma-separated>","exp":"<fresher|junior|mid|senior|lead>","type":"<full_time|contract|part_time>","location":"<bangalore|mumbai|delhi|hyderabad|pune|chennai|noida|gurgaon|ahmedabad|india|remote>","salMin":"<5|8|10|15|20|30|50>"}
-Return ONLY valid JSON.` },
+        { type:'text', text:`Analyze this resume for Indian tech job market. Return ONLY valid JSON:
+{
+  "prefs": {
+    "role": "<target job title>",
+    "skills": "<top 6 skills comma-separated>",
+    "exp": "<fresher|junior|mid|senior|lead>",
+    "type": "<full_time|contract|part_time>",
+    "location": "<bangalore|mumbai|delhi|hyderabad|pune|chennai|noida|gurgaon|ahmedabad|india|remote>",
+    "salMin": "<5|8|10|15|20|30|50>"
+  },
+  "ats": {
+    "score": <number 0-100>,
+    "grade": "<A|B|C|D>",
+    "found_skills": ["skill1","skill2"],
+    "missing_skills": ["skill3","skill4"],
+    "strengths": ["one line strength 1","one line strength 2"],
+    "gaps": ["one line gap 1","one line gap 2"],
+    "suggestions": ["actionable tip 1","actionable tip 2","actionable tip 3"],
+    "sections": {
+      "contact": <true|false>,
+      "summary": <true|false>,
+      "experience": <true|false>,
+      "education": <true|false>,
+      "skills": <true|false>,
+      "projects": <true|false>
+    }
+  }
+}` },
       ]}],
     });
 
     const raw = message.content.find(b => b.type === 'text')?.text || '{}';
     const m = raw.match(/\{[\s\S]*\}/);
-    res.json({ prefs: m ? JSON.parse(m[0]) : {} });
+    const parsed = m ? JSON.parse(m[0]) : {};
+    res.json({ prefs: parsed.prefs || {}, ats: parsed.ats || null });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ─── User setup profile (onboarding: resume prefs + chosen platforms) ──────────
+const PROFILE_FILE = path.join(DATA_DIR || './data', 'profiles.json');
+let profileStore = {};
+try { profileStore = JSON.parse(fs.readFileSync(PROFILE_FILE, 'utf8')); } catch {}
+
+let profileSaveTimer = null;
+function saveProfiles() {
+  clearTimeout(profileSaveTimer);
+  profileSaveTimer = setTimeout(() => {
+    try {
+      const dir = DATA_DIR || './data';
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(PROFILE_FILE + '.tmp', JSON.stringify(profileStore));
+      fs.renameSync(PROFILE_FILE + '.tmp', PROFILE_FILE);
+    } catch (e) { console.error('[profiles] save failed:', e.message); }
+  }, 200);
+}
+
+app.get('/api/profile', (req, res) => {
+  res.json(profileStore[req.uid] || { onboarded: false });
+});
+
+app.post('/api/profile', (req, res) => {
+  const allowed = ['name','email','prefs','platforms','onboarded','ats_score'];
+  const update = {};
+  for (const k of allowed) {
+    if (req.body?.[k] !== undefined) update[k] = req.body[k];
+  }
+  profileStore[req.uid] = { ...(profileStore[req.uid] || {}), ...update, updatedAt: new Date().toISOString() };
+  saveProfiles();
+  res.json({ ok: true });
 });
 
 // ─── Automations: viaSocket webhook-trigger flows fed by HireRadar events ──────
