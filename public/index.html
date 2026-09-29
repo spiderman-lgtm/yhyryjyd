@@ -212,29 +212,18 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .vs-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
 .vs-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff}
 .vs-sub{font-size:12px;color:var(--fg-3);margin-top:3px}
-#vs-embed-root{margin:0 20px 20px;border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-md);background:var(--surface);height:calc(100vh - 56px - 70px - 220px);min-height:360px;position:relative}
+#vs-embed-root{margin:0 20px 20px;border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-md);background:var(--surface);height:calc(100vh - 56px - 70px);min-height:480px;position:relative}
 #vs-embed-mount{width:100%;height:100%}
 .vs-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:32px}
 .vs-ico{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center}
 @keyframes vsDot{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
 
-/* ── Platform Connect Cards ── */
-.pcon-section{padding:16px 20px 12px}
-.pcon-heading{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:13px;margin-bottom:4px}
-.pcon-sub{font-size:11px;color:var(--fg-3);margin-bottom:12px}
-.pcon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-.pcon-card{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:border-color .15s,box-shadow .15s;position:relative;text-align:center}
-.pcon-card:hover{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
-.pcon-card.connected{border-color:var(--success);background:var(--success-bg)}
-.pcon-card.selected-active{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);background:var(--accent-bg)}
-.pcon-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;flex-shrink:0}
-.pcon-name{font-size:11px;font-weight:700;color:var(--fg)}
-.pcon-status{font-size:9px;font-weight:700;color:var(--fg-3)}
-.pcon-card.connected .pcon-status{color:var(--success)}
-.pcon-tick{position:absolute;top:6px;right:6px;width:16px;height:16px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:800}
-.pcon-connect-btn{margin-top:2px;font-size:9px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--fg-2);cursor:pointer;transition:all .12s;white-space:nowrap}
-.pcon-card.connected .pcon-connect-btn{background:var(--success);color:#fff;border-color:var(--success)}
-.pcon-card.selected-active .pcon-connect-btn{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* ── Platform Source Chips (Preferences) ── */
+.pcon-chip-row{display:flex;flex-wrap:wrap;gap:7px}
+.pcon-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px 5px 7px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface-2);cursor:pointer;transition:all .15s;user-select:none;font-size:11px;font-weight:700;color:var(--fg-2)}
+.pcon-chip:hover{border-color:var(--accent);background:var(--accent-bg);color:var(--accent)}
+.pcon-chip.on{color:#fff;border-color:transparent}
+.pcon-chip-dot{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;color:#fff;flex-shrink:0}
 
 /* ── Modal ── */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100}
@@ -417,16 +406,9 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 
     <!-- INTEGRATIONS -->
     <div class="page" id="page-connections">
-      <!-- Platform picker -->
-      <div class="pcon-section">
-        <div class="pcon-heading">Connect Job Platforms</div>
-        <div class="pcon-sub">Select a platform → viaSocket handles login & connection automatically — no manual setup needed.</div>
-        <div class="pcon-grid" id="pcon-grid"></div>
-      </div>
-      <!-- viaSocket embed -->
       <div class="vs-header">
         <div class="vs-title">Automation Workspace <span class="vs-badge">viaSocket</span></div>
-        <div class="vs-sub" id="vs-sub-text">Select a platform above to connect · then build automation flows below.</div>
+        <div class="vs-sub">Build job alert flows · connect apps · runs in background 24/7.</div>
       </div>
       <div id="vs-embed-root">
         <div class="vs-state" id="vs-loading">
@@ -434,10 +416,10 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
             <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" style="width:24px;height:24px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
           </div>
           <div>
-            <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;margin-bottom:4px" id="vs-loading-text">Select a platform to begin</div>
-            <div style="font-size:12px;color:var(--fg-3)" id="vs-loading-sub">Click any platform card above</div>
+            <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;margin-bottom:4px">Loading viaSocket…</div>
+            <div style="font-size:12px;color:var(--fg-3)">Connecting to your automation workspace</div>
           </div>
-          <div id="vs-loading-dots" style="display:none;gap:6px">
+          <div style="display:flex;gap:6px">
             <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;animation:vsDot .9s ease-in-out infinite"></span>
             <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;animation:vsDot .9s ease-in-out .2s infinite"></span>
             <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;animation:vsDot .9s ease-in-out .4s infinite"></span>
@@ -502,6 +484,13 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               <span id="resume-err-text">Could not parse resume. Please fill in manually.</span>
             </div>
+          </div>
+          <hr class="pref-divider">
+          <!-- Platform Source Picker -->
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--fg-2);margin-bottom:6px">Fetch Jobs From</div>
+            <div style="font-size:11px;color:var(--fg-3);margin-bottom:10px">Select platforms — feed will only show jobs from chosen sources.</div>
+            <div class="pcon-chip-row" id="pcon-chip-row"></div>
           </div>
           <hr class="pref-divider">
           <div class="pref-section">
@@ -699,7 +688,7 @@ function navigate(page) {
   Object.values(TB).forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
   if (TB[page]) document.getElementById(TB[page]).style.display = 'flex';
 
-  if (page === 'connections') { renderPlatformCards(); setTimeout(() => vsInitEmbed(null), 80); }
+  if (page === 'connections') setTimeout(vsInitEmbed, 80);
   if (page === 'saved') renderSaved();
   if (page === 'applied') renderApplied();
   if (page === 'alerts') renderAlerts();
@@ -920,6 +909,8 @@ function showActiveFilters(params) {
   if (params.location) chips.push(params.location.charAt(0).toUpperCase() + params.location.slice(1));
   if (params.jobType)  chips.push(params.jobType.replace(/_/g,' '));
   if (params.salMin)   chips.push(params.salMin + ' LPA+');
+  const pfSel = getPlatformPrefs();
+  if (pfSel.length) chips.push(pfSel.map(id => CONNECT_PLATFORMS.find(p=>p.id===id)?.name||id).join(', '));
   const el = document.getElementById('feed-active-filters');
   if (!el) return;
   el.innerHTML = chips.map(c=>`<span class="badge b-blue" style="font-size:11px">${esc(c)}</span>`).join('');
@@ -971,7 +962,14 @@ function setPlatform(pid) {
   renderJobList(visible);
 }
 
+function filterByPlatformPrefs(jobs) {
+  const sel = getPlatformPrefs();
+  if (!sel.length) return jobs; // all platforms = no filter
+  return jobs.filter(j => sel.includes(jobPlatform(j).id));
+}
+
 function renderJobList(jobs) {
+  jobs = filterByPlatformPrefs(jobs);
   const countEl = document.getElementById('feed-count');
   if (!jobs.length) {
     document.getElementById('feed-list').innerHTML = `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:24px;height:24px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="empty-title">No jobs found</div><div class="empty-sub">Try a different platform or clear the search.</div></div>`;
@@ -1175,6 +1173,7 @@ function loadPrefsForm() {
   document.getElementById('p-sal-max').value = p.salMax||'';
   document.getElementById('p-exp').value = p.exp||'';
   document.getElementById('prefs-saved-msg').style.display='none';
+  renderPlatformChips();
 }
 function savePrefs() {
   const p = {
@@ -1275,54 +1274,38 @@ function toggleFollow(name, btn) {
   setFollow(following);
 }
 
-// ─── Platform Connections ─────────────────────────────────────────────────────
+// ─── Platform Source Chips (Preferences) ─────────────────────────────────────
 const CONNECT_PLATFORMS = [
-  { id:'linkedin',   name:'LinkedIn',   slug:'linkedin',   color:'#0A66C2', icon:'in', desc:'Jobs · Network · Messages' },
-  { id:'naukri',     name:'Naukri',     slug:'naukri',     color:'#FF6633', icon:'N',  desc:'India jobs · Apply tracker' },
-  { id:'indeed',     name:'Indeed',     slug:'indeed',     color:'#2557A7', icon:'I',  desc:'Job search · Alerts' },
-  { id:'glassdoor',  name:'Glassdoor',  slug:'glassdoor',  color:'#0CAA41', icon:'G',  desc:'Reviews · Salary data' },
-  { id:'angellist',  name:'AngelList',  slug:'angel-list', color:'#E03A3C', icon:'A',  desc:'Startup jobs · Equity' },
-  { id:'twitter',    name:'X / Twitter',slug:'twitter',    color:'#14171A', icon:'X',  desc:'Job posts · Alerts' },
+  { id:'linkedin',  name:'LinkedIn',  color:'#0A66C2', icon:'in' },
+  { id:'naukri',    name:'Naukri',    color:'#FF6633', icon:'N'  },
+  { id:'indeed',    name:'Indeed',    color:'#2557A7', icon:'I'  },
+  { id:'glassdoor', name:'Glassdoor', color:'#0CAA41', icon:'G'  },
+  { id:'angellist', name:'AngelList', color:'#E03A3C', icon:'A'  },
+  { id:'twitter',   name:'X / Twitter', color:'#14171A', icon:'X' },
 ];
 
-const getConnected = () => ls.get('hr_connected') || [];
-const setConnected = v => ls.set('hr_connected', v);
+function getPlatformPrefs() { return ls.get('hr_pf_prefs') || []; }
+function setPlatformPrefs(v) { ls.set('hr_pf_prefs', v); }
 
-let activePconId = null;
-
-function renderPlatformCards() {
-  const connected = getConnected();
-  const grid = document.getElementById('pcon-grid');
-  grid.innerHTML = CONNECT_PLATFORMS.map(p => {
-    const isConn = connected.includes(p.id);
-    const isSel  = activePconId === p.id;
-    return `<div class="pcon-card ${isConn?'connected':''} ${isSel&&!isConn?'selected-active':''}"
-        onclick="selectPlatform('${p.id}')" id="pcon-${p.id}">
-      ${isConn ? '<div class="pcon-tick">✓</div>' : ''}
-      <div class="pcon-icon" style="background:${p.color}">${p.icon}</div>
-      <div class="pcon-name">${p.name}</div>
-      <div class="pcon-status">${isConn ? '✓ Connected' : p.desc}</div>
-      <button class="pcon-connect-btn" onclick="event.stopPropagation();selectPlatform('${p.id}')">
-        ${isConn ? 'Manage' : isSel ? 'Connecting…' : 'Connect'}
-      </button>
+function renderPlatformChips() {
+  const row = document.getElementById('pcon-chip-row');
+  if (!row) return;
+  const selected = getPlatformPrefs();
+  row.innerHTML = CONNECT_PLATFORMS.map(p => {
+    const on = selected.includes(p.id);
+    return `<div class="pcon-chip ${on?'on':''}" style="${on?`background:${p.color}`:''};" onclick="togglePlatformPref('${p.id}')">
+      <span class="pcon-chip-dot" style="background:${on?'rgba(255,255,255,.25)':p.color}">${p.icon}</span>
+      ${p.name}
     </div>`;
   }).join('');
 }
 
-function selectPlatform(platformId) {
-  activePconId = platformId;
-  renderPlatformCards();
-  const p = CONNECT_PLATFORMS.find(x => x.id === platformId);
-  if (!p) return;
-  document.getElementById('vs-sub-text').textContent =
-    `Connecting to ${p.name} via viaSocket — authorize once, connection auto-saves.`;
-  vsInitEmbed(p);
-}
-
-function markConnected(platformId) {
-  const conn = getConnected();
-  if (!conn.includes(platformId)) { conn.push(platformId); setConnected(conn); }
-  renderPlatformCards();
+function togglePlatformPref(id) {
+  const sel = getPlatformPrefs();
+  const idx = sel.indexOf(id);
+  if (idx >= 0) sel.splice(idx, 1); else sel.push(id);
+  setPlatformPrefs(sel);
+  renderPlatformChips();
 }
 
 // ─── viaSocket Embed ──────────────────────────────────────────────────────────
@@ -1336,58 +1319,14 @@ async function vsLoadSDK() {
   await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://embed.viasocket.com/prod-embedcomponent.js'; s.onload=res; s.onerror=()=>rej(new Error('Failed to load viaSocket embed SDK')); document.head.appendChild(s); });
   await new Promise(r=>setTimeout(r,200));
 }
-async function vsInitEmbed(platform) {
-  // Show loading dots
-  document.getElementById('vs-loading').style.display='flex';
-  document.getElementById('vs-loading-dots').style.display='flex';
-  document.getElementById('vs-loading-text').textContent = platform
-    ? `Connecting to ${platform.name}…`
-    : 'Loading automation workspace…';
-  document.getElementById('vs-loading-sub').textContent = platform
-    ? 'viaSocket will handle OAuth — authorize once, stays connected.'
-    : 'Select a platform above to begin';
-  document.getElementById('vs-error').style.display='none';
-  document.getElementById('vs-embed-mount').style.display='none';
-  vsInitialised=false;
-
-  if(!platform && !vsInitialised) {
-    // No platform selected yet — just show the prompt state
-    document.getElementById('vs-loading-dots').style.display='none';
-    document.getElementById('vs-loading-text').textContent='Select a platform to begin';
-    document.getElementById('vs-loading-sub').textContent='Click any platform card above';
-    return;
-  }
-
+async function vsInitEmbed() {
+  if(vsInitialised) return;
+  if(!document.getElementById('page-connections').classList.contains('active')) return;
   try {
     await vsLoadSDK();
     const embedToken=await vsGetToken();
-
-    // Build config — pass platform slug so viaSocket pre-opens that app's connection
-    const config = { chatbot: false };
-    if (platform) {
-      config.pluginSlug = platform.slug;   // viaSocket opens this app's connection flow
-      config.selectedApp = platform.slug;  // fallback field name
-    }
-
-    const embed = viaSocket.mount({ embedToken, parent: '#vs-embed-mount', config });
-
-    // Listen for successful connection event — mark card as connected
-    embed.on('flow', flow => {
-      console.log('[HireRadar] flow:', flow);
-    });
-    embed.on('connectionCreated', conn => {
-      console.log('[HireRadar] connectionCreated:', conn);
-      if (platform) markConnected(platform.id);
-    });
-    embed.on('connected', data => {
-      console.log('[HireRadar] connected:', data);
-      if (platform) markConnected(platform.id);
-    });
-    // Some SDK versions emit 'appConnected'
-    embed.on('appConnected', data => {
-      if (platform) markConnected(platform.id);
-    });
-
+    const embed=viaSocket.mount({embedToken,parent:'#vs-embed-mount',config:{chatbot:false}});
+    embed.on('flow',flow=>{ console.log('[HireRadar] flow:',flow); });
     document.getElementById('vs-loading').style.display='none';
     document.getElementById('vs-embed-mount').style.display='block';
     vsInitialised=true;
@@ -1399,14 +1338,10 @@ async function vsInitEmbed(platform) {
 }
 function vsReset() {
   vsInitialised=false;
-  activePconId=null;
-  renderPlatformCards();
   document.getElementById('vs-loading').style.display='flex';
-  document.getElementById('vs-loading-dots').style.display='none';
-  document.getElementById('vs-loading-text').textContent='Select a platform to begin';
-  document.getElementById('vs-loading-sub').textContent='Click any platform card above';
   document.getElementById('vs-error').style.display='none';
   document.getElementById('vs-embed-mount').style.display='none';
+  vsInitEmbed();
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
