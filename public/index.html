@@ -361,6 +361,44 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .auto-tmpl-arr{font-size:16px;color:var(--fg-3);flex-shrink:0;transition:transform .12s}
 .auto-tmpl:hover .auto-tmpl-arr{transform:translateX(2px);color:var(--vs)}
 /* VS Template Context Banner */
+.nav-badge.vs{background:var(--vs)}
+.my-auto{margin:6px 2px 4px;padding:10px;border:1.5px solid var(--border);border-radius:var(--r);background:var(--surface-2)}
+.ma-head{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;font-weight:700;color:var(--vs);margin-bottom:8px}
+.ma-add{font:inherit;font-size:10px;font-weight:700;color:var(--vs);background:var(--vsbg);border:1px solid var(--vs);border-radius:20px;padding:2px 8px;cursor:pointer}
+.ma-add:hover{background:var(--vs);color:#fff}
+.ma-empty{font-size:11px;color:var(--fg-3);line-height:1.45}
+#my-auto-list{display:flex;flex-direction:column;gap:6px}
+.ma-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:7px 8px}
+.ma-item.off .ma-name,.ma-item.off .ma-ico{opacity:.5}
+.ma-top{display:flex;align-items:center;gap:6px}
+.ma-ico{font-size:13px;flex-shrink:0}
+.ma-name{flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ma-switch{position:relative;width:26px;height:15px;border-radius:20px;border:none;background:var(--border-2);cursor:pointer;flex-shrink:0;transition:background .15s}
+.ma-switch::after{content:'';position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#fff;transition:transform .15s}
+.ma-switch.on{background:var(--success)}
+.ma-switch.on::after{transform:translateX(11px)}
+.ma-meta{font-size:10px;color:var(--fg-3);margin-top:4px;padding-left:19px}
+.ma-bad{color:var(--danger)}
+.ma-act{font:inherit;color:var(--vs);background:none;border:none;cursor:pointer;padding:0;font-weight:600}
+.ma-act:hover{text-decoration:underline}
+.ma-act:disabled{color:var(--fg-3);cursor:default;text-decoration:none}
+.cf-icon{font-size:28px;line-height:1;flex-shrink:0}
+.cf-body{flex:1;min-width:0}
+.cf-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:14px;color:var(--vs);margin-bottom:3px}
+.cf-desc{font-size:12px;color:var(--fg-2);line-height:1.4;margin-bottom:8px}
+.cf-steps{font-size:12px;color:var(--fg-2);line-height:1.5;padding-left:18px;margin-bottom:10px}
+.cf-steps b{color:var(--fg)}
+.cf-fields{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.cf-field{display:flex;flex-direction:column;gap:3px;font-size:10px;font-weight:700;color:var(--fg-3);text-transform:uppercase;letter-spacing:.04em;flex:1 1 150px;min-width:0}
+.cf-field select,.cf-field input,.cf-url{font:inherit;font-size:12px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--fg);background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:7px 9px;width:100%}
+.cf-field select:focus,.cf-field input:focus,.cf-url:focus{outline:none;border-color:var(--vs)}
+.cf-row{display:flex;gap:8px;flex-wrap:wrap}
+.cf-url{flex:1 1 220px;min-width:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+.cf-msg{font-size:12px;margin-top:7px;color:var(--fg-3);min-height:1em}
+.cf-msg.ok{color:var(--success)}
+.cf-msg.err{color:var(--danger)}
+.cf-link{font:inherit;font-weight:700;color:var(--vs);background:none;border:none;cursor:pointer;padding:0;margin-left:4px}
+.cf-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--fg-3);flex-shrink:0;line-height:1;padding:0 2px;align-self:flex-start}
 .vs-ctx-banner{display:none;align-items:flex-start;gap:12px;padding:13px 15px;margin:0 20px 10px;background:var(--vsbg);border:1.5px solid var(--vs);border-radius:var(--r);box-shadow:var(--sh)}
 </style>
 </head>
@@ -397,12 +435,20 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
   <button class="nav-item" data-page="connections">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 010 8.49m-8.48-.01a6 6 0 010-8.49m11.31-2.82a10 10 0 010 14.14m-14.14 0a10 10 0 010-14.14"/></svg>
     Integrations
+    <span class="nav-badge vs" id="b-auto" style="display:none" title="Active automations">0</span>
   </button>
   <button class="nav-item" data-page="alerts">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
     Alerts
     <span class="nav-badge" id="b-alerts" style="display:none">0</span>
   </button>
+  <div class="my-auto">
+    <div class="ma-head">
+      <span>⚡ My Automations</span>
+      <button class="ma-add" onclick="openCustomAutomation()">+ New</button>
+    </div>
+    <div id="my-auto-list"><div class="ma-empty">Loading…</div></div>
+  </div>
 
   <div class="nav-sec">Profile</div>
   <button class="nav-item" data-page="prefs">
@@ -1586,49 +1632,187 @@ function launchAutoTemplate(templateId, jobId) {
   navigate('connections');
 }
 
+const AUTO_TEMPLATES = {
+  whatsapp: { icon:'💬', type:'new_job', action:'WhatsApp — Send Message' },
+  sheets:   { icon:'📊', type:'tracker', action:'Google Sheets — Add Row' },
+  company:  { icon:'🔔', type:'company', action:'Gmail / Slack — Send Message' },
+  custom:   { icon:'⚡', type:'new_job', action:'koi bhi app (WhatsApp, Telegram, Slack, Sheets…)' },
+};
+
+function openCustomAutomation() {
+  try { localStorage.setItem('vs_tmpl', JSON.stringify({ templateId:'custom', job:null })); } catch(e) {}
+  navigate('connections');
+}
+
 function renderVsContextBanner() {
   const el = document.getElementById('vs-ctx-banner');
   if (!el) return;
   let ctx = null;
   try { ctx = JSON.parse(localStorage.getItem('vs_tmpl')); } catch(e) {}
-  if (!ctx) { el.style.display = 'none'; return; }
+  if (!ctx || !AUTO_TEMPLATES[ctx.templateId]) { el.style.display = 'none'; return; }
+
+  const t = AUTO_TEMPLATES[ctx.templateId];
+  const job = ctx.job || {};
+  const cats = autoCategories.length ? autoCategories : ['Frontend','Backend','Full Stack','AI/ML','Data Science','DevOps','Mobile'];
+  const catOpts = sel => `<option value="">Koi bhi category</option>` +
+    cats.map(c => `<option value="${esc(c)}"${c===sel?' selected':''}>${esc(c)}</option>`).join('');
+  const companies = [...new Set(allJobs.map(j => j.company_name))].sort();
 
   const META = {
-    whatsapp: {
-      icon: '💬',
-      title: 'WhatsApp Job Alert',
-      desc: `Jab bhi ${ctx.job.category} jobs aaye ${ctx.job.location} mein → WhatsApp pe message milega`,
-      step: 'viaSocket workspace mein "WhatsApp" app connect karo aur trigger set karo'
-    },
-    sheets: {
-      icon: '📊',
-      title: 'Google Sheets Tracker',
-      desc: `"${ctx.job.title}" at ${ctx.job.company} — tracker sheet mein auto-log karega`,
-      step: 'Google Sheets connect karo aur row-append action set karo'
-    },
-    company: {
-      icon: '🔔',
-      title: `Follow ${ctx.job.company}`,
-      desc: `${ctx.job.company} ki nayi job post hote hi Email ya Slack alert milega`,
-      step: `"${ctx.job.company}" ko monitor karo aur notification action add karo`
-    }
+    whatsapp: { title:'WhatsApp Job Alert', desc:`Jab bhi ${job.category||'matching'} jobs aaye → WhatsApp pe message milega` },
+    sheets:   { title:'Google Sheets Tracker', desc:'Jo job Save ya Apply karoge, woh apne aap tumhari sheet mein nayi row ban jaayegi' },
+    company:  { title:`Follow ${job.company||'company'}`, desc:`${job.company||'Is company'} ki nayi job post hote hi Email ya Slack alert milega` },
+    custom:   { title:'Naya automation', desc:'Event chuno, viaSocket flow banao, aur webhook URL yahan jodo' },
   };
+  const m = META[ctx.templateId];
 
-  const m = META[ctx.templateId] || { icon:'⚡', title:'Automation Setup', desc:'Setup karo apna flow', step:'viaSocket workspace mein create karo' };
+  let fields = '';
+  if (ctx.templateId === 'custom') {
+    fields += `<label class="cf-field"><span>Kab chale?</span>
+      <select id="cf-type" onchange="syncCustomFields()">
+        <option value="new_job">Nayi matching job aaye</option>
+        <option value="company">Kisi company ki nayi job aaye</option>
+        <option value="tracker">Main job Save/Apply karun</option>
+      </select></label>`;
+  }
+  if (t.type === 'new_job') {
+    fields += `<label class="cf-field" data-for="new_job"><span>Category</span><select id="cf-cat">${catOpts(job.category)}</select></label>
+      <label class="cf-field" data-for="new_job"><span>City</span><input id="cf-loc" placeholder="Koi bhi city" value="${esc(job.location||'')}"></label>`;
+  }
+  if (t.type === 'company' || ctx.templateId === 'custom') {
+    fields += `<label class="cf-field" data-for="company"${ctx.templateId==='custom'?' style="display:none"':''}><span>Company</span>
+      <input id="cf-company" list="cf-company-list" placeholder="e.g. Razorpay" value="${esc(job.company||'')}"${ctx.templateId==='company'?' readonly':''}>
+      <datalist id="cf-company-list">${companies.map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label>`;
+  }
 
   el.innerHTML = `
-    <span style="font-size:28px;line-height:1;flex-shrink:0">${m.icon}</span>
-    <div style="flex:1;min-width:0">
-      <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:13px;color:var(--vs);margin-bottom:3px">${esc(m.title)}</div>
-      <div style="font-size:12px;color:var(--fg-2);margin-bottom:5px;line-height:1.4">${esc(m.desc)}</div>
-      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--fg-3)">
-        <span style="background:var(--vs);color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:20px;white-space:nowrap">Step 1</span>
-        ${esc(m.step)}
+    <span class="cf-icon">${t.icon}</span>
+    <div class="cf-body">
+      <div class="cf-title">${esc(m.title)}</div>
+      <div class="cf-desc">${esc(m.desc)}</div>
+      <ol class="cf-steps">
+        <li>Neeche viaSocket mein <b>New Flow</b> banao → trigger mein <b>Webhook</b> chuno → uska URL copy karo.</li>
+        <li>Action add karo: <b>${esc(t.action)}</b>. Job ki details (title, company, salary, link) webhook data mein milengi.</li>
+        <li>Webhook URL yahan paste karke <b>Connect</b> dabao.</li>
+      </ol>
+      ${fields ? `<div class="cf-fields">${fields}</div>` : ''}
+      <div class="cf-row">
+        <input id="cf-url" class="cf-url" type="url" placeholder="https://flow.sokt.io/func/…" autocomplete="off" spellcheck="false">
+        <button class="btn btn-automate btn-sm" id="cf-submit" onclick="submitAutomation()">Connect</button>
       </div>
+      <div class="cf-msg" id="cf-msg"></div>
     </div>
-    <button onclick="dismissVsContext()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--fg-3);flex-shrink:0;line-height:1;padding:0 2px;align-self:flex-start">×</button>
+    <button class="cf-close" onclick="dismissVsContext()" aria-label="Close">×</button>
   `;
   el.style.display = 'flex';
+}
+
+function syncCustomFields() {
+  const type = document.getElementById('cf-type')?.value;
+  document.querySelectorAll('#vs-ctx-banner [data-for]').forEach(f => { f.style.display = f.dataset.for === type ? '' : 'none'; });
+}
+
+async function submitAutomation() {
+  let ctx = null;
+  try { ctx = JSON.parse(localStorage.getItem('vs_tmpl')); } catch(e) {}
+  if (!ctx) return;
+  const t = AUTO_TEMPLATES[ctx.templateId];
+  const type = document.getElementById('cf-type')?.value || t.type;
+  const val = id => (document.getElementById(id)?.value || '').trim();
+  const filter = type === 'new_job' ? { category: val('cf-cat'), location: val('cf-loc') }
+               : type === 'company' ? { company: val('cf-company') } : {};
+  const names = {
+    new_job: `${filter.category || 'All'} jobs${filter.location ? ' · ' + filter.location : ''}`,
+    company: `Follow ${filter.company}`,
+    tracker: 'Save/Apply → tracker',
+  };
+  const prefix = { whatsapp:'WhatsApp: ', sheets:'Sheets: ', company:'', custom:'' }[ctx.templateId];
+  const msg = document.getElementById('cf-msg');
+  const btn = document.getElementById('cf-submit');
+  const urlInput = document.getElementById('cf-url');
+  btn.disabled = true; msg.className = 'cf-msg'; msg.textContent = 'Connecting…';
+  try {
+    const r = await fetch('/api/automations', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ type, template: ctx.templateId, name: prefix + names[type], filter, webhookUrl: urlInput.value })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Could not connect');
+    urlInput.value = '';
+    try { localStorage.removeItem('vs_tmpl'); } catch(e) {}
+    msg.className = 'cf-msg ok';
+    msg.innerHTML = `✅ Connected! Yeh sidebar ke "My Automations" mein dikh raha hai. <button class="cf-link" onclick="testAutomation('${data.automation.id}', this)">Test bhejo →</button>`;
+    loadAutomations();
+  } catch(e) {
+    msg.className = 'cf-msg err'; msg.textContent = e.message;
+  } finally { btn.disabled = false; }
+}
+
+// ─── My Automations (sidebar) ─────────────────────────────────────────────────
+let myAutomations = [];
+let autoCategories = [];
+
+async function loadAutomations() {
+  try {
+    const r = await fetch('/api/automations');
+    const data = await r.json();
+    myAutomations = data.automations || [];
+    autoCategories = data.categories || [];
+  } catch(e) { myAutomations = []; }
+  renderAutomationsWidget();
+}
+
+function renderAutomationsWidget() {
+  const el = document.getElementById('my-auto-list');
+  if (!el) return;
+  const active = myAutomations.filter(a => a.enabled).length;
+  const badge = document.getElementById('b-auto');
+  if (badge) { badge.textContent = active; badge.style.display = active ? '' : 'none'; }
+  if (!myAutomations.length) {
+    el.innerHTML = `<div class="ma-empty">Koi automation nahi hai. Job card par ⚡ Automate dabao.</div>`;
+    return;
+  }
+  const icon = { whatsapp:'💬', sheets:'📊', company:'🔔', custom:'⚡' };
+  el.innerHTML = myAutomations.map(a => {
+    const st = a.lastStatus === 'ok' ? `${a.fireCount} bheje` : a.lastStatus ? `<span class="ma-bad">Fail: ${esc(a.lastStatus)}</span>` : 'Naya';
+    return `<div class="ma-item${a.enabled?'':' off'}">
+      <div class="ma-top">
+        <span class="ma-ico">${icon[a.template]||'⚡'}</span>
+        <span class="ma-name" title="${esc(a.name)}">${esc(a.name)}</span>
+        <button class="ma-switch${a.enabled?' on':''}" role="switch" aria-checked="${a.enabled}" aria-label="${a.enabled?'Band karo':'Chalu karo'}" onclick="toggleAutomation('${a.id}',${!a.enabled})"></button>
+      </div>
+      <div class="ma-meta">${st} · <button class="ma-act" onclick="testAutomation('${a.id}',this)">Test</button> · <button class="ma-act" onclick="deleteAutomation('${a.id}')">Hatao</button></div>
+    </div>`;
+  }).join('');
+}
+
+async function toggleAutomation(id, enabled) {
+  await fetch('/api/automations/' + id, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ enabled }) });
+  loadAutomations();
+}
+
+async function deleteAutomation(id) {
+  const a = myAutomations.find(x => x.id === id);
+  if (!confirm(`"${a ? a.name : 'Automation'}" hata dein?`)) return;
+  await fetch('/api/automations/' + id, { method:'DELETE' });
+  loadAutomations();
+}
+
+async function testAutomation(id, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Bhej rahe…'; }
+  let text = 'Test';
+  try {
+    const r = await fetch('/api/automations/' + id + '/test', { method:'POST' });
+    const data = await r.json();
+    text = !r.ok ? (data.error || 'Error') : data.status === 'ok' ? '✓ Bhej diya' : 'Fail: ' + data.status;
+  } catch(e) { text = 'Network error'; }
+  if (btn) { btn.textContent = text; setTimeout(loadAutomations, 2500); }
+}
+
+function postJobEvent(type, jobId) {
+  if (!myAutomations.some(a => a.enabled && a.type === 'tracker')) return;
+  fetch('/api/events', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type, jobId }) })
+    .then(() => setTimeout(loadAutomations, 2000)).catch(() => {});
 }
 
 function dismissVsContext() {
@@ -1836,7 +2020,7 @@ async function applyFilter() {
 function toggleSave(id) {
   const saved = getSaved(), idx = saved.findIndex(j=>j.id===id);
   if (idx >= 0) { saved.splice(idx,1); setSaved(saved); const b=document.getElementById('sb-'+id); if(b) b.textContent='Save'; }
-  else { const job=allJobs.find(j=>j.id===id); if(!job) return; saved.push(job); setSaved(saved); const b=document.getElementById('sb-'+id); if(b) b.textContent='✓ Saved'; }
+  else { const job=allJobs.find(j=>j.id===id); if(!job) return; saved.push(job); setSaved(saved); const b=document.getElementById('sb-'+id); if(b) b.textContent='✓ Saved'; postJobEvent('job.saved', id); }
   updateBadges();
 }
 function removeSaved(id) { setSaved(getSaved().filter(j=>j.id!==id)); renderSaved(); updateBadges(); }
@@ -1851,6 +2035,7 @@ function markApplied(id) {
   const applied = getApplied();
   applied[id] = { ...job, status:'applied', appliedAt: new Date().toISOString() };
   setApplied(applied); renderSaved(); updateBadges();
+  postJobEvent('job.applied', id);
 }
 function updateStatus(id, status) {
   const applied = getApplied(); if(!applied[id]) return;
@@ -2103,7 +2288,7 @@ function togglePlatformPref(id) {
 
 // ─── viaSocket Embed ──────────────────────────────────────────────────────────
 async function vsGetToken() {
-  const r=await fetch('/api/embed-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:'demo-user-001'})});
+  const r=await fetch('/api/embed-token',{method:'POST'});
   if(!r.ok) throw new Error('/api/embed-token returned '+r.status);
   const {token,error}=await r.json(); if(error) throw new Error(error); return token;
 }
@@ -2146,6 +2331,7 @@ function vsReset() {
   if (p.type)     document.getElementById('q-type').value   = p.type;
 })();
 updateBadges();
+loadAutomations();
 // Show profile panel immediately from saved prefs even before feed loads
 renderRightPanel([]);
 refreshFeed();

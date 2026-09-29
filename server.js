@@ -4,20 +4,54 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const multer = require('multer');
 const Anthropic = require('@anthropic-ai/sdk');
+const crypto = require('crypto');
+const fs = require('fs');
 
 const app = express();
-app.use(express.json());
+app.set('trust proxy', 1);
+app.use(express.json({ limit: '32kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const ORG_ID = '4160';
 const PROJECT_ID = 'proj9XH3L4TM';
 const SECRET = process.env.VIASOCKET_EMBED_SECRET;
 
+// ─── Per-user identity (one unique_identifier per browser, forever) ────────────
+const UID_COOKIE = 'hr_uid';
+const COOKIE_KEY = process.env.COOKIE_SECRET
+  || (SECRET && crypto.createHmac('sha256', SECRET).update('hireradar-uid-cookie').digest())
+  || crypto.randomBytes(32);
+
+function signUid(uid) {
+  return crypto.createHmac('sha256', COOKIE_KEY).update(uid).digest('base64url');
+}
+
+function readUid(req) {
+  const raw = (req.headers.cookie || '').split(';').map(s => s.trim())
+    .find(s => s.startsWith(UID_COOKIE + '='));
+  if (!raw) return null;
+  const [uid, sig] = raw.slice(UID_COOKIE.length + 1).split('.');
+  if (!uid || !sig || !/^hr_[0-9a-f-]{36}$/.test(uid)) return null;
+  const expected = signUid(uid);
+  if (sig.length !== expected.length) return null;
+  return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected)) ? uid : null;
+}
+
+app.use('/api', (req, res, next) => {
+  let uid = readUid(req);
+  if (!uid) {
+    uid = 'hr_' + crypto.randomUUID();
+    const secure = req.secure ? '; Secure' : '';
+    res.setHeader('Set-Cookie', `${UID_COOKIE}=${uid}.${signUid(uid)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=315360000${secure}`);
+  }
+  req.uid = uid;
+  next();
+});
+
 app.post('/api/embed-token', (req, res) => {
   if (!SECRET) return res.status(500).json({ error: 'VIASOCKET_EMBED_SECRET not set' });
-  const userId = req.body.userId || 'demo-user-001';
   const token = jwt.sign(
-    { org_id: ORG_ID, project_id: PROJECT_ID, unique_identifier: userId },
+    { org_id: ORG_ID, project_id: PROJECT_ID, unique_identifier: req.uid },
     SECRET,
     { algorithm: 'HS256' }
   );
@@ -505,6 +539,235 @@ Return ONLY valid JSON.` },
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ─── Automations: viaSocket webhook-trigger flows fed by HireRadar events ──────
+// Webhook URLs identify viaSocket scripts, so they stay server-side: never
+// returned to the browser and never logged.
+
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+const STORE_FILE = path.join(DATA_DIR, 'automations.json');
+const WEBHOOK_HOSTS = (process.env.VIASOCKET_WEBHOOK_HOSTS || 'sokt.io,viasocket.com')
+  .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+const JOB_CATEGORIES = [...new Set(TEMPLATES.map(t => t.cat))];
+const COMPANY_NAMES = new Set(COMPANIES.map(c => c.name));
+const AUTOMATION_TYPES = {
+  new_job:  { label: 'New matching jobs', events: ['job.new'] },
+  company:  { label: 'Company follow',    events: ['job.new'] },
+  tracker:  { label: 'Save/apply tracker', events: ['job.saved', 'job.applied'] },
+};
+const MAX_AUTOMATIONS = 20;
+const MAX_NEW_JOBS_PER_RUN = 5;
+
+let store = { users: {}, seenJobIds: null };
+try { store = { ...store, ...JSON.parse(fs.readFileSync(STORE_FILE, 'utf8')) }; } catch {}
+
+let saveTimer = null;
+function saveStore() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(STORE_FILE + '.tmp', JSON.stringify(store));
+      fs.renameSync(STORE_FILE + '.tmp', STORE_FILE);
+    } catch (e) { console.error('[automations] save failed:', e.code || e.message); }
+  }, 200);
+}
+
+function userAutomations(uid) {
+  if (!store.users[uid]) store.users[uid] = { automations: [] };
+  return store.users[uid].automations;
+}
+
+function publicAutomation(a) {
+  const { webhookUrl, ...rest } = a;
+  return { ...rest, connected: Boolean(webhookUrl) };
+}
+
+function validWebhookUrl(raw) {
+  let u;
+  try { u = new URL(String(raw || '').trim()); } catch { return null; }
+  if (u.protocol !== 'https:' || u.username || u.password || (u.port && u.port !== '443')) return null;
+  const host = u.hostname.toLowerCase();
+  if (!WEBHOOK_HOSTS.some(h => host === h || host.endsWith('.' + h))) return null;
+  return u.toString();
+}
+
+function jobPayload(job) {
+  return {
+    id: job.id,
+    title: job.title,
+    company: job.company_name,
+    location: job.candidate_required_location,
+    salary: job.salary,
+    job_type: job.job_type,
+    category: job.category,
+    skills: job.tags,
+    source: job._source,
+    url: job.url,
+    posted_at: job.publication_date,
+  };
+}
+
+function matches(a, eventType, job) {
+  if (!a.enabled || !a.webhookUrl) return false;
+  if (!AUTOMATION_TYPES[a.type].events.includes(eventType)) return false;
+  if (a.type === 'new_job') {
+    if (a.filter.category && job.category !== a.filter.category) return false;
+    if (a.filter.location && !job.candidate_required_location.toLowerCase().includes(a.filter.location.toLowerCase())) return false;
+  }
+  if (a.type === 'company' && job.company_name !== a.filter.company) return false;
+  return true;
+}
+
+async function deliver(a, eventType, job, extra = {}) {
+  const body = {
+    event: eventType,
+    automation: { id: a.id, name: a.name, template: a.template },
+    job: jobPayload(job),
+    sent_at: new Date().toISOString(),
+    ...extra,
+  };
+  let status;
+  try {
+    const r = await fetch(a.webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      redirect: 'manual',
+      signal: AbortSignal.timeout(8000),
+    });
+    status = r.ok ? 'ok' : `http_${r.status}`;
+  } catch (e) {
+    status = e.name === 'TimeoutError' ? 'timeout' : 'network_error';
+  }
+  a.lastFiredAt = body.sent_at;
+  a.lastStatus = status;
+  if (status === 'ok') a.fireCount = (a.fireCount || 0) + 1;
+  else console.warn(`[automations] delivery ${a.id} failed: ${status}`);
+  saveStore();
+  return status;
+}
+
+function fanOut(eventType, job, onlyUid) {
+  const uids = onlyUid ? [onlyUid] : Object.keys(store.users);
+  const sends = [];
+  for (const uid of uids) {
+    for (const a of userAutomations(uid)) {
+      if (matches(a, eventType, job)) sends.push(deliver(a, eventType, job));
+    }
+  }
+  return Promise.all(sends);
+}
+
+// New-job watcher: diffs the job source against what was already seen.
+function checkNewJobs() {
+  const jobs = generateMockJobs();
+  const seen = new Set(store.seenJobIds || []);
+  const fresh = store.seenJobIds ? jobs.filter(j => !seen.has(j.id)) : [];
+  store.seenJobIds = jobs.map(j => j.id);
+  if (fresh.length || !seen.size) saveStore();
+  fresh.slice(0, MAX_NEW_JOBS_PER_RUN).forEach(job => fanOut('job.new', job));
+}
+checkNewJobs();
+setInterval(checkNewJobs, (parseInt(process.env.JOB_WATCH_MINUTES, 10) || 10) * 60 * 1000);
+
+function findJob(id) {
+  return generateMockJobs().find(j => j.id === Number(id));
+}
+
+function cleanText(v, max) {
+  return String(v || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, max);
+}
+
+app.get('/api/automations', (req, res) => {
+  res.json({
+    automations: userAutomations(req.uid).map(publicAutomation),
+    categories: JOB_CATEGORIES,
+  });
+});
+
+app.post('/api/automations', (req, res) => {
+  const list = userAutomations(req.uid);
+  if (list.length >= MAX_AUTOMATIONS) return res.status(400).json({ error: `Max ${MAX_AUTOMATIONS} automations allowed` });
+
+  const { type, template, name } = req.body || {};
+  if (!AUTOMATION_TYPES[type]) return res.status(400).json({ error: 'Unknown automation type' });
+
+  const webhookUrl = validWebhookUrl(req.body.webhookUrl);
+  if (!webhookUrl) return res.status(400).json({ error: `Paste the https webhook URL from your viaSocket flow's Webhook trigger (allowed hosts: ${WEBHOOK_HOSTS.join(', ')})` });
+
+  const filter = {};
+  if (type === 'new_job') {
+    const category = cleanText(req.body.filter?.category, 40);
+    if (category && !JOB_CATEGORIES.includes(category)) return res.status(400).json({ error: 'Unknown category' });
+    if (category) filter.category = category;
+    const location = cleanText(req.body.filter?.location, 40);
+    if (location) filter.location = location;
+  }
+  if (type === 'company') {
+    const company = cleanText(req.body.filter?.company, 80);
+    if (!COMPANY_NAMES.has(company)) return res.status(400).json({ error: 'Unknown company' });
+    filter.company = company;
+  }
+
+  const a = {
+    id: 'au_' + crypto.randomBytes(6).toString('hex'),
+    type,
+    template: ['whatsapp', 'sheets', 'company', 'custom'].includes(template) ? template : 'custom',
+    name: cleanText(name, 60) || AUTOMATION_TYPES[type].label,
+    filter,
+    webhookUrl,
+    enabled: true,
+    createdAt: new Date().toISOString(),
+    lastFiredAt: null,
+    lastStatus: null,
+    fireCount: 0,
+  };
+  list.push(a);
+  saveStore();
+  res.status(201).json({ automation: publicAutomation(a) });
+});
+
+app.patch('/api/automations/:id', (req, res) => {
+  const a = userAutomations(req.uid).find(x => x.id === req.params.id);
+  if (!a) return res.status(404).json({ error: 'Not found' });
+  if (typeof req.body?.enabled === 'boolean') a.enabled = req.body.enabled;
+  saveStore();
+  res.json({ automation: publicAutomation(a) });
+});
+
+app.delete('/api/automations/:id', (req, res) => {
+  const list = userAutomations(req.uid);
+  const i = list.findIndex(x => x.id === req.params.id);
+  if (i < 0) return res.status(404).json({ error: 'Not found' });
+  list.splice(i, 1);
+  saveStore();
+  res.json({ ok: true });
+});
+
+const lastTest = new Map();
+app.post('/api/automations/:id/test', async (req, res) => {
+  const a = userAutomations(req.uid).find(x => x.id === req.params.id);
+  if (!a) return res.status(404).json({ error: 'Not found' });
+  const now = Date.now();
+  if (now - (lastTest.get(a.id) || 0) < 10000) return res.status(429).json({ error: 'Wait a few seconds before testing again' });
+  lastTest.set(a.id, now);
+
+  const jobs = generateMockJobs();
+  const eventType = AUTOMATION_TYPES[a.type].events[0];
+  const job = jobs.find(j => matches({ ...a, enabled: true }, eventType, j)) || jobs[0];
+  const status = await deliver(a, eventType, job, { test: true });
+  res.json({ status, automation: publicAutomation(a) });
+});
+
+app.post('/api/events', (req, res) => {
+  const { type, jobId } = req.body || {};
+  if (!['job.saved', 'job.applied'].includes(type)) return res.status(400).json({ error: 'Unknown event' });
+  const job = findJob(jobId);
+  if (!job) return res.status(404).json({ error: 'Unknown job' });
+  fanOut(type, job, req.uid);
+  res.status(202).json({ ok: true });
 });
 
 const PORT = process.env.PORT || 3000;
