@@ -584,8 +584,14 @@ app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
   }
 });
 
+// ─── Automations: viaSocket webhook-trigger flows fed by HireRadar events ──────
+// Webhook URLs identify viaSocket scripts, so they stay server-side: never
+// returned to the browser and never logged.
+
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+
 // ─── User setup profile (onboarding: resume prefs + chosen platforms) ──────────
-const PROFILE_FILE = path.join(DATA_DIR || './data', 'profiles.json');
+const PROFILE_FILE = path.join(DATA_DIR, 'profiles.json');
 let profileStore = {};
 try { profileStore = JSON.parse(fs.readFileSync(PROFILE_FILE, 'utf8')); } catch {}
 
@@ -594,8 +600,7 @@ function saveProfiles() {
   clearTimeout(profileSaveTimer);
   profileSaveTimer = setTimeout(() => {
     try {
-      const dir = DATA_DIR || './data';
-      fs.mkdirSync(dir, { recursive: true });
+      fs.mkdirSync(DATA_DIR, { recursive: true });
       fs.writeFileSync(PROFILE_FILE + '.tmp', JSON.stringify(profileStore));
       fs.renameSync(PROFILE_FILE + '.tmp', PROFILE_FILE);
     } catch (e) { console.error('[profiles] save failed:', e.message); }
@@ -616,12 +621,6 @@ app.post('/api/profile', (req, res) => {
   saveProfiles();
   res.json({ ok: true });
 });
-
-// ─── Automations: viaSocket webhook-trigger flows fed by HireRadar events ──────
-// Webhook URLs identify viaSocket scripts, so they stay server-side: never
-// returned to the browser and never logged.
-
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const STORE_FILE = path.join(DATA_DIR, 'automations.json');
 const WEBHOOK_HOSTS = (process.env.VIASOCKET_WEBHOOK_HOSTS || 'sokt.io,viasocket.com')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
