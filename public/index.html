@@ -83,15 +83,30 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .search-wrap{position:relative;flex:1;min-width:180px}
 .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--fg-3);pointer-events:none}
 .search-wrap .input{padding-left:32px}
-.status-bar{padding:7px 20px;background:var(--surface-2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:11px;color:var(--fg-3)}
-.pulse{width:7px;height:7px;border-radius:50%;background:var(--success);display:inline-block;margin-right:5px;animation:pulse 2s infinite;flex-shrink:0}
+
+/* Platform filter strip */
+.platform-strip{padding:10px 20px 0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.platform-strip::-webkit-scrollbar{display:none}
+.pf-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--fg-2);white-space:nowrap;transition:all .12s;flex-shrink:0;user-select:none}
+.pf-chip:hover{border-color:var(--border-2);color:var(--fg)}
+.pf-chip.active{color:#fff;border-color:transparent}
+.pf-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.pf-count{font-size:10px;opacity:.75;font-weight:600}
+
+.status-bar{padding:7px 20px;background:var(--surface-2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:11px;color:var(--fg-3);flex-wrap:wrap}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--success);display:inline-block;flex-shrink:0;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ── Job Card ── */
-.feed{padding:12px 20px;display:flex;flex-direction:column;gap:10px}
-.job-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh);transition:border-color .15s,box-shadow .15s}
-.job-card:hover{border-color:var(--accent);box-shadow:var(--sh-md)}
+.feed{padding:10px 20px;display:flex;flex-direction:column;gap:10px}
+.job-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh);transition:border-color .15s,box-shadow .15s;position:relative}
+.job-card:hover{box-shadow:var(--sh-md)}
 .job-card.applied{border-left:3px solid var(--success)}
+
+/* Platform accent bar on left edge */
+.job-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:var(--r) 0 0 var(--r);opacity:0;transition:opacity .15s}
+.job-card:hover::before{opacity:1}
+
 .card-head{display:flex;align-items:flex-start;gap:11px;margin-bottom:9px}
 /* logo: wrapper holds both img and fallback */
 .logo-wrap{flex-shrink:0;position:relative;border-radius:8px;overflow:hidden}
@@ -99,11 +114,16 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .logo-fb{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:var(--accent);background:var(--accent-bg)}
 .logo-wrap.err img{display:none}.logo-wrap.err .logo-fb{display:flex}
 .job-info{flex:1;min-width:0}
-.job-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.job-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .job-sub{font-size:12px;color:var(--fg-2);display:flex;gap:5px;align-items:center;flex-wrap:wrap}
 .dot{color:var(--border-2)}
+
+/* Platform source badge — top right of card */
+.src-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;flex-shrink:0;margin-left:6px;white-space:nowrap}
+.src-icon{width:14px;height:14px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:#fff;flex-shrink:0}
+
 .ago{font-size:11px;color:var(--fg-3);flex-shrink:0;white-space:nowrap}
-.card-meta{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
+.card-meta{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px;align-items:center}
 .badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
 .b-blue{background:var(--accent-bg);color:var(--accent)}
 .b-green{background:var(--success-bg);color:var(--success)}
@@ -114,7 +134,7 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
 .tag{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--surface-2);color:var(--fg-2);border:1px solid var(--border)}
 .card-foot{display:flex;align-items:center;gap:6px;padding-top:9px;border-top:1px solid var(--border)}
-.card-loc{font-size:11px;color:var(--fg-3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-loc{font-size:11px;color:var(--fg-3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:4px}
 
 /* ── Stat strip ── */
 .stat-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px 20px 0}
@@ -294,7 +314,7 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input class="input" id="q-search" type="text" placeholder="Role, skill, company…" oninput="onSearch(this.value)">
         </div>
-        <select class="input" id="q-loc" style="width:156px" onchange="applyFilter()">
+        <select class="input" id="q-loc" style="width:148px" onchange="applyFilter()">
           <option value="">All Locations</option>
           <option value="bangalore">Bangalore</option>
           <option value="mumbai">Mumbai</option>
@@ -307,9 +327,9 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
           <option value="gurgaon">Gurgaon</option>
           <option value="ahmedabad">Ahmedabad</option>
           <option value="india">India (Any)</option>
-          <option value="remote">Remote (Global)</option>
+          <option value="remote">Remote</option>
         </select>
-        <select class="input" id="q-cat" style="width:148px" onchange="applyFilter()">
+        <select class="input" id="q-cat" style="width:136px" onchange="applyFilter()">
           <option value="">All Categories</option>
           <option value="software-dev">Software Dev</option>
           <option value="devops">DevOps / Infra</option>
@@ -321,11 +341,15 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
           <option value="sales">Sales</option>
         </select>
       </div>
+
+      <!-- Platform source filter chips -->
+      <div class="platform-strip" id="platform-strip"></div>
+
       <div class="status-bar">
         <span class="pulse"></span>
         <span id="feed-status">Loading live jobs…</span>
-        <div id="feed-active-filters" style="display:none;gap:5px;flex-wrap:wrap;margin-left:8px"></div>
-        <span id="feed-count" style="margin-left:auto;font-variant-numeric:tabular-nums"></span>
+        <div id="feed-active-filters" style="display:none;gap:5px;flex-wrap:wrap"></div>
+        <span id="feed-count" style="margin-left:auto;font-variant-numeric:tabular-nums;flex-shrink:0"></span>
       </div>
       <div id="stat-strip" class="stat-strip" style="display:none">
         <div class="stat-tile"><div class="stat-num" id="st-total" style="color:var(--accent)">—</div><div class="stat-lbl">Jobs Found</div></div>
@@ -560,8 +584,21 @@ const setPrefs_  = v  => ls.set('hr_prefs', v);
 const getFollow  = () => ls.get('hr_follow')  || [];
 const setFollow  = v  => ls.set('hr_follow', v);
 
+// ─── Platform definitions ─────────────────────────────────────────────────────
+const PLATFORMS = [
+  { id:'linkedin',  name:'LinkedIn',  color:'#0A66C2', bg:'#E8F1FB', icon:'in' },
+  { id:'naukri',    name:'Naukri',    color:'#FF6633', bg:'#FFF0EC', icon:'N'  },
+  { id:'twitter',   name:'X / Twitter', color:'#14171A', bg:'#EFF0F0', icon:'X' },
+  { id:'indeed',    name:'Indeed',    color:'#2557A7', bg:'#EBF0FA', icon:'I'  },
+  { id:'glassdoor', name:'Glassdoor', color:'#0CAA41', bg:'#E6F8ED', icon:'G'  },
+  { id:'angellist', name:'AngelList', color:'#E03A3C', bg:'#FDECED', icon:'A'  },
+];
+// Deterministic platform from job id so it's stable across renders
+function jobPlatform(job) { return PLATFORMS[Math.abs(job.id || 0) % PLATFORMS.length]; }
+
 // ─── State ────────────────────────────────────────────────────────────────────
 let allJobs = [];
+let activePlatform = ''; // '' = All
 let searchTimer = null;
 let vsInitialised = false;
 const BAR_CLR = ['#0057FF','#7C3AED','#12B76A','#F79009','#F04438','#0040CC'];
@@ -627,16 +664,23 @@ function isSaved(id) { return getSaved().some(j => j.id === id); }
 function isApplied(id) { return !!getApplied()[id]; }
 
 // ─── Job Card ─────────────────────────────────────────────────────────────────
+function platformBadge(job) {
+  const p = jobPlatform(job);
+  return `<span class="src-badge" style="background:${p.bg};color:${p.color}">
+    <span class="src-icon" style="background:${p.color}">${p.icon}</span>${p.name}
+  </span>`;
+}
+
 function jobCard(job, mode) {
-  // mode: 'feed' | 'saved' | 'applied'
   const saved = isSaved(job.id), applied = isApplied(job.id);
-  const tags = (job.tags||[]).slice(0,5);
+  const tags = (job.tags||[]).slice(0,4);
   const appliedData = getApplied()[job.id];
+  const p = jobPlatform(job);
   let footActions = '';
   if (mode === 'saved') {
     footActions = `
       <button class="btn btn-ghost btn-sm" onclick="removeSaved(${job.id})">Remove</button>
-      <button class="btn btn-success btn-sm" onclick="markApplied(${job.id})">${applied ? '✓ Applied' : 'Mark Applied'}</button>`;
+      <button class="btn btn-success btn-sm" onclick="markApplied(${job.id})">${applied?'✓ Applied':'Mark Applied'}</button>`;
   } else if (mode === 'applied') {
     footActions = `
       <select class="input" style="width:auto;font-size:11px;padding:4px 24px 4px 8px" onchange="updateStatus(${job.id},this.value)">
@@ -646,30 +690,36 @@ function jobCard(job, mode) {
         <option value="rejected" ${appliedData?.status==='rejected'?'selected':''}>Rejected</option>
       </select>`;
   } else {
-    footActions = `
-      <button class="btn btn-ghost btn-sm" id="sb-${job.id}" onclick="toggleSave(${job.id})">${saved?'✓ Saved':'Save'}</button>`;
+    footActions = `<button class="btn btn-ghost btn-sm" id="sb-${job.id}" onclick="toggleSave(${job.id})">${saved?'✓ Saved':'Save'}</button>`;
     if (applied) footActions += `<span class="badge b-green">Applied</span>`;
   }
-  return `<div class="job-card${applied&&mode!=='saved'?' applied':''}">
+  return `<div class="job-card${applied&&mode!=='saved'?' applied':''}" style="--pcolor:${p.color}">
+    <style>.job-card[style*="${p.color}"]:hover::before{background:${p.color}}</style>
     <div class="card-head">
       ${logoHtml(job)}
       <div class="job-info">
         <div class="job-title" title="${esc(job.title)}">${esc(job.title)}</div>
         <div class="job-sub">
-          <span>${esc(job.company_name)}</span>
+          <span style="font-weight:600">${esc(job.company_name)}</span>
           ${job.candidate_required_location?`<span class="dot">·</span><span>${esc(job.candidate_required_location)}</span>`:''}
         </div>
       </div>
-      <span class="ago">${ago(job.publication_date)}</span>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
+        ${platformBadge(job)}
+        <span class="ago">${ago(job.publication_date)}</span>
+      </div>
     </div>
     <div class="card-meta">
       ${catBadge(job.category)}
-      ${job.job_type?`<span class="badge b-gray">${esc(job.job_type)}</span>`:''}
-      ${job.salary?`<span class="badge b-green">${esc(job.salary)}</span>`:''}
+      ${job.job_type?`<span class="badge b-gray">${esc(job.job_type.replace(/_/g,' '))}</span>`:''}
+      ${job.salary?`<span class="badge b-green">💰 ${esc(job.salary)}</span>`:''}
     </div>
     ${tags.length?`<div class="tags">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}
     <div class="card-foot">
-      <span class="card-loc">${esc(job.candidate_required_location||'Remote')}</span>
+      <span class="card-loc">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;flex-shrink:0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        ${esc(job.candidate_required_location||'Remote')}
+      </span>
       ${footActions}
       <a href="${esc(job.url)}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Apply ↗</a>
     </div>
@@ -736,19 +786,64 @@ async function refreshFeed() {
   }
 }
 
-function renderFeed(jobs) {
-  const status = document.getElementById('feed-status');
+function renderPlatformStrip(jobs) {
+  const strip = document.getElementById('platform-strip');
+  // Count jobs per platform
+  const counts = {};
+  jobs.forEach(j => { const pid = jobPlatform(j).id; counts[pid] = (counts[pid]||0) + 1; });
+  const allChip = `<button class="pf-chip ${!activePlatform?'active':''}" onclick="setPlatform('')" style="${!activePlatform?'background:var(--fg);border-color:var(--fg)':''}">All Sources <span class="pf-count">${jobs.length}</span></button>`;
+  const pfChips = PLATFORMS.map(p => {
+    const n = counts[p.id]||0;
+    const isActive = activePlatform === p.id;
+    return `<button class="pf-chip ${isActive?'active':''}" onclick="setPlatform('${p.id}')"
+      style="${isActive?`background:${p.color};border-color:${p.color}`:''}">
+      <span class="pf-dot" style="background:${p.color}"></span>${p.name}
+      <span class="pf-count">${n}</span>
+    </button>`;
+  }).join('');
+  strip.innerHTML = allChip + pfChips;
+}
+
+function setPlatform(pid) {
+  activePlatform = pid;
+  const visible = activePlatform
+    ? allJobs.filter(j => jobPlatform(j).id === activePlatform)
+    : allJobs;
+  renderPlatformStrip(allJobs);
+  renderJobList(visible);
+}
+
+function renderJobList(jobs) {
   const countEl = document.getElementById('feed-count');
   if (!jobs.length) {
-    document.getElementById('feed-list').innerHTML = `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:24px;height:24px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="empty-title">No jobs found</div><div class="empty-sub">Try different keywords or clear the filters.</div></div>`;
-    status.textContent = 'No results';
+    document.getElementById('feed-list').innerHTML = `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:24px;height:24px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="empty-title">No jobs found</div><div class="empty-sub">Try a different platform or clear the search.</div></div>`;
     countEl.textContent = '';
-    document.getElementById('stat-strip').style.display = 'none';
     return;
   }
-  status.textContent = 'Live · updated ' + new Date().toLocaleTimeString();
-  countEl.textContent = jobs.length + ' jobs';
+  countEl.textContent = jobs.length + (activePlatform ? ` on ${PLATFORMS.find(p=>p.id===activePlatform)?.name}` : ' jobs');
   document.getElementById('feed-list').innerHTML = jobs.map(j => jobCard(j,'feed')).join('');
+}
+
+function renderFeed(jobs) {
+  const status = document.getElementById('feed-status');
+  if (!jobs.length) {
+    document.getElementById('feed-list').innerHTML = `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:24px;height:24px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="empty-title">No jobs found</div><div class="empty-sub">Try different keywords or clear the filters.</div></div>`;
+    document.getElementById('feed-count').textContent = '';
+    document.getElementById('platform-strip').innerHTML = '';
+    document.getElementById('stat-strip').style.display = 'none';
+    status.textContent = 'No results';
+    return;
+  }
+  const pfNames = PLATFORMS.slice(0,4).map(p=>p.name).join(', ') + ' +2';
+  status.textContent = `Live · Aggregating from ${pfNames} · ${new Date().toLocaleTimeString()}`;
+
+  // Platform strip
+  renderPlatformStrip(jobs);
+
+  // Apply active platform filter before rendering cards
+  const visible = activePlatform ? jobs.filter(j => jobPlatform(j).id === activePlatform) : jobs;
+  renderJobList(visible);
+
   // Stats
   const coCount = new Set(jobs.map(j=>j.company_name)).size;
   const salCount = jobs.filter(j=>j.salary).length;
