@@ -226,6 +226,15 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .modal-body{display:flex;flex-direction:column;gap:13px}
 .modal-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
 
+/* ── Match Score Badge ── */
+.match-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;letter-spacing:.02em;flex-shrink:0;white-space:nowrap}
+.match-badge.match-great{background:#DCFCE7;color:#15803D}
+.match-badge.match-good{background:#FEF9C3;color:#854D0E}
+.match-badge.match-ok{background:#FEE2E2;color:#991B1B}
+.match-badge.match-low{background:var(--surface-2);color:var(--fg-3)}
+.match-bar{display:block;width:28px;height:3px;border-radius:2px;overflow:hidden;background:rgba(0,0,0,.12)}
+.match-bar-fill{display:block;height:100%;border-radius:2px;transition:width .3s}
+
 /* ── Misc ── */
 .spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -707,6 +716,81 @@ function logoHtml(job, size) {
 function isSaved(id) { return getSaved().some(j => j.id === id); }
 function isApplied(id) { return !!getApplied()[id]; }
 
+// ─── Job Match Score ──────────────────────────────────────────────────────────
+function calcMatchScore(job) {
+  const prefs = getPrefs();
+  // Need at least role or skills to compute a meaningful score
+  if (!prefs.role && !prefs.skills) return null;
+
+  let score = 0;
+  const titleLow = (job.title || '').toLowerCase();
+  const descLow  = (job.description || '').toLowerCase();
+  const tagsLow  = (job.tags || []).join(' ').toLowerCase();
+  const haystack = titleLow + ' ' + tagsLow + ' ' + descLow;
+
+  // Role match — up to 35 pts
+  if (prefs.role) {
+    const roleWords = prefs.role.toLowerCase().split(/[\s,]+/).filter(Boolean);
+    const hits = roleWords.filter(w => w.length > 2 && titleLow.includes(w));
+    score += Math.min(35, Math.round((hits.length / roleWords.length) * 35));
+  }
+
+  // Skills match — up to 40 pts
+  if (prefs.skills) {
+    const skills = prefs.skills.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+    if (skills.length) {
+      const hits = skills.filter(s => s.length > 1 && haystack.includes(s));
+      score += Math.round((hits.length / skills.length) * 40);
+    }
+  }
+
+  // Location match — up to 15 pts
+  if (prefs.location) {
+    const locLow = (job.candidate_required_location || '').toLowerCase();
+    if (prefs.location === 'remote' && (locLow.includes('remote') || !job._india)) score += 15;
+    else if (locLow.includes(prefs.location) || locLow.includes('india') || locLow.includes('anywhere')) score += 15;
+    else score += 5; // partial credit — different Indian city still India
+  } else {
+    score += 10; // no location pref → neutral
+  }
+
+  // Job type match — up to 5 pts
+  if (prefs.type) {
+    if ((job.job_type || '').replace(/_/g,' ') === prefs.type.replace(/_/g,' ')) score += 5;
+  } else {
+    score += 5;
+  }
+
+  // Salary match — up to 5 pts (only if job has salary info)
+  if (prefs.salMin && job.salary) {
+    const numMatch = job.salary.match(/[\d.]+/);
+    if (numMatch) {
+      const jobSal = parseFloat(numMatch[0]);
+      if (jobSal >= parseFloat(prefs.salMin)) score += 5;
+      else if (jobSal >= parseFloat(prefs.salMin) * 0.8) score += 2;
+    }
+  } else if (!prefs.salMin) {
+    score += 5;
+  }
+
+  return Math.min(100, Math.max(0, score));
+}
+
+function matchBadgeHtml(job) {
+  const score = calcMatchScore(job);
+  if (score === null) return '';
+  let cls, label;
+  if (score >= 80)      { cls = 'match-great'; label = '🎯 ' + score + '% match'; }
+  else if (score >= 60) { cls = 'match-good';  label = score + '% match'; }
+  else if (score >= 40) { cls = 'match-ok';    label = score + '% match'; }
+  else                  { cls = 'match-low';   label = score + '% match'; }
+  const barColor = score >= 80 ? '#16A34A' : score >= 60 ? '#CA8A04' : score >= 40 ? '#DC2626' : 'var(--fg-3)';
+  return `<span class="match-badge ${cls}" title="Match score based on your preferences">
+    ${label}
+    <span class="match-bar"><span class="match-bar-fill" style="width:${score}%;background:${barColor}"></span></span>
+  </span>`;
+}
+
 // ─── Job Card ─────────────────────────────────────────────────────────────────
 function platformBadge(job) {
   const p = jobPlatform(job);
@@ -750,6 +834,7 @@ function jobCard(job, mode) {
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
         ${platformBadge(job)}
+        ${matchBadgeHtml(job)}
         ${job._india?'<span style="font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;background:#FF6633;color:#fff;letter-spacing:.03em">🇮🇳 INDIA</span>':''}
         <span class="ago">${ago(job.publication_date)}</span>
       </div>
