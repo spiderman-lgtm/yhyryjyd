@@ -549,7 +549,7 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
       <div class="status-bar">
         <span class="pulse"></span>
         <span id="feed-status">Loading live jobs…</span>
-        <span id="demo-badge" class="demo-badge" style="display:none" title="Server par JOB_BOARDS set nahi hai, isliye yeh sample jobs hain">Demo data</span>
+        <span id="demo-badge" class="demo-badge" style="display:none" title="JOB_BOARDS is not set on the server, so these are sample jobs">Demo data</span>
         <div id="feed-active-filters" style="display:none;gap:5px;flex-wrap:wrap"></div>
         <span id="feed-count" style="margin-left:auto;font-variant-numeric:tabular-nums;flex-shrink:0"></span>
       </div>
@@ -1246,7 +1246,7 @@ function jobCard(job, mode) {
         <div class="auto-tmpl-icon" style="background:#DCFCE7">💬</div>
         <div class="auto-tmpl-info">
           <div class="auto-tmpl-name">WhatsApp Job Alert</div>
-          <div class="auto-tmpl-desc">Jab bhi ${esc(job.category||'similar')} jobs aaye → WhatsApp pe message milega</div>
+          <div class="auto-tmpl-desc">Get a WhatsApp message whenever new ${esc(job.category||'similar')} jobs are posted</div>
         </div>
         <span class="auto-tmpl-tag">Notify</span>
         <span class="auto-tmpl-arr">→</span>
@@ -1255,7 +1255,7 @@ function jobCard(job, mode) {
         <div class="auto-tmpl-icon" style="background:#DBEAFE">📊</div>
         <div class="auto-tmpl-info">
           <div class="auto-tmpl-name">Google Sheets Tracker</div>
-          <div class="auto-tmpl-desc">Is job ko apni tracking spreadsheet mein automatically add karo</div>
+          <div class="auto-tmpl-desc">Automatically log every job you save or apply to in your tracking sheet</div>
         </div>
         <span class="auto-tmpl-tag">Track</span>
         <span class="auto-tmpl-arr">→</span>
@@ -1264,7 +1264,7 @@ function jobCard(job, mode) {
         <div class="auto-tmpl-icon" style="background:#FEF3C7">🔔</div>
         <div class="auto-tmpl-info">
           <div class="auto-tmpl-name">Follow ${esc(job.company_name)}</div>
-          <div class="auto-tmpl-desc">${esc(job.company_name)} ki nayi job post hote hi Email/Slack alert milega</div>
+          <div class="auto-tmpl-desc">Get an Email/Slack alert as soon as ${esc(job.company_name)} posts a new job</div>
         </div>
         <span class="auto-tmpl-tag">Company</span>
         <span class="auto-tmpl-arr">→</span>
@@ -1640,7 +1640,7 @@ const AUTO_TEMPLATES = {
   whatsapp: { icon:'💬', type:'new_job', action:'WhatsApp — Send Message' },
   sheets:   { icon:'📊', type:'tracker', action:'Google Sheets — Add Row' },
   company:  { icon:'🔔', type:'company', action:'Gmail / Slack — Send Message' },
-  custom:   { icon:'⚡', type:'new_job', action:'koi bhi app (WhatsApp, Telegram, Slack, Sheets…)' },
+  custom:   { icon:'⚡', type:'new_job', action:'any app (WhatsApp, Telegram, Slack, Sheets…)' },
 };
 
 function openCustomAutomation() {
@@ -1658,30 +1658,30 @@ function renderVsContextBanner() {
   const t = AUTO_TEMPLATES[ctx.templateId];
   const job = ctx.job || {};
   const cats = autoCategories.length ? autoCategories : ['Frontend','Backend','Full Stack','AI/ML','Data Science','DevOps','Mobile'];
-  const catOpts = sel => `<option value="">Koi bhi category</option>` +
+  const catOpts = sel => `<option value="">Any category</option>` +
     cats.map(c => `<option value="${esc(c)}"${c===sel?' selected':''}>${esc(c)}</option>`).join('');
   const companies = [...new Set(allJobs.map(j => j.company_name))].sort();
 
   const META = {
-    whatsapp: { title:'WhatsApp Job Alert', desc:`Jab bhi ${job.category||'matching'} jobs aaye → WhatsApp pe message milega` },
-    sheets:   { title:'Google Sheets Tracker', desc:'Jo job Save ya Apply karoge, woh apne aap tumhari sheet mein nayi row ban jaayegi' },
-    company:  { title:`Follow ${job.company||'company'}`, desc:`${job.company||'Is company'} ki nayi job post hote hi Email ya Slack alert milega` },
-    custom:   { title:'Naya automation', desc:'Event chuno, viaSocket flow banao, aur webhook URL yahan jodo' },
+    whatsapp: { title:'WhatsApp Job Alert', desc:`Get a WhatsApp message whenever new ${job.category||'matching'} jobs are posted${job.location ? ' in ' + job.location : ''}` },
+    sheets:   { title:'Google Sheets Tracker', desc:'Every job you save or apply to is added as a new row in your sheet' },
+    company:  { title:`Follow ${job.company||'company'}`, desc:`Get an Email or Slack alert as soon as ${job.company||'this company'} posts a new job` },
+    custom:   { title:'New automation', desc:'Pick an event, build a viaSocket flow, and connect its webhook URL here' },
   };
   const m = META[ctx.templateId];
 
   let fields = '';
   if (ctx.templateId === 'custom') {
-    fields += `<label class="cf-field"><span>Kab chale?</span>
+    fields += `<label class="cf-field"><span>Run when</span>
       <select id="cf-type" onchange="syncCustomFields()">
-        <option value="new_job">Nayi matching job aaye</option>
-        <option value="company">Kisi company ki nayi job aaye</option>
-        <option value="tracker">Main job Save/Apply karun</option>
+        <option value="new_job">A new matching job is posted</option>
+        <option value="company">A company posts a new job</option>
+        <option value="tracker">I save or apply to a job</option>
       </select></label>`;
   }
   if (t.type === 'new_job') {
     fields += `<label class="cf-field" data-for="new_job"><span>Category</span><select id="cf-cat">${catOpts(job.category)}</select></label>
-      <label class="cf-field" data-for="new_job"><span>City</span><input id="cf-loc" placeholder="Koi bhi city" value="${esc(job.location||'')}"></label>`;
+      <label class="cf-field" data-for="new_job"><span>City</span><input id="cf-loc" placeholder="Any city" value="${esc(job.location||'')}"></label>`;
   }
   if (t.type === 'company' || ctx.templateId === 'custom') {
     fields += `<label class="cf-field" data-for="company"${ctx.templateId==='custom'?' style="display:none"':''}><span>Company</span>
@@ -1695,9 +1695,9 @@ function renderVsContextBanner() {
       <div class="cf-title">${esc(m.title)}</div>
       <div class="cf-desc">${esc(m.desc)}</div>
       <ol class="cf-steps">
-        <li>Neeche viaSocket mein <b>New Flow</b> banao → trigger mein <b>Webhook</b> chuno → uska URL copy karo.</li>
-        <li>Action add karo: <b>${esc(t.action)}</b>. Job ki details (title, company, salary, link) webhook data mein milengi.</li>
-        <li>Webhook URL yahan paste karke <b>Connect</b> dabao.</li>
+        <li>In viaSocket below, create a <b>New Flow</b> → choose <b>Webhook</b> as the trigger → copy its URL.</li>
+        <li>Add an action: <b>${esc(t.action)}</b>. Job details (title, company, salary, link) arrive in the webhook data.</li>
+        <li>Paste the webhook URL here and click <b>Connect</b>.</li>
       </ol>
       ${fields ? `<div class="cf-fields">${fields}</div>` : ''}
       <div class="cf-row">
@@ -1745,7 +1745,7 @@ async function submitAutomation() {
     urlInput.value = '';
     try { localStorage.removeItem('vs_tmpl'); } catch(e) {}
     msg.className = 'cf-msg ok';
-    msg.innerHTML = `✅ Connected! Yeh sidebar ke "My Automations" mein dikh raha hai. <button class="cf-link" onclick="testAutomation('${data.automation.id}', this)">Test bhejo →</button>`;
+    msg.innerHTML = `✅ Connected! It now appears under "My Automations" in the sidebar. <button class="cf-link" onclick="testAutomation('${data.automation.id}', this)">Send a test →</button>`;
     loadAutomations();
   } catch(e) {
     msg.className = 'cf-msg err'; msg.textContent = e.message;
@@ -1773,19 +1773,19 @@ function renderAutomationsWidget() {
   const badge = document.getElementById('b-auto');
   if (badge) { badge.textContent = active; badge.style.display = active ? '' : 'none'; }
   if (!myAutomations.length) {
-    el.innerHTML = `<div class="ma-empty">Koi automation nahi hai. Job card par ⚡ Automate dabao.</div>`;
+    el.innerHTML = `<div class="ma-empty">No automations yet. Click ⚡ Automate on any job card.</div>`;
     return;
   }
   const icon = { whatsapp:'💬', sheets:'📊', company:'🔔', custom:'⚡' };
   el.innerHTML = myAutomations.map(a => {
-    const st = a.lastStatus === 'ok' ? `${a.fireCount} bheje` : a.lastStatus ? `<span class="ma-bad">Fail: ${esc(a.lastStatus)}</span>` : 'Naya';
+    const st = a.lastStatus === 'ok' ? `${a.fireCount} sent` : a.lastStatus ? `<span class="ma-bad">Fail: ${esc(a.lastStatus)}</span>` : 'New';
     return `<div class="ma-item${a.enabled?'':' off'}">
       <div class="ma-top">
         <span class="ma-ico">${icon[a.template]||'⚡'}</span>
         <span class="ma-name" title="${esc(a.name)}">${esc(a.name)}</span>
-        <button class="ma-switch${a.enabled?' on':''}" role="switch" aria-checked="${a.enabled}" aria-label="${a.enabled?'Band karo':'Chalu karo'}" onclick="toggleAutomation('${a.id}',${!a.enabled})"></button>
+        <button class="ma-switch${a.enabled?' on':''}" role="switch" aria-checked="${a.enabled}" aria-label="${a.enabled?'Turn off':'Turn on'}" onclick="toggleAutomation('${a.id}',${!a.enabled})"></button>
       </div>
-      <div class="ma-meta">${st} · <button class="ma-act" onclick="testAutomation('${a.id}',this)">Test</button> · <button class="ma-act" onclick="deleteAutomation('${a.id}')">Hatao</button></div>
+      <div class="ma-meta">${st} · <button class="ma-act" onclick="testAutomation('${a.id}',this)">Test</button> · <button class="ma-act" onclick="deleteAutomation('${a.id}')">Delete</button></div>
     </div>`;
   }).join('');
 }
@@ -1797,18 +1797,18 @@ async function toggleAutomation(id, enabled) {
 
 async function deleteAutomation(id) {
   const a = myAutomations.find(x => x.id === id);
-  if (!confirm(`"${a ? a.name : 'Automation'}" hata dein?`)) return;
+  if (!confirm(`Delete "${a ? a.name : 'this automation'}"?`)) return;
   await fetch('/api/automations/' + id, { method:'DELETE' });
   loadAutomations();
 }
 
 async function testAutomation(id, btn) {
-  if (btn) { btn.disabled = true; btn.textContent = 'Bhej rahe…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
   let text = 'Test';
   try {
     const r = await fetch('/api/automations/' + id + '/test', { method:'POST' });
     const data = await r.json();
-    text = !r.ok ? (data.error || 'Error') : data.status === 'ok' ? '✓ Bhej diya' : 'Fail: ' + data.status;
+    text = !r.ok ? (data.error || 'Error') : data.status === 'ok' ? '✓ Sent' : 'Fail: ' + data.status;
   } catch(e) { text = 'Network error'; }
   if (btn) { btn.textContent = text; setTimeout(loadAutomations, 2500); }
 }
