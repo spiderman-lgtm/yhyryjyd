@@ -68,7 +68,10 @@ function mapAdzunaJob(j) {
 async function fetchAdzunaJobs({ search, location, jobType, limit, page = 1 }) {
   const appId  = process.env.ADZUNA_APP_ID;
   const appKey = process.env.ADZUNA_APP_KEY;
-  if (!appId || !appKey) return [];
+  if (!appId || !appKey) {
+    console.warn('Adzuna keys not configured');
+    return [];
+  }
 
   const params = new URLSearchParams({
     app_id: appId,
@@ -86,10 +89,21 @@ async function fetchAdzunaJobs({ search, location, jobType, limit, page = 1 }) {
 
   const pageNum = Math.max(1, parseInt(page) || 1);
   const url = `https://api.adzuna.com/v1/api/jobs/in/search/${pageNum}?${params}`;
-  const r = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!r.ok) { console.warn(`Adzuna returned ${r.status}`); return []; }
-  const data = await r.json();
-  return (data.results || []).map(mapAdzunaJob);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const r = await fetch(url, { headers: { Accept: 'application/json' }, signal: controller.signal });
+    clearTimeout(timer);
+    if (!r.ok) { console.warn(`Adzuna ${r.status} for query: ${url}`); return []; }
+    const data = await r.json();
+    console.log(`Adzuna page ${pageNum}: ${(data.results||[]).length} results (search="${search}" loc="${location}")`);
+    return (data.results || []).map(mapAdzunaJob);
+  } catch (e) {
+    clearTimeout(timer);
+    console.warn(`Adzuna fetch error: ${e.message}`);
+    return [];
+  }
 }
 
 // ─── Jobs endpoint ─────────────────────────────────────────────────────────────
@@ -110,7 +124,7 @@ app.get('/api/jobs', async (req, res) => {
     const page = parseInt(req.query.page, 10) || 1;
     const [p1, p2] = await Promise.allSettled([
       fetchAdzunaJobs({ search, location, jobType, limit: fetchLimit, page }),
-      // second page for variety when limit allows
+      // second page for variety when limit allows and no city filter
       fetchLimit >= 30 && !location
         ? fetchAdzunaJobs({ search, location, jobType, limit: Math.floor(fetchLimit / 2), page: 2 })
         : Promise.resolve([]),
@@ -122,7 +136,15 @@ app.get('/api/jobs', async (req, res) => {
     const seen = new Set(jobs.map(j => j.id));
     extra.forEach(j => { if (!seen.has(j.id)) { seen.add(j.id); jobs.push(j); } });
 
-    res.json({ jobs, total: jobs.length, adzunaActive: jobs.length > 0 });
+    // Fallback: if specific query returned nothing, try a broad search
+    if (!jobs.length) {
+      const broadSearch = search || 'developer';
+      console.log(`Primary returned 0. Trying broad fallback: "${broadSearch}"`);
+      const fallback = await fetchAdzunaJobs({ search: broadSearch, location: '', jobType: '', limit: 50, page: 1 });
+      jobs = fallback;
+    }
+
+    res.json({ jobs, total: jobs.length, adzunaActive: jobs.length > 0, apiConfigured: !!(process.env.ADZUNA_APP_ID && process.env.ADZUNA_APP_KEY) });
   } catch (e) {
     res.status(500).json({ error: e.message, jobs: [] });
   }

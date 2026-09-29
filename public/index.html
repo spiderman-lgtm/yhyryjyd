@@ -1186,12 +1186,20 @@ let lastFeedMeta = {};
 async function fetchJobs(params = {}) {
   const p = new URLSearchParams();
   Object.entries(params).forEach(([k,v]) => { if (v) p.set(k, v); });
-  const r = await fetch('/api/jobs?' + p);
-  if (!r.ok) throw new Error('Server error ' + r.status);
-  const d = await r.json();
-  if (d.error) throw new Error(d.error);
-  lastFeedMeta = { adzunaActive: d.adzunaActive };
-  return d.jobs || [];
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const r = await fetch('/api/jobs?' + p, { signal: ctrl.signal });
+    clearTimeout(t);
+    if (!r.ok) throw new Error('Server error ' + r.status);
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    lastFeedMeta = { adzunaActive: d.adzunaActive, apiConfigured: d.apiConfigured };
+    return d.jobs || [];
+  } catch(e) {
+    clearTimeout(t);
+    throw e.name === 'AbortError' ? new Error('Request timed out — check your connection') : e;
+  }
 }
 
 function showActiveFilters(params) {
@@ -1283,11 +1291,21 @@ function renderJobList(jobs) {
 function renderFeed(jobs) {
   const status = document.getElementById('feed-status');
   if (!jobs.length) {
-    document.getElementById('feed-list').innerHTML = `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:24px;height:24px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="empty-title">No jobs found</div><div class="empty-sub">Try different keywords or clear the filters.</div></div>`;
+    const apiOk = lastFeedMeta.apiConfigured !== false;
+    const hint = apiOk
+      ? 'Try different keywords, clear your filters, or search for a role.'
+      : 'Job API is not configured on the server. Check Adzuna API keys.';
+    document.getElementById('feed-list').innerHTML = `<div class="empty">
+      <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:24px;height:24px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+      <div class="empty-title">No India jobs found</div>
+      <div class="empty-sub">${esc(hint)}</div>
+      <button class="btn btn-ghost" style="margin-top:12px" onclick="clearFilters()">Clear filters</button>
+      <button class="btn btn-primary btn-sm" style="margin-top:8px;margin-left:8px" onclick="refreshFeed()">Retry</button>
+    </div>`;
     document.getElementById('feed-count').textContent = '';
     document.getElementById('platform-strip').innerHTML = '';
     document.getElementById('stat-strip').style.display = 'none';
-    status.textContent = 'No results';
+    status.textContent = apiOk ? 'No results — try broadening your search' : '⚠️ API not configured';
     return;
   }
   status.textContent = `Live · 🇮🇳 India Jobs · ${new Date().toLocaleTimeString()}`;
@@ -1491,6 +1509,14 @@ function updateBellBadge() {
 function onSearch(val) {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(applyFilter, 420);
+}
+function clearFilters() {
+  document.getElementById('q-search').value = '';
+  document.getElementById('q-loc').value = '';
+  document.getElementById('q-type').value = '';
+  const cat = document.getElementById('q-cat');
+  if (cat) cat.value = '';
+  refreshFeed();
 }
 async function applyFilter() {
   document.getElementById('feed-status').textContent = 'Searching…';
