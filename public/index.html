@@ -131,13 +131,6 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .pref-section{display:flex;flex-direction:column;gap:12px}
 .pref-divider{border:none;border-top:1px solid var(--border)}
 
-/* ── Alert channels ── */
-.channels-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.channel-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh)}
-.channel-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
-.channel-name{font-weight:600;font-size:13px;margin-bottom:2px}
-.channel-sub{font-size:11px;color:var(--fg-3)}
-.channel-status{margin-left:auto;font-size:11px;font-weight:600}
 
 /* ── Alert card ── */
 .alert-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;display:flex;align-items:center;gap:11px;box-shadow:var(--sh)}
@@ -248,10 +241,6 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
     Alerts
     <span class="nav-badge" id="b-alerts" style="display:none">0</span>
-  </button>
-  <button class="nav-item" data-page="channels">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4 20-7z"/></svg>
-    Alert Channels
   </button>
 
   <div class="nav-sec">Profile</div>
@@ -403,17 +392,6 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
       </div>
     </div>
 
-    <!-- ALERT CHANNELS -->
-    <div class="page" id="page-channels">
-      <div class="pi">
-        <div class="ph">Alert Channels</div>
-        <div class="ps">Configure where you receive job alerts. Set up flows in the Integrations page.</div>
-        <div class="channels-grid" id="channels-grid"></div>
-        <div style="margin-top:20px;padding:14px 16px;background:var(--accent-bg);border-radius:var(--r);border:1px solid var(--accent);font-size:12px;color:var(--accent)">
-          <strong>How to activate:</strong> Go to <strong>Integrations →</strong> create a viaSocket flow with your preferred trigger (LinkedIn, Naukri…) and add actions like Send Email, WhatsApp Message, Slack Notification, or Telegram Bot.
-        </div>
-      </div>
-    </div>
 
     <!-- MY PREFERENCES -->
     <div class="page" id="page-prefs">
@@ -581,8 +559,6 @@ const getPrefs   = () => ls.get('hr_prefs')   || {};
 const setPrefs_  = v  => ls.set('hr_prefs', v);
 const getFollow  = () => ls.get('hr_follow')  || [];
 const setFollow  = v  => ls.set('hr_follow', v);
-const getChannels= () => ls.get('hr_channels')|| { email:false, whatsapp:false, slack:false, telegram:false };
-const setChannels= v  => ls.set('hr_channels', v);
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let allJobs = [];
@@ -612,7 +588,6 @@ function navigate(page) {
   if (page === 'saved') renderSaved();
   if (page === 'applied') renderApplied();
   if (page === 'alerts') renderAlerts();
-  if (page === 'channels') renderChannels();
   if (page === 'prefs') loadPrefsForm();
   if (page === 'trends') renderTrends();
   if (page === 'companies') renderCompanies();
@@ -885,28 +860,6 @@ function renderAlerts() {
   }).join('');
 }
 
-// ─── Alert Channels ───────────────────────────────────────────────────────────
-const CHANNEL_DEFS = [
-  { id:'email',    icon:'📧', name:'Email',        sub:'Daily digest & instant alerts' },
-  { id:'whatsapp', icon:'💬', name:'WhatsApp',     sub:'Instant job notifications' },
-  { id:'slack',    icon:'🟣', name:'Slack',        sub:'Team channel notifications' },
-  { id:'telegram', icon:'✈️', name:'Telegram Bot', sub:'Real-time job alerts' },
-];
-function renderChannels() {
-  const ch = getChannels();
-  document.getElementById('channels-grid').innerHTML = CHANNEL_DEFS.map(c=>`
-    <div class="channel-card">
-      <div class="channel-icon" style="background:var(--surface-2)">${c.icon}</div>
-      <div><div class="channel-name">${c.name}</div><div class="channel-sub">${c.sub}</div></div>
-      <div class="channel-status">
-        <label class="toggle" style="margin-left:8px">
-          <input type="checkbox" ${ch[c.id]?'checked':''} onchange="toggleChannel('${c.id}',this.checked)">
-          <div class="toggle-track"></div><div class="toggle-thumb"></div>
-        </label>
-      </div>
-    </div>`).join('');
-}
-function toggleChannel(id, val) { const ch=getChannels(); ch[id]=val; setChannels(ch); }
 
 // ─── Preferences ─────────────────────────────────────────────────────────────
 function loadPrefsForm() {
