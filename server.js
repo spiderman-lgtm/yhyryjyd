@@ -6,6 +6,7 @@ const multer = require('multer');
 const Anthropic = require('@anthropic-ai/sdk');
 const crypto = require('crypto');
 const fs = require('fs');
+const { createLiveSource } = require('./jobs-live');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -404,7 +405,7 @@ function generateMockJobs() {
         company_name: co.name,
         company_logo: null,
         candidate_required_location: co.city + ', India',
-        url: 'https://www.linkedin.com/jobs/view/' + (100000 + id),
+        url: 'https://www.linkedin.com/jobs/search/?location=India&keywords=' + encodeURIComponent(`${tmpl.title} ${co.name}`),
         description: `${co.name} is hiring a ${tmpl.title}. Work on high-impact products used by millions across India. Strong expertise in ${tmpl.skills.slice(0, 3).join(', ')} required. We offer competitive compensation, equity, and remote-friendly culture.`,
         job_type: tmpl.type,
         salary: `₹${tmpl.salMin}L – ₹${tmpl.salMax}L`,
@@ -421,10 +422,26 @@ function generateMockJobs() {
   return jobs;
 }
 
+// ─── Job source: live career boards when configured, else demo data ───────────
+const live = createLiveSource({
+  boards: process.env.JOB_BOARDS,
+  indiaOnly: process.env.JOB_INDIA_ONLY !== 'false',
+  refreshMinutes: parseInt(process.env.JOB_REFRESH_MINUTES, 10) || 15,
+});
+
+function getJobs() {
+  const liveJobs = live.jobs();
+  return liveJobs.length ? liveJobs : generateMockJobs();
+}
+
+function dataSource() {
+  return live.jobs().length ? 'live' : 'demo';
+}
+
 // ─── Trend data (7-day category trends) ────────────────────────────────────────
 
 function computeTrends() {
-  const jobs = generateMockJobs();
+  const jobs = getJobs();
   const now = Date.now();
   const DAY = 24 * 3600 * 1000;
   const categories = ['Frontend','Backend','AI/ML','Data Science','DevOps','Full Stack','Mobile'];
@@ -458,7 +475,7 @@ app.get('/api/jobs', (req, res) => {
   try {
     const { search = '', location = '', jobType = '', salMin = '', limit = '300' } = req.query;
 
-    let jobs = generateMockJobs();
+    let jobs = getJobs();
 
     if (search) {
       const words = search.toLowerCase().split(/\s+/).filter(Boolean);
@@ -494,7 +511,7 @@ app.get('/api/jobs', (req, res) => {
     }
 
     jobs = jobs.slice(0, Math.min(parseInt(limit, 10) || 300, 500));
-    res.json({ jobs, total: jobs.length, apiConfigured: true, adzunaActive: true });
+    res.json({ jobs, total: jobs.length, dataSource: dataSource(), apiConfigured: true });
   } catch (e) {
     res.status(500).json({ error: e.message, jobs: [] });
   }
@@ -550,7 +567,6 @@ const STORE_FILE = path.join(DATA_DIR, 'automations.json');
 const WEBHOOK_HOSTS = (process.env.VIASOCKET_WEBHOOK_HOSTS || 'sokt.io,viasocket.com')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 const JOB_CATEGORIES = [...new Set(TEMPLATES.map(t => t.cat))];
-const COMPANY_NAMES = new Set(COMPANIES.map(c => c.name));
 const AUTOMATION_TYPES = {
   new_job:  { label: 'New matching jobs', events: ['job.new'] },
   company:  { label: 'Company follow',    events: ['job.new'] },
@@ -661,19 +677,24 @@ function fanOut(eventType, job, onlyUid) {
 }
 
 // New-job watcher: diffs the job source against what was already seen.
-function checkNewJobs() {
-  const jobs = generateMockJobs();
-  const seen = new Set(store.seenJobIds || []);
-  const fresh = store.seenJobIds ? jobs.filter(j => !seen.has(j.id)) : [];
+// Switching between demo and live data reseeds silently instead of alerting on every job.
+async function checkNewJobs() {
+  await live.refresh();
+  const jobs = getJobs();
+  const source = dataSource();
+  const baseline = store.seenJobIds && store.seenSource === source;
+  const seen = new Set(baseline ? store.seenJobIds : []);
+  const fresh = baseline ? jobs.filter(j => !seen.has(j.id)) : [];
   store.seenJobIds = jobs.map(j => j.id);
-  if (fresh.length || !seen.size) saveStore();
+  store.seenSource = source;
+  if (fresh.length || !baseline) saveStore();
   fresh.slice(0, MAX_NEW_JOBS_PER_RUN).forEach(job => fanOut('job.new', job));
 }
-checkNewJobs();
-setInterval(checkNewJobs, (parseInt(process.env.JOB_WATCH_MINUTES, 10) || 10) * 60 * 1000);
+checkNewJobs().catch(e => console.error('[jobs] watcher failed:', e.message));
+setInterval(() => checkNewJobs().catch(e => console.error('[jobs] watcher failed:', e.message)), (parseInt(process.env.JOB_WATCH_MINUTES, 10) || 10) * 60 * 1000);
 
 function findJob(id) {
-  return generateMockJobs().find(j => j.id === Number(id));
+  return getJobs().find(j => j.id === Number(id));
 }
 
 function cleanText(v, max) {
@@ -707,7 +728,7 @@ app.post('/api/automations', (req, res) => {
   }
   if (type === 'company') {
     const company = cleanText(req.body.filter?.company, 80);
-    if (!COMPANY_NAMES.has(company)) return res.status(400).json({ error: 'Unknown company' });
+    if (!getJobs().some(j => j.company_name === company)) return res.status(400).json({ error: 'Unknown company' });
     filter.company = company;
   }
 
@@ -754,11 +775,15 @@ app.post('/api/automations/:id/test', async (req, res) => {
   if (now - (lastTest.get(a.id) || 0) < 10000) return res.status(429).json({ error: 'Wait a few seconds before testing again' });
   lastTest.set(a.id, now);
 
-  const jobs = generateMockJobs();
+  const jobs = getJobs();
   const eventType = AUTOMATION_TYPES[a.type].events[0];
   const job = jobs.find(j => matches({ ...a, enabled: true }, eventType, j)) || jobs[0];
   const status = await deliver(a, eventType, job, { test: true });
   res.json({ status, automation: publicAutomation(a) });
+});
+
+app.get('/api/sources', (req, res) => {
+  res.json({ dataSource: dataSource(), configured: live.configured, boards: live.status() });
 });
 
 app.post('/api/events', (req, res) => {

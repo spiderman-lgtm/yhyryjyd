@@ -362,6 +362,7 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .auto-tmpl:hover .auto-tmpl-arr{transform:translateX(2px);color:var(--vs)}
 /* VS Template Context Banner */
 .nav-badge.vs{background:var(--vs)}
+.demo-badge{font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn);flex-shrink:0}
 .my-auto{margin:6px 2px 4px;padding:10px;border:1.5px solid var(--border);border-radius:var(--r);background:var(--surface-2)}
 .ma-head{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;font-weight:700;color:var(--vs);margin-bottom:8px}
 .ma-add{font:inherit;font-size:10px;font-weight:700;color:var(--vs);background:var(--vsbg);border:1px solid var(--vs);border-radius:20px;padding:2px 8px;cursor:pointer}
@@ -548,6 +549,7 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
       <div class="status-bar">
         <span class="pulse"></span>
         <span id="feed-status">Loading live jobs…</span>
+        <span id="demo-badge" class="demo-badge" style="display:none" title="Server par JOB_BOARDS set nahi hai, isliye yeh sample jobs hain">Demo data</span>
         <div id="feed-active-filters" style="display:none;gap:5px;flex-wrap:wrap"></div>
         <span id="feed-count" style="margin-left:auto;font-variant-numeric:tabular-nums;flex-shrink:0"></span>
       </div>
@@ -1000,6 +1002,7 @@ const PLATFORMS = [
   { id:'indeed',    name:'Indeed',    color:'#2557A7', bg:'#EBF0FA', icon:'I'  },
   { id:'glassdoor', name:'Glassdoor', color:'#0CAA41', bg:'#E6F8ED', icon:'G'  },
   { id:'angellist', name:'Wellfound',  color:'#E03A3C', bg:'#FDECED', icon:'W'  },
+  { id:'careers',   name:'Company Careers', color:'#0F766E', bg:'#E6F6F4', icon:'C' },
 ];
 // Use job's _source field when available, else fall back to id-based assignment
 function jobPlatform(job) {
@@ -1327,7 +1330,8 @@ async function fetchJobs(params = {}) {
     if (!r.ok) throw new Error('Server error ' + r.status);
     const d = await r.json();
     if (d.error) throw new Error(d.error);
-    lastFeedMeta = { adzunaActive: d.adzunaActive, apiConfigured: d.apiConfigured };
+    lastFeedMeta = { apiConfigured: d.apiConfigured, dataSource: d.dataSource };
+    const db = document.getElementById('demo-badge'); if (db) db.style.display = d.dataSource === 'demo' ? '' : 'none';
     return d.jobs || [];
   } catch(e) {
     clearTimeout(t);
@@ -1427,7 +1431,7 @@ function renderFeed(jobs) {
     const apiOk = lastFeedMeta.apiConfigured !== false;
     const hint = apiOk
       ? 'Try different keywords, clear your filters, or search for a role.'
-      : 'Job API is not configured on the server. Check Adzuna API keys.';
+      : 'Job source is not configured on the server.';
     document.getElementById('feed-list').innerHTML = `<div class="empty">
       <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:24px;height:24px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
       <div class="empty-title">No India jobs found</div>
