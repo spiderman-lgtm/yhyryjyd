@@ -23,17 +23,45 @@ app.post('/api/embed-token', (req, res) => {
   res.json({ token });
 });
 
-// Live jobs — proxy to Remotive public API (no auth, CORS-friendly)
+// Live jobs — proxy to Remotive, with India-aware search + preference filters
 app.get('/api/jobs', async (req, res) => {
   try {
-    const { search = '', category = '', limit = '30' } = req.query;
-    let url = `https://remotive.com/api/remote-jobs?limit=${parseInt(limit, 10) || 30}`;
-    if (search) url += `&search=${encodeURIComponent(search)}`;
-    if (category) url += `&category=${encodeURIComponent(category)}`;
-    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    const {
+      search = '',
+      category = '',
+      location = '',   // Indian city or 'remote'
+      jobType = '',    // full_time | part_time | contract
+      salMin = '',     // LPA min (informational — used for client hint)
+      limit = '50',
+    } = req.query;
+
+    // Build a smarter search query:
+    // role keywords + city name + "india" so Remotive full-text hits India-relevant jobs
+    const parts = [];
+    if (search) parts.push(search.trim());
+    if (location && location !== 'remote') {
+      parts.push(location);
+      if (!parts.join(' ').toLowerCase().includes('india')) parts.push('india');
+    }
+    const searchQuery = parts.join(' ');
+
+    // Fetch from Remotive (free, no auth)
+    let url = `https://remotive.com/api/remote-jobs?limit=${parseInt(limit, 10) || 50}`;
+    if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
+    if (category)    url += `&category=${encodeURIComponent(category)}`;
+
+    const r = await fetch(url, { headers: { Accept: 'application/json' } });
     if (!r.ok) throw new Error(`Remotive returned ${r.status}`);
     const data = await r.json();
-    res.json(data);
+    let jobs = data.jobs || [];
+
+    // Server-side filter by job_type when specified
+    if (jobType) {
+      const needle = jobType.replace(/_/g, ' ').toLowerCase(); // "full_time" → "full time"
+      jobs = jobs.filter(j => (j.job_type || '').toLowerCase().replace(/_/g, ' ').includes(needle));
+    }
+
+    res.json({ jobs, total: jobs.length });
   } catch (e) {
     res.status(500).json({ error: e.message, jobs: [] });
   }

@@ -335,6 +335,7 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
       <div class="status-bar">
         <span class="pulse"></span>
         <span id="feed-status">Loading live jobs…</span>
+        <div id="feed-active-filters" style="display:none;gap:5px;flex-wrap:wrap;margin-left:8px"></div>
         <span id="feed-count" style="margin-left:auto;font-variant-numeric:tabular-nums"></span>
       </div>
       <div id="stat-strip" class="stat-strip" style="display:none">
@@ -701,8 +702,28 @@ function jobCard(job, mode) {
 }
 
 // ─── Feed ─────────────────────────────────────────────────────────────────────
-async function fetchJobs({ search='', category='', limit=30 } = {}) {
-  const p = new URLSearchParams({ search, category, limit });
+// Builds the full params object from UI filters + saved preferences
+function buildFeedParams() {
+  const prefs = getPrefs();
+  const manualSearch = document.getElementById('q-search').value.trim();
+  const uiLoc  = document.getElementById('q-loc').value;
+  const uiCat  = document.getElementById('q-cat').value;
+
+  // Role: manual input wins; fallback to saved pref
+  const search   = manualSearch || prefs.role || '';
+  // Location: UI dropdown wins; fallback to saved pref
+  const location = uiLoc || prefs.location || '';
+  const category = uiCat || '';
+  // jobType comes only from prefs (UI has no separate type dropdown)
+  const jobType  = prefs.type || '';
+  const salMin   = prefs.salMin || '';
+
+  return { search, location, category, jobType, salMin, limit: 50 };
+}
+
+async function fetchJobs(params = {}) {
+  const p = new URLSearchParams();
+  Object.entries(params).forEach(([k,v]) => { if (v) p.set(k, v); });
   const r = await fetch('/api/jobs?' + p);
   if (!r.ok) throw new Error('Server error ' + r.status);
   const d = await r.json();
@@ -710,16 +731,16 @@ async function fetchJobs({ search='', category='', limit=30 } = {}) {
   return d.jobs || [];
 }
 
-function buildSearchQuery() {
-  const prefs = getPrefs();
-  const manual = document.getElementById('q-search').value.trim();
-  const loc = document.getElementById('q-loc').value;
-  let q = manual;
-  // If no manual search, use preferred role
-  if (!q && prefs.role) q = prefs.role;
-  // Append India location context
-  if (loc && loc !== 'remote') q = (q ? q + ' ' : '') + loc;
-  return q;
+function showActiveFilters(params) {
+  const chips = [];
+  if (params.search)   chips.push(params.search);
+  if (params.location) chips.push(params.location.charAt(0).toUpperCase() + params.location.slice(1));
+  if (params.jobType)  chips.push(params.jobType.replace(/_/g,' '));
+  if (params.salMin)   chips.push(params.salMin + ' LPA+');
+  const el = document.getElementById('feed-active-filters');
+  if (!el) return;
+  el.innerHTML = chips.map(c=>`<span class="badge b-blue" style="font-size:11px">${esc(c)}</span>`).join('');
+  el.style.display = chips.length ? 'flex' : 'none';
 }
 
 async function refreshFeed() {
@@ -728,9 +749,9 @@ async function refreshFeed() {
   document.getElementById('feed-status').textContent = 'Fetching latest jobs…';
   document.getElementById('feed-list').innerHTML = '<div class="centered"><div class="spinner"></div></div>';
   try {
-    const search = buildSearchQuery();
-    const category = document.getElementById('q-cat').value;
-    allJobs = await fetchJobs({ search, category });
+    const params = buildFeedParams();
+    showActiveFilters(params);
+    allJobs = await fetchJobs(params);
     renderFeed(allJobs);
   } catch(e) {
     document.getElementById('feed-status').textContent = 'Error: ' + e.message;
@@ -788,9 +809,9 @@ async function applyFilter() {
   document.getElementById('feed-status').textContent = 'Searching…';
   document.getElementById('feed-list').innerHTML = '<div class="centered"><div class="spinner"></div></div>';
   try {
-    const search = buildSearchQuery();
-    const category = document.getElementById('q-cat').value;
-    allJobs = await fetchJobs({ search, category });
+    const params = buildFeedParams();
+    showActiveFilters(params);
+    allJobs = await fetchJobs(params);
     renderFeed(allJobs);
   } catch(e) { document.getElementById('feed-status').textContent = 'Error: ' + e.message; }
 }
@@ -901,26 +922,34 @@ function loadPrefsForm() {
 }
 function savePrefs() {
   const p = {
-    role:document.getElementById('p-role').value.trim(),
-    location:document.getElementById('p-loc').value,
-    type:document.getElementById('p-type').value,
-    skills:document.getElementById('p-skills').value.trim(),
-    salMin:document.getElementById('p-sal-min').value,
-    salMax:document.getElementById('p-sal-max').value,
-    exp:document.getElementById('p-exp').value,
+    role:     document.getElementById('p-role').value.trim(),
+    location: document.getElementById('p-loc').value,
+    type:     document.getElementById('p-type').value,
+    skills:   document.getElementById('p-skills').value.trim(),
+    salMin:   document.getElementById('p-sal-min').value,
+    salMax:   document.getElementById('p-sal-max').value,
+    exp:      document.getElementById('p-exp').value,
   };
   setPrefs_(p);
-  document.getElementById('prefs-saved-msg').style.display='block';
-  // Apply to feed filter inputs
-  if (p.role) document.getElementById('q-search').value = p.role;
-  if (p.location) document.getElementById('q-loc').value = p.location;
-  setTimeout(()=>{ navigate('feed'); refreshFeed(); }, 600);
+  document.getElementById('prefs-saved-msg').style.display = 'block';
+
+  // Sync toolbar filter inputs with saved prefs so they're visible on feed
+  if (p.role)     document.getElementById('q-search').value = p.role;
+  if (p.location) document.getElementById('q-loc').value    = p.location;
+
+  // Navigate to feed and immediately fetch with all new prefs applied
+  setTimeout(() => {
+    navigate('feed');
+    refreshFeed();
+  }, 400);
 }
 function clearPrefs() {
   setPrefs_({});
   loadPrefsForm();
-  document.getElementById('q-search').value='';
-  document.getElementById('q-loc').value='';
+  document.getElementById('q-search').value = '';
+  document.getElementById('q-loc').value    = '';
+  document.getElementById('q-cat').value    = '';
+  refreshFeed();
 }
 
 // ─── Badges ───────────────────────────────────────────────────────────────────
@@ -1027,11 +1056,11 @@ function vsReset() {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
-// Apply saved preferences to filter inputs on load
+// Sync toolbar inputs from saved preferences on load
 (function applyPrefsOnLoad() {
-  const p=getPrefs();
-  if(p.role) document.getElementById('q-search').value=p.role;
-  if(p.location) document.getElementById('q-loc').value=p.location;
+  const p = getPrefs();
+  if (p.role)     document.getElementById('q-search').value = p.role;
+  if (p.location) document.getElementById('q-loc').value    = p.location;
 })();
 updateBadges();
 refreshFeed();
