@@ -6,18 +6,18 @@
 <title>HireRadar</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap">
 <style>
-:root {
-  --bg:#F7F8FA;--surface:#FFFFFF;--surface-2:#F0F2F5;
+:root{
+  --bg:#F7F8FA;--surface:#fff;--surface-2:#F0F2F5;
   --border:#E4E7EC;--border-2:#D0D5DD;
   --fg:#101828;--fg-2:#475467;--fg-3:#98A2B3;
   --accent:#0057FF;--accent-bg:#EEF3FF;--accent-2:#0040CC;
   --success:#12B76A;--success-bg:#ECFDF3;
-  --warning:#F79009;--warning-bg:#FFFAEB;
+  --warn:#F79009;--warn-bg:#FFFAEB;
   --danger:#F04438;--danger-bg:#FEF3F2;
   --purple:#7C3AED;--purple-bg:#F5F3FF;
-  --sidebar-w:220px;--radius:10px;--radius-sm:6px;
-  --shadow:0 1px 3px rgba(16,24,40,.07),0 1px 2px rgba(16,24,40,.05);
-  --shadow-md:0 4px 8px rgba(16,24,40,.06),0 2px 4px rgba(16,24,40,.04);
+  --sidebar-w:228px;--r:10px;--r-sm:6px;
+  --sh:0 1px 3px rgba(16,24,40,.07),0 1px 2px rgba(16,24,40,.05);
+  --sh-md:0 4px 8px rgba(16,24,40,.06),0 2px 4px rgba(16,24,40,.04);
   color-scheme:light;
 }
 @media(prefers-color-scheme:dark){
@@ -27,100 +27,123 @@
     --fg:#E6EDF3;--fg-2:#8B949E;--fg-3:#6E7681;
     --accent:#4A90FF;--accent-bg:#0D1F3C;--accent-2:#79ABFF;
     --success:#3FB950;--success-bg:#0D2B1A;
-    --warning:#D29922;--warning-bg:#2D2100;
+    --warn:#D29922;--warn-bg:#2D2100;
     --danger:#F85149;--danger-bg:#2D0F0E;
     --purple:#9D71FF;--purple-bg:#1A0F33;
-    --shadow:0 1px 3px rgba(0,0,0,.3);
-    --shadow-md:0 4px 8px rgba(0,0,0,.25);
+    --sh:0 1px 3px rgba(0,0,0,.3);--sh-md:0 4px 8px rgba(0,0,0,.25);
     color-scheme:dark;
   }
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--fg)}
+img{max-width:100%}
 .app{display:flex;height:100vh;overflow:hidden}
 
-/* Sidebar */
-.sidebar{width:var(--sidebar-w);flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 12px;overflow-y:auto}
-.logo{display:flex;align-items:center;gap:9px;padding:8px 10px 20px}
-.logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center}
+/* ── Sidebar ── */
+.sidebar{width:var(--sidebar-w);flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 10px;overflow-y:auto}
+.logo{display:flex;align-items:center;gap:9px;padding:8px 8px 18px}
+.logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .logo-icon svg{width:18px;height:18px}
 .logo-name{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:17px}
-.nav-section{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);padding:12px 10px 6px}
-.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:13.5px;font-weight:500;color:var(--fg-2);margin-bottom:2px;transition:all .12s;user-select:none;border:none;background:none;width:100%;text-align:left}
+.nav-sec{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-3);padding:12px 8px 5px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r-sm);cursor:pointer;font-size:13px;font-weight:500;color:var(--fg-2);margin-bottom:1px;transition:all .12s;user-select:none;border:none;background:none;width:100%;text-align:left}
 .nav-item:hover{background:var(--surface-2);color:var(--fg)}
 .nav-item.active{background:var(--accent-bg);color:var(--accent);font-weight:600}
-.nav-item svg{width:16px;height:16px;flex-shrink:0}
-.nav-badge{margin-left:auto;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;background:var(--accent);color:#fff;min-width:18px;text-align:center}
+.nav-item svg{width:15px;height:15px;flex-shrink:0}
+.nav-badge{margin-left:auto;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;background:var(--accent);color:#fff;min-width:18px;text-align:center;line-height:1.6}
+.nav-badge.green{background:var(--success)}
+.nav-badge.purple{background:var(--purple)}
 
-/* Main */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.topbar{height:56px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;padding:0 24px;gap:10px;flex-shrink:0}
-.topbar-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:16px;flex:1}
+/* ── Main ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:56px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;padding:0 20px;gap:10px;flex-shrink:0}
+.topbar-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;flex:1}
 .page-content{flex:1;overflow-y:auto}
 .page{display:none}.page.active{display:block}
 
-/* Buttons */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .12s;text-decoration:none;white-space:nowrap}
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .12s;text-decoration:none;white-space:nowrap;flex-shrink:0}
 .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-2)}
 .btn-ghost{background:transparent;color:var(--fg-2);border:1px solid var(--border)}.btn-ghost:hover{background:var(--surface-2);color:var(--fg)}
+.btn-success{background:var(--success-bg);color:var(--success);border:1px solid transparent}
 .btn-sm{padding:5px 10px;font-size:12px}
 .btn-icon{padding:6px}
 
-/* Inputs */
-.input{width:100%;padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--fg);font-size:13px;font-family:inherit;transition:border-color .12s}
-.input:focus{outline:none;border-color:var(--accent)}
-select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2398A2B3' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
+/* ── Inputs ── */
+.input{width:100%;padding:8px 11px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);color:var(--fg);font-size:13px;font-family:inherit;transition:border-color .12s;outline:none}
+.input:focus{border-color:var(--accent)}
+select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2398A2B3' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;padding-right:28px}
 .form-group{display:flex;flex-direction:column;gap:5px}
 .form-label{font-size:12px;font-weight:600;color:var(--fg-2)}
-.form-row{display:flex;gap:10px}.form-row .form-group{flex:1}
+.form-row{display:flex;gap:10px}.form-row>.form-group{flex:1;min-width:0}
+.form-hint{font-size:11px;color:var(--fg-3);margin-top:2px}
 
-/* Feed */
-.feed-toolbar{padding:14px 24px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* ── Feed toolbar ── */
+.toolbar{padding:12px 20px 0;display:flex;gap:8px;flex-wrap:wrap}
 .search-wrap{position:relative;flex:1;min-width:180px}
 .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--fg-3);pointer-events:none}
 .search-wrap .input{padding-left:32px}
-.status-bar{padding:8px 24px;background:var(--surface-2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;font-size:11.5px;color:var(--fg-3)}
-.pulse{width:7px;height:7px;border-radius:50%;background:var(--success);display:inline-block;margin-right:5px;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-.feed{padding:14px 24px;display:flex;flex-direction:column;gap:10px}
+.status-bar{padding:7px 20px;background:var(--surface-2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:11px;color:var(--fg-3)}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--success);display:inline-block;margin-right:5px;animation:pulse 2s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* Job card */
-.job-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);transition:border-color .15s,box-shadow .15s}
-.job-card:hover{border-color:var(--accent);box-shadow:var(--shadow-md)}
-.card-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
-.co-logo{width:40px;height:40px;border-radius:8px;flex-shrink:0;object-fit:contain;border:1px solid var(--border);background:var(--surface-2)}
-.co-logo-fb{width:40px;height:40px;border-radius:8px;flex-shrink:0;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:var(--accent);border:1px solid var(--border)}
+/* ── Job Card ── */
+.feed{padding:12px 20px;display:flex;flex-direction:column;gap:10px}
+.job-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh);transition:border-color .15s,box-shadow .15s}
+.job-card:hover{border-color:var(--accent);box-shadow:var(--sh-md)}
+.job-card.applied{border-left:3px solid var(--success)}
+.card-head{display:flex;align-items:flex-start;gap:11px;margin-bottom:9px}
+/* logo: wrapper holds both img and fallback */
+.logo-wrap{flex-shrink:0;position:relative;border-radius:8px;overflow:hidden}
+.logo-wrap img{display:block;width:100%;height:100%;object-fit:contain;background:var(--surface-2)}
+.logo-fb{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:var(--accent);background:var(--accent-bg)}
+.logo-wrap.err img{display:none}.logo-wrap.err .logo-fb{display:flex}
 .job-info{flex:1;min-width:0}
-.job-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.job-sub{font-size:12px;color:var(--fg-2);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.job-meta{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.job-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.job-sub{font-size:12px;color:var(--fg-2);display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.dot{color:var(--border-2)}
+.ago{font-size:11px;color:var(--fg-3);flex-shrink:0;white-space:nowrap}
+.card-meta{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
 .badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
 .b-blue{background:var(--accent-bg);color:var(--accent)}
 .b-green{background:var(--success-bg);color:var(--success)}
-.b-yellow{background:var(--warning-bg);color:var(--warning)}
+.b-yellow{background:var(--warn-bg);color:var(--warn)}
 .b-purple{background:var(--purple-bg);color:var(--purple)}
 .b-gray{background:var(--surface-2);color:var(--fg-2);border:1px solid var(--border)}
-.job-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.b-orange{background:#FFF4ED;color:#C4320A}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
 .tag{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--surface-2);color:var(--fg-2);border:1px solid var(--border)}
-.card-footer{display:flex;align-items:center;gap:7px;padding-top:10px;border-top:1px solid var(--border)}
-.card-time{font-size:11px;color:var(--fg-3);flex:1}
+.card-foot{display:flex;align-items:center;gap:6px;padding-top:9px;border-top:1px solid var(--border)}
+.card-loc{font-size:11px;color:var(--fg-3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* Spinner / skeleton */
-.spinner{width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.centered{display:flex;align-items:center;justify-content:center;padding:48px}
+/* ── Stat strip ── */
+.stat-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px 20px 0}
+@media(max-width:640px){.stat-strip{grid-template-columns:1fr 1fr}}
+.stat-tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh)}
+.stat-num{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:22px;line-height:1}
+.stat-lbl{font-size:11px;color:var(--fg-3);margin-top:4px}
 
-/* Empty state */
-.empty{text-align:center;padding:56px 24px}
-.empty-icon{width:52px;height:52px;margin:0 auto 14px;border-radius:14px;background:var(--surface-2);display:flex;align-items:center;justify-content:center}
-.empty-title{font-weight:700;font-size:15px;margin-bottom:6px}
-.empty-sub{font-size:13px;color:var(--fg-3);max-width:280px;margin:0 auto 18px;line-height:1.5}
+/* ── Preferences ── */
+.prefs-wrap{max-width:560px;padding:20px}
+.prefs-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px;box-shadow:var(--sh);display:flex;flex-direction:column;gap:16px}
+.prefs-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;margin-bottom:2px}
+.prefs-sub{font-size:12px;color:var(--fg-3)}
+.pref-section{display:flex;flex-direction:column;gap:12px}
+.pref-divider{border:none;border-top:1px solid var(--border)}
 
-/* Alert card */
-.alert-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)}
-.alert-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+/* ── Alert channels ── */
+.channels-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.channel-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh)}
+.channel-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
+.channel-name{font-weight:600;font-size:13px;margin-bottom:2px}
+.channel-sub{font-size:11px;color:var(--fg-3)}
+.channel-status{margin-left:auto;font-size:11px;font-weight:600}
+
+/* ── Alert card ── */
+.alert-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;display:flex;align-items:center;gap:11px;box-shadow:var(--sh)}
+.alert-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .alert-info{flex:1;min-width:0}
-.alert-name{font-weight:600;font-size:13px;margin-bottom:3px}
+.alert-name{font-weight:600;font-size:13px;margin-bottom:2px}
 .alert-meta{font-size:11px;color:var(--fg-3)}
 .toggle{position:relative;width:36px;height:20px;cursor:pointer;flex-shrink:0}
 .toggle input{opacity:0;width:0;height:0}
@@ -129,51 +152,62 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .toggle-thumb{position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
 .toggle input:checked~.toggle-thumb{transform:translateX(16px)}
 
-/* Modal */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100}
-.modal{background:var(--surface);border-radius:12px;padding:24px;width:100%;max-width:440px;margin:16px;box-shadow:0 20px 60px rgba(0,0,0,.18)}
-.modal-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:16px;margin-bottom:4px}
-.modal-sub{font-size:12px;color:var(--fg-3);margin-bottom:20px}
-.modal-body{display:flex;flex-direction:column;gap:14px}
-.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+/* ── Trends ── */
+.trends-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:18px 20px}
+@media(max-width:660px){.trends-wrap{grid-template-columns:1fr}}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--sh)}
+.chart-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:13px;margin-bottom:14px}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px}
+.bar-lbl{width:96px;flex-shrink:0;text-align:right;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;height:7px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .6s}
+.bar-n{width:26px;text-align:right;font-variant-numeric:tabular-nums;color:var(--fg-3)}
+.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.ov-tile{border-radius:8px;padding:12px;text-align:center}
+.ov-num{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:24px;line-height:1}
+.ov-lbl{font-size:10px;color:var(--fg-3);margin-top:4px}
 
-/* Integrations */
-.conn-header{padding:18px 24px 0;display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
-.conn-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:16px;display:flex;align-items:center;gap:10px}
+/* ── Companies ── */
+.co-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;padding:18px 20px}
+.co-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;box-shadow:var(--sh);display:flex;flex-direction:column;align-items:center;text-align:center;gap:7px;cursor:default;transition:border-color .15s}
+.co-card:hover{border-color:var(--accent)}
+.co-logo-lg{width:48px;height:48px;border-radius:10px;object-fit:contain;background:var(--surface-2);border:1px solid var(--border)}
+.co-fb-lg{width:48px;height:48px;border-radius:10px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:var(--accent)}
+.co-name{font-weight:700;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%}
+.co-count{font-size:11px;color:var(--fg-3)}
+.follow-btn{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--fg-2);font-weight:600;transition:all .12s}
+.follow-btn.following{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* ── Integrations (viaSocket) ── */
+.vs-header{padding:16px 20px 0;margin-bottom:12px}
+.vs-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
 .vs-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff}
-.conn-sub{font-size:12px;color:var(--fg-3);margin-top:3px}
-#vs-embed-root{margin:0 24px 24px;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-md);background:var(--surface);height:calc(100vh - 56px - 80px);min-height:480px;position:relative}
+.vs-sub{font-size:12px;color:var(--fg-3);margin-top:3px}
+#vs-embed-root{margin:0 20px 20px;border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-md);background:var(--surface);height:calc(100vh - 56px - 70px);min-height:480px;position:relative}
 #vs-embed-mount{width:100%;height:100%}
-.vs-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:32px}
-.vs-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.vs-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:32px}
+.vs-ico{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center}
 @keyframes vsDot{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
 
-/* Trends */
-.trends-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:20px 24px}
-@media(max-width:680px){.trends-grid{grid-template-columns:1fr}}
-.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
-.chart-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;margin-bottom:16px}
-.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:12px}
-.bar-label{width:100px;flex-shrink:0;text-align:right;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bar-track{flex:1;height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden}
-.bar-fill{height:100%;border-radius:4px;transition:width .6s}
-.bar-count{width:28px;text-align:right;font-variant-numeric:tabular-nums;color:var(--fg-3)}
-.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.stat-tile{border-radius:8px;padding:14px;text-align:center}
-.stat-num{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:26px;line-height:1}
-.stat-label{font-size:11px;color:var(--fg-3);margin-top:5px}
+/* ── Modal ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:var(--surface);border-radius:12px;padding:22px;width:100%;max-width:440px;margin:16px;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.modal-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;margin-bottom:3px}
+.modal-sub{font-size:12px;color:var(--fg-3);margin-bottom:18px}
+.modal-body{display:flex;flex-direction:column;gap:13px}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
 
-/* Companies */
-.companies-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;padding:20px 24px}
-.co-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;transition:border-color .15s}
-.co-card:hover{border-color:var(--accent)}
-.co-card-logo{width:48px;height:48px;border-radius:10px;border:1px solid var(--border);object-fit:contain;background:var(--surface-2)}
-.co-card-fb{width:48px;height:48px;border-radius:10px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:var(--accent)}
-.co-card-name{font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%}
-.co-card-count{font-size:11px;color:var(--fg-3)}
-.page-inner{padding:18px 24px}
-.page-heading{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:16px;margin-bottom:4px}
-.page-sub{font-size:13px;color:var(--fg-3);margin-bottom:18px}
+/* ── Misc ── */
+.spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.centered{display:flex;align-items:center;justify-content:center;padding:48px}
+.empty{text-align:center;padding:52px 20px}
+.empty-icon{width:50px;height:50px;margin:0 auto 12px;border-radius:14px;background:var(--surface-2);display:flex;align-items:center;justify-content:center}
+.empty-title{font-weight:700;font-size:14px;margin-bottom:5px}
+.empty-sub{font-size:12px;color:var(--fg-3);max-width:270px;margin:0 auto 16px;line-height:1.5}
+.pi{padding:18px 20px}
+.ph{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;margin-bottom:3px}
+.ps{font-size:12px;color:var(--fg-3);margin-bottom:16px}
 </style>
 </head>
 <body>
@@ -188,36 +222,52 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
     <span class="logo-name">HireRadar</span>
   </div>
 
-  <div class="nav-section">Discover</div>
+  <div class="nav-sec">Discover</div>
   <button class="nav-item active" data-page="feed">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
     Live Feed
-  </button>
-  <button class="nav-item" data-page="alerts">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-    Alerts
-    <span class="nav-badge" id="badge-alerts" style="display:none">0</span>
+    <span class="nav-badge" id="b-new" style="display:none">0</span>
   </button>
   <button class="nav-item" data-page="saved">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
     Saved Jobs
-    <span class="nav-badge" id="badge-saved" style="display:none;background:var(--success)">0</span>
+    <span class="nav-badge green" id="b-saved" style="display:none">0</span>
+  </button>
+  <button class="nav-item" data-page="applied">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.51 0 2.93.37 4.18 1.03"/><path d="M16 3l4 4-4 4"/></svg>
+    Applied
+    <span class="nav-badge purple" id="b-applied" style="display:none">0</span>
   </button>
 
-  <div class="nav-section">Automate</div>
+  <div class="nav-sec">Automate</div>
   <button class="nav-item" data-page="connections">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 010 8.49m-8.48-.01a6 6 0 010-8.49m11.31-2.82a10 10 0 010 14.14m-14.14 0a10 10 0 010-14.14"/></svg>
     Integrations
   </button>
+  <button class="nav-item" data-page="alerts">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+    Alerts
+    <span class="nav-badge" id="b-alerts" style="display:none">0</span>
+  </button>
+  <button class="nav-item" data-page="channels">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+    Alert Channels
+  </button>
 
-  <div class="nav-section">Insights</div>
-  <button class="nav-item" data-page="trends">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-    Trends
+  <div class="nav-sec">Profile</div>
+  <button class="nav-item" data-page="prefs">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    My Preferences
   </button>
   <button class="nav-item" data-page="companies">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
     Companies
+  </button>
+
+  <div class="nav-sec">Insights</div>
+  <button class="nav-item" data-page="trends">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Trends
   </button>
 </nav>
 
@@ -236,16 +286,13 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
       </button>
     </div>
     <div id="tb-alerts" style="display:none">
-      <button class="btn btn-primary btn-sm" onclick="openAlertModal()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        New Alert
-      </button>
+      <button class="btn btn-primary btn-sm" onclick="openAlertModal()">+ New Alert</button>
+    </div>
+    <div id="tb-prefs" style="display:none">
+      <button class="btn btn-primary btn-sm" onclick="savePrefs()">Save Preferences</button>
     </div>
     <div id="tb-connections" style="display:none">
-      <button class="btn btn-primary btn-sm" onclick="navigate('connections')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        New Flow
-      </button>
+      <span style="font-size:12px;color:var(--fg-3)">Powered by viaSocket</span>
     </div>
   </div>
 
@@ -253,12 +300,27 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 
     <!-- LIVE FEED -->
     <div class="page active" id="page-feed">
-      <div class="feed-toolbar">
+      <div class="toolbar">
         <div class="search-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input class="input" id="q-search" type="text" placeholder="Search jobs, skills, companies…" oninput="onSearch(this.value)">
+          <input class="input" id="q-search" type="text" placeholder="Role, skill, company…" oninput="onSearch(this.value)">
         </div>
-        <select class="input" id="q-cat" style="width:170px" onchange="applyFilter()">
+        <select class="input" id="q-loc" style="width:156px" onchange="applyFilter()">
+          <option value="">All Locations</option>
+          <option value="bangalore">Bangalore</option>
+          <option value="mumbai">Mumbai</option>
+          <option value="delhi">Delhi NCR</option>
+          <option value="hyderabad">Hyderabad</option>
+          <option value="pune">Pune</option>
+          <option value="chennai">Chennai</option>
+          <option value="kolkata">Kolkata</option>
+          <option value="noida">Noida</option>
+          <option value="gurgaon">Gurgaon</option>
+          <option value="ahmedabad">Ahmedabad</option>
+          <option value="india">India (Any)</option>
+          <option value="remote">Remote (Global)</option>
+        </select>
+        <select class="input" id="q-cat" style="width:148px" onchange="applyFilter()">
           <option value="">All Categories</option>
           <option value="software-dev">Software Dev</option>
           <option value="devops">DevOps / Infra</option>
@@ -271,43 +333,44 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
         </select>
       </div>
       <div class="status-bar">
-        <span><span class="pulse"></span><span id="feed-status">Loading live jobs…</span></span>
+        <span class="pulse"></span>
+        <span id="feed-status">Loading live jobs…</span>
         <span id="feed-count" style="margin-left:auto;font-variant-numeric:tabular-nums"></span>
+      </div>
+      <div id="stat-strip" class="stat-strip" style="display:none">
+        <div class="stat-tile"><div class="stat-num" id="st-total" style="color:var(--accent)">—</div><div class="stat-lbl">Jobs Found</div></div>
+        <div class="stat-tile"><div class="stat-num" id="st-co" style="color:var(--success)">—</div><div class="stat-lbl">Companies Hiring</div></div>
+        <div class="stat-tile"><div class="stat-num" id="st-sal" style="color:var(--purple)">—</div><div class="stat-lbl">With Salary</div></div>
+        <div class="stat-tile"><div class="stat-num" id="st-match" style="color:var(--warn)">—</div><div class="stat-lbl">Alert Matches</div></div>
       </div>
       <div class="feed" id="feed-list">
         <div class="centered"><div class="spinner"></div></div>
       </div>
     </div>
 
-    <!-- ALERTS -->
-    <div class="page" id="page-alerts">
-      <div class="page-inner">
-        <div class="page-heading">Job Alerts</div>
-        <div class="page-sub">Get notified when new jobs match your criteria.</div>
-        <div id="alerts-list" style="display:flex;flex-direction:column;gap:10px"></div>
-      </div>
-    </div>
-
     <!-- SAVED JOBS -->
     <div class="page" id="page-saved">
-      <div class="feed" id="saved-list" style="padding-top:18px"></div>
+      <div class="feed" id="saved-list" style="padding-top:16px"></div>
     </div>
 
-    <!-- INTEGRATIONS (viaSocket) -->
+    <!-- APPLIED JOBS -->
+    <div class="page" id="page-applied">
+      <div class="feed" id="applied-list" style="padding-top:16px"></div>
+    </div>
+
+    <!-- INTEGRATIONS -->
     <div class="page" id="page-connections">
-      <div class="conn-header">
-        <div>
-          <div class="conn-title">Automation Flows <span class="vs-badge">viaSocket</span></div>
-          <div class="conn-sub">Connect job platforms · build flows · send hiring alerts automatically.</div>
-        </div>
+      <div class="vs-header">
+        <div class="vs-title">Automation Flows <span class="vs-badge">viaSocket</span></div>
+        <div class="vs-sub">Connect LinkedIn, Naukri, Twitter and other platforms · set up alert flows · runs in background 24/7.</div>
       </div>
       <div id="vs-embed-root">
         <div class="vs-state" id="vs-loading">
-          <div class="vs-icon" style="background:linear-gradient(135deg,var(--accent),var(--purple))">
+          <div class="vs-ico" style="background:linear-gradient(135deg,var(--accent),var(--purple))">
             <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" style="width:24px;height:24px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
           </div>
           <div>
-            <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;margin-bottom:4px">Loading viaSocket…</div>
+            <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;margin-bottom:4px">Loading viaSocket…</div>
             <div style="font-size:12px;color:var(--fg-3)">Connecting to your automation workspace</div>
           </div>
           <div style="display:flex;gap:6px">
@@ -317,7 +380,7 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
           </div>
         </div>
         <div class="vs-state" id="vs-error" style="display:none">
-          <div class="vs-icon" style="background:var(--danger-bg)">
+          <div class="vs-ico" style="background:var(--danger-bg)">
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" style="width:22px;height:22px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           </div>
           <div>
@@ -330,16 +393,134 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
       </div>
     </div>
 
-    <!-- TRENDS -->
-    <div class="page" id="page-trends">
-      <div class="trends-grid" id="trends-grid">
-        <div style="grid-column:1/-1" class="centered"><div class="spinner"></div></div>
+    <!-- ALERTS -->
+    <div class="page" id="page-alerts">
+      <div class="pi">
+        <div class="ph">Job Alerts</div>
+        <div class="ps">Active keyword alerts matched against your live feed.</div>
+        <div id="alerts-list" style="display:flex;flex-direction:column;gap:9px"></div>
+      </div>
+    </div>
+
+    <!-- ALERT CHANNELS -->
+    <div class="page" id="page-channels">
+      <div class="pi">
+        <div class="ph">Alert Channels</div>
+        <div class="ps">Configure where you receive job alerts. Set up flows in the Integrations page.</div>
+        <div class="channels-grid" id="channels-grid"></div>
+        <div style="margin-top:20px;padding:14px 16px;background:var(--accent-bg);border-radius:var(--r);border:1px solid var(--accent);font-size:12px;color:var(--accent)">
+          <strong>How to activate:</strong> Go to <strong>Integrations →</strong> create a viaSocket flow with your preferred trigger (LinkedIn, Naukri…) and add actions like Send Email, WhatsApp Message, Slack Notification, or Telegram Bot.
+        </div>
+      </div>
+    </div>
+
+    <!-- MY PREFERENCES -->
+    <div class="page" id="page-prefs">
+      <div class="prefs-wrap">
+        <div class="prefs-card">
+          <div>
+            <div class="prefs-title">My Job Preferences</div>
+            <div class="prefs-sub">HireRadar uses these to personalise your feed and match alerts.</div>
+          </div>
+          <hr class="pref-divider">
+          <div class="pref-section">
+            <div class="form-group">
+              <label class="form-label">Job Role / Title</label>
+              <input class="input" id="p-role" type="text" placeholder="e.g. React Developer, Backend Engineer, Data Analyst">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Preferred Location</label>
+                <select class="input" id="p-loc">
+                  <option value="">Any</option>
+                  <option value="bangalore">Bangalore</option>
+                  <option value="mumbai">Mumbai</option>
+                  <option value="delhi">Delhi NCR</option>
+                  <option value="hyderabad">Hyderabad</option>
+                  <option value="pune">Pune</option>
+                  <option value="chennai">Chennai</option>
+                  <option value="kolkata">Kolkata</option>
+                  <option value="noida">Noida</option>
+                  <option value="gurgaon">Gurgaon</option>
+                  <option value="ahmedabad">Ahmedabad</option>
+                  <option value="india">India (Any City)</option>
+                  <option value="remote">Remote</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Job Type</label>
+                <select class="input" id="p-type">
+                  <option value="">Any</option>
+                  <option value="full_time">Full-time</option>
+                  <option value="contract">Contract</option>
+                  <option value="part_time">Part-time</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Key Skills (comma-separated)</label>
+              <input class="input" id="p-skills" type="text" placeholder="e.g. React, TypeScript, Node.js, AWS">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Min Salary</label>
+                <select class="input" id="p-sal-min">
+                  <option value="">Any</option>
+                  <option value="5">5 LPA</option>
+                  <option value="8">8 LPA</option>
+                  <option value="10">10 LPA</option>
+                  <option value="15">15 LPA</option>
+                  <option value="20">20 LPA</option>
+                  <option value="30">30 LPA</option>
+                  <option value="50">50 LPA</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Max Salary</label>
+                <select class="input" id="p-sal-max">
+                  <option value="">Any</option>
+                  <option value="10">10 LPA</option>
+                  <option value="15">15 LPA</option>
+                  <option value="20">20 LPA</option>
+                  <option value="30">30 LPA</option>
+                  <option value="50">50 LPA</option>
+                  <option value="80">80 LPA</option>
+                  <option value="100">1 Crore+</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Experience Level</label>
+              <select class="input" id="p-exp">
+                <option value="">Any</option>
+                <option value="fresher">Fresher (0–1 yr)</option>
+                <option value="junior">Junior (1–3 yrs)</option>
+                <option value="mid">Mid-level (3–6 yrs)</option>
+                <option value="senior">Senior (6–10 yrs)</option>
+                <option value="lead">Lead / Staff (10+ yrs)</option>
+              </select>
+            </div>
+          </div>
+          <hr class="pref-divider">
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="savePrefs()" style="flex:1;justify-content:center">Save & Apply to Feed</button>
+            <button class="btn btn-ghost" onclick="clearPrefs()">Reset</button>
+          </div>
+          <div id="prefs-saved-msg" style="display:none;font-size:12px;color:var(--success);text-align:center">✓ Preferences saved — feed updated!</div>
+        </div>
       </div>
     </div>
 
     <!-- COMPANIES -->
     <div class="page" id="page-companies">
-      <div class="companies-grid" id="companies-grid">
+      <div class="co-grid" id="co-grid">
+        <div style="grid-column:1/-1" class="centered"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- TRENDS -->
+    <div class="page" id="page-trends">
+      <div class="trends-wrap" id="trends-wrap">
         <div style="grid-column:1/-1" class="centered"><div class="spinner"></div></div>
       </div>
     </div>
@@ -349,36 +530,34 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 </div><!-- /app -->
 
 <!-- Alert Modal -->
-<div class="modal-overlay" id="alert-modal" style="display:none" onclick="if(event.target===this)closeAlertModal()">
+<div class="overlay" id="alert-modal" style="display:none" onclick="if(event.target===this)closeAlertModal()">
   <div class="modal">
     <div class="modal-title">New Job Alert</div>
-    <div class="modal-sub">HireRadar will highlight matching jobs in your feed.</div>
+    <div class="modal-sub">HireRadar will highlight matching jobs from your feed.</div>
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Alert name *</label>
-        <input class="input" id="a-name" type="text" placeholder="e.g. Senior React Developer">
+        <input class="input" id="a-name" placeholder="e.g. Senior React Dev in Bangalore">
       </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Keywords</label>
-          <input class="input" id="a-keywords" type="text" placeholder="react, typescript, node">
+          <input class="input" id="a-kw" placeholder="react, typescript">
         </div>
         <div class="form-group">
           <label class="form-label">Category</label>
-          <select class="input" id="a-category">
+          <select class="input" id="a-cat">
             <option value="">Any</option>
             <option value="software-dev">Software Dev</option>
             <option value="devops">DevOps</option>
             <option value="design">Design</option>
             <option value="data">Data</option>
             <option value="product">Product</option>
-            <option value="customer-support">Support</option>
-            <option value="marketing">Marketing</option>
           </select>
         </div>
       </div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeAlertModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveAlert()">Create Alert</button>
     </div>
@@ -386,117 +565,144 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 </div>
 
 <script>
+// ─── Persistence ──────────────────────────────────────────────────────────────
+const ls = {
+  get: k => { try { return JSON.parse(localStorage.getItem(k) ?? 'null'); } catch { return null; } },
+  set: (k,v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const getSaved   = () => ls.get('hr_saved')   || [];
+const setSaved   = v  => ls.set('hr_saved', v);
+const getApplied = () => ls.get('hr_applied') || {};
+const setApplied = v  => ls.set('hr_applied', v);
+const getAlerts  = () => ls.get('hr_alerts')  || [];
+const setAlerts  = v  => ls.set('hr_alerts', v);
+const getPrefs   = () => ls.get('hr_prefs')   || {};
+const setPrefs_  = v  => ls.set('hr_prefs', v);
+const getFollow  = () => ls.get('hr_follow')  || [];
+const setFollow  = v  => ls.set('hr_follow', v);
+const getChannels= () => ls.get('hr_channels')|| { email:false, whatsapp:false, slack:false, telegram:false };
+const setChannels= v  => ls.set('hr_channels', v);
+
 // ─── State ────────────────────────────────────────────────────────────────────
 let allJobs = [];
 let searchTimer = null;
 let vsInitialised = false;
-const CAT_COLORS = ['var(--accent)','var(--purple)','var(--success)','var(--warning)','var(--danger)'];
-const BAR_COLORS = ['#0057FF','#7C3AED','#12B76A','#F79009','#F04438','#0040CC','#3FB950','#9D71FF'];
+const BAR_CLR = ['#0057FF','#7C3AED','#12B76A','#F79009','#F04438','#0040CC'];
+const ALERT_CLR = ['var(--accent)','var(--purple)','var(--success)','var(--warn)','var(--danger)'];
 
-// ─── Persistence ──────────────────────────────────────────────────────────────
-function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } }
-function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
-function getSaved() { return lsGet('hr_saved') || []; }
-function setSaved(v) { lsSet('hr_saved', v); }
-function getAlerts() { return lsGet('hr_alerts') || []; }
-function setAlerts(v) { lsSet('hr_alerts', v); }
-
-// ─── Navigation ───────────────────────────────────────────────────────────────
-const PAGE_TITLES = { feed:'Live Feed', alerts:'Alerts', saved:'Saved Jobs', connections:'Integrations', trends:'Trends', companies:'Companies' };
-const TB_MAP = { feed:'tb-feed', alerts:'tb-alerts', connections:'tb-connections' };
+// ─── Nav ──────────────────────────────────────────────────────────────────────
+const PAGE_TITLES = {
+  feed:'Live Feed', saved:'Saved Jobs', applied:'Applied Jobs',
+  connections:'Integrations', alerts:'Alerts', channels:'Alert Channels',
+  prefs:'My Preferences', companies:'Companies', trends:'Trends'
+};
+const TB = { feed:'tb-feed', alerts:'tb-alerts', prefs:'tb-prefs', connections:'tb-connections' };
 
 function navigate(page) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const nav = document.querySelector(`.nav-item[data-page="${page}"]`);
-  if (nav) nav.classList.add('active');
-  const pg = document.getElementById('page-' + page);
-  if (pg) pg.classList.add('active');
+  document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
+  document.getElementById('page-' + page)?.classList.add('active');
   document.getElementById('pageTitle').textContent = PAGE_TITLES[page] || page;
-  ['tb-feed','tb-alerts','tb-connections'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
-  const tb = TB_MAP[page];
-  if (tb) document.getElementById(tb).style.display = 'flex';
+  Object.values(TB).forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
+  if (TB[page]) document.getElementById(TB[page]).style.display = 'flex';
 
   if (page === 'connections') setTimeout(vsInitEmbed, 80);
   if (page === 'saved') renderSaved();
+  if (page === 'applied') renderApplied();
   if (page === 'alerts') renderAlerts();
+  if (page === 'channels') renderChannels();
+  if (page === 'prefs') loadPrefsForm();
   if (page === 'trends') renderTrends();
   if (page === 'companies') renderCompanies();
 }
-
 document.querySelectorAll('.nav-item[data-page]').forEach(el =>
   el.addEventListener('click', () => navigate(el.dataset.page)));
 
-// ─── Utils ────────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 function ago(iso) {
-  const d = new Date(iso);
-  if (isNaN(d)) return '';
-  const m = Math.floor((Date.now() - d) / 60000);
+  const d = new Date(iso); if (isNaN(d)) return '';
+  const m = Math.floor((Date.now()-d)/60000);
   if (m < 2) return 'just now';
-  if (m < 60) return m + 'm ago';
-  const h = Math.floor(m / 60);
-  if (h < 24) return h + 'h ago';
-  return Math.floor(h / 24) + 'd ago';
+  if (m < 60) return m+'m ago';
+  const h = Math.floor(m/60);
+  if (h < 24) return h+'h ago';
+  return Math.floor(h/24)+'d ago';
 }
 function catBadge(cat) {
-  const map = {
-    'software-dev':['Dev','b-blue'], 'devops':['DevOps','b-purple'],
-    'design':['Design','b-yellow'], 'data':['Data','b-green'],
-    'product':['Product','b-purple'], 'customer-support':['Support','b-gray'],
-    'marketing':['Marketing','b-yellow'], 'sales':['Sales','b-gray']
-  };
-  const [lbl, cls] = map[cat] || [cat||'Other', 'b-gray'];
-  return `<span class="badge ${cls}">${esc(lbl)}</span>`;
+  const M = {'software-dev':['Dev','b-blue'],'devops':['DevOps','b-purple'],'design':['Design','b-yellow'],
+    'data':['Data','b-green'],'product':['Product','b-purple'],'customer-support':['Support','b-gray'],
+    'marketing':['Marketing','b-yellow'],'sales':['Sales','b-gray']};
+  const [l,c] = M[cat]||[cat||'Other','b-gray'];
+  return `<span class="badge ${c}">${esc(l)}</span>`;
 }
+// Clean logo using wrapper + sibling fallback (no template-literal escaping issues)
 function logoHtml(job, size) {
-  const s = size || 40;
-  const fb = `<div class="co-logo-fb" style="width:${s}px;height:${s}px">${esc((job.company_name||'?')[0].toUpperCase())}</div>`;
-  if (!job.company_logo) return fb;
-  return `<img class="co-logo" src="${esc(job.company_logo)}" alt="${esc(job.company_name)}" style="width:${s}px;height:${s}px" onerror="this.outerHTML=\`${fb}\`">`;
+  const s = size||40;
+  const initial = esc((job.company_name||'?')[0].toUpperCase());
+  const fb = `<div class="logo-fb">${initial}</div>`;
+  if (!job.company_logo) return `<div class="logo-wrap" style="width:${s}px;height:${s}px" data-err="1">${fb}</div>`.replace('logo-fb','logo-fb" style="display:flex');
+  return `<div class="logo-wrap" style="width:${s}px;height:${s}px"><img src="${esc(job.company_logo)}" alt="${esc(job.company_name)}" onload="this.style.opacity=1" onerror="this.parentElement.classList.add('err')" style="opacity:0;transition:opacity .2s">${fb}</div>`;
 }
+function isSaved(id) { return getSaved().some(j => j.id === id); }
+function isApplied(id) { return !!getApplied()[id]; }
 
 // ─── Job Card ─────────────────────────────────────────────────────────────────
-function jobCard(job, savedPage) {
-  const saved = isSaved(job.id);
-  const tags = (job.tags || []).slice(0, 5);
-  const saveBtn = savedPage
-    ? `<button class="btn btn-ghost btn-sm" onclick="removeSaved(${job.id})">Remove</button>`
-    : `<button class="btn btn-ghost btn-sm save-btn" id="sb-${job.id}" onclick="toggleSave(${job.id})">${saved ? '✓ Saved' : 'Save'}</button>`;
-  return `<div class="job-card">
+function jobCard(job, mode) {
+  // mode: 'feed' | 'saved' | 'applied'
+  const saved = isSaved(job.id), applied = isApplied(job.id);
+  const tags = (job.tags||[]).slice(0,5);
+  const appliedData = getApplied()[job.id];
+  let footActions = '';
+  if (mode === 'saved') {
+    footActions = `
+      <button class="btn btn-ghost btn-sm" onclick="removeSaved(${job.id})">Remove</button>
+      <button class="btn btn-success btn-sm" onclick="markApplied(${job.id})">${applied ? '✓ Applied' : 'Mark Applied'}</button>`;
+  } else if (mode === 'applied') {
+    footActions = `
+      <select class="input" style="width:auto;font-size:11px;padding:4px 24px 4px 8px" onchange="updateStatus(${job.id},this.value)">
+        <option value="applied" ${appliedData?.status==='applied'?'selected':''}>Applied</option>
+        <option value="interviewing" ${appliedData?.status==='interviewing'?'selected':''}>Interviewing</option>
+        <option value="offered" ${appliedData?.status==='offered'?'selected':''}>Offered 🎉</option>
+        <option value="rejected" ${appliedData?.status==='rejected'?'selected':''}>Rejected</option>
+      </select>`;
+  } else {
+    footActions = `
+      <button class="btn btn-ghost btn-sm" id="sb-${job.id}" onclick="toggleSave(${job.id})">${saved?'✓ Saved':'Save'}</button>`;
+    if (applied) footActions += `<span class="badge b-green">Applied</span>`;
+  }
+  return `<div class="job-card${applied&&mode!=='saved'?' applied':''}">
     <div class="card-head">
       ${logoHtml(job)}
       <div class="job-info">
         <div class="job-title" title="${esc(job.title)}">${esc(job.title)}</div>
         <div class="job-sub">
           <span>${esc(job.company_name)}</span>
-          ${job.candidate_required_location ? `<span style="color:var(--border-2)">·</span><span>${esc(job.candidate_required_location)}</span>` : ''}
+          ${job.candidate_required_location?`<span class="dot">·</span><span>${esc(job.candidate_required_location)}</span>`:''}
         </div>
       </div>
-      <span style="font-size:11px;color:var(--fg-3);flex-shrink:0">${ago(job.publication_date)}</span>
+      <span class="ago">${ago(job.publication_date)}</span>
     </div>
-    <div class="job-meta">
+    <div class="card-meta">
       ${catBadge(job.category)}
-      ${job.job_type ? `<span class="badge b-gray">${esc(job.job_type)}</span>` : ''}
-      ${job.salary ? `<span class="badge b-green">${esc(job.salary)}</span>` : ''}
+      ${job.job_type?`<span class="badge b-gray">${esc(job.job_type)}</span>`:''}
+      ${job.salary?`<span class="badge b-green">${esc(job.salary)}</span>`:''}
     </div>
-    ${tags.length ? `<div class="job-tags">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
-    <div class="card-footer">
-      <span class="card-time">${esc(job.candidate_required_location || 'Remote')}</span>
-      ${saveBtn}
+    ${tags.length?`<div class="tags">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}
+    <div class="card-foot">
+      <span class="card-loc">${esc(job.candidate_required_location||'Remote')}</span>
+      ${footActions}
       <a href="${esc(job.url)}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Apply ↗</a>
     </div>
   </div>`;
 }
 
-// ─── Live Feed ────────────────────────────────────────────────────────────────
-async function fetchJobs({ search='', category='' } = {}) {
-  const p = new URLSearchParams({ search, category, limit: 30 });
+// ─── Feed ─────────────────────────────────────────────────────────────────────
+async function fetchJobs({ search='', category='', limit=30 } = {}) {
+  const p = new URLSearchParams({ search, category, limit });
   const r = await fetch('/api/jobs?' + p);
   if (!r.ok) throw new Error('Server error ' + r.status);
   const d = await r.json();
@@ -504,18 +710,31 @@ async function fetchJobs({ search='', category='' } = {}) {
   return d.jobs || [];
 }
 
+function buildSearchQuery() {
+  const prefs = getPrefs();
+  const manual = document.getElementById('q-search').value.trim();
+  const loc = document.getElementById('q-loc').value;
+  let q = manual;
+  // If no manual search, use preferred role
+  if (!q && prefs.role) q = prefs.role;
+  // Append India location context
+  if (loc && loc !== 'remote') q = (q ? q + ' ' : '') + loc;
+  return q;
+}
+
 async function refreshFeed() {
   const btn = document.getElementById('btn-refresh');
   if (btn) btn.disabled = true;
   document.getElementById('feed-status').textContent = 'Fetching latest jobs…';
+  document.getElementById('feed-list').innerHTML = '<div class="centered"><div class="spinner"></div></div>';
   try {
-    const search = document.getElementById('q-search').value;
+    const search = buildSearchQuery();
     const category = document.getElementById('q-cat').value;
     allJobs = await fetchJobs({ search, category });
     renderFeed(allJobs);
   } catch(e) {
     document.getElementById('feed-status').textContent = 'Error: ' + e.message;
-    document.getElementById('feed-list').innerHTML = `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" style="width:26px;height:26px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="empty-title">Could not load jobs</div><div class="empty-sub">${esc(e.message)}</div><button class="btn btn-ghost" onclick="refreshFeed()">Retry</button></div>`;
+    document.getElementById('feed-list').innerHTML = `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" style="width:24px;height:24px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="empty-title">Could not load jobs</div><div class="empty-sub">${esc(e.message)}</div><button class="btn btn-ghost" onclick="refreshFeed()">Retry</button></div>`;
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -524,277 +743,299 @@ async function refreshFeed() {
 function renderFeed(jobs) {
   const status = document.getElementById('feed-status');
   const countEl = document.getElementById('feed-count');
-  const list = document.getElementById('feed-list');
   if (!jobs.length) {
-    list.innerHTML = `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:26px;height:26px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="empty-title">No jobs found</div><div class="empty-sub">Try different keywords or a broader category.</div></div>`;
+    document.getElementById('feed-list').innerHTML = `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:24px;height:24px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="empty-title">No jobs found</div><div class="empty-sub">Try different keywords or clear the filters.</div></div>`;
     status.textContent = 'No results';
     countEl.textContent = '';
+    document.getElementById('stat-strip').style.display = 'none';
     return;
   }
   status.textContent = 'Live · updated ' + new Date().toLocaleTimeString();
   countEl.textContent = jobs.length + ' jobs';
-  list.innerHTML = jobs.map(j => jobCard(j, false)).join('');
+  document.getElementById('feed-list').innerHTML = jobs.map(j => jobCard(j,'feed')).join('');
+  // Stats
+  const coCount = new Set(jobs.map(j=>j.company_name)).size;
+  const salCount = jobs.filter(j=>j.salary).length;
+  const matchCount = calcAlertMatches();
+  document.getElementById('st-total').textContent = jobs.length;
+  document.getElementById('st-co').textContent = coCount;
+  document.getElementById('st-sal').textContent = salCount;
+  document.getElementById('st-match').textContent = matchCount;
+  document.getElementById('stat-strip').style.display = 'grid';
   updateBadges();
+}
+
+function calcAlertMatches() {
+  const alerts = getAlerts().filter(a=>a.enabled);
+  const matched = new Set();
+  alerts.forEach(a => {
+    const kw = (a.keywords||'').toLowerCase().split(',').map(k=>k.trim()).filter(Boolean);
+    allJobs.forEach(j => {
+      const txt = (j.title+' '+j.company_name+' '+(j.tags||[]).join(' ')).toLowerCase();
+      const kwOk = !kw.length||kw.some(k=>txt.includes(k));
+      const catOk = !a.category||j.category===a.category;
+      if (kwOk&&catOk) matched.add(j.id);
+    });
+  });
+  return matched.size;
 }
 
 function onSearch(val) {
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => applyFilter(), 420);
+  searchTimer = setTimeout(applyFilter, 420);
 }
-
 async function applyFilter() {
   document.getElementById('feed-status').textContent = 'Searching…';
   document.getElementById('feed-list').innerHTML = '<div class="centered"><div class="spinner"></div></div>';
   try {
-    const search = document.getElementById('q-search').value;
+    const search = buildSearchQuery();
     const category = document.getElementById('q-cat').value;
     allJobs = await fetchJobs({ search, category });
     renderFeed(allJobs);
-  } catch(e) {
-    document.getElementById('feed-status').textContent = 'Error: ' + e.message;
-  }
+  } catch(e) { document.getElementById('feed-status').textContent = 'Error: ' + e.message; }
 }
 
-// ─── Save / Unsave ────────────────────────────────────────────────────────────
-function isSaved(id) { return getSaved().some(j => j.id === id); }
-
+// ─── Save / Applied ───────────────────────────────────────────────────────────
 function toggleSave(id) {
-  const saved = getSaved();
-  const idx = saved.findIndex(j => j.id === id);
-  if (idx >= 0) {
-    saved.splice(idx, 1);
-    setSaved(saved);
-    const btn = document.getElementById('sb-' + id);
-    if (btn) btn.textContent = 'Save';
-  } else {
-    const job = allJobs.find(j => j.id === id);
-    if (!job) return;
-    saved.push(job);
-    setSaved(saved);
-    const btn = document.getElementById('sb-' + id);
-    if (btn) btn.textContent = '✓ Saved';
-  }
+  const saved = getSaved(), idx = saved.findIndex(j=>j.id===id);
+  if (idx >= 0) { saved.splice(idx,1); setSaved(saved); const b=document.getElementById('sb-'+id); if(b) b.textContent='Save'; }
+  else { const job=allJobs.find(j=>j.id===id); if(!job) return; saved.push(job); setSaved(saved); const b=document.getElementById('sb-'+id); if(b) b.textContent='✓ Saved'; }
   updateBadges();
 }
-
-function removeSaved(id) {
-  setSaved(getSaved().filter(j => j.id !== id));
-  renderSaved();
-  updateBadges();
-}
-
+function removeSaved(id) { setSaved(getSaved().filter(j=>j.id!==id)); renderSaved(); updateBadges(); }
 function renderSaved() {
-  const list = document.getElementById('saved-list');
-  const saved = getSaved();
-  if (!saved.length) {
-    list.innerHTML = `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:26px;height:26px"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg></div><div class="empty-title">No saved jobs</div><div class="empty-sub">Hit <strong>Save</strong> on any job in the Live Feed.</div></div>`;
-    return;
-  }
-  list.innerHTML = saved.map(j => jobCard(j, true)).join('');
+  const el = document.getElementById('saved-list'), saved = getSaved();
+  if (!saved.length) { el.innerHTML=`<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:24px;height:24px"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg></div><div class="empty-title">No saved jobs</div><div class="empty-sub">Hit Save on any job in the Live Feed.</div></div>`; return; }
+  el.innerHTML = saved.map(j=>jobCard(j,'saved')).join('');
+}
+function markApplied(id) {
+  const saved = getSaved(), job = saved.find(j=>j.id===id);
+  if (!job) return;
+  const applied = getApplied();
+  applied[id] = { ...job, status:'applied', appliedAt: new Date().toISOString() };
+  setApplied(applied); renderSaved(); updateBadges();
+}
+function updateStatus(id, status) {
+  const applied = getApplied(); if(!applied[id]) return;
+  applied[id].status = status; setApplied(applied);
+}
+function renderApplied() {
+  const el = document.getElementById('applied-list'), applied = getApplied();
+  const jobs = Object.values(applied).sort((a,b)=>new Date(b.appliedAt)-new Date(a.appliedAt));
+  if (!jobs.length) { el.innerHTML=`<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:24px;height:24px"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div><div class="empty-title">No applications yet</div><div class="empty-sub">Save a job and mark it as applied to track it here.</div></div>`; return; }
+  el.innerHTML = jobs.map(j=>jobCard(j,'applied')).join('');
 }
 
 // ─── Alerts ───────────────────────────────────────────────────────────────────
 function openAlertModal() {
-  document.getElementById('a-name').value = '';
-  document.getElementById('a-keywords').value = '';
-  document.getElementById('a-category').value = '';
-  document.getElementById('alert-modal').style.display = 'flex';
-  setTimeout(() => document.getElementById('a-name').focus(), 50);
+  document.getElementById('a-name').value=''; document.getElementById('a-kw').value=''; document.getElementById('a-cat').value='';
+  document.getElementById('alert-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('a-name').focus(),50);
 }
-function closeAlertModal() { document.getElementById('alert-modal').style.display = 'none'; }
-
+function closeAlertModal() { document.getElementById('alert-modal').style.display='none'; }
 function saveAlert() {
   const name = document.getElementById('a-name').value.trim();
   if (!name) { document.getElementById('a-name').focus(); return; }
   const alerts = getAlerts();
-  alerts.unshift({ id: Date.now(), name, keywords: document.getElementById('a-keywords').value.trim(), category: document.getElementById('a-category').value, enabled: true, createdAt: new Date().toISOString() });
-  setAlerts(alerts);
-  closeAlertModal();
-  updateBadges();
-  navigate('alerts');
+  alerts.unshift({ id:Date.now(), name, keywords:document.getElementById('a-kw').value.trim(), category:document.getElementById('a-cat').value, enabled:true, createdAt:new Date().toISOString() });
+  setAlerts(alerts); closeAlertModal(); updateBadges(); navigate('alerts');
 }
-
-function deleteAlert(id) { setAlerts(getAlerts().filter(a => a.id !== id)); renderAlerts(); updateBadges(); }
-
-function toggleAlert(id) {
-  const alerts = getAlerts();
-  const a = alerts.find(a => a.id === id);
-  if (a) a.enabled = !a.enabled;
-  setAlerts(alerts);
-  renderAlerts();
-}
-
-function alertMatches(alert) {
-  if (!allJobs.length || !alert.enabled) return 0;
-  const kw = (alert.keywords || '').toLowerCase().split(',').map(k => k.trim()).filter(Boolean);
-  return allJobs.filter(j => {
-    const txt = (j.title + ' ' + j.company_name + ' ' + (j.tags||[]).join(' ')).toLowerCase();
-    const kwOk = !kw.length || kw.some(k => txt.includes(k));
-    const catOk = !alert.category || j.category === alert.category;
-    return kwOk && catOk;
+function deleteAlert(id) { setAlerts(getAlerts().filter(a=>a.id!==id)); renderAlerts(); updateBadges(); }
+function toggleAlert(id) { const a=getAlerts(),found=a.find(x=>x.id===id); if(found) found.enabled=!found.enabled; setAlerts(a); renderAlerts(); }
+function alertMatchCount(al) {
+  if (!allJobs.length||!al.enabled) return 0;
+  const kw=(al.keywords||'').toLowerCase().split(',').map(k=>k.trim()).filter(Boolean);
+  return allJobs.filter(j=>{
+    const txt=(j.title+' '+j.company_name+' '+(j.tags||[]).join(' ')).toLowerCase();
+    return (!kw.length||kw.some(k=>txt.includes(k)))&&(!al.category||j.category===al.category);
   }).length;
 }
-
 function renderAlerts() {
-  const list = document.getElementById('alerts-list');
-  const alerts = getAlerts();
-  if (!alerts.length) {
-    list.innerHTML = `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:26px;height:26px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div><div class="empty-title">No alerts yet</div><div class="empty-sub">Create an alert to track specific roles, skills, or companies.</div><button class="btn btn-primary" onclick="openAlertModal()">Create First Alert</button></div>`;
-    return;
-  }
-  list.innerHTML = alerts.map((a, i) => {
-    const color = CAT_COLORS[i % CAT_COLORS.length];
-    const m = alertMatches(a);
+  const el=document.getElementById('alerts-list'), alerts=getAlerts();
+  if(!alerts.length){el.innerHTML=`<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:24px;height:24px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div><div class="empty-title">No alerts yet</div><div class="empty-sub">Create an alert to track roles, skills, or companies.</div><button class="btn btn-primary" onclick="openAlertModal()">Create First Alert</button></div>`;return;}
+  el.innerHTML = alerts.map((a,i)=>{
+    const color=ALERT_CLR[i%ALERT_CLR.length], m=alertMatchCount(a);
     return `<div class="alert-card">
-      <div class="alert-icon" style="background:${color}22">
-        <svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" style="width:18px;height:18px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-      </div>
-      <div class="alert-info">
-        <div class="alert-name">${esc(a.name)}</div>
-        <div class="alert-meta">${[a.keywords && 'kw: '+a.keywords, a.category && 'cat: '+a.category, m+' matches'].filter(Boolean).join(' · ')}</div>
-      </div>
-      <label class="toggle">
-        <input type="checkbox" ${a.enabled?'checked':''} onchange="toggleAlert(${a.id})">
-        <div class="toggle-track"></div>
-        <div class="toggle-thumb"></div>
-      </label>
-      <button class="btn btn-icon btn-ghost btn-sm" onclick="deleteAlert(${a.id})" title="Delete alert">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
-      </button>
+      <div class="alert-icon" style="background:${color}22"><svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" style="width:17px;height:17px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>
+      <div class="alert-info"><div class="alert-name">${esc(a.name)}</div><div class="alert-meta">${[a.keywords&&'kw: '+a.keywords,a.category&&'cat: '+a.category,m+' matches now'].filter(Boolean).join(' · ')}</div></div>
+      <label class="toggle"><input type="checkbox" ${a.enabled?'checked':''} onchange="toggleAlert(${a.id})"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+      <button class="btn btn-icon btn-ghost btn-sm" onclick="deleteAlert(${a.id})" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>
     </div>`;
   }).join('');
 }
 
+// ─── Alert Channels ───────────────────────────────────────────────────────────
+const CHANNEL_DEFS = [
+  { id:'email',    icon:'📧', name:'Email',        sub:'Daily digest & instant alerts' },
+  { id:'whatsapp', icon:'💬', name:'WhatsApp',     sub:'Instant job notifications' },
+  { id:'slack',    icon:'🟣', name:'Slack',        sub:'Team channel notifications' },
+  { id:'telegram', icon:'✈️', name:'Telegram Bot', sub:'Real-time job alerts' },
+];
+function renderChannels() {
+  const ch = getChannels();
+  document.getElementById('channels-grid').innerHTML = CHANNEL_DEFS.map(c=>`
+    <div class="channel-card">
+      <div class="channel-icon" style="background:var(--surface-2)">${c.icon}</div>
+      <div><div class="channel-name">${c.name}</div><div class="channel-sub">${c.sub}</div></div>
+      <div class="channel-status">
+        <label class="toggle" style="margin-left:8px">
+          <input type="checkbox" ${ch[c.id]?'checked':''} onchange="toggleChannel('${c.id}',this.checked)">
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>`).join('');
+}
+function toggleChannel(id, val) { const ch=getChannels(); ch[id]=val; setChannels(ch); }
+
+// ─── Preferences ─────────────────────────────────────────────────────────────
+function loadPrefsForm() {
+  const p = getPrefs();
+  document.getElementById('p-role').value = p.role||'';
+  document.getElementById('p-loc').value = p.location||'';
+  document.getElementById('p-type').value = p.type||'';
+  document.getElementById('p-skills').value = p.skills||'';
+  document.getElementById('p-sal-min').value = p.salMin||'';
+  document.getElementById('p-sal-max').value = p.salMax||'';
+  document.getElementById('p-exp').value = p.exp||'';
+  document.getElementById('prefs-saved-msg').style.display='none';
+}
+function savePrefs() {
+  const p = {
+    role:document.getElementById('p-role').value.trim(),
+    location:document.getElementById('p-loc').value,
+    type:document.getElementById('p-type').value,
+    skills:document.getElementById('p-skills').value.trim(),
+    salMin:document.getElementById('p-sal-min').value,
+    salMax:document.getElementById('p-sal-max').value,
+    exp:document.getElementById('p-exp').value,
+  };
+  setPrefs_(p);
+  document.getElementById('prefs-saved-msg').style.display='block';
+  // Apply to feed filter inputs
+  if (p.role) document.getElementById('q-search').value = p.role;
+  if (p.location) document.getElementById('q-loc').value = p.location;
+  setTimeout(()=>{ navigate('feed'); refreshFeed(); }, 600);
+}
+function clearPrefs() {
+  setPrefs_({});
+  loadPrefsForm();
+  document.getElementById('q-search').value='';
+  document.getElementById('q-loc').value='';
+}
+
 // ─── Badges ───────────────────────────────────────────────────────────────────
 function updateBadges() {
-  const sv = getSaved().length, al = getAlerts().length;
-  const sb = document.getElementById('badge-saved');
-  const ab = document.getElementById('badge-alerts');
-  sb.textContent = sv; sb.style.display = sv ? 'inline-block' : 'none';
-  ab.textContent = al; ab.style.display = al ? 'inline-block' : 'none';
+  const sv=getSaved().length, ap=Object.keys(getApplied()).length, al=getAlerts().length;
+  const b=(id,n)=>{ const el=document.getElementById(id); el.textContent=n; el.style.display=n?'inline-block':'none'; };
+  b('b-saved',sv); b('b-applied',ap); b('b-alerts',al);
 }
 
 // ─── Trends ───────────────────────────────────────────────────────────────────
 function renderTrends() {
-  const grid = document.getElementById('trends-grid');
-  if (!allJobs.length) { grid.innerHTML = '<div style="grid-column:1/-1" class="centered"><div class="spinner"></div></div>'; return; }
-
-  const catMap = {}, typeMap = {};
-  allJobs.forEach(j => {
-    const c = j.category || 'Other', t = j.job_type || 'Unknown';
-    catMap[c] = (catMap[c]||0)+1;
-    typeMap[t] = (typeMap[t]||0)+1;
-  });
-  const cats = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const types = Object.entries(typeMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const maxCat = cats[0]?.[1] || 1, maxType = types[0]?.[1] || 1;
-  const coCount = new Set(allJobs.map(j=>j.company_name)).size;
-  const withSal = allJobs.filter(j=>j.salary).length;
-
-  grid.innerHTML = `
+  const wrap = document.getElementById('trends-wrap');
+  if (!allJobs.length) { wrap.innerHTML='<div style="grid-column:1/-1" class="centered"><div class="spinner"></div></div>'; return; }
+  const catMap={}, typeMap={};
+  allJobs.forEach(j=>{ const c=j.category||'Other',t=j.job_type||'Unknown'; catMap[c]=(catMap[c]||0)+1; typeMap[t]=(typeMap[t]||0)+1; });
+  const cats=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  const types=Object.entries(typeMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxC=cats[0]?.[1]||1, maxT=types[0]?.[1]||1;
+  const coN=new Set(allJobs.map(j=>j.company_name)).size;
+  const salN=allJobs.filter(j=>j.salary).length;
+  wrap.innerHTML = `
   <div class="chart-card" style="grid-column:1/-1">
     <div class="chart-title">Jobs by Category</div>
-    ${cats.map(([c,n],i)=>`<div class="bar-row"><div class="bar-label" title="${esc(c)}">${esc(c.replace(/-/g,' '))}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxCat*100)}%;background:${BAR_COLORS[i%BAR_COLORS.length]}"></div></div><div class="bar-count">${n}</div></div>`).join('')}
+    ${cats.map(([c,n],i)=>`<div class="bar-row"><div class="bar-lbl" title="${esc(c)}">${esc(c.replace(/-/g,' '))}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxC*100)}%;background:${BAR_CLR[i%BAR_CLR.length]}"></div></div><div class="bar-n">${n}</div></div>`).join('')}
   </div>
   <div class="chart-card">
     <div class="chart-title">By Job Type</div>
-    ${types.map(([t,n],i)=>`<div class="bar-row"><div class="bar-label">${esc(t)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxType*100)}%;background:${BAR_COLORS[i]}"></div></div><div class="bar-count">${n}</div></div>`).join('')}
+    ${types.map(([t,n],i)=>`<div class="bar-row"><div class="bar-lbl">${esc(t)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxT*100)}%;background:${BAR_CLR[i]}"></div></div><div class="bar-n">${n}</div></div>`).join('')}
   </div>
   <div class="chart-card">
     <div class="chart-title">Overview</div>
-    <div class="stat-grid">
-      <div class="stat-tile" style="background:var(--accent-bg)"><div class="stat-num" style="color:var(--accent)">${allJobs.length}</div><div class="stat-label">Total Jobs</div></div>
-      <div class="stat-tile" style="background:var(--success-bg)"><div class="stat-num" style="color:var(--success)">${coCount}</div><div class="stat-label">Companies Hiring</div></div>
-      <div class="stat-tile" style="background:var(--purple-bg)"><div class="stat-num" style="color:var(--purple)">${Object.keys(catMap).length}</div><div class="stat-label">Categories</div></div>
-      <div class="stat-tile" style="background:var(--warning-bg)"><div class="stat-num" style="color:var(--warning)">${withSal}</div><div class="stat-label">With Salary Listed</div></div>
+    <div class="overview-grid">
+      <div class="ov-tile" style="background:var(--accent-bg)"><div class="ov-num" style="color:var(--accent)">${allJobs.length}</div><div class="ov-lbl">Total Jobs</div></div>
+      <div class="ov-tile" style="background:var(--success-bg)"><div class="ov-num" style="color:var(--success)">${coN}</div><div class="ov-lbl">Companies</div></div>
+      <div class="ov-tile" style="background:var(--purple-bg)"><div class="ov-num" style="color:var(--purple)">${Object.keys(catMap).length}</div><div class="ov-lbl">Categories</div></div>
+      <div class="ov-tile" style="background:var(--warn-bg)"><div class="ov-num" style="color:var(--warn)">${salN}</div><div class="ov-lbl">With Salary</div></div>
     </div>
   </div>`;
 }
 
 // ─── Companies ────────────────────────────────────────────────────────────────
 function renderCompanies() {
-  const grid = document.getElementById('companies-grid');
-  if (!allJobs.length) { grid.innerHTML = '<div style="grid-column:1/-1" class="centered"><div class="spinner"></div></div>'; return; }
-
-  const map = {};
-  allJobs.forEach(j => {
-    if (!map[j.company_name]) map[j.company_name] = { logo: j.company_logo, count: 0, cats: new Set() };
-    map[j.company_name].count++;
-    map[j.company_name].cats.add(j.category);
-  });
-  const comps = Object.entries(map).sort((a,b)=>b[1].count-a[1].count).slice(0,36);
-
-  grid.innerHTML = comps.map(([name, info]) => {
-    const initial = name[0].toUpperCase();
-    const fb = `<div class="co-card-fb">${esc(initial)}</div>`;
-    const logo = info.logo
-      ? `<img class="co-card-logo" src="${esc(info.logo)}" alt="${esc(name)}" onerror="this.outerHTML='${fb.replace(/'/g,'&apos;')}'>"`
-      : fb;
-    const cats = [...info.cats].slice(0,2).map(c=>`<span class="badge b-gray" style="font-size:9px">${esc(c.replace(/-/g,' '))}</span>`).join('');
+  const grid = document.getElementById('co-grid'), following = getFollow();
+  if (!allJobs.length) { grid.innerHTML='<div style="grid-column:1/-1" class="centered"><div class="spinner"></div></div>'; return; }
+  const map={};
+  allJobs.forEach(j=>{ if(!map[j.company_name]) map[j.company_name]={logo:j.company_logo,count:0,cats:new Set()}; map[j.company_name].count++; map[j.company_name].cats.add(j.category); });
+  const comps=Object.entries(map).sort((a,b)=>b[1].count-a[1].count).slice(0,36);
+  grid.innerHTML = comps.map(([name,info])=>{
+    const init=name[0].toUpperCase(), isF=following.includes(name);
+    const logo=info.logo
+      ? `<img class="co-logo-lg" src="${esc(info.logo)}" alt="${esc(name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="co-fb-lg" style="display:none">${esc(init)}</div>`
+      : `<div class="co-fb-lg">${esc(init)}</div>`;
+    const cats=[...info.cats].slice(0,2).map(c=>`<span class="badge b-gray" style="font-size:9px">${esc(c.replace(/-/g,' '))}</span>`).join('');
     return `<div class="co-card">
       ${logo}
-      <div class="co-card-name" title="${esc(name)}">${esc(name)}</div>
-      <div class="co-card-count">${info.count} open ${info.count===1?'role':'roles'}</div>
+      <div class="co-name" title="${esc(name)}">${esc(name)}</div>
+      <div class="co-count">${info.count} open ${info.count===1?'role':'roles'}</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center">${cats}</div>
+      <button class="follow-btn ${isF?'following':''}" onclick="toggleFollow('${esc(name)}',this)">${isF?'Following ✓':'Follow'}</button>
     </div>`;
   }).join('');
+}
+function toggleFollow(name, btn) {
+  const following=getFollow(), idx=following.indexOf(name);
+  if(idx>=0){ following.splice(idx,1); btn.className='follow-btn'; btn.textContent='Follow'; }
+  else { following.push(name); btn.className='follow-btn following'; btn.textContent='Following ✓'; }
+  setFollow(following);
 }
 
 // ─── viaSocket Embed ──────────────────────────────────────────────────────────
 async function vsGetToken() {
-  const r = await fetch('/api/embed-token', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ userId: 'demo-user-001' })
-  });
-  if (!r.ok) throw new Error('/api/embed-token returned ' + r.status);
-  const { token, error } = await r.json();
-  if (error) throw new Error(error);
-  return token;
+  const r=await fetch('/api/embed-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:'demo-user-001'})});
+  if(!r.ok) throw new Error('/api/embed-token returned '+r.status);
+  const {token,error}=await r.json(); if(error) throw new Error(error); return token;
 }
 async function vsLoadSDK() {
-  if (window.viaSocket) return;
-  await new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = 'https://embed.viasocket.com/prod-embedcomponent.js';
-    s.onload = res;
-    s.onerror = () => rej(new Error('Failed to load viaSocket embed SDK'));
-    document.head.appendChild(s);
-  });
-  await new Promise(r => setTimeout(r, 200));
+  if(window.viaSocket) return;
+  await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://embed.viasocket.com/prod-embedcomponent.js'; s.onload=res; s.onerror=()=>rej(new Error('Failed to load viaSocket embed SDK')); document.head.appendChild(s); });
+  await new Promise(r=>setTimeout(r,200));
 }
 async function vsInitEmbed() {
-  if (vsInitialised) return;
-  if (!document.getElementById('page-connections').classList.contains('active')) return;
+  if(vsInitialised) return;
+  if(!document.getElementById('page-connections').classList.contains('active')) return;
   try {
     await vsLoadSDK();
-    const embedToken = await vsGetToken();
-    const embed = viaSocket.mount({ embedToken, parent: '#vs-embed-mount', config: { chatbot: false } });
-    embed.on('flow', flow => {
-      console.log('[HireRadar] flow:', flow);
-      // flow.action: initiated|published|updated|paused|deleted
-      // flow.webhookurl, flow.payload, flow.mcpToolJson, flow.openaiToolJson
-    });
-    document.getElementById('vs-loading').style.display = 'none';
-    document.getElementById('vs-embed-mount').style.display = 'block';
-    vsInitialised = true;
+    const embedToken=await vsGetToken();
+    const embed=viaSocket.mount({embedToken,parent:'#vs-embed-mount',config:{chatbot:false}});
+    embed.on('flow',flow=>{ console.log('[HireRadar] flow:',flow); });
+    document.getElementById('vs-loading').style.display='none';
+    document.getElementById('vs-embed-mount').style.display='block';
+    vsInitialised=true;
   } catch(err) {
-    document.getElementById('vs-loading').style.display = 'none';
-    document.getElementById('vs-error').style.display = 'flex';
-    document.getElementById('vs-error-msg').textContent = err.message;
+    document.getElementById('vs-loading').style.display='none';
+    document.getElementById('vs-error').style.display='flex';
+    document.getElementById('vs-error-msg').textContent=err.message;
   }
 }
 function vsReset() {
-  vsInitialised = false;
-  document.getElementById('vs-loading').style.display = 'flex';
-  document.getElementById('vs-error').style.display = 'none';
-  document.getElementById('vs-embed-mount').style.display = 'none';
+  vsInitialised=false;
+  document.getElementById('vs-loading').style.display='flex';
+  document.getElementById('vs-error').style.display='none';
+  document.getElementById('vs-embed-mount').style.display='none';
   vsInitEmbed();
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
+// Apply saved preferences to filter inputs on load
+(function applyPrefsOnLoad() {
+  const p=getPrefs();
+  if(p.role) document.getElementById('q-search').value=p.role;
+  if(p.location) document.getElementById('q-loc').value=p.location;
+})();
 updateBadges();
 refreshFeed();
-setInterval(refreshFeed, 5 * 60 * 1000); // auto-refresh every 5 min
+setInterval(refreshFeed, 5*60*1000);
 </script>
 </body>
 </html>
