@@ -25,20 +25,87 @@ app.post('/api/embed-token', (req, res) => {
   res.json({ token });
 });
 
-// Live jobs — proxy to Remotive, with India-aware search + preference filters
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function strHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+const INDIA_CITIES = {
+  bangalore: 'Bengaluru', mumbai: 'Mumbai', delhi: 'Delhi NCR',
+  hyderabad: 'Hyderabad', pune: 'Pune', chennai: 'Chennai',
+  kolkata: 'Kolkata', noida: 'Noida', gurgaon: 'Gurugram',
+  ahmedabad: 'Ahmedabad', india: 'India', remote: 'Remote',
+};
+
+// Map Adzuna job → our common job schema (matches Remotive field names)
+function mapAdzunaJob(j) {
+  const salMinINR = j.salary_min || 0;
+  const salMaxINR = j.salary_max || salMinINR * 1.4;
+  const salStr = salMinINR
+    ? `₹${Math.round(salMinINR / 100000)}–${Math.round(salMaxINR / 100000)} LPA`
+    : '';
+  const desc = (j.description || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return {
+    id: strHash(String(j.id || j.redirect_url || Math.random())),
+    title: j.title || 'Untitled',
+    company_name: j.company?.display_name || 'Company',
+    company_logo: null,
+    candidate_required_location: j.location?.display_name || 'India',
+    url: j.redirect_url || '#',
+    description: desc.slice(0, 400) + (desc.length > 400 ? '…' : ''),
+    job_type: j.contract_type === 'permanent' ? 'full_time'
+            : j.contract_type === 'contract' ? 'contract' : 'full_time',
+    salary: salStr,
+    publication_date: j.created || new Date().toISOString(),
+    tags: [j.category?.label].filter(Boolean),
+    _india: true,
+  };
+}
+
+async function fetchAdzunaJobs({ search, location, jobType, limit }) {
+  const appId  = process.env.ADZUNA_APP_ID;
+  const appKey = process.env.ADZUNA_APP_KEY;
+  if (!appId || !appKey) return [];
+
+  const params = new URLSearchParams({
+    app_id: appId,
+    app_key: appKey,
+    results_per_page: Math.min(parseInt(limit) || 20, 50),
+    'content-type': 'application/json',
+  });
+  if (search)   params.set('what', search);
+  if (location && location !== 'remote') {
+    params.set('where', INDIA_CITIES[location] || location);
+  }
+  if (jobType === 'contract') params.set('contract', '1');
+  if (jobType === 'part_time') params.set('part_time', '1');
+  if (jobType === 'full_time') params.set('permanent', '1');
+
+  const url = `https://api.adzuna.com/v1/api/jobs/in/search/1?${params}`;
+  const r = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!r.ok) { console.warn(`Adzuna returned ${r.status}`); return []; }
+  const data = await r.json();
+  return (data.results || []).map(mapAdzunaJob);
+}
+
+// ─── Jobs endpoint ─────────────────────────────────────────────────────────────
 app.get('/api/jobs', async (req, res) => {
   try {
     const {
       search = '',
       category = '',
-      location = '',   // Indian city or 'remote'
-      jobType = '',    // full_time | part_time | contract
-      salMin = '',     // LPA min (informational — used for client hint)
+      location = '',
+      jobType = '',
+      salMin = '',
       limit = '50',
     } = req.query;
 
-    // Build a smarter search query:
-    // role keywords + city name + "india" so Remotive full-text hits India-relevant jobs
+    const perSource = Math.ceil((parseInt(limit, 10) || 50) / 2);
+
+    // Build Remotive search: role + city + "india" for India-aware results
     const parts = [];
     if (search) parts.push(search.trim());
     if (location && location !== 'remote') {
@@ -47,23 +114,42 @@ app.get('/api/jobs', async (req, res) => {
     }
     const searchQuery = parts.join(' ');
 
-    // Fetch from Remotive (free, no auth)
-    let url = `https://remotive.com/api/remote-jobs?limit=${parseInt(limit, 10) || 50}`;
-    if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
-    if (category)    url += `&category=${encodeURIComponent(category)}`;
+    // Fire Remotive + Adzuna in parallel
+    const [remotiveData, adzunaJobs] = await Promise.allSettled([
+      (async () => {
+        let url = `https://remotive.com/api/remote-jobs?limit=${perSource}`;
+        if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
+        if (category)    url += `&category=${encodeURIComponent(category)}`;
+        const r = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!r.ok) throw new Error(`Remotive ${r.status}`);
+        return (await r.json()).jobs || [];
+      })(),
+      fetchAdzunaJobs({ search, location, jobType, limit: perSource }),
+    ]);
 
-    const r = await fetch(url, { headers: { Accept: 'application/json' } });
-    if (!r.ok) throw new Error(`Remotive returned ${r.status}`);
-    const data = await r.json();
-    let jobs = data.jobs || [];
+    let remotiveJobs = remotiveData.status === 'fulfilled' ? remotiveData.value : [];
+    let indiaJobs    = adzunaJobs.status === 'fulfilled'   ? adzunaJobs.value  : [];
 
-    // Server-side filter by job_type when specified
+    // Filter Remotive by jobType server-side
     if (jobType) {
-      const needle = jobType.replace(/_/g, ' ').toLowerCase(); // "full_time" → "full time"
-      jobs = jobs.filter(j => (j.job_type || '').toLowerCase().replace(/_/g, ' ').includes(needle));
+      const needle = jobType.replace(/_/g, ' ').toLowerCase();
+      remotiveJobs = remotiveJobs.filter(j =>
+        (j.job_type || '').toLowerCase().replace(/_/g, ' ').includes(needle));
     }
 
-    res.json({ jobs, total: jobs.length });
+    // Interleave: 2 India jobs per 1 remote job for a balanced feed
+    const jobs = [];
+    const maxLen = Math.max(remotiveJobs.length, indiaJobs.length * 2);
+    let ri = 0, ii = 0;
+    for (let i = 0; i < maxLen; i++) {
+      if (i % 3 !== 2 && ii < indiaJobs.length)    jobs.push(indiaJobs[ii++]);
+      else if (ri < remotiveJobs.length)            jobs.push(remotiveJobs[ri++]);
+    }
+    // flush remainders
+    while (ri < remotiveJobs.length) jobs.push(remotiveJobs[ri++]);
+    while (ii < indiaJobs.length)    jobs.push(indiaJobs[ii++]);
+
+    res.json({ jobs, total: jobs.length, adzunaActive: indiaJobs.length > 0 });
   } catch (e) {
     res.status(500).json({ error: e.message, jobs: [] });
   }
