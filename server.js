@@ -14,7 +14,7 @@ app.use(express.json({ limit: '32kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const ORG_ID = '4160';
-const PROJECT_ID = 'proj9XH3L4TM';
+const PROJECT_ID = 'projfJ7dZJJM';
 const SECRET = process.env.VIASOCKET_EMBED_SECRET;
 
 // ─── Per-user identity (one unique_identifier per browser, forever) ────────────
@@ -672,6 +672,8 @@ function fanOut(eventType, job, onlyUid) {
     for (const a of userAutomations(uid)) {
       if (matches(a, eventType, job)) sends.push(deliver(a, eventType, job));
     }
+    // Also deliver to directly-connected apps (WhatsApp, Gmail, Sheets, Slack)
+    sends.push(deliverToApps(uid, eventType, job).catch(e => console.warn('[vs-app] fanOut error:', e.message)));
   }
   return Promise.all(sends);
 }
@@ -797,3 +799,267 @@ app.post('/api/events', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`HireRadar running at http://localhost:${PORT}`));
+
+// ─── viaSocket Direct App Connections ─────────────────────────────────────────
+// Each user can connect WhatsApp / Gmail / Google Sheets / Slack directly.
+// auth_id and script_id stay server-side — never sent to the browser.
+
+const CONN_FILE = path.join(DATA_DIR, 'connections.json');
+let connStore = { users: {} };
+try { connStore = { ...connStore, ...JSON.parse(fs.readFileSync(CONN_FILE, 'utf8')) }; } catch {}
+
+let connSaveTimer = null;
+function saveConnStore() {
+  clearTimeout(connSaveTimer);
+  connSaveTimer = setTimeout(() => {
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(CONN_FILE + '.tmp', JSON.stringify(connStore));
+      fs.renameSync(CONN_FILE + '.tmp', CONN_FILE);
+    } catch (e) { console.error('[connections] save failed:', e.message); }
+  }, 200);
+}
+
+function userConns(uid) {
+  if (!connStore.users[uid]) connStore.users[uid] = {};
+  return connStore.users[uid];
+}
+
+const VS_API = 'https://flow-api.viasocket.com';
+const VS_RUN = 'https://flow.sokt.io/func';
+const VS_DOC_BASE = 'https://flow.viasocket.com/documentation';
+const VS_SEARCH = 'https://flow.sokt.io/func/scri12BSufQM';
+
+function makeVsToken(uid) {
+  return jwt.sign(
+    { org_id: ORG_ID, project_id: PROJECT_ID, unique_identifier: uid },
+    SECRET, { algorithm: 'HS256' }
+  );
+}
+
+// Cache for service IDs and action_version_ids
+const vsSearchCache = new Map();
+const vsDocCache = new Map();
+
+async function vsSearch(q) {
+  if (vsSearchCache.has(q)) return vsSearchCache.get(q);
+  const r = await fetch(`${VS_SEARCH}?key=${encodeURIComponent(q)}`, { signal: AbortSignal.timeout(10000) });
+  if (!r.ok) throw new Error(`VS search HTTP ${r.status}`);
+  const data = await r.json();
+  const result = Array.isArray(data?.data) ? data.data : [];
+  vsSearchCache.set(q, result);
+  return result;
+}
+
+async function vsAppDoc(serviceId) {
+  if (vsDocCache.has(serviceId)) return vsDocCache.get(serviceId);
+  const url = `${VS_DOC_BASE}/${serviceId}.md?format=http&org=${ORG_ID}&project=${PROJECT_ID}`;
+  const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!r.ok) return null;
+  const text = await r.text();
+  vsDocCache.set(serviceId, text);
+  return text;
+}
+
+function extractActionVerId(doc, keywords) {
+  if (!doc) return null;
+  const lines = doc.split('\n');
+  let inSection = false;
+  for (const line of lines) {
+    if (/^#{1,3}\s/.test(line)) {
+      inSection = keywords.some(k => line.toLowerCase().includes(k));
+    }
+    if (inSection) {
+      const m = line.match(/action_version_id[`:\s*]+([A-Za-z0-9_-]+)/i) ||
+                line.match(/`(actver_[A-Za-z0-9_-]+)`/);
+      if (m?.[1]) return m[1];
+    }
+  }
+  return null;
+}
+
+// App metadata — search terms and action keywords guide doc parsing
+const APP_META = {
+  whatsapp: { label: 'WhatsApp',      icon: '💬', color: '#25D366', q: 'whatsapp',      actionKw: ['send message','send text'] },
+  gmail:    { label: 'Gmail',         icon: '📧', color: '#EA4335', q: 'gmail',          actionKw: ['send email','send mail','compose'] },
+  sheets:   { label: 'Google Sheets', icon: '📊', color: '#0F9D58', q: 'google sheets',  actionKw: ['add row','append row','insert row'] },
+  slack:    { label: 'Slack',         icon: '💼', color: '#4A154B', q: 'slack',          actionKw: ['send message','post message','post to channel'] },
+};
+
+// Build viaSocket inputData per app
+function buildVsInputData(appLabel, conn, eventType, job) {
+  const jp = {
+    title: job.title, company: job.company_name,
+    location: job.candidate_required_location,
+    salary: job.salary || '', url: job.url,
+    category: job.category, event: eventType,
+  };
+  const cfg = conn.config || {};
+  switch (appLabel) {
+    case 'whatsapp': return {
+      action_version_id: conn.action_version_id,
+      inputData: {
+        phone: cfg.phone || '',
+        message: `🔔 *Job Alert*: ${jp.title} at ${jp.company}\n📍 ${jp.location}\n💰 ${jp.salary || 'Not listed'}\n🔗 ${jp.url}`,
+      },
+    };
+    case 'gmail': return {
+      action_version_id: conn.action_version_id,
+      inputData: {
+        to: cfg.to || '',
+        subject: `HireRadar Alert: ${jp.title} at ${jp.company}`,
+        body: `New job found!\n\nRole: ${jp.title}\nCompany: ${jp.company}\nLocation: ${jp.location}\nSalary: ${jp.salary || 'Not listed'}\n\nApply here: ${jp.url}`,
+      },
+    };
+    case 'sheets': return {
+      action_version_id: conn.action_version_id,
+      inputData: {
+        spreadsheet_id: cfg.spreadsheet_id || '',
+        range: cfg.sheet_name ? `${cfg.sheet_name}!A:G` : 'Sheet1!A:G',
+        values: [[jp.title, jp.company, jp.location, jp.salary, eventType, jp.url, new Date().toLocaleDateString('en-IN')]],
+      },
+    };
+    case 'slack': return {
+      action_version_id: conn.action_version_id,
+      inputData: {
+        channel: cfg.channel || '',
+        text: `*Job Alert:* ${jp.title} at *${jp.company}*\n📍 ${jp.location}  💰 ${jp.salary || 'Not listed'}\n🔗 ${jp.url}`,
+      },
+    };
+    default: return { action_version_id: conn.action_version_id, inputData: jp };
+  }
+}
+
+// Deliver event to all connected apps for a user
+async function deliverToApps(uid, eventType, job) {
+  if (!SECRET) return;
+  const conns = userConns(uid);
+  const sends = [];
+  for (const [appLabel, conn] of Object.entries(conns)) {
+    if (!conn.enabled || !conn.script_id || !conn.action_version_id) continue;
+    // Sheets gets save/apply events; others get new-job events
+    const wantTracker = appLabel === 'sheets';
+    if (wantTracker && eventType === 'job.new') continue;
+    if (!wantTracker && eventType !== 'job.new') continue;
+    const payload = buildVsInputData(appLabel, conn, eventType, job);
+    sends.push(
+      fetch(`${VS_RUN}/${conn.script_id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
+      }).then(r => console.log(`[vs-app] ${appLabel} → ${r.status}`))
+        .catch(e => console.warn(`[vs-app] ${appLabel} failed: ${e.message}`))
+    );
+  }
+  return Promise.all(sends);
+}
+
+// Proxy: search viaSocket app catalog
+app.get('/api/vs/find-app', async (req, res) => {
+  if (!SECRET) return res.status(500).json({ error: 'VIASOCKET_EMBED_SECRET not set' });
+  const q = String(req.query.q || '').trim().slice(0, 80);
+  if (!q) return res.status(400).json({ error: 'Missing q' });
+  try { res.json({ data: await vsSearch(q) }); }
+  catch (e) { res.status(502).json({ error: e.message }); }
+});
+
+// Connect an app: user sends auth_id from popup, server enables + stores
+app.post('/api/vs/connect', async (req, res) => {
+  if (!SECRET) return res.status(500).json({ error: 'VIASOCKET_EMBED_SECRET not set' });
+  const { app_label, service_id, auth_id } = req.body || {};
+  if (!APP_META[app_label]) return res.status(400).json({ error: 'Unknown app' });
+  if (!service_id || typeof service_id !== 'string') return res.status(400).json({ error: 'Missing service_id' });
+  if (!auth_id || typeof auth_id !== 'string') return res.status(400).json({ error: 'Missing auth_id' });
+
+  try {
+    const token = makeVsToken(req.uid);
+    const enRes = await fetch(`${VS_API}/embed/enable/${encodeURIComponent(service_id)}/${encodeURIComponent(auth_id)}`, {
+      method: 'POST',
+      headers: { authorization: token },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!enRes.ok) {
+      const body = await enRes.text().catch(() => '');
+      return res.status(502).json({ error: `viaSocket enable failed (${enRes.status}): ${body.slice(0, 200)}` });
+    }
+    const enData = await enRes.json();
+    const script_id = enData?.data?.script_id || enData?.script_id;
+    if (!script_id) return res.status(502).json({ error: 'No script_id from viaSocket' });
+
+    // Try to get action_version_id from documentation
+    const doc = await vsAppDoc(service_id).catch(() => null);
+    const action_version_id = extractActionVerId(doc, APP_META[app_label].actionKw);
+
+    const conns = userConns(req.uid);
+    conns[app_label] = {
+      app_label, service_id, auth_id, script_id,
+      action_version_id: action_version_id || null,
+      config: {},
+      enabled: true,
+      connectedAt: new Date().toISOString(),
+    };
+    saveConnStore();
+    res.json({ ok: true, has_action: Boolean(action_version_id) });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// List connections (safe — no auth_id/script_id sent to browser)
+app.get('/api/vs/connections', (req, res) => {
+  const conns = userConns(req.uid);
+  const safe = {};
+  for (const [k, v] of Object.entries(conns)) {
+    const { auth_id, script_id, ...rest } = v;
+    safe[k] = { ...rest, has_action: Boolean(v.action_version_id) };
+  }
+  const appDefs = Object.fromEntries(
+    Object.entries(APP_META).map(([k, v]) => [k, { label: v.label, icon: v.icon, color: v.color }])
+  );
+  res.json({ connections: safe, appDefs });
+});
+
+// Update config or toggle enabled
+app.patch('/api/vs/connections/:app', (req, res) => {
+  const conns = userConns(req.uid);
+  const conn = conns[req.params.app];
+  if (!conn) return res.status(404).json({ error: 'Not connected' });
+  if (req.body?.config && typeof req.body.config === 'object') {
+    conn.config = { ...conn.config, ...req.body.config };
+  }
+  if (typeof req.body?.enabled === 'boolean') conn.enabled = req.body.enabled;
+  saveConnStore();
+  res.json({ ok: true });
+});
+
+// Disconnect an app
+app.delete('/api/vs/connections/:app', (req, res) => {
+  const conns = userConns(req.uid);
+  delete conns[req.params.app];
+  saveConnStore();
+  res.json({ ok: true });
+});
+
+// Test a connected app
+app.post('/api/vs/connections/:app/test', async (req, res) => {
+  if (!SECRET) return res.status(500).json({ error: 'VIASOCKET_EMBED_SECRET not set' });
+  const conns = userConns(req.uid);
+  const conn = conns[req.params.app];
+  if (!conn) return res.status(404).json({ error: 'Not connected' });
+  if (!conn.script_id) return res.status(400).json({ error: 'Not fully set up' });
+  if (!conn.action_version_id) return res.status(400).json({ error: 'action_version_id not found — check viaSocket docs' });
+  const job = getJobs()[0] || { title: 'Test Job', company_name: 'Test Co', candidate_required_location: 'Bangalore', salary: '₹15L', url: 'https://example.com', category: 'Backend', publication_date: new Date().toISOString() };
+  try {
+    const payload = buildVsInputData(req.params.app, conn, 'job.new', job);
+    const r = await fetch(`${VS_RUN}/${conn.script_id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000),
+    });
+    res.json({ ok: r.ok, status: r.status });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});

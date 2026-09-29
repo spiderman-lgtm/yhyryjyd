@@ -360,6 +360,22 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .auto-tmpl-tag{font-size:9px;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:20px;background:var(--vsbg);color:var(--vs);flex-shrink:0;white-space:nowrap;border:1px solid var(--vs);opacity:.8}
 .auto-tmpl-arr{font-size:16px;color:var(--fg-3);flex-shrink:0;transition:transform .12s}
 .auto-tmpl:hover .auto-tmpl-arr{transform:translateX(2px);color:var(--vs)}
+/* Quick Connect buttons */
+.auto-qc-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.auto-qc-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--surface-2);cursor:pointer;transition:border-color .12s,background .12s;font-family:inherit;position:relative}
+.auto-qc-btn:hover{border-color:var(--vs);background:var(--vsbg)}
+.auto-qc-btn.connected{border-color:#16a34a;background:#f0fdf4}
+.auto-qc-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.auto-qc-label{font-size:10px;font-weight:700;color:var(--fg-2);white-space:nowrap}
+.auto-qc-status{font-size:9px;color:#16a34a;font-weight:700;min-height:11px}
+.auto-qc-cfg{display:none;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--surface-2);margin-bottom:8px;font-size:12px}
+.auto-qc-cfg.open{display:block}
+.auto-qc-cfg label{display:block;margin-bottom:7px;color:var(--fg-2)}
+.auto-qc-cfg input{width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--fg);font-size:12px;box-sizing:border-box;margin-top:2px}
+.auto-qc-cfg .qc-save{margin-top:8px;padding:5px 14px;border:none;border-radius:5px;background:var(--vs);color:#fff;font-size:11px;font-weight:700;cursor:pointer}
+.auto-qc-cfg .qc-msg{font-size:11px;margin-top:5px;min-height:14px}
+.auto-qc-cfg .qc-msg.ok{color:#16a34a}.auto-qc-cfg .qc-msg.err{color:var(--danger)}
+.auto-drawer-divider{font-size:10px;color:var(--fg-3);text-align:center;padding:6px 0;letter-spacing:.04em;text-transform:uppercase}
 /* VS Template Context Banner */
 .nav-badge.vs{background:var(--vs)}
 .demo-badge{font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn);flex-shrink:0}
@@ -1241,14 +1257,38 @@ function jobCard(job, mode) {
       <a href="${esc(job.url)}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">View Job →</a>
     </div>
     ${mode === 'feed' ? `<div class="auto-drawer" id="auto-${job.id}">
-      <div class="auto-drawer-head">⚡ Pick an automation<span class="vs-pill-sm">viaSocket</span></div>
+      <div class="auto-drawer-head">⚡ Quick Connect<span class="vs-pill-sm">viaSocket</span></div>
+      <div class="auto-qc-row">
+        <button class="auto-qc-btn" onclick="vsQuickConnect('whatsapp',${job.id},this)" data-app="whatsapp">
+          <span class="auto-qc-icon" style="background:#DCFCE7">💬</span>
+          <span class="auto-qc-label">WhatsApp</span>
+          <span class="auto-qc-status" id="qcs-whatsapp-${job.id}"></span>
+        </button>
+        <button class="auto-qc-btn" onclick="vsQuickConnect('gmail',${job.id},this)" data-app="gmail">
+          <span class="auto-qc-icon" style="background:#FFE4E1">📧</span>
+          <span class="auto-qc-label">Gmail</span>
+          <span class="auto-qc-status" id="qcs-gmail-${job.id}"></span>
+        </button>
+        <button class="auto-qc-btn" onclick="vsQuickConnect('sheets',${job.id},this)" data-app="sheets">
+          <span class="auto-qc-icon" style="background:#DBEAFE">📊</span>
+          <span class="auto-qc-label">Sheets</span>
+          <span class="auto-qc-status" id="qcs-sheets-${job.id}"></span>
+        </button>
+        <button class="auto-qc-btn" onclick="vsQuickConnect('slack',${job.id},this)" data-app="slack">
+          <span class="auto-qc-icon" style="background:#F3E8FF">💼</span>
+          <span class="auto-qc-label">Slack</span>
+          <span class="auto-qc-status" id="qcs-slack-${job.id}"></span>
+        </button>
+      </div>
+      <div class="auto-qc-cfg" id="auto-qcc-${job.id}"></div>
+      <div class="auto-drawer-divider">or build a custom flow</div>
       <div class="auto-tmpl" onclick="launchAutoTemplate('whatsapp',${job.id})">
         <div class="auto-tmpl-icon" style="background:#DCFCE7">💬</div>
         <div class="auto-tmpl-info">
           <div class="auto-tmpl-name">WhatsApp Job Alert</div>
           <div class="auto-tmpl-desc">Get a WhatsApp message whenever new ${esc(job.category||'similar')} jobs are posted</div>
         </div>
-        <span class="auto-tmpl-tag">Notify</span>
+        <span class="auto-tmpl-tag">Build</span>
         <span class="auto-tmpl-arr">→</span>
       </div>
       <div class="auto-tmpl" onclick="launchAutoTemplate('sheets',${job.id})">
@@ -1257,7 +1297,7 @@ function jobCard(job, mode) {
           <div class="auto-tmpl-name">Google Sheets Tracker</div>
           <div class="auto-tmpl-desc">Automatically log every job you save or apply to in your tracking sheet</div>
         </div>
-        <span class="auto-tmpl-tag">Track</span>
+        <span class="auto-tmpl-tag">Build</span>
         <span class="auto-tmpl-arr">→</span>
       </div>
       <div class="auto-tmpl" onclick="launchAutoTemplate('company',${job.id})">
@@ -1266,7 +1306,7 @@ function jobCard(job, mode) {
           <div class="auto-tmpl-name">Follow ${esc(job.company_name)}</div>
           <div class="auto-tmpl-desc">Get an Email/Slack alert as soon as ${esc(job.company_name)} posts a new job</div>
         </div>
-        <span class="auto-tmpl-tag">Company</span>
+        <span class="auto-tmpl-tag">Build</span>
         <span class="auto-tmpl-arr">→</span>
       </div>
     </div>` : ''}
@@ -1763,6 +1803,8 @@ async function loadAutomations() {
     myAutomations = data.automations || [];
     autoCategories = data.categories || [];
   } catch(e) { myAutomations = []; }
+  // Also refresh direct app connections state
+  await vsLoadConnections().catch(() => {});
   renderAutomationsWidget();
 }
 
@@ -1770,14 +1812,31 @@ function renderAutomationsWidget() {
   const el = document.getElementById('my-auto-list');
   if (!el) return;
   const active = myAutomations.filter(a => a.enabled).length;
+  const appActive = Object.values(_vsConns).filter(c => c.enabled).length;
   const badge = document.getElementById('b-auto');
-  if (badge) { badge.textContent = active; badge.style.display = active ? '' : 'none'; }
-  if (!myAutomations.length) {
+  if (badge) { badge.textContent = active + appActive; badge.style.display = (active + appActive) ? '' : 'none'; }
+
+  // Build connected apps section
+  const appLabels = { whatsapp:'💬 WhatsApp', gmail:'📧 Gmail', sheets:'📊 Google Sheets', slack:'💼 Slack' };
+  const appItems = Object.entries(_vsConns).map(([appLabel, conn]) => {
+    return `<div class="ma-item${conn.enabled?'':' off'}">
+      <div class="ma-top">
+        <span class="ma-ico">${{whatsapp:'💬',gmail:'📧',sheets:'📊',slack:'💼'}[appLabel]||'🔗'}</span>
+        <span class="ma-name">${appLabels[appLabel]||appLabel}</span>
+        <button class="ma-switch${conn.enabled?' on':''}" role="switch" aria-checked="${conn.enabled}"
+          aria-label="${conn.enabled?'Turn off':'Turn on'}"
+          onclick="vsToggleApp('${appLabel}',${!conn.enabled})"></button>
+      </div>
+      <div class="ma-meta">Direct · <button class="ma-act" onclick="vsTestAppFromWidget('${appLabel}',this)">Test</button> · <button class="ma-act" onclick="vsDisconnectFromWidget('${appLabel}')">Disconnect</button></div>
+    </div>`;
+  }).join('');
+
+  if (!myAutomations.length && !appItems) {
     el.innerHTML = `<div class="ma-empty">No automations yet. Click ⚡ Automate on any job card.</div>`;
     return;
   }
   const icon = { whatsapp:'💬', sheets:'📊', company:'🔔', custom:'⚡' };
-  el.innerHTML = myAutomations.map(a => {
+  const webhookItems = myAutomations.map(a => {
     const st = a.lastStatus === 'ok' ? `${a.fireCount} sent` : a.lastStatus ? `<span class="ma-bad">Fail: ${esc(a.lastStatus)}</span>` : 'New';
     return `<div class="ma-item${a.enabled?'':' off'}">
       <div class="ma-top">
@@ -1788,6 +1847,30 @@ function renderAutomationsWidget() {
       <div class="ma-meta">${st} · <button class="ma-act" onclick="testAutomation('${a.id}',this)">Test</button> · <button class="ma-act" onclick="deleteAutomation('${a.id}')">Delete</button></div>
     </div>`;
   }).join('');
+  el.innerHTML = appItems + webhookItems;
+}
+
+async function vsToggleApp(appLabel, enabled) {
+  await fetch('/api/vs/connections/' + appLabel, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ enabled }) });
+  loadAutomations();
+}
+
+async function vsTestAppFromWidget(appLabel, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  let text = 'Test';
+  try {
+    const r = await fetch('/api/vs/connections/' + appLabel + '/test', { method:'POST' });
+    const d = await r.json();
+    text = !r.ok ? (d.error || 'Error') : d.ok ? '✓ Sent' : 'Fail';
+  } catch(e) { text = 'Error'; }
+  if (btn) { btn.textContent = text; btn.disabled = false; }
+}
+
+async function vsDisconnectFromWidget(appLabel) {
+  if (!confirm('Disconnect ' + appLabel + '?')) return;
+  await fetch('/api/vs/connections/' + appLabel, { method:'DELETE' });
+  delete _vsConns[appLabel];
+  loadAutomations();
 }
 
 async function toggleAutomation(id, enabled) {
@@ -1823,6 +1906,197 @@ function dismissVsContext() {
   try { localStorage.removeItem('vs_tmpl'); } catch(e) {}
   const el = document.getElementById('vs-ctx-banner');
   if (el) el.style.display = 'none';
+}
+
+// ─── viaSocket Quick Connect (direct app connection, no webhook URL needed) ────
+let _vsConnectScript = false;
+function ensureVsConnectScript() {
+  if (_vsConnectScript) return;
+  _vsConnectScript = true;
+  const s = document.createElement('script');
+  s.src = 'https://embed.viasocket.com/prod-connectcomponent.js';
+  document.head.appendChild(s);
+}
+
+// Track which app + job is pending connection
+let _qcPending = null;
+// Cache: service_id per app_label fetched from server
+const _vsServiceIds = {};
+// Cache: which apps are connected (loaded from /api/vs/connections)
+let _vsConns = {};
+
+async function vsLoadConnections() {
+  try {
+    const r = await fetch('/api/vs/connections');
+    const d = await r.json();
+    _vsConns = d.connections || {};
+  } catch(e) { _vsConns = {}; }
+}
+
+// Called on page ready
+async function vsInit() {
+  ensureVsConnectScript();
+  await vsLoadConnections();
+  // Update all visible connect buttons
+  document.querySelectorAll('.auto-qc-btn').forEach(btn => {
+    const app = btn.dataset.app;
+    if (_vsConns[app]) {
+      btn.classList.add('connected');
+      const statusEl = btn.querySelector('.auto-qc-status');
+      if (statusEl) statusEl.textContent = '✓';
+    }
+  });
+}
+
+async function vsGetServiceId(appLabel) {
+  if (_vsServiceIds[appLabel]) return _vsServiceIds[appLabel];
+  const q = { whatsapp:'whatsapp', gmail:'gmail', sheets:'google sheets', slack:'slack' }[appLabel];
+  if (!q) return null;
+  try {
+    const r = await fetch('/api/vs/find-app?q=' + encodeURIComponent(q));
+    const d = await r.json();
+    const sid = d.data?.[0]?.service_id;
+    if (sid) _vsServiceIds[appLabel] = sid;
+    return sid || null;
+  } catch(e) { return null; }
+}
+
+async function vsQuickConnect(appLabel, jobId, btn) {
+  if (_vsConns[appLabel]) {
+    // Already connected — show config
+    vsShowCfg(appLabel, jobId);
+    return;
+  }
+  ensureVsConnectScript();
+  if (typeof openViasocketConnection !== 'function') {
+    // Script not loaded yet — retry after 800ms
+    setTimeout(() => vsQuickConnect(appLabel, jobId, btn), 800);
+    return;
+  }
+  const statusEl = document.getElementById('qcs-' + appLabel + '-' + jobId);
+  if (statusEl) { statusEl.textContent = '…'; }
+  const serviceId = await vsGetServiceId(appLabel);
+  if (!serviceId) {
+    if (statusEl) statusEl.textContent = 'Error';
+    alert('Could not find viaSocket service for ' + appLabel + '. Check server logs.');
+    return;
+  }
+  _qcPending = { appLabel, jobId, serviceId };
+  try {
+    const { token } = await fetch('/api/embed-token', { method: 'POST' }).then(r => r.json());
+    openViasocketConnection(token, serviceId);
+  } catch(e) {
+    if (statusEl) statusEl.textContent = 'Error';
+    alert('Could not open connect popup: ' + e.message);
+  }
+}
+
+// Listen for viaSocket popup success
+window.addEventListener('message', async (e) => {
+  if (e.data?.type !== 'viasocket_connection_success') return;
+  const authId = e.data?.data?.id;
+  if (!authId || !_qcPending) return;
+  const { appLabel, jobId, serviceId } = _qcPending;
+  _qcPending = null;
+  const statusEl = document.getElementById('qcs-' + appLabel + '-' + jobId);
+  if (statusEl) statusEl.textContent = '…';
+  try {
+    const r = await fetch('/api/vs/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ app_label: appLabel, service_id: serviceId, auth_id: authId }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Connect failed');
+    _vsConns[appLabel] = { connected: true, has_action: d.has_action, config: {}, enabled: true };
+    document.querySelectorAll(`.auto-qc-btn[data-app="${appLabel}"]`).forEach(b => b.classList.add('connected'));
+    document.querySelectorAll('#qcs-' + appLabel + '-' + jobId).forEach(s => s.textContent = '✓');
+    vsShowCfg(appLabel, jobId);
+    setTimeout(loadAutomations, 1000);
+  } catch(e2) {
+    if (statusEl) statusEl.textContent = 'Err';
+    alert('Connect failed: ' + e2.message);
+  }
+});
+
+const VS_CFG_FIELDS = {
+  whatsapp: [{ key:'phone', label:'Your WhatsApp number (with country code)', ph:'+919876543210' }],
+  gmail:    [{ key:'to', label:'Send alerts to email', ph:'you@gmail.com' }],
+  sheets:   [
+    { key:'spreadsheet_id', label:'Google Sheet ID (from URL)', ph:'1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms' },
+    { key:'sheet_name', label:'Sheet/tab name (optional)', ph:'Sheet1' },
+  ],
+  slack:    [{ key:'channel', label:'Slack channel name', ph:'#job-alerts' }],
+};
+
+function vsShowCfg(appLabel, jobId) {
+  const cfgEl = document.getElementById('auto-qcc-' + jobId);
+  if (!cfgEl) return;
+  const fields = VS_CFG_FIELDS[appLabel] || [];
+  const conn = _vsConns[appLabel] || {};
+  const cfg = conn.config || {};
+  const hasCfg = d => d.has_action !== false;
+  const hint = conn.has_action === false
+    ? '<div class="qc-msg err" style="margin-bottom:6px">⚠️ Action ID not found automatically — alerts may not send. Check Railway logs and update action_version_id manually if needed.</div>'
+    : '';
+  cfgEl.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--vs);margin-bottom:8px">${{whatsapp:'💬 WhatsApp',gmail:'📧 Gmail',sheets:'📊 Google Sheets',slack:'💼 Slack'}[appLabel]} — Configure</div>
+    ${hint}
+    ${fields.map(f => `<label>${f.label}<input id="qcf-${appLabel}-${f.key}-${jobId}" placeholder="${f.ph}" value="${(cfg[f.key]||'')}"></label>`).join('')}
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="qc-save" onclick="vsSubmitCfg('${appLabel}','${jobId}')">Save config</button>
+      <button class="qc-save" style="background:var(--fg-3)" onclick="vsTestApp('${appLabel}','${jobId}')">Test now</button>
+      <button class="qc-save" style="background:#dc2626" onclick="vsDisconnect('${appLabel}','${jobId}')">Disconnect</button>
+    </div>
+    <div class="qc-msg" id="qcm-${appLabel}-${jobId}"></div>
+  `;
+  cfgEl.classList.add('open');
+}
+
+async function vsSubmitCfg(appLabel, jobId) {
+  const fields = VS_CFG_FIELDS[appLabel] || [];
+  const config = {};
+  for (const f of fields) {
+    const el = document.getElementById(`qcf-${appLabel}-${f.key}-${jobId}`);
+    if (el) config[f.key] = el.value.trim();
+  }
+  const msgEl = document.getElementById(`qcm-${appLabel}-${jobId}`);
+  if (msgEl) { msgEl.className = 'qc-msg'; msgEl.textContent = 'Saving…'; }
+  try {
+    const r = await fetch('/api/vs/connections/' + appLabel, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ config }),
+    });
+    if (!r.ok) throw new Error('Save failed');
+    if (_vsConns[appLabel]) _vsConns[appLabel].config = { ...(_vsConns[appLabel].config||{}), ...config };
+    if (msgEl) { msgEl.className = 'qc-msg ok'; msgEl.textContent = '✅ Saved! Alerts will now be sent to your ' + appLabel + '.'; }
+  } catch(e) {
+    if (msgEl) { msgEl.className = 'qc-msg err'; msgEl.textContent = e.message; }
+  }
+}
+
+async function vsTestApp(appLabel, jobId) {
+  const msgEl = document.getElementById(`qcm-${appLabel}-${jobId}`);
+  if (msgEl) { msgEl.className = 'qc-msg'; msgEl.textContent = 'Sending test…'; }
+  try {
+    const r = await fetch('/api/vs/connections/' + appLabel + '/test', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Test failed');
+    if (msgEl) { msgEl.className = 'qc-msg ok'; msgEl.textContent = d.ok ? '✅ Test sent! Check your ' + appLabel + '.' : 'Status: ' + d.status; }
+  } catch(e) {
+    if (msgEl) { msgEl.className = 'qc-msg err'; msgEl.textContent = e.message; }
+  }
+}
+
+async function vsDisconnect(appLabel, jobId) {
+  if (!confirm('Disconnect ' + appLabel + '? Future alerts will stop.')) return;
+  await fetch('/api/vs/connections/' + appLabel, { method: 'DELETE' });
+  delete _vsConns[appLabel];
+  document.querySelectorAll(`.auto-qc-btn[data-app="${appLabel}"]`).forEach(b => b.classList.remove('connected'));
+  document.querySelectorAll('#qcs-' + appLabel + '-' + jobId).forEach(s => s.textContent = '');
+  const cfgEl = document.getElementById('auto-qcc-' + jobId);
+  if (cfgEl) { cfgEl.innerHTML = ''; cfgEl.classList.remove('open'); }
 }
 
 function calcAlertMatches() {
@@ -2336,6 +2610,7 @@ function vsReset() {
 })();
 updateBadges();
 loadAutomations();
+vsInit();
 // Show profile panel immediately from saved prefs even before feed loads
 renderRightPanel([]);
 refreshFeed();
