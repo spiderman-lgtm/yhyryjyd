@@ -412,6 +412,55 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .ob-auto-btn.sel{border-color:var(--vs);background:var(--vsbg)}
 .ob-auto-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
 .ob-auto-label{font-size:11px;font-weight:700;color:var(--fg)}
+/* AI Tools Page */
+.ai-score-banner{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--r);margin-bottom:18px;flex-wrap:wrap}
+.ai-score-left{display:flex;align-items:center;gap:12px;flex:1;min-width:180px}
+.ai-score-ring-wrap{position:relative;width:52px;height:52px;flex-shrink:0}
+.ai-score-missing{display:flex;flex-wrap:wrap;gap:6px;flex:2}
+.ai-score-chip{font-size:10px;padding:3px 9px;border-radius:20px;background:var(--vsbg);color:var(--vs);border:1px solid var(--vs);cursor:pointer;font-weight:600;white-space:nowrap}
+.ai-score-chip:hover{opacity:.8}
+.ai-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.ai-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+.ai-card-head{display:flex;align-items:flex-start;gap:12px;padding:16px 16px 0}
+.ai-card-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.ai-card-title{font-size:13px;font-weight:800;color:var(--fg)}
+.ai-card-sub{font-size:11px;color:var(--fg-2);margin-top:2px;line-height:1.4}
+.ai-card-body{padding:14px 16px;flex:1;display:flex;flex-direction:column;gap:0}
+.ai-inp{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-size:12px;box-sizing:border-box;outline:none;font-family:inherit;resize:none}
+.ai-inp:focus{border-color:var(--vs)}
+.ai-ta{resize:vertical;min-height:72px}
+.ai-run-btn{width:100%;padding:9px;background:var(--vs);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;margin-top:10px;font-family:inherit;transition:opacity .15s}
+.ai-run-btn:hover{opacity:.88}
+.ai-run-btn:disabled{opacity:.5;cursor:not-allowed}
+.ai-ghost-btn{width:100%;padding:7px;background:none;color:var(--fg-2);border:1.5px dashed var(--border);border-radius:9px;font-size:12px;cursor:pointer;font-family:inherit;margin-top:6px}
+.ai-ghost-btn:hover{border-color:var(--vs);color:var(--vs)}
+.ai-result{padding:14px 16px;border-top:1.5px solid var(--border);font-size:12px;line-height:1.55;max-height:360px;overflow-y:auto}
+.ai-result-title{font-size:10px;font-weight:800;color:var(--fg-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.ai-chip-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.ai-chip{font-size:10px;padding:2px 8px;border-radius:20px;border:1px solid}
+.ai-chip.green{background:#f0fdf4;color:#16a34a;border-color:#86efac}
+.ai-chip.red{background:#fef2f2;color:#dc2626;border-color:#fca5a5}
+.ai-chip.blue{background:#eff6ff;color:#2563eb;border-color:#93c5fd}
+.ai-chip.amber{background:#fffbeb;color:#92400e;border-color:#fcd34d}
+.ai-kv{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)}
+.ai-kv:last-child{border-bottom:none}
+.ai-kv-k{color:var(--fg-2);font-weight:600}
+.ai-kv-v{color:var(--fg);font-weight:700}
+.ai-bar-wrap{height:6px;background:var(--border);border-radius:3px;overflow:hidden;flex:1;margin:0 8px}
+.ai-bar-fill{height:100%;border-radius:3px;transition:width .6s}
+.ai-offer-row{border:1.5px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;display:flex;flex-direction:column;gap:6px}
+.ai-offer-row input{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--fg);font-size:11px;box-sizing:border-box;font-family:inherit;outline:none}
+.ai-offer-row input:focus{border-color:var(--vs)}
+.ai-offer-del{float:right;background:none;border:none;color:var(--fg-3);cursor:pointer;font-size:13px;margin-top:-2px}
+.ai-winner{background:linear-gradient(135deg,var(--vsbg),#eff6ff);border:1.5px solid var(--vs);border-radius:9px;padding:10px 14px;margin-bottom:10px}
+.ai-tips-list{display:flex;flex-direction:column;gap:8px}
+.ai-tip-item{display:flex;gap:10px;align-items:flex-start;font-size:11px;color:var(--fg-2);line-height:1.45}
+.ai-tip-num{background:var(--vsbg);color:var(--vs);font-weight:800;font-size:10px;min-width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.ai-expiry-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:11px}
+.ai-expiry-item:last-child{border-bottom:none}
+.ai-exp-badge{background:#FFF7ED;color:#c2410c;border:1px solid #fed7aa;border-radius:20px;padding:1px 7px;font-size:9px;font-weight:700;white-space:nowrap}
+.ai-spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--vs);border-radius:50%;animation:spin .7s linear infinite;margin-right:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
 /* Quick Connect buttons */
 .auto-qc-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
 .auto-qc-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--surface-2);cursor:pointer;transition:border-color .12s,background .12s;font-family:inherit;position:relative}
@@ -533,6 +582,11 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
   <button class="nav-item" data-page="trends">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
     Trends
+  </button>
+  <button class="nav-item" data-page="ai-tools">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 110 20A10 10 0 0112 2z"/><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/></svg>
+    AI Tools
+    <span class="nav-badge vs" id="b-aitools" style="display:none">9</span>
   </button>
 </nav>
 
@@ -955,6 +1009,211 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
     </div>
 
   </div><!-- /page-content -->
+
+    <!-- ── AI Tools Page ──────────────────────────────────────────────── -->
+    <div class="page" id="page-ai-tools">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-size:20px;font-weight:800;color:var(--fg)">AI-Powered Tools</div>
+          <div style="font-size:12px;color:var(--fg-2);margin-top:3px">9 intelligent features to maximise your job search success</div>
+        </div>
+        <div id="tb-ai" style="display:none;gap:8px">
+          <div class="ai-ps-bar" id="ai-ps-bar" style="display:none"></div>
+        </div>
+      </div>
+
+      <!-- Profile Completeness Score ────────────────────────────────── -->
+      <div class="ai-score-banner" id="ai-score-banner">
+        <div class="ai-score-left">
+          <div class="ai-score-ring-wrap">
+            <svg width="52" height="52" viewBox="0 0 52 52">
+              <circle cx="26" cy="26" r="20" fill="none" stroke="var(--border)" stroke-width="5"/>
+              <circle id="ai-score-arc" cx="26" cy="26" r="20" fill="none" stroke="var(--vs)" stroke-width="5"
+                stroke-dasharray="125.7" stroke-dashoffset="125.7" stroke-linecap="round" style="transform:rotate(-90deg);transform-origin:center;transition:stroke-dashoffset .6s"/>
+            </svg>
+            <div id="ai-score-pct" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800">—%</div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--fg)">🎯 Profile Completeness</div>
+            <div id="ai-score-label" style="font-size:11px;color:var(--fg-2);margin-top:2px">Loading…</div>
+          </div>
+        </div>
+        <div class="ai-score-missing" id="ai-score-missing"></div>
+      </div>
+
+      <!-- 3-col grid ─────────────────────────────────────────────────── -->
+      <div class="ai-grid">
+
+        <!-- 1. Resume Tailor -->
+        <div class="ai-card" id="aic-tailor">
+          <div class="ai-card-head">
+            <div class="ai-card-icon" style="background:#EFF6FF">📝</div>
+            <div>
+              <div class="ai-card-title">Resume Auto-Tailor</div>
+              <div class="ai-card-sub">Rewrite your summary to match a job's keywords</div>
+            </div>
+          </div>
+          <div class="ai-card-body">
+            <div class="ob-field"><label>Job Title</label><input id="tai-title" placeholder="e.g. Senior React Developer" class="ai-inp"></div>
+            <div class="ob-field"><label>Company</label><input id="tai-co" placeholder="e.g. Razorpay" class="ai-inp"></div>
+            <div class="ob-field"><label>JD Keywords / paste excerpt</label><textarea id="tai-jd" rows="3" placeholder="Paste key sentences from the job description…" class="ai-inp ai-ta"></textarea></div>
+            <button class="ai-run-btn" onclick="aiTailor()">✦ Generate Summary</button>
+          </div>
+          <div class="ai-result" id="tai-result" style="display:none"></div>
+        </div>
+
+        <!-- 2. Salary Intelligence -->
+        <div class="ai-card" id="aic-salary">
+          <div class="ai-card-head">
+            <div class="ai-card-icon" style="background:#F0FDF4">💰</div>
+            <div>
+              <div class="ai-card-title">Salary Intelligence</div>
+              <div class="ai-card-sub">Compare any role vs market average</div>
+            </div>
+          </div>
+          <div class="ai-card-body">
+            <div class="ob-field"><label>Role</label><input id="sal-role" placeholder="e.g. Backend Engineer" class="ai-inp"></div>
+            <div class="ob-field"><label>City</label>
+              <select id="sal-city" class="ai-inp">
+                <option value="Bangalore">Bangalore</option><option value="Mumbai">Mumbai</option>
+                <option value="Delhi NCR">Delhi NCR</option><option value="Hyderabad">Hyderabad</option>
+                <option value="Pune">Pune</option><option value="Chennai">Chennai</option>
+                <option value="Remote / India">Remote</option>
+              </select>
+            </div>
+            <div class="ob-field"><label>Experience</label>
+              <select id="sal-exp" class="ai-inp">
+                <option value="fresher">Fresher (0-1y)</option><option value="junior">Junior (1-3y)</option>
+                <option value="mid">Mid (3-6y)</option><option value="senior">Senior (6-10y)</option>
+                <option value="lead">Lead (10y+)</option>
+              </select>
+            </div>
+            <div class="ob-field"><label>Posted salary (optional)</label><input id="sal-posted" placeholder="e.g. 18 LPA" class="ai-inp"></div>
+            <button class="ai-run-btn" onclick="aiSalary()">✦ Analyse Salary</button>
+          </div>
+          <div class="ai-result" id="sal-result" style="display:none"></div>
+        </div>
+
+        <!-- 3. Rejection Analysis -->
+        <div class="ai-card" id="aic-rejection">
+          <div class="ai-card-head">
+            <div class="ai-card-icon" style="background:#FFF7ED">🔍</div>
+            <div>
+              <div class="ai-card-title">Rejection Pattern Analysis</div>
+              <div class="ai-card-sub">AI finds what's going wrong across your applications</div>
+            </div>
+          </div>
+          <div class="ai-card-body">
+            <div style="font-size:11px;color:var(--fg-2);margin-bottom:10px">Uses your Applied jobs. Add more via the Applied tab — mark them Rejected when you hear back.</div>
+            <div id="rej-preview" style="font-size:11px;color:var(--fg-3);margin-bottom:10px"></div>
+            <button class="ai-run-btn" onclick="aiRejection()">✦ Analyse My Rejections</button>
+          </div>
+          <div class="ai-result" id="rej-result" style="display:none"></div>
+        </div>
+
+        <!-- 4. Offer Comparison -->
+        <div class="ai-card" id="aic-offers">
+          <div class="ai-card-head">
+            <div class="ai-card-icon" style="background:#FAF5FF">⚖️</div>
+            <div>
+              <div class="ai-card-title">Offer Comparison</div>
+              <div class="ai-card-sub">AI compares total comp, growth & culture</div>
+            </div>
+          </div>
+          <div class="ai-card-body">
+            <div id="offer-list"></div>
+            <button class="ai-ghost-btn" onclick="addOffer()">+ Add Offer</button>
+            <button class="ai-run-btn" style="margin-top:10px" onclick="aiOffers()">✦ Compare Offers</button>
+          </div>
+          <div class="ai-result" id="off-result" style="display:none"></div>
+        </div>
+
+        <!-- 5. Referral Finder -->
+        <div class="ai-card" id="aic-referral">
+          <div class="ai-card-head">
+            <div class="ai-card-icon" style="background:#FFF1F2">🤝</div>
+            <div>
+              <div class="ai-card-title">Referral Finder</div>
+              <div class="ai-card-sub">Find connections + draft intro message</div>
+            </div>
+          </div>
+          <div class="ai-card-body">
+            <div class="ob-field"><label>Target Company</label><input id="ref-co" placeholder="e.g. Google" class="ai-inp"></div>
+            <div class="ob-field"><label>Role you're targeting</label><input id="ref-role" placeholder="e.g. SDE-2" class="ai-inp"></div>
+            <div class="ob-field"><label>Your current role/skills</label><input id="ref-you" placeholder="e.g. React, 4 years fullstack" class="ai-inp"></div>
+            <button class="ai-run-btn" onclick="aiReferral()">✦ Find & Draft Message</button>
+          </div>
+          <div class="ai-result" id="ref-result" style="display:none"></div>
+        </div>
+
+        <!-- 6. Weekly Market Pulse -->
+        <div class="ai-card" id="aic-pulse">
+          <div class="ai-card-head">
+            <div class="ai-card-icon" style="background:#F0FDF4">📊</div>
+            <div>
+              <div class="ai-card-title">Weekly Market Pulse</div>
+              <div class="ai-card-sub">Hot roles, hot skills, salary trends</div>
+            </div>
+          </div>
+          <div class="ai-card-body">
+            <div style="font-size:11px;color:var(--fg-2);margin-bottom:10px">Real-time analysis from live job feed — refreshed on demand.</div>
+            <button class="ai-run-btn" onclick="aiPulse()">✦ Generate Market Report</button>
+          </div>
+          <div class="ai-result" id="pul-result" style="display:none"></div>
+        </div>
+
+        <!-- 7. Interview Scheduler -->
+        <div class="ai-card" id="aic-sched">
+          <div class="ai-card-head">
+            <div class="ai-card-icon" style="background:#FFFBEB">📅</div>
+            <div>
+              <div class="ai-card-title">Interview Auto-Scheduler</div>
+              <div class="ai-card-sub">Paste HR message → get reply with slots</div>
+            </div>
+          </div>
+          <div class="ai-card-body">
+            <div class="ob-field"><label>HR Message</label><textarea id="sch-msg" rows="4" placeholder="e.g. Hi, we'd like to schedule a 30-min call. Please share your availability this week." class="ai-inp ai-ta"></textarea></div>
+            <button class="ai-run-btn" onclick="aiSchedule()">✦ Suggest Slots & Draft Reply</button>
+          </div>
+          <div class="ai-result" id="sch-result" style="display:none"></div>
+        </div>
+
+        <!-- 8. Job Expiry Alert -->
+        <div class="ai-card" id="aic-expiry">
+          <div class="ai-card-head">
+            <div class="ai-card-icon" style="background:#FFF7ED">⏰</div>
+            <div>
+              <div class="ai-card-title">Job Expiry Alert</div>
+              <div class="ai-card-sub">Jobs posted 25+ days ago — apply NOW</div>
+            </div>
+          </div>
+          <div class="ai-card-body">
+            <div id="expiry-list" style="font-size:12px;color:var(--fg-2)">Loading…</div>
+          </div>
+        </div>
+
+        <!-- 9. Referral Message (quick) via tailor in job drawer -->
+        <div class="ai-card" id="aic-tips">
+          <div class="ai-card-head">
+            <div class="ai-card-icon" style="background:#EFF6FF">💡</div>
+            <div>
+              <div class="ai-card-title">Smart Job Tips</div>
+              <div class="ai-card-sub">How to use all 9 AI tools effectively</div>
+            </div>
+          </div>
+          <div class="ai-card-body ai-tips-list">
+            <div class="ai-tip-item"><span class="ai-tip-num">1</span><div><strong>Upload resume</strong> in Settings → it fills prefs automatically + shows ATS score.</div></div>
+            <div class="ai-tip-item"><span class="ai-tip-num">2</span><div><strong>Tailor resume</strong> for every job — even a 10% keyword match boost raises callbacks.</div></div>
+            <div class="ai-tip-item"><span class="ai-tip-num">3</span><div><strong>Log every application</strong> in the Applied tab so Rejection Analysis has data.</div></div>
+            <div class="ai-tip-item"><span class="ai-tip-num">4</span><div><strong>Check expiring jobs daily</strong> — 25+ day listings close soon, apply before the crowd.</div></div>
+            <div class="ai-tip-item"><span class="ai-tip-num">5</span><div><strong>Connect Slack / WhatsApp</strong> for instant alerts — first to apply wins in hot roles.</div></div>
+            <div class="ai-tip-item"><span class="ai-tip-num">6</span><div><strong>Use Referral Finder</strong> before applying cold — a referral is 5× more likely to get an interview.</div></div>
+          </div>
+        </div>
+
+      </div><!-- /ai-grid -->
+    </div><!-- /page-ai-tools -->
+
 </div><!-- /main -->
 </div><!-- /app -->
 
@@ -1115,9 +1374,9 @@ const ALERT_CLR = ['var(--accent)','var(--purple)','var(--success)','var(--warn)
 const PAGE_TITLES = {
   feed:'Live Feed', saved:'Saved Jobs', applied:'Applied Jobs',
   connections:'Integrations', alerts:'Alerts', channels:'Alert Channels',
-  prefs:'My Preferences', companies:'Companies', trends:'Trends'
+  prefs:'My Preferences', companies:'Companies', trends:'Trends', 'ai-tools':'AI Tools'
 };
-const TB = { feed:'tb-feed', alerts:'tb-alerts', prefs:'tb-prefs', connections:'tb-connections' };
+const TB = { feed:'tb-feed', alerts:'tb-alerts', prefs:'tb-prefs', connections:'tb-connections', 'ai-tools':'tb-ai' };
 
 function navigate(page) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1135,6 +1394,7 @@ function navigate(page) {
   if (page === 'prefs') loadPrefsForm();
   if (page === 'trends') renderTrends();
   if (page === 'companies') renderCompanies();
+  if (page === 'ai-tools') initAiTools();
 }
 document.querySelectorAll('.nav-item[data-page]').forEach(el =>
   el.addEventListener('click', () => navigate(el.dataset.page)));
@@ -1317,6 +1577,7 @@ function jobCard(job, mode) {
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
         ${platformBadge(job)}
         ${matchBadgeHtml(job)}
+        ${(()=>{const d=job.publication_date?Math.floor((Date.now()-new Date(job.publication_date))/864e5):0;return d>=25?`<span class="badge b-orange" title="Posted ${d} days ago — apply ASAP">⏰ Expiring</span>`:''})()}
         <span class="ago">${ago(job.publication_date)}</span>
       </div>
     </div>
@@ -2745,6 +3006,364 @@ vsInit();
 renderRightPanel([]);
 refreshFeed();
 setInterval(refreshFeed, 5*60*1000);
+
+
+// ─── AI Tools ────────────────────────────────────────────────────────────────
+
+let _aiToolsInited = false;
+
+function initAiTools() {
+  loadProfileScore();
+  renderExpiryList();
+  prefillRejectionPreview();
+  initOffers();
+  _aiToolsInited = true;
+}
+
+// ── Profile Completeness Score ──────────────────────────────────────────
+async function loadProfileScore() {
+  const banner = document.getElementById('ai-score-banner');
+  if (!banner) return;
+  try {
+    const data = await fetch('/api/profile-score').then(r => r.json());
+    const { score, missing } = data;
+    const arc = document.getElementById('ai-score-arc');
+    const circ = 125.7;
+    if (arc) arc.style.strokeDashoffset = (circ * (1 - score / 100)).toFixed(1);
+    const pctEl = document.getElementById('ai-score-pct');
+    if (pctEl) pctEl.textContent = score + '%';
+    const lbl = document.getElementById('ai-score-label');
+    if (lbl) {
+      if (score === 100) lbl.textContent = 'Perfect profile — you get 40% more matches!';
+      else lbl.textContent = `${100-score}% more can unlock up to 40% more job matches`;
+    }
+    const mEl = document.getElementById('ai-score-missing');
+    if (mEl && missing && missing.length) {
+      mEl.innerHTML = missing.map(m =>
+        `<div class="ai-score-chip" onclick="showPage('prefs')" title="${m.impact}">+ ${m.label}</div>`
+      ).join('');
+    }
+  } catch(e) { console.warn('profile-score', e.message); }
+}
+
+// ── Resume Tailor ───────────────────────────────────────────────────────
+async function aiTailor() {
+  const title = document.getElementById('tai-title').value.trim();
+  const co = document.getElementById('tai-co').value.trim();
+  const jd = document.getElementById('tai-jd').value.trim();
+  if (!title) { alert('Enter a job title first'); return; }
+  const btn = event.currentTarget;
+  btn.disabled = true; btn.innerHTML = '<span class="ai-spin"></span>Generating…';
+  const prefs = getPrefs();
+  const result = document.getElementById('tai-result');
+  result.style.display = 'none';
+  try {
+    const data = await fetch('/api/ai/tailor', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ jobTitle: title, company: co, description: jd, skills: prefs.skills }),
+    }).then(r => r.json());
+    if (data.error) throw new Error(data.error);
+    result.innerHTML = `
+      <div class="ai-result-title">Tailored Summary (copy this to your resume)</div>
+      <div style="background:var(--vsbg);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.6;color:var(--fg);margin-bottom:10px;cursor:pointer" 
+           onclick="navigator.clipboard?.writeText(this.textContent)" title="Click to copy">
+        ${esc(data.tailored_summary || '')}
+      </div>
+      <div class="ai-result-title">Match Score</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <div class="ai-bar-wrap"><div class="ai-bar-fill" style="width:${data.match_score||0}%;background:${(data.match_score||0)>=70?'#16a34a':'#f59e0b'}"></div></div>
+        <span style="font-weight:800;font-size:13px">${data.match_score||0}%</span>
+      </div>
+      <div class="ai-chip-row">
+        ${(data.keywords_matched||[]).map(k=>`<span class="ai-chip green">✓ ${esc(k)}</span>`).join('')}
+        ${(data.keywords_missing||[]).map(k=>`<span class="ai-chip red">+ ${esc(k)}</span>`).join('')}
+      </div>
+      ${(data.tips||[]).length ? '<div class="ai-result-title">Tips</div>' + data.tips.map(t=>`<div class="ai-tip-item"><span class="ai-tip-num">→</span><div>${esc(t)}</div></div>`).join('') : ''}`;
+    result.style.display = 'block';
+  } catch(e) { result.innerHTML = `<span style="color:var(--danger)">${esc(e.message)}</span>`; result.style.display='block'; }
+  btn.disabled = false; btn.innerHTML = '✦ Generate Summary';
+}
+
+// ── Salary Intelligence ─────────────────────────────────────────────────
+async function aiSalary() {
+  const role = document.getElementById('sal-role').value.trim();
+  if (!role) { alert('Enter a role first'); return; }
+  const btn = event.currentTarget;
+  btn.disabled = true; btn.innerHTML = '<span class="ai-spin"></span>Analysing…';
+  const result = document.getElementById('sal-result');
+  result.style.display = 'none';
+  try {
+    const data = await fetch('/api/ai/salary', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        title: role,
+        location: document.getElementById('sal-city').value,
+        exp: document.getElementById('sal-exp').value,
+        postedSalary: document.getElementById('sal-posted').value,
+      }),
+    }).then(r => r.json());
+    if (data.error) throw new Error(data.error);
+    const trendIcon = data.trending==='up'?'↑':data.trending==='down'?'↓':'→';
+    const trendColor = data.trending==='up'?'#16a34a':data.trending==='down'?'#dc2626':'#d97706';
+    result.innerHTML = `
+      <div class="ai-winner">
+        <div style="font-size:11px;font-weight:700;color:var(--vs);margin-bottom:4px">Market Range for ${esc(role)}</div>
+        <div style="font-size:20px;font-weight:900;color:var(--fg)">₹${data.market_min}L – ₹${data.market_max}L<span style="font-size:13px;font-weight:500;color:var(--fg-2)"> / year</span></div>
+        <div style="font-size:11px;color:var(--fg-2);margin-top:3px">Median: <strong style="color:var(--fg)">₹${data.market_median}L</strong> · <span style="color:${trendColor};font-weight:700">${trendIcon} ${data.trending}</span></div>
+      </div>
+      <div class="ai-kv"><span class="ai-kv-k">Your posted salary</span><span class="ai-kv-v ${data.posted_vs_market==='above'?'':''}">₹${document.getElementById('sal-posted').value||'—'}</span></div>
+      <div class="ai-kv"><span class="ai-kv-k">vs Market</span><span class="ai-kv-v" style="color:${data.posted_vs_market==='above'?'#16a34a':data.posted_vs_market==='below'?'#dc2626':'#2563eb'}">${esc(data.verdict||'')}</span></div>
+      <div class="ai-kv"><span class="ai-kv-k">Percentile</span><span class="ai-kv-v">${data.percentile||'—'}th</span></div>
+      ${(data.top_paying_companies||[]).length?`<div style="margin-top:8px"><div class="ai-result-title">Top paying cos</div><div class="ai-chip-row">${data.top_paying_companies.map(c=>`<span class="ai-chip blue">${esc(c)}</span>`).join('')}</div></div>`:''}`;
+    result.style.display = 'block';
+  } catch(e) { result.innerHTML=`<span style="color:var(--danger)">${esc(e.message)}</span>`; result.style.display='block'; }
+  btn.disabled = false; btn.innerHTML = '✦ Analyse Salary';
+}
+
+// ── Rejection Analysis ──────────────────────────────────────────────────
+function prefillRejectionPreview() {
+  const applied = getApplied();
+  const apps = Object.values(applied);
+  const el = document.getElementById('rej-preview');
+  if (el) el.textContent = `${apps.length} application${apps.length!==1?'s':''} tracked · ${apps.filter(a=>a.status==='rejected').length} rejections`;
+}
+
+async function aiRejection() {
+  const applied = getApplied();
+  const apps = Object.values(applied);
+  if (apps.length < 2) { alert('Track at least 2 applications in the Applied tab first!'); return; }
+  const btn = event.currentTarget;
+  btn.disabled = true; btn.innerHTML = '<span class="ai-spin"></span>Analysing…';
+  const result = document.getElementById('rej-result');
+  result.style.display = 'none';
+  const payload = apps.map(a => ({ title: a.title||'?', company: a.company||'?', status: a.status||'applied', notes: a.notes||'' }));
+  try {
+    const data = await fetch('/api/ai/rejection', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ applications: payload }),
+    }).then(r => r.json());
+    if (data.error) throw new Error(data.error);
+    const sb = data.stage_breakdown || {};
+    result.innerHTML = `
+      <div class="ai-winner">
+        <div style="font-size:11px;color:var(--fg-2)">Root Cause</div>
+        <div style="font-size:13px;font-weight:700;color:var(--fg);margin-top:4px">${esc(data.root_cause||'')}</div>
+      </div>
+      <div class="ai-kv"><span class="ai-kv-k">Rejection rate</span><span class="ai-kv-v" style="color:#dc2626">${data.rejection_rate||0}%</span></div>
+      <div class="ai-kv"><span class="ai-kv-k">No reply</span><span class="ai-kv-v">${sb.no_reply||0}</span></div>
+      <div class="ai-kv"><span class="ai-kv-k">Rejected after CV</span><span class="ai-kv-v">${sb.rejected_after_cv||0}</span></div>
+      <div class="ai-kv"><span class="ai-kv-k">Rejected after interview</span><span class="ai-kv-v">${sb.rejected_after_interview||0}</span></div>
+      <div class="ai-kv"><span class="ai-kv-k">Offers</span><span class="ai-kv-v" style="color:#16a34a">${sb.offer||0} 🎉</span></div>
+      ${(data.top_patterns||[]).length?`<div class="ai-result-title" style="margin-top:10px">Patterns Found</div><div class="ai-chip-row">${data.top_patterns.map(p=>`<span class="ai-chip amber">${esc(p)}</span>`).join('')}</div>`:''}
+      ${(data.quick_fixes||[]).length?`<div class="ai-result-title" style="margin-top:8px">Quick Fixes</div>${data.quick_fixes.map(f=>`<div class="ai-tip-item"><span class="ai-tip-num">→</span><div>${esc(f)}</div></div>`).join('')}`:''}
+      <div style="margin-top:10px;padding:10px;background:var(--vsbg);border-radius:8px;font-size:12px"><strong>Recommended action:</strong> ${esc(data.recommended_action||'')}`;
+    result.style.display = 'block';
+  } catch(e) { result.innerHTML=`<span style="color:var(--danger)">${esc(e.message)}</span>`; result.style.display='block'; }
+  btn.disabled = false; btn.innerHTML = '✦ Analyse My Rejections';
+}
+
+// ── Offer Comparison ────────────────────────────────────────────────────
+let _offers = [{ company:'', role:'', ctc:'', location:'Bangalore', wfh:false, equity:'', notes:'' }];
+
+function initOffers() {
+  renderOfferList();
+}
+
+function renderOfferList() {
+  const el = document.getElementById('offer-list');
+  if (!el) return;
+  el.innerHTML = _offers.map((o, i) => `
+    <div class="ai-offer-row">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;font-weight:700;color:var(--fg-3)">Offer ${i+1}</span>
+        ${_offers.length > 1 ? `<button class="ai-offer-del" onclick="removeOffer(${i})">✕</button>` : ''}
+      </div>
+      <input placeholder="Company name" value="${esc(o.company)}" oninput="_offers[${i}].company=this.value">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <input placeholder="Role" value="${esc(o.role)}" oninput="_offers[${i}].role=this.value">
+        <input placeholder="CTC in LPA" value="${esc(o.ctc)}" oninput="_offers[${i}].ctc=this.value">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <input placeholder="City" value="${esc(o.location)}" oninput="_offers[${i}].location=this.value">
+        <input placeholder="Equity (optional)" value="${esc(o.equity||'')}" oninput="_offers[${i}].equity=this.value">
+      </div>
+      <input placeholder="Notes (perks, culture, WFH...)" value="${esc(o.notes||'')}" oninput="_offers[${i}].notes=this.value">
+    </div>`).join('');
+}
+
+function addOffer() {
+  if (_offers.length >= 4) { alert('Compare up to 4 offers'); return; }
+  _offers.push({ company:'', role:'', ctc:'', location:'Bangalore', wfh:false, equity:'', notes:'' });
+  renderOfferList();
+}
+
+function removeOffer(i) {
+  _offers.splice(i, 1);
+  renderOfferList();
+}
+
+async function aiOffers() {
+  const valid = _offers.filter(o => o.company && o.ctc);
+  if (valid.length < 2) { alert('Fill at least 2 offers with company + CTC'); return; }
+  const btn = event.currentTarget;
+  btn.disabled = true; btn.innerHTML = '<span class="ai-spin"></span>Comparing…';
+  const result = document.getElementById('off-result');
+  result.style.display = 'none';
+  try {
+    const data = await fetch('/api/ai/offer-compare', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ offers: valid }),
+    }).then(r => r.json());
+    if (data.error) throw new Error(data.error);
+    const dims = ['compensation','growth','stability','culture'];
+    const dimLabels = { compensation:'💰 Comp', growth:'📈 Growth', stability:'🏛️ Stability', culture:'🤝 Culture' };
+    let scoreRows = '';
+    dims.forEach(d => {
+      const scores = (data.breakdown||{})[d] || [];
+      scoreRows += `<div class="ai-kv"><span class="ai-kv-k">${dimLabels[d]}</span><span style="display:flex;gap:8px">${valid.map((_,i)=>`<span style="font-size:11px;font-weight:700">${scores[i]||'—'}</span>`).join(' / ')}</span></div>`;
+    });
+    result.innerHTML = `
+      <div class="ai-winner">
+        <div style="font-size:11px;color:var(--vs);font-weight:700;margin-bottom:4px">🏆 Winner</div>
+        <div style="font-size:16px;font-weight:900;color:var(--fg)">${esc(data.winner||'')}</div>
+        <div style="font-size:11px;color:var(--fg-2);margin-top:4px">${esc(data.winner_reason||'')}</div>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+        ${valid.map((o,i)=>`<div style="flex:1;min-width:80px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--fg)">${(data.scores||[])[i]||'—'}</div><div style="font-size:10px;color:var(--fg-2)">${esc(o.company)}</div></div>`).join('')}
+      </div>
+      ${scoreRows}
+      ${(data.pros_cons||[]).map(pc=>`
+        <div style="margin-top:10px"><div class="ai-result-title">${esc(pc.company)}</div>
+        <div class="ai-chip-row">${(pc.pros||[]).map(p=>`<span class="ai-chip green">✓ ${esc(p)}</span>`).join('')}${(pc.cons||[]).map(c=>`<span class="ai-chip red">✗ ${esc(c)}</span>`).join('')}</div></div>`).join('')}
+      ${data.negotiation_tip?`<div style="margin-top:10px;padding:10px;background:var(--vsbg);border-radius:8px;font-size:12px"><strong>Negotiation tip:</strong> ${esc(data.negotiation_tip)}</div>`:''}`;
+    result.style.display = 'block';
+  } catch(e) { result.innerHTML=`<span style="color:var(--danger)">${esc(e.message)}</span>`; result.style.display='block'; }
+  btn.disabled = false; btn.innerHTML = '✦ Compare Offers';
+}
+
+// ── Referral Finder ─────────────────────────────────────────────────────
+async function aiReferral() {
+  const co = document.getElementById('ref-co').value.trim();
+  const role = document.getElementById('ref-role').value.trim();
+  const you = document.getElementById('ref-you').value.trim();
+  if (!co || !role) { alert('Fill company and role'); return; }
+  const btn = event.currentTarget;
+  btn.disabled = true; btn.innerHTML = '<span class="ai-spin"></span>Drafting…';
+  const result = document.getElementById('ref-result');
+  result.style.display = 'none';
+  try {
+    const data = await fetch('/api/ai/referral', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ company: co, jobTitle: role, userRole: you, userSkills: getPrefs().skills }),
+    }).then(r => r.json());
+    if (data.error) throw new Error(data.error);
+    result.innerHTML = `
+      <div class="ai-result-title">LinkedIn Search Queries</div>
+      <div class="ai-chip-row">${(data.search_queries||[]).map(q=>`<span class="ai-chip blue" style="cursor:pointer" onclick="navigator.clipboard?.writeText('${q.replace(/'/g,"\'")}')" title="Click to copy">${esc(q)}</span>`).join('')}</div>
+      <div class="ai-result-title" style="margin-top:10px">Connection Request Message (60-80 words)</div>
+      <div style="background:var(--vsbg);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.6;color:var(--fg);cursor:pointer;white-space:pre-wrap" 
+           onclick="navigator.clipboard?.writeText(this.textContent)" title="Click to copy">${esc(data.outreach_message||'')}</div>
+      <div class="ai-result-title" style="margin-top:10px">Cold Email Template</div>
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:11px;line-height:1.6;color:var(--fg-2);cursor:pointer;white-space:pre-wrap"
+           onclick="navigator.clipboard?.writeText(this.textContent)" title="Click to copy">${esc(data.email_template||'')}</div>
+      <div class="ai-chip-row" style="margin-top:8px">${(data.platforms_to_check||[]).map(p=>`<span class="ai-chip amber">${esc(p)}</span>`).join('')}</div>
+      ${data.referral_tip?`<div style="margin-top:8px;padding:10px;background:var(--vsbg);border-radius:8px;font-size:12px"><strong>Top tip:</strong> ${esc(data.referral_tip)}</div>`:''}`;
+    result.style.display = 'block';
+  } catch(e) { result.innerHTML=`<span style="color:var(--danger)">${esc(e.message)}</span>`; result.style.display='block'; }
+  btn.disabled = false; btn.innerHTML = '✦ Find & Draft Message';
+}
+
+// ── Market Pulse ────────────────────────────────────────────────────────
+async function aiPulse() {
+  const btn = event.currentTarget;
+  btn.disabled = true; btn.innerHTML = '<span class="ai-spin"></span>Generating report…';
+  const result = document.getElementById('pul-result');
+  result.style.display = 'none';
+  try {
+    const data = await fetch('/api/market-pulse').then(r => r.json());
+    if (data.error) throw new Error(data.error);
+    const hotRoles = (data.hottest_roles||[]).slice(0,4).map(r =>
+      `<div class="ai-kv"><span class="ai-kv-k">${esc(r.role)}</span><span style="display:flex;align-items:center;gap:6px"><span class="ai-chip ${r.trend==='up'?'green':r.trend==='down'?'red':'blue'}" style="font-size:9px">${r.trend==='up'?'↑':'↓'} ${esc(r.trend)}</span><span class="ai-kv-v">${esc(r.avg_salary)}</span></span></div>`
+    ).join('');
+    const hotSkills = (data.hot_skills||[]).slice(0,6).map(s =>
+      `<span class="ai-chip ${s.momentum==='rising'?'green':s.momentum==='declining'?'red':'blue'}" title="${esc(s.reason)}">${esc(s.skill)}</span>`
+    ).join('');
+    const coldSkills = (data.cold_skills||[]).slice(0,4).map(s =>
+      `<span class="ai-chip red">${esc(s)}</span>`
+    ).join('');
+    result.innerHTML = `
+      <div class="ai-winner"><div style="font-size:11px;color:var(--vs);font-weight:700;margin-bottom:4px">📊 Week Summary</div><div style="font-size:12px;line-height:1.5;color:var(--fg)">${esc(data.week_summary||'')}</div></div>
+      ${hotRoles?`<div class="ai-result-title">Hottest Roles</div>${hotRoles}`:''}
+      ${hotSkills?`<div class="ai-result-title" style="margin-top:10px">🔥 Rising Skills</div><div class="ai-chip-row">${hotSkills}</div>`:''}
+      ${coldSkills?`<div class="ai-result-title" style="margin-top:8px">❄️ Declining Skills</div><div class="ai-chip-row">${coldSkills}</div>`:''}
+      ${(data.cities_hiring||[]).length?`<div class="ai-result-title" style="margin-top:8px">Top Hiring Cities</div><div class="ai-chip-row">${data.cities_hiring.map(c=>`<span class="ai-chip blue">${esc(c.city)}</span>`).join('')}</div>`:''}
+      ${data.job_seeker_tip?`<div style="margin-top:8px;padding:10px;background:var(--vsbg);border-radius:8px;font-size:12px"><strong>This week's tip:</strong> ${esc(data.job_seeker_tip)}</div>`:''}`;
+    result.style.display = 'block';
+  } catch(e) { result.innerHTML=`<span style="color:var(--danger)">${esc(e.message)}</span>`; result.style.display='block'; }
+  btn.disabled = false; btn.innerHTML = '✦ Generate Market Report';
+}
+
+// ── Interview Scheduler ─────────────────────────────────────────────────
+async function aiSchedule() {
+  const msg = document.getElementById('sch-msg').value.trim();
+  if (!msg) { alert('Paste the HR message first'); return; }
+  const btn = event.currentTarget;
+  btn.disabled = true; btn.innerHTML = '<span class="ai-spin"></span>Generating slots…';
+  const result = document.getElementById('sch-result');
+  result.style.display = 'none';
+  try {
+    const data = await fetch('/api/ai/interview-slots', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ hrMessage: msg }),
+    }).then(r => r.json());
+    if (data.error) throw new Error(data.error);
+    const slots = (data.suggested_slots||[]).map(s =>
+      `<div class="ai-kv"><span class="ai-kv-k">${esc(s.label)}</span><span class="ai-kv-v">${esc(s.date)} · ${esc(s.time)}</span></div>`
+    ).join('');
+    result.innerHTML = `
+      <div class="ai-result-title">Suggested Slots (IST)</div>
+      ${slots}
+      <div class="ai-result-title" style="margin-top:10px">Reply Email (click to copy)</div>
+      <div style="background:var(--vsbg);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.6;color:var(--fg);cursor:pointer;white-space:pre-wrap"
+           onclick="navigator.clipboard?.writeText(this.textContent)" title="Click to copy">${esc(data.reply_email||'')}</div>
+      ${data.calendar_tip?`<div style="margin-top:8px;padding:10px;background:var(--surface-2);border-radius:8px;font-size:11px;color:var(--fg-2)"><strong>Calendar tip:</strong> ${esc(data.calendar_tip)}</div>`:''}`;
+    result.style.display = 'block';
+  } catch(e) { result.innerHTML=`<span style="color:var(--danger)">${esc(e.message)}</span>`; result.style.display='block'; }
+  btn.disabled = false; btn.innerHTML = '✦ Suggest Slots & Draft Reply';
+}
+
+// ── Job Expiry Alert ────────────────────────────────────────────────────
+function renderExpiryList() {
+  const el = document.getElementById('expiry-list');
+  if (!el) return;
+  const expiring = (typeof allJobs !== 'undefined' ? allJobs : []).filter(j => {
+    if (!j.publication_date) return false;
+    const days = Math.floor((Date.now() - new Date(j.publication_date)) / 864e5);
+    return days >= 25;
+  }).sort((a,b) => new Date(a.publication_date) - new Date(b.publication_date)).slice(0, 12);
+  if (!expiring.length) {
+    el.innerHTML = '<div style="color:var(--fg-3);font-size:11px;padding:8px 0">✓ No jobs older than 25 days in your feed right now.</div>';
+    return;
+  }
+  el.innerHTML = expiring.map(j => {
+    const days = Math.floor((Date.now() - new Date(j.publication_date)) / 864e5);
+    return `<div class="ai-expiry-item">
+      <div style="flex:1;min-width:0;overflow:hidden">
+        <div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(j.title)}</div>
+        <div style="color:var(--fg-3)">${esc(j.company_name||'')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <span class="ai-exp-badge">${days}d old</span>
+        <a href="${esc(j.url)}" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="font-size:10px;padding:3px 9px">Apply →</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Also show AI Tools badge on nav
+document.getElementById('b-aitools') && (document.getElementById('b-aitools').style.display = 'none');
+
 
 // ─── Onboarding Wizard ────────────────────────────────────────────────────
 const OB_STEPS = ['resume','ats','platforms','automate'];

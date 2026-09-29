@@ -1122,3 +1122,240 @@ app.post('/api/vs/connections/:app/test', async (req, res) => {
     res.status(502).json({ error: e.message });
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ─── AI Intelligence Endpoints ────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+
+const aiClient = new Anthropic();
+
+async function aiJson(prompt, max_tokens = 1024) {
+  const msg = await aiClient.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  const text = msg.content.find(b => b.type === 'text')?.text || '{}';
+  const m = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+  return m ? JSON.parse(m[0]) : JSON.parse(text);
+}
+
+// ── 1. Resume Auto-Tailor ─────────────────────────────────────────────────
+app.post('/api/ai/tailor', async (req, res) => {
+  const { jobTitle, company, description, currentSummary, skills } = req.body || {};
+  if (!jobTitle) return res.status(400).json({ error: 'jobTitle required' });
+  try {
+    const result = await aiJson(`You are a resume expert for Indian tech jobs.
+Job: "${jobTitle}" at ${company || 'a company'}
+JD excerpt: ${(description || '').slice(0, 800)}
+Candidate skills: ${skills || 'not provided'}
+Current summary: ${currentSummary || 'none'}
+
+Return ONLY valid JSON:
+{
+  "tailored_summary": "<2-3 sentence professional summary that mirrors JD keywords and shows match. Max 60 words.>",
+  "keywords_matched": ["kw1","kw2","kw3"],
+  "keywords_missing": ["kw4","kw5"],
+  "match_score": <0-100>,
+  "tips": ["tip1","tip2"]
+}`, 800);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── 2. Salary Intelligence ────────────────────────────────────────────────
+app.post('/api/ai/salary', async (req, res) => {
+  const { title, location, exp, postedSalary } = req.body || {};
+  if (!title) return res.status(400).json({ error: 'title required' });
+  try {
+    const result = await aiJson(`You are a salary intelligence engine for Indian tech jobs (2025 data).
+Role: "${title}", Location: ${location || 'India'}, Experience: ${exp || 'mid'}, Posted salary: ${postedSalary || 'not disclosed'}
+
+Return ONLY valid JSON:
+{
+  "market_min": <number in LPA>,
+  "market_median": <number in LPA>,
+  "market_max": <number in LPA>,
+  "posted_vs_market": "<below|at|above>",
+  "percentile": <0-100>,
+  "verdict": "<one line: e.g. 18% above market median>",
+  "trending": "<up|down|stable>",
+  "top_paying_companies": ["co1","co2","co3"]
+}`, 512);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── 3. Rejection Pattern Analysis ────────────────────────────────────────
+app.post('/api/ai/rejection', async (req, res) => {
+  const { applications } = req.body || {};
+  if (!Array.isArray(applications) || applications.length < 2) {
+    return res.status(400).json({ error: 'Need at least 2 applications to analyse' });
+  }
+  const summary = applications.slice(0, 30).map(a =>
+    `${a.title} @ ${a.company} — ${a.status}${a.notes ? ' ('+a.notes+')' : ''}`
+  ).join('\n');
+  try {
+    const result = await aiJson(`You are a career coach analysing an Indian tech job-seeker's application history.
+Applications:
+${summary}
+
+Find patterns in rejections. Return ONLY valid JSON:
+{
+  "rejection_rate": <0-100>,
+  "top_patterns": ["pattern1","pattern2","pattern3"],
+  "root_cause": "<1-2 sentence honest assessment>",
+  "strengths": ["str1","str2"],
+  "quick_fixes": ["fix1","fix2","fix3"],
+  "recommended_action": "<single most impactful thing to do next>",
+  "stage_breakdown": { "no_reply": <n>, "rejected_after_cv": <n>, "rejected_after_interview": <n>, "offer": <n> }
+}`, 900);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── 4. Offer Comparison ───────────────────────────────────────────────────
+app.post('/api/ai/offer-compare', async (req, res) => {
+  const { offers } = req.body || {};
+  if (!Array.isArray(offers) || offers.length < 2) {
+    return res.status(400).json({ error: 'Need at least 2 offers' });
+  }
+  const offerText = offers.map((o, i) =>
+    `Offer ${i+1}: ${o.company} — CTC ₹${o.ctc}L, Role: ${o.role||'?'}, Location: ${o.location||'?'}, ${o.wfh?'Remote/Hybrid':'On-site'}, Equity: ${o.equity||'none'}, Notes: ${o.notes||'-'}`
+  ).join('\n');
+  try {
+    const result = await aiJson(`You are a compensation expert for Indian tech professionals.
+${offerText}
+
+Compare these offers holistically. Return ONLY valid JSON:
+{
+  "winner": "<company name>",
+  "winner_reason": "<2 sentences why>",
+  "scores": [<score 0-100 per offer in order>],
+  "breakdown": {
+    "compensation": [<score per offer>],
+    "growth": [<score per offer>],
+    "stability": [<score per offer>],
+    "culture": [<score per offer>]
+  },
+  "pros_cons": [
+    { "company": "<name>", "pros": ["p1","p2"], "cons": ["c1","c2"] }
+  ],
+  "negotiation_tip": "<which offer to negotiate and how>"
+}`, 900);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── 5. Referral Finder + Intro Draft ─────────────────────────────────────
+app.post('/api/ai/referral', async (req, res) => {
+  const { jobTitle, company, userRole, userSkills, linkedinUrl } = req.body || {};
+  if (!jobTitle || !company) return res.status(400).json({ error: 'jobTitle and company required' });
+  try {
+    const result = await aiJson(`You are a networking coach for Indian tech professionals.
+Target job: "${jobTitle}" at ${company}
+Candidate: ${userRole || 'software engineer'}, skills: ${userSkills || 'fullstack'}
+LinkedIn: ${linkedinUrl || 'not provided'}
+
+Return ONLY valid JSON:
+{
+  "search_queries": ["LinkedIn search query 1","query 2","query 3"],
+  "outreach_message": "<60-80 word LinkedIn connection request message — warm, specific, not spammy>",
+  "email_template": "<subject line and 3-paragraph cold email for mutual connection introduction>",
+  "platforms_to_check": ["LinkedIn","Blind","Discord communities","Twitter/X"],
+  "referral_tip": "<single best tip to get a referral at this company>"
+}`, 900);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── 6. Weekly Market Pulse ────────────────────────────────────────────────
+app.get('/api/market-pulse', async (req, res) => {
+  const jobs = getJobs ? getJobs() : [];
+  const topRoles = {};
+  const topSkills = {};
+  jobs.slice(0, 200).forEach(j => {
+    const cat = j.category || 'Other';
+    topRoles[cat] = (topRoles[cat] || 0) + 1;
+    ((j.candidate_required_skills || '').split(',').map(s => s.trim().toLowerCase())).forEach(s => {
+      if (s.length > 2) topSkills[s] = (topSkills[s] || 0) + 1;
+    });
+  });
+  const topRolesSorted = Object.entries(topRoles).sort((a,b) => b[1]-a[1]).slice(0,6);
+  const topSkillsSorted = Object.entries(topSkills).sort((a,b) => b[1]-a[1]).slice(0,8);
+
+  try {
+    const result = await aiJson(`You are a tech job market analyst for India (2025).
+Live data snapshot — Top categories: ${topRolesSorted.map(([k,v])=>`${k}(${v})`).join(', ')}
+Top skills: ${topSkillsSorted.map(([k,v])=>`${k}(${v})`).join(', ')}
+
+Return ONLY valid JSON:
+{
+  "week_summary": "<2 sentences on Indian tech market this week>",
+  "hottest_roles": [{"role":"<name>","demand":"<high|medium>","trend":"<up|down|stable>","avg_salary":"<Xk-Yk LPA>"}],
+  "hot_skills": [{"skill":"<name>","momentum":"<rising|peak|declining>","reason":"<1 line>"}],
+  "cold_skills": ["skill1","skill2"],
+  "cities_hiring": [{"city":"<name>","count":<n>,"dominant_role":"<role>"}],
+  "job_seeker_tip": "<actionable tip for this week>",
+  "generated_at": "<ISO timestamp>"
+}`, 1024);
+    result.generated_at = new Date().toISOString();
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── 7. Profile Completeness Score ─────────────────────────────────────────
+app.get('/api/profile-score', (req, res) => {
+  const profile = profileStore[req.uid] || {};
+  const prefs = profile.prefs || {};
+  const checks = [
+    { key: 'name',     label: 'Name',             weight: 10, done: !!profile.name },
+    { key: 'email',    label: 'Email',             weight: 10, done: !!profile.email },
+    { key: 'role',     label: 'Target role',       weight: 20, done: !!prefs.role },
+    { key: 'skills',   label: 'Skills',            weight: 20, done: !!(prefs.skills && prefs.skills.split(',').filter(Boolean).length >= 3) },
+    { key: 'location', label: 'Location',          weight: 10, done: !!prefs.location },
+    { key: 'exp',      label: 'Experience level',  weight: 10, done: !!prefs.exp },
+    { key: 'salary',   label: 'Salary expectation',weight: 10, done: !!prefs.salMin },
+    { key: 'ats',      label: 'Resume uploaded',   weight: 10, done: !!profile.ats_score },
+  ];
+  const score = checks.filter(c => c.done).reduce((s,c) => s + c.weight, 0);
+  const missing = checks.filter(c => !c.done).map(c => ({ key: c.key, label: c.label, impact: `+${c.weight}% score` }));
+  res.json({ score, checks, missing });
+});
+
+// ── 8. Interview Scheduler helper (slot suggestions) ──────────────────────
+app.post('/api/ai/interview-slots', async (req, res) => {
+  const { hrMessage, timezone } = req.body || {};
+  if (!hrMessage) return res.status(400).json({ error: 'hrMessage required' });
+  const now = new Date();
+  try {
+    const result = await aiJson(`Today is ${now.toDateString()}. Timezone: ${timezone || 'IST (UTC+5:30)'}.
+HR message: "${hrMessage.slice(0, 400)}"
+
+Suggest 3 interview slots that work for an Indian candidate. Return ONLY valid JSON:
+{
+  "suggested_slots": [
+    {"date":"<Day, DD Mon>","time":"<HH:MM IST>","label":"<e.g. Tomorrow morning>"},
+    {"date":"<Day, DD Mon>","time":"<HH:MM IST>","label":"<label>"},
+    {"date":"<Day, DD Mon>","time":"<HH:MM IST>","label":"<label>"}
+  ],
+  "reply_email": "<professional 3-4 sentence email reply with the slots>",
+  "calendar_tip": "<tip about blocking calendar, sending invite, etc.>"
+}`, 700);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
