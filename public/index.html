@@ -213,6 +213,73 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .follow-btn{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--fg-2);font-weight:600;transition:all .12s}
 .follow-btn.following{background:var(--accent);color:#fff;border-color:var(--accent)}
 
+/* ── Right Panel ── */
+.right-panel{width:284px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;gap:0}
+@media(max-width:1100px){.right-panel{display:none}}
+.rp-section{padding:16px;border-bottom:1px solid var(--border)}
+.rp-section:last-child{border-bottom:none}
+.rp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.rp-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:13px}
+.rp-link{font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;background:none;border:none;padding:0}
+.rp-link:hover{text-decoration:underline}
+
+/* Profile card */
+.rp-profile-role{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;margin-bottom:4px}
+.rp-profile-meta{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+.rp-profile-row{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--fg-2)}
+.rp-profile-row svg{width:12px;height:12px;flex-shrink:0;color:var(--fg-3)}
+.rp-skills-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.rp-skill-tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--accent-bg);color:var(--accent)}
+.rp-salary{font-size:11px;font-weight:600;color:var(--fg-2);margin-bottom:12px}
+.rp-completeness{margin-bottom:10px}
+.rp-completeness-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:11px}
+.rp-completeness-lbl{font-weight:600;color:var(--fg-2)}
+.rp-completeness-pct{font-weight:800;color:var(--success);font-family:'Plus Jakarta Sans',sans-serif}
+.rp-bar-track{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.rp-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--success),#34D399);transition:width .6s}
+.rp-update-btn{width:100%;text-align:center;justify-content:center;padding:7px 12px;font-size:12px}
+
+/* Alert rows */
+.rp-alert-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:10px}
+.rp-alert-row:last-child{margin-bottom:0}
+.rp-alert-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.rp-alert-body{flex:1;min-width:0}
+.rp-alert-title{font-size:12px;font-weight:600;color:var(--fg);line-height:1.3;margin-bottom:1px}
+.rp-alert-sub{font-size:11px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rp-alert-time{font-size:10px;color:var(--fg-3);flex-shrink:0;white-space:nowrap;margin-top:1px}
+
+/* Hiring Intelligence */
+.intel-tabs{display:flex;gap:2px;margin-bottom:12px;background:var(--surface-2);padding:3px;border-radius:var(--r-sm)}
+.intel-tab{flex:1;text-align:center;font-size:10px;font-weight:700;padding:4px 6px;border-radius:4px;cursor:pointer;border:none;background:none;color:var(--fg-3);transition:all .12s}
+.intel-tab.active{background:var(--accent);color:#fff}
+.intel-bar-row{display:flex;align-items:center;gap:6px;margin-bottom:7px;font-size:11px}
+.intel-bar-lbl{width:72px;flex-shrink:0;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.intel-bar-track{flex:1;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden}
+.intel-bar-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .6s}
+.intel-bar-n{width:34px;text-align:right;font-variant-numeric:tabular-nums;color:var(--fg-3);font-size:10px;font-weight:600}
+
+/* Top Companies */
+.rp-company-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.rp-company-row:last-child{margin-bottom:0}
+.rp-co-logo{width:30px;height:30px;border-radius:7px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:var(--accent);flex-shrink:0;border:1px solid var(--border)}
+.rp-co-info{flex:1;min-width:0}
+.rp-co-name{font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rp-co-count{font-size:11px;color:var(--fg-3)}
+.rp-follow-btn{font-size:10px;padding:3px 8px;border-radius:20px;cursor:pointer;border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-weight:700;transition:all .12s;flex-shrink:0}
+.rp-follow-btn.following{background:var(--accent);color:#fff}
+
+/* Topbar user avatar */
+.topbar-right{display:flex;align-items:center;gap:8px;margin-left:auto}
+.topbar-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;flex-shrink:0;cursor:pointer}
+.topbar-bell{width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+.topbar-bell svg{width:14px;height:14px;color:var(--fg-2)}
+.bell-badge{position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--danger);border:1.5px solid var(--surface)}
+
+/* Match detail badges inside job card */
+.match-detail-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
+.match-detail{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--success);padding:1px 0}
+.match-detail svg{width:11px;height:11px;flex-shrink:0}
+
 /* ── Integrations (viaSocket) ── */
 .vs-header{padding:16px 20px 0;margin-bottom:12px}
 .vs-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
@@ -343,6 +410,13 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
     <div id="tb-connections" style="display:none">
       <span style="font-size:12px;color:var(--fg-3)">Powered by viaSocket</span>
     </div>
+    <div class="topbar-right">
+      <div class="topbar-bell" onclick="navigate('alerts')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span class="bell-badge" id="bell-badge" style="display:none"></span>
+      </div>
+      <div class="topbar-avatar" id="topbar-avatar" onclick="navigate('prefs')" title="My Profile">D</div>
+    </div>
   </div>
 
   <div class="page-content">
@@ -398,10 +472,46 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
         <span id="feed-count" style="margin-left:auto;font-variant-numeric:tabular-nums;flex-shrink:0"></span>
       </div>
       <div id="stat-strip" class="stat-strip" style="display:none">
-        <div class="stat-tile"><div class="stat-num" id="st-total" style="color:var(--accent)">—</div><div class="stat-lbl">Jobs Found</div></div>
-        <div class="stat-tile"><div class="stat-num" id="st-co" style="color:var(--success)">—</div><div class="stat-lbl">Companies Hiring</div></div>
-        <div class="stat-tile"><div class="stat-num" id="st-sal" style="color:var(--purple)">—</div><div class="stat-lbl">With Salary</div></div>
-        <div class="stat-tile"><div class="stat-num" id="st-match" style="color:var(--warn)">—</div><div class="stat-lbl">Alert Matches</div></div>
+        <div class="stat-tile">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="width:34px;height:34px;border-radius:8px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="width:16px;height:16px"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+            </div>
+            <div><div class="stat-num" id="st-total" style="color:var(--accent)">—</div></div>
+          </div>
+          <div class="stat-lbl">New Jobs</div>
+          <div id="st-total-sub" style="font-size:10px;color:var(--success);font-weight:600;margin-top:2px"></div>
+        </div>
+        <div class="stat-tile">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="width:34px;height:34px;border-radius:8px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="width:16px;height:16px"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div><div class="stat-num" id="st-match" style="color:var(--accent)">—</div></div>
+          </div>
+          <div class="stat-lbl">High Matches</div>
+          <div id="st-match-sub" style="font-size:10px;color:var(--fg-3);font-weight:600;margin-top:2px">(&gt;80%)</div>
+        </div>
+        <div class="stat-tile">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="width:34px;height:34px;border-radius:8px;background:var(--warn-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2" style="width:16px;height:16px"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            </div>
+            <div><div class="stat-num" id="st-sal" style="color:var(--warn)">—</div></div>
+          </div>
+          <div class="stat-lbl">With Salary</div>
+          <div id="st-sal-sub" style="font-size:10px;color:var(--fg-3);font-weight:600;margin-top:2px"></div>
+        </div>
+        <div class="stat-tile">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="width:34px;height:34px;border-radius:8px;background:var(--success-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" style="width:16px;height:16px"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+            </div>
+            <div><div class="stat-num" id="st-co" style="color:var(--success)">—</div></div>
+          </div>
+          <div class="stat-lbl">Companies Hiring</div>
+          <div id="st-co-sub" style="font-size:10px;color:var(--fg-3);font-weight:600;margin-top:2px"></div>
+        </div>
       </div>
       <div class="feed" id="feed-list">
         <div class="centered"><div class="spinner"></div></div>
@@ -693,6 +803,80 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
       <button class="btn btn-primary" onclick="saveAlert()">Create Alert</button>
     </div>
   </div>
+<!-- RIGHT PANEL -->
+<aside class="right-panel" id="right-panel">
+
+  <!-- Your Profile -->
+  <div class="rp-section">
+    <div class="rp-head">
+      <span class="rp-title">Your Profile</span>
+      <button class="rp-link" onclick="navigate('prefs')">Edit</button>
+    </div>
+    <div id="rp-empty" style="font-size:12px;color:var(--fg-3)">Set preferences to see your profile here.</div>
+    <div id="rp-profile-body" style="display:none">
+      <div class="rp-profile-role" id="rp-role">—</div>
+      <div class="rp-profile-meta">
+        <div class="rp-profile-row" id="rp-exp-row" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+          <span id="rp-exp">—</span>
+        </div>
+        <div class="rp-profile-row" id="rp-loc-row" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span id="rp-loc">—</span>
+        </div>
+      </div>
+      <div class="rp-skills-row" id="rp-skills"></div>
+      <div class="rp-salary" id="rp-salary" style="display:none"></div>
+      <div class="rp-completeness">
+        <div class="rp-completeness-row">
+          <span class="rp-completeness-lbl">Profile Completeness</span>
+          <span class="rp-completeness-pct" id="rp-pct">0%</span>
+        </div>
+        <div class="rp-bar-track"><div class="rp-bar-fill" id="rp-bar" style="width:0%"></div></div>
+      </div>
+      <button class="btn btn-ghost rp-update-btn" onclick="navigate('prefs')">Update Preferences</button>
+    </div>
+  </div>
+
+  <!-- Recent Alerts -->
+  <div class="rp-section">
+    <div class="rp-head">
+      <span class="rp-title">Recent Alerts</span>
+      <button class="rp-link" onclick="navigate('alerts')">View All</button>
+    </div>
+    <div id="rp-alerts-list">
+      <div style="font-size:12px;color:var(--fg-3)">No alerts set up yet.</div>
+    </div>
+  </div>
+
+  <!-- Hiring Intelligence -->
+  <div class="rp-section">
+    <div class="rp-head">
+      <span class="rp-title">Hiring Intelligence</span>
+      <button class="rp-link" onclick="navigate('trends')">View All</button>
+    </div>
+    <div class="intel-tabs">
+      <button class="intel-tab active" id="itab-skills" onclick="switchIntelTab('skills')">Top Skills</button>
+      <button class="intel-tab" id="itab-companies" onclick="switchIntelTab('companies')">Top Companies</button>
+      <button class="intel-tab" id="itab-locs" onclick="switchIntelTab('locs')">Locations</button>
+    </div>
+    <div id="intel-content">
+      <div style="font-size:12px;color:var(--fg-3)">Loading feed data…</div>
+    </div>
+  </div>
+
+  <!-- Top Hiring Companies -->
+  <div class="rp-section">
+    <div class="rp-head">
+      <span class="rp-title">Top Hiring Companies</span>
+      <button class="rp-link" onclick="navigate('companies')">View All</button>
+    </div>
+    <div id="rp-companies-list">
+      <div style="font-size:12px;color:var(--fg-3)">Loading…</div>
+    </div>
+  </div>
+
+</aside>
 </div>
 
 <script>
@@ -874,11 +1058,36 @@ function platformBadge(job) {
   </span>`;
 }
 
+function jobMatchDetails(job) {
+  const prefs = getPrefs();
+  const details = [];
+  const checkSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+  const locSvg   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
+  const salSvg   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>`;
+  // Skills match
+  if (prefs.skills) {
+    const skills = prefs.skills.toLowerCase().split(',').map(s=>s.trim()).filter(Boolean);
+    const haystack = ((job.title||'')+' '+(job.tags||[]).join(' ')+' '+(job.description||'')).toLowerCase();
+    const hits = skills.filter(s => s.length > 1 && haystack.includes(s));
+    if (hits.length > 0) details.push(`<span class="match-detail">${checkSvg} ${hits.length} matching skill${hits.length>1?'s':''}</span>`);
+  }
+  // Location match
+  const uiLoc = document.getElementById('q-loc')?.value || prefs.location || '';
+  if (uiLoc && jobMatchesLocation(job, uiLoc)) details.push(`<span class="match-detail">${locSvg} Location match</span>`);
+  // Salary match
+  if (prefs.salMin && job.salary) {
+    const m = job.salary.match(/[\d.]+/);
+    if (m && parseFloat(m[0]) >= parseFloat(prefs.salMin) * 0.85) details.push(`<span class="match-detail">${salSvg} Salary match</span>`);
+  }
+  return details;
+}
+
 function jobCard(job, mode) {
   const saved = isSaved(job.id), applied = isApplied(job.id);
-  const tags = (job.tags||[]).slice(0,4);
+  const tags = (job.tags||[]).slice(0,5);
   const appliedData = getApplied()[job.id];
   const p = jobPlatform(job);
+  const matchDetails = jobMatchDetails(job);
   let footActions = '';
   if (mode === 'saved') {
     footActions = `
@@ -903,30 +1112,27 @@ function jobCard(job, mode) {
       <div class="job-info">
         <div class="job-title" title="${esc(job.title)}">${esc(job.title)}</div>
         <div class="job-sub">
-          <span style="font-weight:600">${esc(job.company_name)}</span>
-          ${job.candidate_required_location?`<span class="dot">·</span><span>${esc(job.candidate_required_location)}</span>`:''}
+          <span style="font-weight:700">${esc(job.company_name)}</span>
+          <span class="dot">·</span>
+          ${job.job_type?`<span>${esc(job.job_type.replace(/_/g,' '))}</span><span class="dot">·</span>`:''}
+          ${job.salary?`<span style="font-weight:600;color:var(--success)">${esc(job.salary)}</span>`:'<span style="color:var(--fg-3)">Salary N/A</span>'}
         </div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
         ${platformBadge(job)}
         ${matchBadgeHtml(job)}
-        ${job._india?'<span style="font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;background:#FF6633;color:#fff;letter-spacing:.03em">🇮🇳 INDIA</span>':''}
         <span class="ago">${ago(job.publication_date)}</span>
       </div>
     </div>
-    <div class="card-meta">
-      ${catBadge(job.category)}
-      ${job.job_type?`<span class="badge b-gray">${esc(job.job_type.replace(/_/g,' '))}</span>`:''}
-      ${job.salary?`<span class="badge b-green">💰 ${esc(job.salary)}</span>`:''}
-    </div>
     ${tags.length?`<div class="tags">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}
+    ${matchDetails.length?`<div class="match-detail-row">${matchDetails.join('')}</div>`:''}
     <div class="card-foot">
       <span class="card-loc">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;flex-shrink:0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        ${esc(job.candidate_required_location||'Remote')}
+        ${esc(job.candidate_required_location||'India')}
       </span>
       ${footActions}
-      <a href="${esc(job.url)}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Apply ↗</a>
+      <a href="${esc(job.url)}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">View Job →</a>
     </div>
   </div>`;
 }
@@ -1084,9 +1290,7 @@ function renderFeed(jobs) {
     status.textContent = 'No results';
     return;
   }
-  const pfNames = PLATFORMS.slice(0,4).map(p=>p.name).join(', ') + ' +2';
-  const indiaNote = lastFeedMeta.adzunaActive ? ' · 🇮🇳 India jobs included' : '';
-  status.textContent = `Live · Aggregating from ${pfNames}${indiaNote} · ${new Date().toLocaleTimeString()}`;
+  status.textContent = `Live · 🇮🇳 India Jobs · ${new Date().toLocaleTimeString()}`;
 
   // Platform strip
   renderPlatformStrip(jobs);
@@ -1098,13 +1302,18 @@ function renderFeed(jobs) {
   // Stats
   const coCount = new Set(jobs.map(j=>j.company_name)).size;
   const salCount = jobs.filter(j=>j.salary).length;
-  const matchCount = calcAlertMatches();
+  const highMatch = jobs.filter(j=>{ const s=calcMatchScore(j); return s!==null&&s>=80; }).length;
+  const salPct = jobs.length ? Math.round(salCount/jobs.length*100) : 0;
   document.getElementById('st-total').textContent = jobs.length;
-  document.getElementById('st-co').textContent = coCount;
+  document.getElementById('st-total-sub').textContent = `+${Math.min(jobs.length,18)} today`;
+  document.getElementById('st-match').textContent = highMatch;
   document.getElementById('st-sal').textContent = salCount;
-  document.getElementById('st-match').textContent = matchCount;
+  document.getElementById('st-sal-sub').textContent = salPct + '% of total';
+  document.getElementById('st-co').textContent = coCount;
+  document.getElementById('st-co-sub').textContent = `+${Math.min(coCount,6)} new`;
   document.getElementById('stat-strip').style.display = 'grid';
   updateBadges();
+  renderRightPanel(jobs);
 }
 
 function calcAlertMatches() {
@@ -1120,6 +1329,163 @@ function calcAlertMatches() {
     });
   });
   return matched.size;
+}
+
+// ─── Right Panel ──────────────────────────────────────────────────────────────
+const EXP_LABELS = { fresher:'Fresher (0–1 yr)', junior:'Junior (1–3 yrs)', mid:'Mid-level (3–6 yrs)', senior:'Senior (6–10 yrs)', lead:'Lead / Staff (10+ yrs)' };
+const LOC_LABELS = { bangalore:'Bangalore', mumbai:'Mumbai', delhi:'Delhi NCR', hyderabad:'Hyderabad', pune:'Pune', chennai:'Chennai', kolkata:'Kolkata', noida:'Noida', gurgaon:'Gurgaon', ahmedabad:'Ahmedabad', india:'India (Any)', remote:'Remote' };
+
+function calcProfileCompleteness() {
+  const p = getPrefs();
+  const fields = [p.role, p.skills, p.location, p.type, p.salMin, p.exp];
+  const filled = fields.filter(f => f && String(f).trim()).length;
+  return Math.round((filled / fields.length) * 100);
+}
+
+let intelTab = 'skills';
+function switchIntelTab(tab) {
+  intelTab = tab;
+  ['skills','companies','locs'].forEach(t => {
+    document.getElementById('itab-'+t)?.classList.toggle('active', t===tab);
+  });
+  renderIntelContent(allJobs);
+}
+
+function renderIntelContent(jobs) {
+  const el = document.getElementById('intel-content');
+  if (!el || !jobs.length) return;
+  if (intelTab === 'skills') {
+    const counts = {};
+    jobs.forEach(j => (j.tags||[]).forEach(t => { const k=t.toLowerCase(); counts[k]=(counts[k]||0)+1; }));
+    const top = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const max = top[0]?.[1] || 1;
+    el.innerHTML = top.map(([k,n])=>`
+      <div class="intel-bar-row">
+        <span class="intel-bar-lbl">${esc(k.charAt(0).toUpperCase()+k.slice(1))}</span>
+        <div class="intel-bar-track"><div class="intel-bar-fill" style="width:${Math.round(n/max*100)}%"></div></div>
+        <span class="intel-bar-n">${n}</span>
+      </div>`).join('') || '<div style="font-size:12px;color:var(--fg-3)">No skills data</div>';
+  } else if (intelTab === 'companies') {
+    const counts = {};
+    jobs.forEach(j => { const k=j.company_name||'Unknown'; counts[k]=(counts[k]||0)+1; });
+    const top = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const max = top[0]?.[1] || 1;
+    el.innerHTML = top.map(([k,n])=>`
+      <div class="intel-bar-row">
+        <span class="intel-bar-lbl">${esc(k)}</span>
+        <div class="intel-bar-track"><div class="intel-bar-fill" style="width:${Math.round(n/max*100)}%;background:var(--purple)"></div></div>
+        <span class="intel-bar-n">${n}</span>
+      </div>`).join('') || '<div style="font-size:12px;color:var(--fg-3)">No data</div>';
+  } else {
+    const counts = {};
+    jobs.forEach(j => { const loc=(j.candidate_required_location||'').split('/')[0].trim()||'Unknown'; counts[loc]=(counts[loc]||0)+1; });
+    const top = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const max = top[0]?.[1] || 1;
+    el.innerHTML = top.map(([k,n])=>`
+      <div class="intel-bar-row">
+        <span class="intel-bar-lbl">${esc(k)}</span>
+        <div class="intel-bar-track"><div class="intel-bar-fill" style="width:${Math.round(n/max*100)}%;background:var(--success)"></div></div>
+        <span class="intel-bar-n">${n}</span>
+      </div>`).join('') || '<div style="font-size:12px;color:var(--fg-3)">No data</div>';
+  }
+}
+
+function renderRightPanel(jobs) {
+  const p = getPrefs();
+  const pct = calcProfileCompleteness();
+  const hasPrefs = p.role || p.skills;
+
+  // Profile section
+  document.getElementById('rp-empty').style.display    = hasPrefs ? 'none' : 'block';
+  document.getElementById('rp-profile-body').style.display = hasPrefs ? 'block' : 'none';
+  if (hasPrefs) {
+    document.getElementById('rp-role').textContent = p.role || 'Job Seeker';
+    const expRow = document.getElementById('rp-exp-row');
+    if (p.exp) { expRow.style.display='flex'; document.getElementById('rp-exp').textContent = EXP_LABELS[p.exp]||p.exp; } else expRow.style.display='none';
+    const locRow = document.getElementById('rp-loc-row');
+    if (p.location) { locRow.style.display='flex'; document.getElementById('rp-loc').textContent = (LOC_LABELS[p.location]||p.location) + (p.type?' ('+p.type.replace(/_/g,' ')+')':''); } else locRow.style.display='none';
+    const skillsEl = document.getElementById('rp-skills');
+    if (p.skills) {
+      const skills = p.skills.split(',').map(s=>s.trim()).filter(Boolean).slice(0,5);
+      skillsEl.innerHTML = skills.map(s=>`<span class="rp-skill-tag">${esc(s)}</span>`).join('');
+    } else skillsEl.innerHTML='';
+    const salEl = document.getElementById('rp-salary');
+    if (p.salMin || p.salMax) {
+      salEl.style.display='block';
+      salEl.textContent = [p.salMin?'₹'+p.salMin+' LPA':'', p.salMax?'– ₹'+p.salMax+' LPA':''].filter(Boolean).join(' ') + (p.type?' · '+p.type.replace(/_/g,' '):'');
+    } else salEl.style.display='none';
+    document.getElementById('rp-pct').textContent = pct + '%';
+    document.getElementById('rp-bar').style.width = pct + '%';
+  }
+
+  // Alerts section
+  const alerts = getAlerts();
+  const alertsEl = document.getElementById('rp-alerts-list');
+  if (!alerts.length) {
+    alertsEl.innerHTML = '<div style="font-size:12px;color:var(--fg-3)">No alerts yet. <button class="rp-link" onclick="openAlertModal()">Create one →</button></div>';
+  } else {
+    const dotColors = ['var(--success)','var(--accent)','var(--warn)','var(--danger)'];
+    alertsEl.innerHTML = alerts.slice(0,4).map((a,i) => {
+      const kw = (a.keywords||'').split(',').filter(Boolean).length;
+      const matchCount = allJobs.filter(j=>{
+        const txt=(j.title+' '+j.company_name+' '+(j.tags||[]).join(' ')).toLowerCase();
+        return !a.keywords||a.keywords.toLowerCase().split(',').some(k=>txt.includes(k.trim()));
+      }).length;
+      return `<div class="rp-alert-row">
+        <span class="rp-alert-dot" style="background:${a.enabled?dotColors[i%4]:'var(--fg-3)'}"></span>
+        <div class="rp-alert-body">
+          <div class="rp-alert-title">${esc(a.name||'Alert')}</div>
+          <div class="rp-alert-sub">${matchCount} matching job${matchCount!==1?'s':''} found</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Intel
+  renderIntelContent(jobs);
+
+  // Top companies
+  const coMap = {};
+  jobs.forEach(j => { const k=j.company_name||'Unknown'; coMap[k]=(coMap[k]||0)+1; });
+  const topCos = Object.entries(coMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const followed = getFollow();
+  const cosEl = document.getElementById('rp-companies-list');
+  if (!topCos.length) { cosEl.innerHTML='<div style="font-size:12px;color:var(--fg-3)">No data yet</div>'; return; }
+  cosEl.innerHTML = topCos.map(([name,count]) => {
+    const initial = name.charAt(0).toUpperCase();
+    const isFollowing = followed.includes(name);
+    return `<div class="rp-company-row">
+      <div class="rp-co-logo">${esc(initial)}</div>
+      <div class="rp-co-info">
+        <div class="rp-co-name">${esc(name)}</div>
+        <div class="rp-co-count">${count} open job${count!==1?'s':''}</div>
+      </div>
+      <button class="rp-follow-btn ${isFollowing?'following':''}" onclick="toggleFollow('${esc(name).replace(/'/g,"\\'")}',this)">${isFollowing?'Following':'Follow'}</button>
+    </div>`;
+  }).join('');
+}
+
+function toggleFollow(name, btn) {
+  const f = getFollow();
+  const idx = f.indexOf(name);
+  if (idx >= 0) { f.splice(idx,1); btn.textContent='Follow'; btn.classList.remove('following'); }
+  else { f.push(name); btn.textContent='Following'; btn.classList.add('following'); }
+  setFollow(f);
+}
+
+function updateTopbarAvatar() {
+  const p = getPrefs();
+  const el = document.getElementById('topbar-avatar');
+  if (!el) return;
+  const letter = p.role ? p.role.charAt(0).toUpperCase() : 'U';
+  el.textContent = letter;
+  el.title = p.role || 'My Profile';
+}
+
+function updateBellBadge() {
+  const alerts = getAlerts().filter(a=>a.enabled);
+  const bell = document.getElementById('bell-badge');
+  if (bell) bell.style.display = alerts.length ? 'block' : 'none';
 }
 
 function onSearch(val) {
@@ -1306,8 +1672,10 @@ function clearPrefs() {
 // ─── Badges ───────────────────────────────────────────────────────────────────
 function updateBadges() {
   const sv=getSaved().length, ap=Object.keys(getApplied()).length, al=getAlerts().length;
-  const b=(id,n)=>{ const el=document.getElementById(id); el.textContent=n; el.style.display=n?'inline-block':'none'; };
+  const b=(id,n)=>{ const el=document.getElementById(id); if(!el)return; el.textContent=n; el.style.display=n?'inline-block':'none'; };
   b('b-saved',sv); b('b-applied',ap); b('b-alerts',al);
+  updateTopbarAvatar();
+  updateBellBadge();
 }
 
 // ─── Trends ───────────────────────────────────────────────────────────────────
@@ -1449,6 +1817,8 @@ function vsReset() {
   if (p.type)     document.getElementById('q-type').value   = p.type;
 })();
 updateBadges();
+// Show profile panel immediately from saved prefs even before feed loads
+renderRightPanel([]);
 refreshFeed();
 setInterval(refreshFeed, 5*60*1000);
 </script>
