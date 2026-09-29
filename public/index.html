@@ -285,8 +285,68 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 /* ── Integrations (viaSocket) ── */
 .vs-header{padding:16px 20px 0;margin-bottom:12px}
 .vs-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
-.vs-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff}
+.vs-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;vertical-align:middle}
 .vs-sub{font-size:12px;color:var(--fg-3);margin-top:3px}
+/* ── Automation Workspace ── */
+.auto-workspace-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0}
+.auto-ws-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px}
+.auto-ws-sub{font-size:11px;color:var(--fg-3);margin-top:2px}
+.auto-active-count{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--accent);color:#fff;white-space:nowrap}
+.auto-tabs{display:flex;gap:4px;padding:12px 20px 0;border-bottom:1.5px solid var(--border);margin-bottom:0}
+.auto-tab{display:flex;align-items:center;gap:6px;padding:8px 14px;border:none;background:none;font-size:12.5px;font-weight:600;color:var(--fg-3);cursor:pointer;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;transition:all .18s}
+.auto-tab:hover{color:var(--fg);background:var(--hover)}
+.auto-tab.active{color:var(--accent);border-bottom-color:var(--accent);background:none}
+.auto-tab-panel{padding:16px 20px}
+/* Filter bar */
+.auto-filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.auto-filter-btn{display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;background:none;font-size:12px;font-weight:600;color:var(--fg-2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.auto-filter-btn:hover{background:var(--hover);border-color:var(--accent);color:var(--accent)}
+.auto-filter-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+/* Cards grid */
+.auto-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.auto-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;transition:border-color .2s,box-shadow .2s;position:relative}
+.auto-card:hover{border-color:var(--accent-light, #a78bfa);box-shadow:var(--sh-md)}
+.auto-card.enabled{border-color:var(--accent);background:var(--accent-subtle,rgba(99,102,241,.04))}
+.auto-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.auto-card-meta{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.auto-card-icon{font-size:22px;flex-shrink:0}
+.auto-card-titles{flex:1;min-width:0}
+.auto-card-title{font-size:13px;font-weight:700;line-height:1.3;color:var(--fg)}
+.auto-card-app{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;color:#fff;display:inline-block;margin-top:3px}
+.auto-card-trigger{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--fg-3);flex-wrap:wrap}
+.auto-trigger-pill{padding:2px 8px;border-radius:10px;background:var(--hover);font-weight:600;color:var(--fg-2);font-size:10.5px}
+.auto-arrow{opacity:.5}
+.auto-preview{background:var(--hover);border-radius:8px;padding:10px 11px;font-size:10.5px;color:var(--fg-3);white-space:pre-line;line-height:1.5;max-height:70px;overflow:hidden;border-left:3px solid var(--border)}
+.auto-card.enabled .auto-preview{border-left-color:var(--accent)}
+/* Toggle switch */
+.auto-toggle{position:relative;width:40px;height:22px;flex-shrink:0}
+.auto-toggle input{opacity:0;width:0;height:0;position:absolute}
+.auto-toggle-track{position:absolute;inset:0;border-radius:11px;background:var(--border);cursor:pointer;transition:background .2s}
+.auto-toggle input:checked~.auto-toggle-track{background:var(--accent)}
+.auto-toggle-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.auto-toggle input:checked~.auto-toggle-thumb{transform:translateX(18px)}
+/* Loading */
+.auto-loading-state{display:flex;align-items:center;justify-content:center;gap:10px;padding:48px 0;color:var(--fg-3);font-size:13px;grid-column:1/-1}
+.auto-loading-spinner{width:20px;height:20px;border:2.5px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Connecting badge */
+.auto-card-connecting{position:absolute;top:8px;right:8px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;background:var(--warning-bg,#fef3c7);color:var(--warning,#d97706);display:none}
+.auto-card.connecting .auto-card-connecting{display:block}
+/* Integrations tab */
+.auto-integ-header{margin-bottom:12px}
+.auto-conn-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.auto-conn-chip{display:flex;align-items:center;gap:7px;padding:7px 12px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.auto-conn-chip.connected{border-color:var(--success,#10b981);background:rgba(16,185,129,.06);color:var(--success,#10b981)}
+.auto-conn-chip.disconnected{color:var(--fg-2)}
+.auto-conn-chip:hover{background:var(--hover)}
+/* Flow Builder tab */
+.auto-builder-wrap{display:flex;flex-direction:column;align-items:center;text-align:center;padding:40px 20px;gap:12px}
+.auto-builder-icon{width:80px;height:80px;border-radius:20px;background:var(--hover);display:flex;align-items:center;justify-content:center;color:var(--fg-2)}
+.auto-builder-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:18px}
+.auto-builder-desc{font-size:13px;color:var(--fg-3);max-width:420px;line-height:1.6}
+.auto-builder-examples{display:flex;flex-direction:column;gap:6px;text-align:left;background:var(--hover);border-radius:10px;padding:12px 14px;width:100%;max-width:420px}
+.auto-builder-ex{font-size:12px;color:var(--fg-2);display:flex;gap:8px;align-items:flex-start}
+.auto-builder-ex span{color:var(--accent);flex-shrink:0}
 #vs-embed-root{margin:0 20px 20px;border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-md);background:var(--surface);height:calc(100vh - 56px - 70px);min-height:480px;position:relative}
 #vs-embed-mount{width:100%;height:100%}
 .vs-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:32px}
@@ -749,37 +809,125 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 
     <!-- INTEGRATIONS -->
     <div class="page" id="page-connections">
-      <div class="vs-header">
-        <div class="vs-title">Automation Workspace <span class="vs-badge">viaSocket</span></div>
-        <div class="vs-sub">Build job alert flows · connect apps · runs in background 24/7.</div>
+      <!-- ── Automation Workspace Header ── -->
+      <div class="auto-workspace-header">
+        <div>
+          <div class="auto-ws-title">Automations <span class="vs-badge">viaSocket</span></div>
+          <div class="auto-ws-sub">18 pre-built flows · toggle to activate · runs 24/7 in background</div>
+        </div>
+        <div class="auto-active-count" id="auto-active-count">0 active</div>
       </div>
-      <div id="vs-ctx-banner" class="vs-ctx-banner"></div>
-      <div id="vs-embed-root">
-        <div class="vs-state" id="vs-loading">
-          <div class="vs-ico" style="background:linear-gradient(135deg,var(--accent),var(--purple))">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" style="width:24px;height:24px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-          </div>
-          <div>
-            <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;margin-bottom:4px">Loading viaSocket…</div>
-            <div style="font-size:12px;color:var(--fg-3)">Connecting to your automation workspace</div>
-          </div>
-          <div style="display:flex;gap:6px">
-            <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;animation:vsDot .9s ease-in-out infinite"></span>
-            <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;animation:vsDot .9s ease-in-out .2s infinite"></span>
-            <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;animation:vsDot .9s ease-in-out .4s infinite"></span>
+
+      <!-- ── Tabs ── -->
+      <div class="auto-tabs">
+        <button class="auto-tab active" data-tab="automations" onclick="autoSwitchTab('automations',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          Automations
+        </button>
+        <button class="auto-tab" data-tab="integrations" onclick="autoSwitchTab('integrations',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Integrations
+        </button>
+        <button class="auto-tab" data-tab="builder" onclick="autoSwitchTab('builder',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
+          Flow Builder
+        </button>
+      </div>
+
+      <!-- ── TAB: Automations ── -->
+      <div id="auto-tab-automations" class="auto-tab-panel active">
+        <!-- App Filter Bar -->
+        <div class="auto-filter-bar">
+          <button class="auto-filter-btn active" data-cat="all" onclick="autoFilter('all',this)">All</button>
+          <button class="auto-filter-btn" data-cat="whatsapp" onclick="autoFilter('whatsapp',this)">
+            <span style="color:#25D366">💬</span> WhatsApp
+          </button>
+          <button class="auto-filter-btn" data-cat="gmail" onclick="autoFilter('gmail',this)">
+            <span style="color:#EA4335">📧</span> Gmail
+          </button>
+          <button class="auto-filter-btn" data-cat="slack" onclick="autoFilter('slack',this)">
+            <span style="color:#4A154B">💼</span> Slack
+          </button>
+          <button class="auto-filter-btn" data-cat="sheets" onclick="autoFilter('sheets',this)">
+            <span style="color:#0F9D58">📊</span> Sheets
+          </button>
+          <button class="auto-filter-btn" data-cat="calendar" onclick="autoFilter('calendar',this)">
+            <span style="color:#1967D2">📅</span> Calendar
+          </button>
+          <button class="auto-filter-btn" data-cat="linkedin" onclick="autoFilter('linkedin',this)">
+            <span style="color:#0077B5">🔗</span> LinkedIn
+          </button>
+          <button class="auto-filter-btn" data-cat="naukri" onclick="autoFilter('naukri',this)">
+            <span style="color:#FF7555">📋</span> Naukri
+          </button>
+        </div>
+        <!-- Automation Cards Grid -->
+        <div class="auto-cards-grid" id="auto-cards-grid">
+          <div class="auto-loading-state">
+            <div class="auto-loading-spinner"></div>
+            <span>Loading automations…</span>
           </div>
         </div>
-        <div class="vs-state" id="vs-error" style="display:none">
-          <div class="vs-ico" style="background:var(--danger-bg)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" style="width:22px;height:22px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          </div>
+      </div>
+
+      <!-- ── TAB: Integrations (viaSocket embed) ── -->
+      <div id="auto-tab-integrations" class="auto-tab-panel" style="display:none">
+        <div class="auto-integ-header">
           <div>
-            <div style="font-weight:700;font-size:14px;margin-bottom:4px">Could not load embed</div>
-            <div id="vs-error-msg" style="font-size:12px;color:var(--fg-3);max-width:300px"></div>
+            <div style="font-weight:700;font-size:15px;margin-bottom:4px">Connected Apps</div>
+            <div style="font-size:12px;color:var(--fg-3)">Connect WhatsApp, Gmail, Slack, Sheets to power your automations</div>
           </div>
-          <button class="btn btn-ghost btn-sm" onclick="vsReset()">Retry</button>
         </div>
-        <div id="vs-embed-mount" style="width:100%;height:100%;display:none"></div>
+        <div id="auto-conn-chips" class="auto-conn-chips"></div>
+        <div id="vs-ctx-banner" class="vs-ctx-banner"></div>
+        <div id="vs-embed-root" style="margin-top:16px">
+          <div class="vs-state" id="vs-loading">
+            <div class="vs-ico" style="background:linear-gradient(135deg,var(--accent),var(--purple))">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" style="width:24px;height:24px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+            <div>
+              <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;margin-bottom:4px">Loading viaSocket…</div>
+              <div style="font-size:12px;color:var(--fg-3)">Connecting to your automation workspace</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;animation:vsDot .9s ease-in-out infinite"></span>
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;animation:vsDot .9s ease-in-out .2s infinite"></span>
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;animation:vsDot .9s ease-in-out .4s infinite"></span>
+            </div>
+          </div>
+          <div class="vs-state" id="vs-error" style="display:none">
+            <div class="vs-ico" style="background:var(--danger-bg)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" style="width:22px;height:22px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:14px;margin-bottom:4px">Could not load embed</div>
+              <div id="vs-error-msg" style="font-size:12px;color:var(--fg-3);max-width:300px"></div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="vsReset()">Retry</button>
+          </div>
+          <div id="vs-embed-mount" style="width:100%;height:100%;display:none"></div>
+        </div>
+      </div>
+
+      <!-- ── TAB: Flow Builder ── -->
+      <div id="auto-tab-builder" class="auto-tab-panel" style="display:none">
+        <div class="auto-builder-wrap">
+          <div class="auto-builder-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:40px;height:40px;opacity:.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><line x1="10" y1="6.5" x2="14" y2="6.5"/><line x1="17.5" y1="10" x2="17.5" y2="14"/><line x1="10" y1="17.5" x2="14" y2="17.5"/></svg>
+          </div>
+          <div class="auto-builder-title">Build Custom Automation Flows</div>
+          <div class="auto-builder-desc">Use viaSocket's visual flow builder to create custom pipelines — connect any API, add conditions, delays, and loops. No code needed.</div>
+          <div class="auto-builder-examples">
+            <div class="auto-builder-ex"><span>✦</span> If salary &gt; ₹30L AND remote → WhatsApp + Sheets</div>
+            <div class="auto-builder-ex"><span>✦</span> Apply to job → wait 7 days → auto follow-up Gmail</div>
+            <div class="auto-builder-ex"><span>✦</span> Save job → enrich with LinkedIn → Notion database</div>
+          </div>
+          <button class="btn btn-primary" onclick="autoOpenBuilder()" style="margin-top:8px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px;height:16px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Open Flow Builder
+          </button>
+          <div style="font-size:11px;color:var(--fg-3);margin-top:10px">Opens viaSocket — free plan included</div>
+        </div>
       </div>
     </div>
 
@@ -1387,7 +1535,7 @@ function navigate(page) {
   Object.values(TB).forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
   if (TB[page]) document.getElementById(TB[page]).style.display = 'flex';
 
-  if (page === 'connections') { renderVsContextBanner(); setTimeout(vsInitEmbed, 80); }
+  if (page === 'connections') { renderVsContextBanner(); setTimeout(vsInitEmbed, 80); setTimeout(initAutomations, 60); }
   if (page === 'saved') renderSaved();
   if (page === 'applied') renderApplied();
   if (page === 'alerts') renderAlerts();
@@ -2283,6 +2431,240 @@ async function vsInit() {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// ─── 18 Automation Cards ────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+
+let _autoTemplates = [];
+let _autoCfg = {};
+let _autoCatFilter = 'all';
+
+const APP_COLOR = {
+  whatsapp:'#25D366', gmail:'#EA4335', slack:'#4A154B',
+  sheets:'#0F9D58', calendar:'#1967D2',
+};
+const TRIGGER_LABEL = {
+  'job.new':'New Job', 'job.saved':'Job Saved', 'job.applied':'Job Applied',
+  'job.followup':'No Reply 7d', 'job.interview':'Interview', 'job.expiry':'Expiring',
+  'job.status':'Status Change', 'weekly':'Weekly', 'daily':'Daily',
+};
+
+async function initAutomations() {
+  try {
+    const [tr, cr] = await Promise.all([
+      fetch('/api/auto-templates').then(r => r.json()),
+      fetch('/api/auto-config').then(r => r.json()),
+    ]);
+    _autoTemplates = tr;
+    _autoCfg = cr;
+    renderAutomationCards();
+    updateAutoActiveCount();
+    renderConnChips();
+  } catch(e) {
+    document.getElementById('auto-cards-grid').innerHTML =
+      '<div class="auto-loading-state" style="color:var(--danger)">Could not load automations</div>';
+  }
+}
+
+function autoFilter(cat, btn) {
+  _autoCatFilter = cat;
+  document.querySelectorAll('.auto-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAutomationCards();
+}
+
+function autoSwitchTab(tab, btn) {
+  document.querySelectorAll('.auto-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.auto-tab-panel').forEach(p => p.style.display = 'none');
+  btn.classList.add('active');
+  document.getElementById('auto-tab-' + tab).style.display = '';
+  if (tab === 'integrations') { renderVsContextBanner(); setTimeout(vsInitEmbed, 80); }
+}
+
+function renderAutomationCards() {
+  const grid = document.getElementById('auto-cards-grid');
+  if (!grid) return;
+  const visible = _autoTemplates.filter(t =>
+    _autoCatFilter === 'all' || t.category === _autoCatFilter
+  );
+  if (!visible.length) {
+    grid.innerHTML = '<div class="auto-loading-state">No automations in this category</div>';
+    return;
+  }
+  grid.innerHTML = visible.map(t => {
+    const cfg = _autoCfg[t.id] || {};
+    const isOn = cfg.enabled || false;
+    const appConn = _vsConns[t.app];
+    const connected = !!(appConn?.enabled);
+    const trigLabel = TRIGGER_LABEL[t.trigger] || t.trigger;
+    const appColor = APP_COLOR[t.app] || '#6366f1';
+    return `<div class="auto-card${isOn?' enabled':''}" id="auto-card-${t.id}">
+      <div style="position:absolute;top:8px;right:8px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#fef3c7;color:#d97706;display:none" id="auto-conn-badge-${t.id}">Connecting…</div>
+      <div class="auto-card-header">
+        <div class="auto-card-meta">
+          <div class="auto-card-icon">${t.icon}</div>
+          <div class="auto-card-titles">
+            <div class="auto-card-title">${esc(t.title)}</div>
+            <div class="auto-card-app" style="background:${appColor}">${esc(t.appLabel)}</div>
+          </div>
+        </div>
+        <label class="auto-toggle" title="${isOn?'Disable':'Enable'} this automation">
+          <input type="checkbox" ${isOn?'checked':''} onchange="autoToggle('${t.id}',this)">
+          <div class="auto-toggle-track"></div>
+          <div class="auto-toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="auto-card-trigger">
+        <span class="auto-trigger-pill">⚡ ${esc(trigLabel)}</span>
+        <span class="auto-arrow">→</span>
+        <span class="auto-trigger-pill">📲 ${esc(t.appLabel)}</span>
+        ${connected?'<span style="color:var(--success,#10b981);font-size:10px;margin-left:auto">● Connected</span>':'<span style="color:var(--fg-4,#9ca3af);font-size:10px;margin-left:auto">○ Not connected</span>'}
+      </div>
+      <div class="auto-preview">${esc(t.preview)}</div>
+      <div style="font-size:10.5px;color:var(--fg-3);line-height:1.45">${esc(t.desc)}</div>
+    </div>`;
+  }).join('');
+}
+
+async function autoToggle(id, checkbox) {
+  const wantOn = checkbox.checked;
+  const tmpl = _autoTemplates.find(t => t.id === id);
+  if (!tmpl) return;
+  const appConn = _vsConns[tmpl.app];
+  const connected = !!(appConn?.enabled);
+
+  if (wantOn && !connected) {
+    // Need to connect app first
+    checkbox.checked = false;
+    const badge = document.getElementById('auto-conn-badge-' + id);
+    if (badge) badge.style.display = 'block';
+    document.getElementById('auto-card-' + id)?.classList.add('connecting');
+    try {
+      await vsQuickConnectForAuto(tmpl.app, id, checkbox);
+    } catch(e) {
+      if (badge) badge.style.display = 'none';
+      document.getElementById('auto-card-' + id)?.classList.remove('connecting');
+      showToast('Could not connect ' + tmpl.appLabel + '. Try again.', 'error');
+    }
+    return;
+  }
+
+  // App is connected (or we're turning off) — just toggle config
+  try {
+    await fetch('/api/auto-config/' + id, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ enabled: wantOn }),
+    });
+    _autoCfg[id] = { ...(_autoCfg[id]||{}), enabled: wantOn };
+    const card = document.getElementById('auto-card-' + id);
+    if (card) card.classList.toggle('enabled', wantOn);
+    updateAutoActiveCount();
+    showToast(wantOn ? '✅ Automation enabled!' : 'Automation disabled', wantOn?'success':'info');
+  } catch(e) {
+    checkbox.checked = !wantOn;
+    showToast('Error saving. Try again.', 'error');
+  }
+}
+
+async function vsQuickConnectForAuto(appLabel, autoId, checkbox) {
+  // Show connection dialog to connect the app, then enable automation
+  const serviceId = await vsGetServiceId(appLabel);
+  if (!serviceId) {
+    document.getElementById('auto-conn-badge-' + autoId).style.display = 'none';
+    document.getElementById('auto-card-' + autoId)?.classList.remove('connecting');
+    showToast('Could not find ' + appLabel + ' service. Try again.', 'error');
+    return;
+  }
+  const token = await fetch('/api/vs/token').then(r=>r.json()).then(d=>d.token);
+  await openViasocketConnection(token, serviceId, async (authId) => {
+    try {
+      const cr = await fetch('/api/vs/connect', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ app_label:appLabel, service_id:serviceId, auth_id:authId }),
+      }).then(r=>r.json());
+      if (cr.error) throw new Error(cr.error);
+      // Refresh connections
+      await vsLoadConnections();
+      // Now enable the automation
+      await fetch('/api/auto-config/' + autoId, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ enabled: true }),
+      });
+      _autoCfg[autoId] = { enabled:true };
+      checkbox.checked = true;
+      renderAutomationCards();
+      updateAutoActiveCount();
+      renderConnChips();
+      showToast('✅ ' + appLabel + ' connected & automation enabled!', 'success');
+    } catch(e) {
+      showToast('Connect failed: ' + e.message, 'error');
+    } finally {
+      const badge = document.getElementById('auto-conn-badge-' + autoId);
+      if (badge) badge.style.display = 'none';
+      document.getElementById('auto-card-' + autoId)?.classList.remove('connecting');
+    }
+  });
+}
+
+function updateAutoActiveCount() {
+  const count = Object.values(_autoCfg).filter(c=>c.enabled).length;
+  const el = document.getElementById('auto-active-count');
+  if (el) el.textContent = count + ' active';
+}
+
+function renderConnChips() {
+  const wrap = document.getElementById('auto-conn-chips');
+  if (!wrap) return;
+  const apps = ['whatsapp','gmail','slack','sheets','calendar'];
+  const labels = {whatsapp:'WhatsApp',gmail:'Gmail',slack:'Slack',sheets:'Sheets',calendar:'Calendar'};
+  const icons = {whatsapp:'💬',gmail:'📧',slack:'💼',sheets:'📊',calendar:'📅'};
+  wrap.innerHTML = apps.map(a => {
+    const conn = _vsConns[a];
+    const ok = !!(conn?.enabled);
+    return `<div class="auto-conn-chip ${ok?'connected':'disconnected'}" onclick="autoConnectApp('${a}')">
+      <span>${icons[a]}</span>
+      <span>${labels[a]}</span>
+      <span>${ok?'✓ Connected':'+ Connect'}</span>
+    </div>`;
+  }).join('');
+}
+
+async function autoConnectApp(appLabel) {
+  const serviceId = await vsGetServiceId(appLabel);
+  if (!serviceId) { showToast('Service not found', 'error'); return; }
+  const token = await fetch('/api/vs/token').then(r=>r.json()).then(d=>d.token);
+  await openViasocketConnection(token, serviceId, async (authId) => {
+    const cr = await fetch('/api/vs/connect', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ app_label:appLabel, service_id:serviceId, auth_id:authId }),
+    }).then(r=>r.json());
+    if (cr.error) { showToast(cr.error, 'error'); return; }
+    await vsLoadConnections();
+    renderConnChips();
+    renderAutomationCards();
+    showToast('✅ ' + appLabel + ' connected!', 'success');
+  });
+}
+
+function autoOpenBuilder() {
+  window.open('https://viasocket.com', '_blank');
+}
+
+function showToast(msg, type='info') {
+  let t = document.getElementById('auto-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'auto-toast';
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);padding:10px 18px;border-radius:24px;font-size:13px;font-weight:600;z-index:9999;transition:opacity .3s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.15)';
+    document.body.appendChild(t);
+  }
+  const bg = type==='success'?'#10b981':type==='error'?'#ef4444':'#6366f1';
+  t.style.background = bg; t.style.color='#fff'; t.style.opacity='1';
+  t.textContent = msg;
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => { t.style.opacity='0'; }, 2800);
+}
+
 async function vsGetServiceId(appLabel) {
   if (_vsServiceIds[appLabel]) return _vsServiceIds[appLabel];
   const q = { whatsapp:'whatsapp', gmail:'gmail', sheets:'google sheets', slack:'slack' }[appLabel];
@@ -2968,7 +3350,10 @@ async function vsLoadSDK() {
 }
 async function vsInitEmbed() {
   if(vsInitialised) return;
-  if(!document.getElementById('page-connections').classList.contains('active')) return;
+  const intPanel = document.getElementById('auto-tab-integrations');
+  const pageActive = document.getElementById('page-connections').classList.contains('active');
+  if(!pageActive) return;
+  if(intPanel && intPanel.style.display === 'none') return;
   try {
     await vsLoadSDK();
     const embedToken=await vsGetToken();

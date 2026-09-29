@@ -992,22 +992,27 @@ function buildVsInputData(appLabel, conn, eventType, job) {
 async function deliverToApps(uid, eventType, job) {
   if (!SECRET) return;
   const conns = userConns(uid);
+  const autoCfg = userAutoCfg(uid);
   const sends = [];
-  for (const [appLabel, conn] of Object.entries(conns)) {
-    if (!conn.enabled || !conn.script_id || !conn.action_version_id) continue;
-    // Sheets gets save/apply events; others get new-job events
-    const wantTracker = appLabel === 'sheets';
-    if (wantTracker && eventType === 'job.new') continue;
-    if (!wantTracker && eventType !== 'job.new') continue;
-    const payload = buildVsInputData(appLabel, conn, eventType, job);
+  // Find enabled automation templates that match this eventType
+  const activeTmpls = AUTO_TEMPLATES.filter(t =>
+    t.trigger === eventType &&
+    autoCfg[t.id]?.enabled &&
+    conns[t.app]?.enabled &&
+    conns[t.app]?.script_id &&
+    conns[t.app]?.action_version_id
+  );
+  for (const tmpl of activeTmpls) {
+    const conn = conns[tmpl.app];
+    const payload = buildVsInputData(tmpl.app, conn, eventType, job);
     sends.push(
       fetch(`${VS_RUN}/${conn.script_id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(10000),
-      }).then(r => console.log(`[vs-app] ${appLabel} → ${r.status}`))
-        .catch(e => console.warn(`[vs-app] ${appLabel} failed: ${e.message}`))
+      }).then(r => console.log(`[vs-app] ${tmpl.id} → ${r.status}`))
+        .catch(e => console.warn(`[vs-app] ${tmpl.id} failed: ${e.message}`))
     );
   }
   return Promise.all(sends);
@@ -1357,4 +1362,194 @@ Suggest 3 interview slots that work for an Indian candidate. Return ONLY valid J
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ─── 18 Automation Templates ──────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+
+const AUTO_TEMPLATES = [
+  // ── WhatsApp ──────────────────────────────────────────────────────────
+  {
+    id: 'wa_new_job',     app: 'whatsapp', appLabel: 'WhatsApp',   trigger: 'job.new',
+    icon: '💬', title: 'New matching job → WhatsApp alert',
+    desc: 'Instant message the moment a job matching your skills appears',
+    preview: '🔔 *New Job Alert!*\n📌 Senior React Developer @ Razorpay\n📍 Bangalore · ₹25-35 LPA\n\n👉 Apply: hire.radar/j/123',
+    appColor: '#25D366', category: 'whatsapp',
+  },
+  {
+    id: 'wa_expiry',      app: 'whatsapp', appLabel: 'WhatsApp',   trigger: 'job.expiry',
+    icon: '⏰', title: 'Expiring job → WhatsApp urgent nudge',
+    desc: 'Alert when a saved job is 25+ days old — apply before it closes',
+    preview: '⏰ *Urgent — Apply Today!*\n📌 Backend Engineer @ Swiggy\nPosted 26 days ago — closing soon!\n\n👉 Apply now: hire.radar/j/456',
+    appColor: '#25D366', category: 'whatsapp',
+  },
+  {
+    id: 'wa_followup',    app: 'whatsapp', appLabel: 'WhatsApp',   trigger: 'job.followup',
+    icon: '🔁', title: 'No reply 7 days → WhatsApp follow-up nudge',
+    desc: 'Auto-remind yourself to follow up when HR ghosts you',
+    preview: '📬 *Follow-Up Reminder*\nYou applied to Zepto (SDE-2) 7 days ago.\n\n💡 Tip: Email the hiring manager directly.\n\n📧 careers@zepto.co.in',
+    appColor: '#25D366', category: 'whatsapp',
+  },
+  {
+    id: 'wa_interview',   app: 'whatsapp', appLabel: 'WhatsApp',   trigger: 'job.interview',
+    icon: '📅', title: 'Interview scheduled → WhatsApp reminder',
+    desc: '1 hour before your interview — get a prep reminder on WhatsApp',
+    preview: '🎯 *Interview in 1 Hour!*\n🏢 CRED — Product Engineer\n⏰ 3:00 PM IST · Google Meet\n\n✅ Review: DSA, System Design\n📄 Resume saved ↗',
+    appColor: '#25D366', category: 'whatsapp',
+  },
+  {
+    id: 'wa_weekly',      app: 'whatsapp', appLabel: 'WhatsApp',   trigger: 'weekly',
+    icon: '📊', title: 'Sunday digest → WhatsApp top 5 jobs',
+    desc: 'Every Sunday morning — top 5 matching jobs of the week',
+    preview: '☀️ *This Week\'s Top Jobs*\n1. Staff Eng @ PhonePe — ₹40L\n2. EM @ Meesho — ₹45L\n3. SDE3 @ CRED — ₹38L\n...\n\n👉 Full list: hire.radar/week',
+    appColor: '#25D366', category: 'whatsapp',
+  },
+  // ── Gmail ─────────────────────────────────────────────────────────────
+  {
+    id: 'gmail_new_job',  app: 'gmail',    appLabel: 'Gmail',      trigger: 'job.new',
+    icon: '📧', title: 'New matching job → Gmail alert',
+    desc: 'Rich email with full job details, salary, and direct apply link',
+    preview: 'Subject: 🔔 New Match: Senior React Dev @ Razorpay (₹30L)\n\nHi there,\nA job matching your profile just dropped...',
+    appColor: '#EA4335', category: 'gmail',
+  },
+  {
+    id: 'gmail_daily',    app: 'gmail',    appLabel: 'Gmail',      trigger: 'daily',
+    icon: '☀️', title: 'Daily job digest → Gmail',
+    desc: 'Every morning at 8 AM — all new matching jobs from last 24 hours',
+    preview: 'Subject: ☀️ Your Daily Jobs — 12 new matches today\n\nGood morning! Here are your matches...',
+    appColor: '#EA4335', category: 'gmail',
+  },
+  {
+    id: 'gmail_applied',  app: 'gmail',    appLabel: 'Gmail',      trigger: 'job.applied',
+    icon: '✅', title: 'Job applied → Gmail confirmation',
+    desc: 'Application confirmation email with company info and follow-up tips',
+    preview: 'Subject: ✅ Applied — Backend Eng @ Swiggy\n\nYou applied today. Follow up in 7 days if no response...',
+    appColor: '#EA4335', category: 'gmail',
+  },
+  {
+    id: 'gmail_followup', app: 'gmail',    appLabel: 'Gmail',      trigger: 'job.followup',
+    icon: '📝', title: 'No reply 7 days → Gmail draft follow-up',
+    desc: 'Auto-draft a professional follow-up email for you to review & send',
+    preview: 'Subject: Following up — Backend Engineer Application\n\nDear Hiring Manager,\nI applied 7 days ago and wanted to follow up...',
+    appColor: '#EA4335', category: 'gmail',
+  },
+  // ── Slack ─────────────────────────────────────────────────────────────
+  {
+    id: 'slack_new_job',  app: 'slack',    appLabel: 'Slack',      trigger: 'job.new',
+    icon: '💼', title: 'New matching job → Slack post',
+    desc: 'Post to your #jobs channel instantly when a match appears',
+    preview: '🔔 *New job match!*\n*Senior Backend Eng* @ Meesho\n📍 Bangalore · 💰 ₹28-38 LPA\n<https://hire.radar/j/789|Apply Now>',
+    appColor: '#4A154B', category: 'slack',
+  },
+  {
+    id: 'slack_applied',  app: 'slack',    appLabel: 'Slack',      trigger: 'job.applied',
+    icon: '📨', title: 'Job applied → Slack notification',
+    desc: 'Log every application to Slack for accountability & tracking',
+    preview: '✅ Applied to *SDE-2 @ Zepto*\n📅 Today · Status: Under review\n_You can follow up after 7 days_',
+    appColor: '#4A154B', category: 'slack',
+  },
+  {
+    id: 'slack_expiry',   app: 'slack',    appLabel: 'Slack',      trigger: 'weekly',
+    icon: '⚡', title: 'Expiring saved jobs → Slack weekly alert',
+    desc: 'Sunday Slack message listing all saved jobs about to expire',
+    preview: '⏰ *3 saved jobs expiring this week — apply now!*\n• Staff Eng @ CRED (28d)\n• ML Eng @ Juspay (26d)\n• SDE @ Ditto (25d)',
+    appColor: '#4A154B', category: 'slack',
+  },
+  // ── Google Sheets ─────────────────────────────────────────────────────
+  {
+    id: 'sheets_applied', app: 'sheets',   appLabel: 'Google Sheets', trigger: 'job.applied',
+    icon: '📊', title: 'Job applied → Google Sheets row',
+    desc: 'Auto-add every application to your Sheets tracker — title, company, date, status',
+    preview: 'Row added → A2: "Senior React Dev" | B2: "Razorpay" | C2: "Bangalore" | D2: "Applied" | E2: "26 Jan 2026"',
+    appColor: '#0F9D58', category: 'sheets',
+  },
+  {
+    id: 'sheets_saved',   app: 'sheets',   appLabel: 'Google Sheets', trigger: 'job.saved',
+    icon: '🔖', title: 'Job saved → Google Sheets row',
+    desc: 'Every bookmarked job lands in Sheets — never lose a good lead',
+    preview: 'Row added → A5: "EM @ PhonePe" | B5: "₹45 LPA" | C5: "Saved" | D5: "Hyderabad"',
+    appColor: '#0F9D58', category: 'sheets',
+  },
+  {
+    id: 'sheets_status',  app: 'sheets',   appLabel: 'Google Sheets', trigger: 'job.status',
+    icon: '🔄', title: 'Status change → Sheets update',
+    desc: 'When you update to Interviewing/Offered/Rejected — Sheets row updates automatically',
+    preview: 'Row D7 updated: "Applied" → "Interviewing" | E7: "Updated 27 Jan 2026"',
+    appColor: '#0F9D58', category: 'sheets',
+  },
+  // ── Calendar ──────────────────────────────────────────────────────────
+  {
+    id: 'cal_interview',  app: 'calendar', appLabel: 'Calendar',   trigger: 'job.interview',
+    icon: '📅', title: 'Interview scheduled → Google Calendar event',
+    desc: 'Auto-create calendar event with company name, role, and Meet/Zoom link',
+    preview: '📅 Event created:\nCRED — Product Eng Interview\n📆 Fri, 30 Jan · 3:00–4:00 PM IST\n🔗 meet.google.com/xyz-abc',
+    appColor: '#1967D2', category: 'calendar',
+  },
+  {
+    id: 'cal_followup',   app: 'calendar', appLabel: 'Calendar',   trigger: 'job.followup',
+    icon: '🔔', title: 'No reply 7 days → Calendar reminder',
+    desc: 'Block time in your calendar to send the follow-up email',
+    preview: '📅 Reminder added:\n"Follow up — Swiggy Backend Eng"\n📆 Mon, 3 Feb · 10:00 AM IST',
+    appColor: '#1967D2', category: 'calendar',
+  },
+  // ── LinkedIn + Naukri source ───────────────────────────────────────────
+  {
+    id: 'linkedin_wa',    app: 'whatsapp', appLabel: 'WhatsApp',   trigger: 'job.new',
+    icon: '🔗', title: 'New LinkedIn job → WhatsApp alert',
+    desc: 'Only LinkedIn-sourced matches → instant WhatsApp (filter by source)',
+    preview: '🔗 *LinkedIn Job Alert*\n📌 Principal Eng @ Flipkart\n📍 Bangalore · ₹50L+\nVia LinkedIn · Easy Apply ✅',
+    appColor: '#0077B5', category: 'linkedin',
+  },
+  {
+    id: 'naukri_wa',      app: 'whatsapp', appLabel: 'WhatsApp',   trigger: 'job.new',
+    icon: '📋', title: 'New Naukri job → WhatsApp alert',
+    desc: 'Only Naukri-sourced matches → instant WhatsApp (filter by source)',
+    preview: '📋 *Naukri Job Alert*\n📌 SDE-3 @ Amazon\n📍 Hyderabad · ₹35-50 LPA\nVia Naukri.com ✅',
+    appColor: '#FF7555', category: 'naukri',
+  },
+];
+
+// Automation config store (per user, per template id)
+const AUTO_CFG_FILE = path.join(DATA_DIR, 'auto-config.json');
+let autoCfgStore = {};
+try { autoCfgStore = JSON.parse(fs.readFileSync(AUTO_CFG_FILE, 'utf8')); } catch {}
+
+function saveAutoCfg() {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(AUTO_CFG_FILE + '.tmp', JSON.stringify(autoCfgStore));
+    fs.renameSync(AUTO_CFG_FILE + '.tmp', AUTO_CFG_FILE);
+  } catch (e) { console.error('[auto-cfg] save failed:', e.message); }
+}
+
+function userAutoCfg(uid) {
+  if (!autoCfgStore[uid]) autoCfgStore[uid] = {};
+  return autoCfgStore[uid];
+}
+
+// GET /api/auto-templates — static template list
+app.get('/api/auto-templates', (req, res) => {
+  res.json(AUTO_TEMPLATES.map(t => ({
+    id: t.id, app: t.app, appLabel: t.appLabel, trigger: t.trigger,
+    icon: t.icon, title: t.title, desc: t.desc, preview: t.preview,
+    appColor: t.appColor, category: t.category,
+  })));
+});
+
+// GET /api/auto-config — user's enabled map
+app.get('/api/auto-config', (req, res) => {
+  res.json(userAutoCfg(req.uid));
+});
+
+// POST /api/auto-config/:id — toggle on/off
+app.post('/api/auto-config/:id', (req, res) => {
+  const { id } = req.params;
+  const tmpl = AUTO_TEMPLATES.find(t => t.id === id);
+  if (!tmpl) return res.status(400).json({ error: 'Unknown template' });
+  const { enabled } = req.body || {};
+  const cfg = userAutoCfg(req.uid);
+  cfg[id] = { ...( cfg[id] || {} ), enabled: Boolean(enabled), updatedAt: new Date().toISOString() };
+  saveAutoCfg();
+  res.json({ ok: true });
 });
