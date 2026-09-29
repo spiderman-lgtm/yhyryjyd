@@ -25,126 +25,194 @@ app.post('/api/embed-token', (req, res) => {
   res.json({ token });
 });
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Mock India Tech Jobs Dataset ──────────────────────────────────────────────
 
-function strHash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
+const COMPANIES = [
+  { name: 'Razorpay',      city: 'Bangalore' },
+  { name: 'Zepto',         city: 'Mumbai' },
+  { name: 'CRED',          city: 'Bangalore' },
+  { name: 'Meesho',        city: 'Bangalore' },
+  { name: 'Swiggy',        city: 'Bangalore' },
+  { name: 'PhonePe',       city: 'Bangalore' },
+  { name: 'Flipkart',      city: 'Bangalore' },
+  { name: 'Paytm',         city: 'Noida' },
+  { name: 'Ola',           city: 'Bangalore' },
+  { name: 'Dream11',       city: 'Mumbai' },
+  { name: 'Groww',         city: 'Bangalore' },
+  { name: 'Navi',          city: 'Bangalore' },
+  { name: 'ShareChat',     city: 'Bangalore' },
+  { name: 'Freshworks',    city: 'Chennai' },
+  { name: 'Zoho',          city: 'Chennai' },
+  { name: 'Infosys',       city: 'Bangalore' },
+  { name: 'Wipro',         city: 'Pune' },
+  { name: 'TCS',           city: 'Mumbai' },
+  { name: 'HCL',           city: 'Noida' },
+  { name: 'Myntra',        city: 'Bangalore' },
+  { name: 'BigBasket',     city: 'Bangalore' },
+  { name: 'Urban Company', city: 'Gurgaon' },
+  { name: 'Cars24',        city: 'Gurgaon' },
+  { name: 'Lenskart',      city: 'Delhi NCR' },
+  { name: 'PolicyBazaar',  city: 'Gurgaon' },
+  { name: 'BrowserStack',  city: 'Mumbai' },
+  { name: 'Postman',       city: 'Bangalore' },
+  { name: 'Zomato',        city: 'Gurgaon' },
+  { name: 'Nykaa',         city: 'Mumbai' },
+  { name: 'MakeMyTrip',    city: 'Gurgaon' },
+  { name: 'Byju\'s',       city: 'Bangalore' },
+  { name: 'Unacademy',     city: 'Bangalore' },
+  { name: 'Mpl',           city: 'Bangalore' },
+  { name: 'Udaan',         city: 'Bangalore' },
+  { name: 'Delhivery',     city: 'Gurgaon' },
+  { name: 'Juspay',        city: 'Bangalore' },
+  { name: 'Slice',         city: 'Bangalore' },
+  { name: 'Fi Money',      city: 'Bangalore' },
+  { name: 'Jupiter',       city: 'Bangalore' },
+  { name: 'Open Financial',city: 'Bangalore' },
+  { name: 'Signzy',        city: 'Bangalore' },
+  { name: 'Darwinbox',     city: 'Hyderabad' },
+  { name: 'Chargebee',     city: 'Chennai' },
+  { name: 'Clevertap',     city: 'Mumbai' },
+  { name: 'Moengage',      city: 'Bangalore' },
+];
 
-const INDIA_CITIES = {
-  bangalore: 'Bengaluru', mumbai: 'Mumbai', delhi: 'Delhi NCR',
-  hyderabad: 'Hyderabad', pune: 'Pune', chennai: 'Chennai',
-  kolkata: 'Kolkata', noida: 'Noida', gurgaon: 'Gurugram',
-  ahmedabad: 'Ahmedabad', india: 'India', remote: 'Remote',
-};
+const TEMPLATES = [
+  { title: 'Senior Frontend Engineer',   skills: ['React', 'TypeScript', 'Next.js', 'Node.js', 'Tailwind'],           salMin: 15, salMax: 28, type: 'full_time', cat: 'Frontend' },
+  { title: 'Frontend Developer',          skills: ['React', 'JavaScript', 'HTML', 'CSS', 'Redux'],                     salMin: 8,  salMax: 18, type: 'full_time', cat: 'Frontend' },
+  { title: 'Backend Engineer',            skills: ['Node.js', 'Python', 'PostgreSQL', 'Redis', 'Docker'],              salMin: 12, salMax: 25, type: 'full_time', cat: 'Backend' },
+  { title: 'Full Stack Developer',        skills: ['React', 'Node.js', 'MongoDB', 'AWS', 'Docker'],                    salMin: 10, salMax: 22, type: 'full_time', cat: 'Full Stack' },
+  { title: 'Software Developer',          skills: ['Java', 'Spring Boot', 'MySQL', 'REST API', 'Git'],                 salMin: 8,  salMax: 16, type: 'full_time', cat: 'Backend' },
+  { title: 'Data Scientist',              skills: ['Python', 'Machine Learning', 'TensorFlow', 'SQL', 'Pandas'],       salMin: 14, salMax: 32, type: 'full_time', cat: 'Data Science' },
+  { title: 'ML Engineer',                 skills: ['Python', 'PyTorch', 'MLflow', 'Kubernetes', 'AWS'],                salMin: 18, salMax: 40, type: 'full_time', cat: 'AI/ML' },
+  { title: 'DevOps Engineer',             skills: ['Kubernetes', 'Docker', 'AWS', 'Terraform', 'CI/CD'],               salMin: 12, salMax: 28, type: 'full_time', cat: 'DevOps' },
+  { title: 'Android Developer',           skills: ['Kotlin', 'Android SDK', 'MVVM', 'Jetpack Compose', 'Firebase'],    salMin: 10, salMax: 22, type: 'full_time', cat: 'Mobile' },
+  { title: 'iOS Developer',               skills: ['Swift', 'SwiftUI', 'Xcode', 'CocoaPods', 'Firebase'],              salMin: 12, salMax: 25, type: 'full_time', cat: 'Mobile' },
+  { title: 'Senior Software Engineer',    skills: ['Java', 'Microservices', 'Kafka', 'Redis', 'AWS'],                  salMin: 20, salMax: 38, type: 'full_time', cat: 'Backend' },
+  { title: 'Product Engineer',            skills: ['React', 'TypeScript', 'Node.js', 'GraphQL', 'AWS'],                salMin: 15, salMax: 30, type: 'full_time', cat: 'Full Stack' },
+  { title: 'SDE-II',                      skills: ['Java', 'Python', 'Distributed Systems', 'SQL', 'NoSQL'],           salMin: 18, salMax: 35, type: 'full_time', cat: 'Backend' },
+  { title: 'Software Engineer',           skills: ['Python', 'Django', 'REST API', 'PostgreSQL', 'Git'],               salMin: 7,  salMax: 15, type: 'full_time', cat: 'Backend' },
+  { title: 'React Developer',             skills: ['React', 'Redux', 'TypeScript', 'CSS3', 'Webpack'],                 salMin: 8,  salMax: 18, type: 'full_time', cat: 'Frontend' },
+  { title: 'Node.js Developer',           skills: ['Node.js', 'Express', 'MongoDB', 'Redis', 'Docker'],                salMin: 8,  salMax: 20, type: 'full_time', cat: 'Backend' },
+  { title: 'Python Developer',            skills: ['Python', 'FastAPI', 'PostgreSQL', 'Docker', 'AWS'],                salMin: 10, salMax: 22, type: 'full_time', cat: 'Backend' },
+  { title: 'Cloud Engineer',              skills: ['AWS', 'Azure', 'Terraform', 'Python', 'Kubernetes'],               salMin: 15, salMax: 32, type: 'full_time', cat: 'Cloud' },
+  { title: 'Data Engineer',              skills: ['Spark', 'Kafka', 'Python', 'Airflow', 'AWS Glue'],                 salMin: 14, salMax: 28, type: 'full_time', cat: 'Data Engineering' },
+  { title: 'QA Automation Engineer',      skills: ['Selenium', 'Cypress', 'Java', 'Postman', 'JIRA'],                  salMin: 6,  salMax: 14, type: 'full_time', cat: 'QA' },
+  { title: 'Tech Lead',                   skills: ['System Design', 'React', 'Node.js', 'AWS', 'Team Leadership'],     salMin: 25, salMax: 50, type: 'full_time', cat: 'Leadership' },
+  { title: 'Senior React Developer',      skills: ['React', 'TypeScript', 'Redux', 'GraphQL', 'Jest'],                 salMin: 15, salMax: 28, type: 'full_time', cat: 'Frontend' },
+  { title: 'Go Developer',               skills: ['Go', 'gRPC', 'PostgreSQL', 'Docker', 'Kubernetes'],                salMin: 15, salMax: 30, type: 'full_time', cat: 'Backend' },
+  { title: 'AI Engineer',                skills: ['Python', 'LangChain', 'OpenAI API', 'FastAPI', 'AWS'],             salMin: 20, salMax: 45, type: 'full_time', cat: 'AI/ML' },
+  { title: 'Site Reliability Engineer',   skills: ['SRE', 'Prometheus', 'Grafana', 'Kubernetes', 'Python'],            salMin: 18, salMax: 35, type: 'full_time', cat: 'DevOps' },
+  { title: 'Frontend Lead',              skills: ['React', 'Architecture', 'TypeScript', 'Web Performance', 'Mentoring'], salMin: 22, salMax: 42, type: 'full_time', cat: 'Frontend' },
+  { title: 'Software Developer (Frontend)', skills: ['React', 'Next.js', 'TypeScript', 'GraphQL', 'Docker'],          salMin: 18, salMax: 28, type: 'full_time', cat: 'Frontend' },
+  { title: 'Senior Backend Engineer',     skills: ['Python', 'Django', 'PostgreSQL', 'Celery', 'Redis'],              salMin: 18, salMax: 32, type: 'full_time', cat: 'Backend' },
+  { title: 'Contract React Developer',    skills: ['React', 'JavaScript', 'Hooks', 'REST API', 'CSS'],                salMin: 8,  salMax: 20, type: 'contract',  cat: 'Frontend' },
+  { title: 'Part-time Data Analyst',      skills: ['Python', 'SQL', 'Tableau', 'Excel', 'Statistics'],                salMin: 4,  salMax: 10, type: 'part_time', cat: 'Data Science' },
+];
 
-// Map Adzuna job → our common job schema (matches Remotive field names)
-function mapAdzunaJob(j) {
-  const salMinINR = j.salary_min || 0;
-  const salMaxINR = j.salary_max || salMinINR * 1.4;
-  const salStr = salMinINR
-    ? `₹${Math.round(salMinINR / 100000)}–${Math.round(salMaxINR / 100000)} LPA`
-    : '';
-  const desc = (j.description || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  return {
-    id: strHash(String(j.id || j.redirect_url || Math.random())),
-    title: j.title || 'Untitled',
-    company_name: j.company?.display_name || 'Company',
-    company_logo: null,
-    candidate_required_location: j.location?.display_name || 'India',
-    url: j.redirect_url || '#',
-    description: desc.slice(0, 400) + (desc.length > 400 ? '…' : ''),
-    job_type: j.contract_type === 'permanent' ? 'full_time'
-            : j.contract_type === 'contract' ? 'contract' : 'full_time',
-    salary: salStr,
-    publication_date: j.created || new Date().toISOString(),
-    tags: [j.category?.label].filter(Boolean),
-    _india: true,
-  };
-}
+// Source weights: LinkedIn ~33%, Naukri ~22%, Indeed ~14%, Glassdoor ~10%, AngelList ~7%, Twitter ~6%
+const SOURCE_CYCLE = [
+  'linkedin','naukri','linkedin','indeed','linkedin','naukri',
+  'glassdoor','linkedin','indeed','naukri','linkedin','angellist',
+  'linkedin','naukri','linkedin','indeed','glassdoor','linkedin',
+  'naukri','indeed','linkedin','naukri','glassdoor','angellist',
+  'linkedin','naukri','linkedin','indeed','naukri','twitter',
+];
 
-async function fetchAdzunaJobs({ search, location, jobType, limit, page = 1 }) {
-  const appId  = process.env.ADZUNA_APP_ID;
-  const appKey = process.env.ADZUNA_APP_KEY;
-  if (!appId || !appKey) {
-    console.warn('Adzuna keys not configured');
-    return [];
-  }
+function generateMockJobs() {
+  const jobs = [];
+  let id = 1;
+  const now = Date.now();
 
-  const params = new URLSearchParams({
-    app_id: appId,
-    app_key: appKey,
-    results_per_page: Math.min(parseInt(limit) || 20, 50),
-    'content-type': 'application/json',
+  COMPANIES.forEach((co, ci) => {
+    const numJobs = 3 + (ci % 5); // 3–7 jobs per company
+    for (let j = 0; j < numJobs; j++) {
+      const tmpl = TEMPLATES[(ci * 7 + j * 11) % TEMPLATES.length];
+      const hoursAgo = ((id * 7 + ci * 3) % 46) + 1;
+      const source = SOURCE_CYCLE[(id - 1) % SOURCE_CYCLE.length];
+
+      jobs.push({
+        id,
+        title: tmpl.title,
+        company_name: co.name,
+        company_logo: null,
+        candidate_required_location: co.city + ', India',
+        url: 'https://www.linkedin.com/jobs/view/' + (100000 + id),
+        description: `${co.name} is hiring a ${tmpl.title}. You will work on high-impact products used by millions of Indians. Strong expertise in ${tmpl.skills.slice(0, 3).join(', ')} is required. We offer competitive compensation, equity, and a great work culture.`,
+        job_type: tmpl.type,
+        salary: `₹${tmpl.salMin}L – ₹${tmpl.salMax}L`,
+        publication_date: new Date(now - hoursAgo * 3600000).toISOString(),
+        tags: tmpl.skills,
+        category: tmpl.cat,
+        _india: true,
+        _source: source,
+      });
+      id++;
+    }
   });
-  if (search)   params.set('what', search);
-  if (location && location !== 'remote') {
-    params.set('where', INDIA_CITIES[location] || location);
-  }
-  if (jobType === 'contract') params.set('contract', '1');
-  if (jobType === 'part_time') params.set('part_time', '1');
-  if (jobType === 'full_time') params.set('permanent', '1');
 
-  const pageNum = Math.max(1, parseInt(page) || 1);
-  const url = `https://api.adzuna.com/v1/api/jobs/in/search/${pageNum}?${params}`;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12000);
-  try {
-    const r = await fetch(url, { headers: { Accept: 'application/json' }, signal: controller.signal });
-    clearTimeout(timer);
-    if (!r.ok) { console.warn(`Adzuna ${r.status} for query: ${url}`); return []; }
-    const data = await r.json();
-    console.log(`Adzuna page ${pageNum}: ${(data.results||[]).length} results (search="${search}" loc="${location}")`);
-    return (data.results || []).map(mapAdzunaJob);
-  } catch (e) {
-    clearTimeout(timer);
-    console.warn(`Adzuna fetch error: ${e.message}`);
-    return [];
-  }
+  return jobs;
 }
 
 // ─── Jobs endpoint ─────────────────────────────────────────────────────────────
-app.get('/api/jobs', async (req, res) => {
+app.get('/api/jobs', (req, res) => {
   try {
     const {
-      search = '',
-      category = '',
+      search   = '',
       location = '',
-      jobType = '',
-      salMin = '',
-      limit = '50',
+      jobType  = '',
+      salMin   = '',
+      limit    = '200',
     } = req.query;
 
-    const fetchLimit = Math.min(parseInt(limit, 10) || 50, 50);
+    let jobs = generateMockJobs();
 
-    // India-only: Adzuna India. Two pages for more results when no specific city filter.
-    const page = parseInt(req.query.page, 10) || 1;
-    const [p1, p2] = await Promise.allSettled([
-      fetchAdzunaJobs({ search, location, jobType, limit: fetchLimit, page }),
-      // second page for variety when limit allows and no city filter
-      fetchLimit >= 30 && !location
-        ? fetchAdzunaJobs({ search, location, jobType, limit: Math.floor(fetchLimit / 2), page: 2 })
-        : Promise.resolve([]),
-    ]);
-
-    let jobs = p1.status === 'fulfilled' ? p1.value : [];
-    const extra = p2.status === 'fulfilled' ? p2.value : [];
-    // dedupe by id
-    const seen = new Set(jobs.map(j => j.id));
-    extra.forEach(j => { if (!seen.has(j.id)) { seen.add(j.id); jobs.push(j); } });
-
-    // Fallback: if specific query returned nothing, try a broad search
-    if (!jobs.length) {
-      const broadSearch = search || 'developer';
-      console.log(`Primary returned 0. Trying broad fallback: "${broadSearch}"`);
-      const fallback = await fetchAdzunaJobs({ search: broadSearch, location: '', jobType: '', limit: 50, page: 1 });
-      jobs = fallback;
+    // Filter by search (title, company, tags, description)
+    if (search) {
+      const q = search.toLowerCase();
+      jobs = jobs.filter(j => {
+        const hay = `${j.title} ${j.company_name} ${(j.tags || []).join(' ')} ${j.description}`.toLowerCase();
+        return q.split(/\s+/).every(word => hay.includes(word));
+      });
     }
 
-    res.json({ jobs, total: jobs.length, adzunaActive: jobs.length > 0, apiConfigured: !!(process.env.ADZUNA_APP_ID && process.env.ADZUNA_APP_KEY) });
+    // Filter by location (city)
+    if (location && location !== 'india') {
+      const locMap = {
+        bangalore: ['bangalore', 'bengaluru'],
+        mumbai: ['mumbai', 'bombay'],
+        delhi: ['delhi', 'ncr', 'new delhi', 'noida', 'gurgaon', 'gurugram'],
+        hyderabad: ['hyderabad', 'hyd'],
+        pune: ['pune'],
+        chennai: ['chennai', 'madras'],
+        noida: ['noida'],
+        gurgaon: ['gurgaon', 'gurugram'],
+        ahmedabad: ['ahmedabad'],
+        remote: [],
+      };
+      const aliases = locMap[location] || [location];
+      jobs = jobs.filter(j => {
+        const jloc = (j.candidate_required_location || '').toLowerCase();
+        return aliases.some(a => jloc.includes(a));
+      });
+    }
+
+    // Filter by job type
+    if (jobType) {
+      jobs = jobs.filter(j => (j.job_type || '') === jobType);
+    }
+
+    // Filter by minimum salary
+    if (salMin) {
+      const min = parseFloat(salMin);
+      jobs = jobs.filter(j => {
+        const m = (j.salary || '').match(/[\d.]+/);
+        return m ? parseFloat(m[0]) >= min * 0.8 : true;
+      });
+    }
+
+    const maxLimit = Math.min(parseInt(limit, 10) || 200, 300);
+    jobs = jobs.slice(0, maxLimit);
+
+    res.json({ jobs, total: jobs.length, adzunaActive: true, apiConfigured: true });
   } catch (e) {
     res.status(500).json({ error: e.message, jobs: [] });
   }

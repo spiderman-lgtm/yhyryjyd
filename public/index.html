@@ -903,10 +903,16 @@ const PLATFORMS = [
   { id:'twitter',   name:'X / Twitter', color:'#14171A', bg:'#EFF0F0', icon:'X' },
   { id:'indeed',    name:'Indeed',    color:'#2557A7', bg:'#EBF0FA', icon:'I'  },
   { id:'glassdoor', name:'Glassdoor', color:'#0CAA41', bg:'#E6F8ED', icon:'G'  },
-  { id:'angellist', name:'AngelList', color:'#E03A3C', bg:'#FDECED', icon:'A'  },
+  { id:'angellist', name:'Wellfound',  color:'#E03A3C', bg:'#FDECED', icon:'W'  },
 ];
-// Deterministic platform from job id so it's stable across renders
-function jobPlatform(job) { return PLATFORMS[Math.abs(job.id || 0) % PLATFORMS.length]; }
+// Use job's _source field when available, else fall back to id-based assignment
+function jobPlatform(job) {
+  if (job._source) {
+    const p = PLATFORMS.find(p => p.id === job._source);
+    if (p) return p;
+  }
+  return PLATFORMS[Math.abs(job.id || 0) % PLATFORMS.length];
+}
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let allJobs = [];
@@ -1152,7 +1158,7 @@ function buildFeedParams() {
   const jobType  = uiType || prefs.type || '';
   const salMin   = prefs.salMin || '';
 
-  return { search, location, category, jobType, salMin, limit: 60 };
+  return { search, location, category, jobType, salMin, limit: 200 };
 }
 
 // Client-side post-filter: location match for jobs that slipped through (e.g. Remotive)
@@ -1308,7 +1314,7 @@ function renderFeed(jobs) {
     status.textContent = apiOk ? 'No results — try broadening your search' : '⚠️ API not configured';
     return;
   }
-  status.textContent = `Live · 🇮🇳 India Jobs · ${new Date().toLocaleTimeString()}`;
+  status.textContent = `Live · 🇮🇳 India Jobs · ${jobs.length} listings · ${new Date().toLocaleTimeString()}`;
 
   // Platform strip
   renderPlatformStrip(jobs);
