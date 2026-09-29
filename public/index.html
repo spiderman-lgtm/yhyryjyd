@@ -144,12 +144,18 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .stat-lbl{font-size:11px;color:var(--fg-3);margin-top:4px}
 
 /* ── Preferences ── */
-.prefs-wrap{max-width:560px;padding:20px}
-.prefs-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px;box-shadow:var(--sh);display:flex;flex-direction:column;gap:16px}
-.prefs-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:15px;margin-bottom:2px}
-.prefs-sub{font-size:12px;color:var(--fg-3)}
+.prefs-wrap{padding:20px;display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
+@media(max-width:800px){.prefs-wrap{grid-template-columns:1fr}}
+.prefs-left{display:flex;flex-direction:column;gap:14px}
+.prefs-right{display:flex;flex-direction:column;gap:14px}
+.prefs-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--sh);display:flex;flex-direction:column;gap:14px}
+.prefs-card-header{display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.prefs-card-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.prefs-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;margin-bottom:1px}
+.prefs-sub{font-size:11px;color:var(--fg-3);line-height:1.4}
 .pref-section{display:flex;flex-direction:column;gap:12px}
-.pref-divider{border:none;border-top:1px solid var(--border)}
+.pref-divider{border:none;border-top:1px solid var(--border);margin:0}
+.pref-section-label{font-size:11px;font-weight:700;color:var(--fg-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
 
 /* ── Resume Upload ── */
 .resume-zone{border:2px dashed var(--border-2);border-radius:var(--r);padding:20px 16px;text-align:center;cursor:pointer;transition:all .15s;background:var(--surface-2);position:relative}
@@ -219,11 +225,13 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 @keyframes vsDot{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
 
 /* ── Platform Source Chips (Preferences) ── */
-.pcon-chip-row{display:flex;flex-wrap:wrap;gap:7px}
-.pcon-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px 5px 7px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface-2);cursor:pointer;transition:all .15s;user-select:none;font-size:11px;font-weight:700;color:var(--fg-2)}
+.pcon-chip-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.pcon-chip{display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface-2);cursor:pointer;transition:all .15s;user-select:none;font-size:11px;font-weight:700;color:var(--fg-2)}
 .pcon-chip:hover{border-color:var(--accent);background:var(--accent-bg);color:var(--accent)}
 .pcon-chip.on{color:#fff;border-color:transparent}
-.pcon-chip-dot{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;color:#fff;flex-shrink:0}
+.pcon-chip-dot{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#fff;flex-shrink:0}
+.pcon-chip-name{flex:1;font-size:11px;font-weight:700}
+.pcon-chip-check{font-size:11px;opacity:.8}
 
 /* ── Modal ── */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100}
@@ -361,6 +369,12 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
           <option value="india">India (Any)</option>
           <option value="remote">Remote</option>
         </select>
+        <select class="input" id="q-type" style="width:128px" onchange="applyFilter()">
+          <option value="">Job Type</option>
+          <option value="full_time">Full-time</option>
+          <option value="contract">Contract</option>
+          <option value="part_time">Part-time</option>
+        </select>
         <select class="input" id="q-cat" style="width:136px" onchange="applyFilter()">
           <option value="">All Categories</option>
           <option value="software-dev">Software Dev</option>
@@ -452,24 +466,29 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
     <!-- MY PREFERENCES -->
     <div class="page" id="page-prefs">
       <div class="prefs-wrap">
-        <div class="prefs-card">
-          <div>
-            <div class="prefs-title">My Job Preferences</div>
-            <div class="prefs-sub">HireRadar uses these to personalise your feed and match alerts.</div>
-          </div>
-          <!-- Resume Upload -->
-          <div>
-            <div style="font-size:12px;font-weight:700;color:var(--fg-2);margin-bottom:8px">
-              Smart Fill from Resume <span class="ai-tag">✦ AI</span>
+
+        <!-- LEFT column: Resume + Platform picker -->
+        <div class="prefs-left">
+
+          <!-- Resume card -->
+          <div class="prefs-card">
+            <div class="prefs-card-header">
+              <div class="prefs-card-icon" style="background:linear-gradient(135deg,var(--accent),var(--purple))">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" style="width:17px;height:17px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div>
+                <div class="prefs-title">Smart Resume Fill <span class="ai-tag">✦ AI</span></div>
+                <div class="prefs-sub">Upload resume → AI auto-fills all fields below</div>
+              </div>
             </div>
             <div class="resume-zone" id="resume-zone" ondragover="resumeDragOver(event)" ondragleave="resumeDragLeave()" ondrop="resumeDrop(event)">
               <input type="file" id="resume-file" accept=".pdf,.txt,application/pdf,text/plain" onchange="resumeFileSelected(this.files[0])">
               <div id="resume-idle">
                 <div class="resume-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 </div>
-                <div class="resume-zone-title">Upload your resume</div>
-                <div class="resume-zone-sub">AI reads it and auto-fills all preferences · PDF or TXT · up to 10 MB</div>
+                <div class="resume-zone-title">Drop PDF / TXT here</div>
+                <div class="resume-zone-sub">or click to browse · up to 10 MB</div>
               </div>
             </div>
             <div class="resume-state loading" id="resume-loading">
@@ -478,106 +497,148 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
             </div>
             <div class="resume-state done" id="resume-done">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>
-              <span id="resume-done-text">Preferences filled from your resume — review and save!</span>
+              <span id="resume-done-text">Preferences filled — review and save!</span>
             </div>
             <div class="resume-state err" id="resume-err">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              <span id="resume-err-text">Could not parse resume. Please fill in manually.</span>
+              <span id="resume-err-text">Could not parse resume. Fill manually.</span>
             </div>
           </div>
-          <hr class="pref-divider">
-          <!-- Platform Source Picker -->
-          <div>
-            <div style="font-size:12px;font-weight:700;color:var(--fg-2);margin-bottom:6px">Fetch Jobs From</div>
-            <div style="font-size:11px;color:var(--fg-3);margin-bottom:10px">Select platforms — feed will only show jobs from chosen sources.</div>
+
+          <!-- Platform picker card -->
+          <div class="prefs-card">
+            <div class="prefs-card-header">
+              <div class="prefs-card-icon" style="background:var(--accent-bg)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" style="width:17px;height:17px"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              </div>
+              <div>
+                <div class="prefs-title">Fetch Jobs From</div>
+                <div class="prefs-sub">Toggle platforms · feed shows only selected sources</div>
+              </div>
+            </div>
             <div class="pcon-chip-row" id="pcon-chip-row"></div>
           </div>
-          <hr class="pref-divider">
-          <div class="pref-section">
-            <div class="form-group">
-              <label class="form-label">Job Role / Title</label>
-              <input class="input" id="p-role" type="text" placeholder="e.g. React Developer, Backend Engineer, Data Analyst">
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Preferred Location</label>
-                <select class="input" id="p-loc">
-                  <option value="">Any</option>
-                  <option value="bangalore">Bangalore</option>
-                  <option value="mumbai">Mumbai</option>
-                  <option value="delhi">Delhi NCR</option>
-                  <option value="hyderabad">Hyderabad</option>
-                  <option value="pune">Pune</option>
-                  <option value="chennai">Chennai</option>
-                  <option value="kolkata">Kolkata</option>
-                  <option value="noida">Noida</option>
-                  <option value="gurgaon">Gurgaon</option>
-                  <option value="ahmedabad">Ahmedabad</option>
-                  <option value="india">India (Any City)</option>
-                  <option value="remote">Remote</option>
-                </select>
+
+        </div><!-- /prefs-left -->
+
+        <!-- RIGHT column: Form fields + Save -->
+        <div class="prefs-right">
+          <div class="prefs-card">
+            <div class="prefs-card-header">
+              <div class="prefs-card-icon" style="background:var(--success-bg)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.2" style="width:17px;height:17px"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
               </div>
-              <div class="form-group">
-                <label class="form-label">Job Type</label>
-                <select class="input" id="p-type">
-                  <option value="">Any</option>
-                  <option value="full_time">Full-time</option>
-                  <option value="contract">Contract</option>
-                  <option value="part_time">Part-time</option>
-                </select>
+              <div>
+                <div class="prefs-title">Job Preferences</div>
+                <div class="prefs-sub">Used for match scores, feed filters, and alerts</div>
               </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Key Skills (comma-separated)</label>
-              <input class="input" id="p-skills" type="text" placeholder="e.g. React, TypeScript, Node.js, AWS">
-            </div>
-            <div class="form-row">
+
+            <div class="pref-section">
+              <div class="pref-section-label">Role & Skills</div>
               <div class="form-group">
-                <label class="form-label">Min Salary</label>
-                <select class="input" id="p-sal-min">
-                  <option value="">Any</option>
-                  <option value="5">5 LPA</option>
-                  <option value="8">8 LPA</option>
-                  <option value="10">10 LPA</option>
-                  <option value="15">15 LPA</option>
-                  <option value="20">20 LPA</option>
-                  <option value="30">30 LPA</option>
-                  <option value="50">50 LPA</option>
-                </select>
+                <label class="form-label">Job Role / Title</label>
+                <input class="input" id="p-role" type="text" placeholder="e.g. React Developer, Backend Engineer">
               </div>
               <div class="form-group">
-                <label class="form-label">Max Salary</label>
-                <select class="input" id="p-sal-max">
+                <label class="form-label">Key Skills (comma-separated)</label>
+                <input class="input" id="p-skills" type="text" placeholder="e.g. React, TypeScript, Node.js, AWS">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Experience Level</label>
+                <select class="input" id="p-exp">
                   <option value="">Any</option>
-                  <option value="10">10 LPA</option>
-                  <option value="15">15 LPA</option>
-                  <option value="20">20 LPA</option>
-                  <option value="30">30 LPA</option>
-                  <option value="50">50 LPA</option>
-                  <option value="80">80 LPA</option>
-                  <option value="100">1 Crore+</option>
+                  <option value="fresher">Fresher (0–1 yr)</option>
+                  <option value="junior">Junior (1–3 yrs)</option>
+                  <option value="mid">Mid-level (3–6 yrs)</option>
+                  <option value="senior">Senior (6–10 yrs)</option>
+                  <option value="lead">Lead / Staff (10+ yrs)</option>
                 </select>
               </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Experience Level</label>
-              <select class="input" id="p-exp">
-                <option value="">Any</option>
-                <option value="fresher">Fresher (0–1 yr)</option>
-                <option value="junior">Junior (1–3 yrs)</option>
-                <option value="mid">Mid-level (3–6 yrs)</option>
-                <option value="senior">Senior (6–10 yrs)</option>
-                <option value="lead">Lead / Staff (10+ yrs)</option>
-              </select>
+
+            <hr class="pref-divider">
+
+            <div class="pref-section">
+              <div class="pref-section-label">Location & Type</div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Preferred Location</label>
+                  <select class="input" id="p-loc">
+                    <option value="">Any</option>
+                    <option value="bangalore">Bangalore</option>
+                    <option value="mumbai">Mumbai</option>
+                    <option value="delhi">Delhi NCR</option>
+                    <option value="hyderabad">Hyderabad</option>
+                    <option value="pune">Pune</option>
+                    <option value="chennai">Chennai</option>
+                    <option value="kolkata">Kolkata</option>
+                    <option value="noida">Noida</option>
+                    <option value="gurgaon">Gurgaon</option>
+                    <option value="ahmedabad">Ahmedabad</option>
+                    <option value="india">India (Any City)</option>
+                    <option value="remote">Remote</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Job Type</label>
+                  <select class="input" id="p-type">
+                    <option value="">Any</option>
+                    <option value="full_time">Full-time</option>
+                    <option value="contract">Contract</option>
+                    <option value="part_time">Part-time</option>
+                  </select>
+                </div>
+              </div>
             </div>
+
+            <hr class="pref-divider">
+
+            <div class="pref-section">
+              <div class="pref-section-label">Salary Range</div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Min Salary</label>
+                  <select class="input" id="p-sal-min">
+                    <option value="">Any</option>
+                    <option value="5">5 LPA</option>
+                    <option value="8">8 LPA</option>
+                    <option value="10">10 LPA</option>
+                    <option value="15">15 LPA</option>
+                    <option value="20">20 LPA</option>
+                    <option value="30">30 LPA</option>
+                    <option value="50">50 LPA</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Max Salary</label>
+                  <select class="input" id="p-sal-max">
+                    <option value="">Any</option>
+                    <option value="10">10 LPA</option>
+                    <option value="15">15 LPA</option>
+                    <option value="20">20 LPA</option>
+                    <option value="30">30 LPA</option>
+                    <option value="50">50 LPA</option>
+                    <option value="80">80 LPA</option>
+                    <option value="100">1 Crore+</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <hr class="pref-divider">
+
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-primary" onclick="savePrefs()" style="flex:1;justify-content:center;gap:7px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><polyline points="20 6 9 17 4 12"/></svg>
+                Save &amp; Apply to Feed
+              </button>
+              <button class="btn btn-ghost" onclick="clearPrefs()">Reset</button>
+            </div>
+            <div id="prefs-saved-msg" style="display:none;font-size:12px;color:var(--success);text-align:center;padding:6px;background:var(--success-bg);border-radius:var(--r-sm)">✓ Preferences saved — feed updated!</div>
           </div>
-          <hr class="pref-divider">
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-primary" onclick="savePrefs()" style="flex:1;justify-content:center">Save & Apply to Feed</button>
-            <button class="btn btn-ghost" onclick="clearPrefs()">Reset</button>
-          </div>
-          <div id="prefs-saved-msg" style="display:none;font-size:12px;color:var(--success);text-align:center">✓ Preferences saved — feed updated!</div>
-        </div>
+        </div><!-- /prefs-right -->
+
       </div>
     </div>
 
@@ -876,18 +937,42 @@ function buildFeedParams() {
   const prefs = getPrefs();
   const manualSearch = document.getElementById('q-search').value.trim();
   const uiLoc  = document.getElementById('q-loc').value;
+  const uiType = document.getElementById('q-type').value;
   const uiCat  = document.getElementById('q-cat').value;
 
-  // Role: manual input wins; fallback to saved pref
   const search   = manualSearch || prefs.role || '';
-  // Location: UI dropdown wins; fallback to saved pref
   const location = uiLoc || prefs.location || '';
   const category = uiCat || '';
-  // jobType comes only from prefs (UI has no separate type dropdown)
-  const jobType  = prefs.type || '';
+  const jobType  = uiType || prefs.type || '';
   const salMin   = prefs.salMin || '';
 
-  return { search, location, category, jobType, salMin, limit: 50 };
+  return { search, location, category, jobType, salMin, limit: 60 };
+}
+
+// Client-side post-filter: location match for jobs that slipped through (e.g. Remotive)
+const CITY_ALIASES = {
+  bangalore: ['bangalore','bengaluru','blr'],
+  mumbai: ['mumbai','bombay'],
+  delhi: ['delhi','ncr','new delhi','noida','gurgaon','gurugram','faridabad'],
+  hyderabad: ['hyderabad','hyd','secunderabad'],
+  pune: ['pune'],
+  chennai: ['chennai','madras'],
+  kolkata: ['kolkata','calcutta'],
+  noida: ['noida','greater noida'],
+  gurgaon: ['gurgaon','gurugram'],
+  ahmedabad: ['ahmedabad'],
+  india: ['india','in'],
+  remote: ['remote','worldwide','anywhere','global'],
+};
+function jobMatchesLocation(job, loc) {
+  if (!loc || loc === '') return true;
+  const jobLoc = (job.candidate_required_location || '').toLowerCase();
+  if (loc === 'remote') return jobLoc.includes('remote') || jobLoc.includes('worldwide') || jobLoc.includes('anywhere') || !job._india;
+  const aliases = CITY_ALIASES[loc] || [loc];
+  if (aliases.some(a => jobLoc.includes(a))) return true;
+  // India jobs (Adzuna): already API-filtered so trust them; let through if _india flag set
+  if (job._india) return true;
+  return false;
 }
 
 let lastFeedMeta = {};
@@ -905,8 +990,8 @@ async function fetchJobs(params = {}) {
 
 function showActiveFilters(params) {
   const chips = [];
-  if (params.search)   chips.push(params.search);
-  if (params.location) chips.push(params.location.charAt(0).toUpperCase() + params.location.slice(1));
+  if (params.search)   chips.push('🔍 ' + params.search);
+  if (params.location) chips.push('📍 ' + (params.location.charAt(0).toUpperCase() + params.location.slice(1)));
   if (params.jobType)  chips.push(params.jobType.replace(/_/g,' '));
   if (params.salMin)   chips.push(params.salMin + ' LPA+');
   const pfSel = getPlatformPrefs();
@@ -970,6 +1055,15 @@ function filterByPlatformPrefs(jobs) {
 
 function renderJobList(jobs) {
   jobs = filterByPlatformPrefs(jobs);
+  // Client-side location refinement (catches Remotive jobs that aren't API-filtered by city)
+  const locFilter = document.getElementById('q-loc')?.value || '';
+  if (locFilter) jobs = jobs.filter(j => jobMatchesLocation(j, locFilter));
+  // Client-side job type filter
+  const typeFilter = document.getElementById('q-type')?.value || '';
+  if (typeFilter) {
+    const needle = typeFilter.replace(/_/g,' ').toLowerCase();
+    jobs = jobs.filter(j => (j.job_type||'').replace(/_/g,' ').toLowerCase().includes(needle));
+  }
   const countEl = document.getElementById('feed-count');
   if (!jobs.length) {
     document.getElementById('feed-list').innerHTML = `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" stroke-width="2" style="width:24px;height:24px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="empty-title">No jobs found</div><div class="empty-sub">Try a different platform or clear the search.</div></div>`;
@@ -1191,6 +1285,7 @@ function savePrefs() {
   // Sync toolbar filter inputs with saved prefs so they're visible on feed
   if (p.role)     document.getElementById('q-search').value = p.role;
   if (p.location) document.getElementById('q-loc').value    = p.location;
+  if (p.type)     document.getElementById('q-type').value   = p.type;
 
   // Navigate to feed and immediately fetch with all new prefs applied
   setTimeout(() => {
@@ -1203,6 +1298,7 @@ function clearPrefs() {
   loadPrefsForm();
   document.getElementById('q-search').value = '';
   document.getElementById('q-loc').value    = '';
+  document.getElementById('q-type').value   = '';
   document.getElementById('q-cat').value    = '';
   refreshFeed();
 }
@@ -1350,6 +1446,7 @@ function vsReset() {
   const p = getPrefs();
   if (p.role)     document.getElementById('q-search').value = p.role;
   if (p.location) document.getElementById('q-loc').value    = p.location;
+  if (p.type)     document.getElementById('q-type').value   = p.type;
 })();
 updateBadges();
 refreshFeed();
