@@ -317,6 +317,17 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .match-bar{display:block;width:28px;height:3px;border-radius:2px;overflow:hidden;background:rgba(0,0,0,.12)}
 .match-bar-fill{display:block;height:100%;border-radius:2px;transition:width .3s}
 
+/* ── Trending Chart ── */
+.trend-chart-section{margin:14px 20px 0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;box-shadow:var(--sh)}
+.trend-chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.trend-chart-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:13px;display:flex;align-items:center;gap:7px}
+.trend-live-dot{width:7px;height:7px;border-radius:50%;background:var(--success);display:inline-block;animation:pulse 2s infinite}
+.trend-legend{display:flex;gap:10px;flex-wrap:wrap}
+.trend-legend-item{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--fg-2);cursor:pointer;user-select:none}
+.trend-legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+#trend-svg-wrap{overflow-x:auto;scrollbar-width:thin}
+#trend-svg-wrap svg text{fill:var(--fg-3);font-family:'Inter',sans-serif}
+
 /* ── Misc ── */
 .spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -513,6 +524,21 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
           <div id="st-co-sub" style="font-size:10px;color:var(--fg-3);font-weight:600;margin-top:2px"></div>
         </div>
       </div>
+      <!-- Trending Jobs Chart -->
+      <div class="trend-chart-section" id="trend-chart-section" style="display:none">
+        <div class="trend-chart-head">
+          <div class="trend-chart-title">
+            <span class="trend-live-dot"></span>
+            Trending Job Categories — Last 7 Days
+          </div>
+          <div class="trend-legend" id="trend-legend"></div>
+        </div>
+        <div id="trend-svg-wrap">
+          <svg id="trend-svg" viewBox="0 0 680 180" style="width:100%;min-width:480px;display:block"></svg>
+        </div>
+        <div style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap" id="trend-summary"></div>
+      </div>
+
       <div class="feed" id="feed-list">
         <div class="centered"><div class="spinner"></div></div>
       </div>
@@ -1338,6 +1364,109 @@ function renderFeed(jobs) {
   document.getElementById('stat-strip').style.display = 'grid';
   updateBadges();
   renderRightPanel(jobs);
+  renderTrendingChart();
+}
+
+// ─── Trending Chart ────────────────────────────────────────────────────────────
+let trendData = null;
+let hiddenSeries = new Set();
+
+async function renderTrendingChart() {
+  const section = document.getElementById('trend-chart-section');
+  if (!section) return;
+  try {
+    if (!trendData) {
+      const r = await fetch('/api/trends');
+      if (!r.ok) return;
+      trendData = await r.json();
+    }
+    drawTrendSVG(trendData);
+    section.style.display = 'block';
+  } catch(e) {
+    // silently skip chart if unavailable
+  }
+}
+
+function drawTrendSVG(data) {
+  const { labels = [], series = [] } = data;
+  if (!labels.length || !series.length) return;
+
+  const W = 680, H = 180;
+  const padL = 32, padR = 14, padT = 14, padB = 28;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+  const cols = labels.length - 1;
+
+  // Compute max across visible series
+  const visible = series.filter(s => !hiddenSeries.has(s.name));
+  const allVals = visible.flatMap(s => s.data);
+  const maxV = Math.max(...allVals, 1);
+
+  function xp(i) { return padL + (i / Math.max(cols, 1)) * chartW; }
+  function yp(v) { return padT + chartH - (v / maxV) * chartH; }
+
+  // Grid lines
+  const gridLines = [0, 0.25, 0.5, 0.75, 1].map(f => {
+    const v = Math.round(maxV * f);
+    const y = yp(v);
+    return `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--border)" stroke-width="0.7"/>
+            <text x="${padL - 4}" y="${y + 4}" text-anchor="end" font-size="9">${v}</text>`;
+  }).join('');
+
+  // X axis labels
+  const xLabels = labels.map((lbl, i) =>
+    `<text x="${xp(i)}" y="${H - 4}" text-anchor="middle" font-size="9">${lbl}</text>`
+  ).join('');
+
+  // Lines + dots per series
+  let paths = '';
+  visible.forEach(s => {
+    const pts = s.data.map((v, i) => `${xp(i).toFixed(1)},${yp(v).toFixed(1)}`);
+    paths += `<polyline points="${pts.join(' ')}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" opacity="0.92"/>`;
+    s.data.forEach((v, i) => {
+      paths += `<circle cx="${xp(i).toFixed(1)}" cy="${yp(v).toFixed(1)}" r="3.5" fill="${s.color}" stroke="var(--surface)" stroke-width="1.5"><title>${s.name}: ${v} jobs on ${labels[i]}</title></circle>`;
+    });
+  });
+
+  const svg = document.getElementById('trend-svg');
+  if (!svg) return;
+  svg.innerHTML = gridLines + xLabels + paths;
+
+  // Legend
+  const legend = document.getElementById('trend-legend');
+  if (legend) {
+    legend.innerHTML = series.map(s => {
+      const hidden = hiddenSeries.has(s.name);
+      return `<span class="trend-legend-item" onclick="toggleTrendSeries('${s.name}')" style="opacity:${hidden ? 0.35 : 1}">
+        <span class="trend-legend-dot" style="background:${s.color}"></span>${s.name}
+      </span>`;
+    }).join('');
+  }
+
+  // Summary pills — top 3 trending (highest 7-day total)
+  const summary = document.getElementById('trend-summary');
+  if (summary) {
+    const ranked = [...series].sort((a,b) => b.data.reduce((x,y)=>x+y,0) - a.data.reduce((x,y)=>x+y,0)).slice(0, 4);
+    summary.innerHTML = ranked.map(s => {
+      const total = s.data.reduce((x,y)=>x+y,0);
+      const last = s.data[s.data.length-1], prev = s.data[s.data.length-2]||0;
+      const pct = prev ? Math.round((last-prev)/prev*100) : 0;
+      const arrow = pct >= 0 ? '↑' : '↓';
+      const col = pct >= 0 ? 'var(--success)' : 'var(--danger)';
+      return `<div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:5px 10px;border-radius:20px;background:var(--surface-2);border:1px solid var(--border)">
+        <span style="width:8px;height:8px;border-radius:50%;background:${s.color};display:inline-block;flex-shrink:0"></span>
+        <span style="font-weight:700;color:var(--fg)">${s.name}</span>
+        <span style="color:var(--fg-2)">${total} jobs</span>
+        <span style="font-weight:700;color:${col}">${arrow}${Math.abs(pct)}%</span>
+      </div>`;
+    }).join('');
+  }
+}
+
+function toggleTrendSeries(name) {
+  if (hiddenSeries.has(name)) hiddenSeries.delete(name);
+  else if (hiddenSeries.size < (trendData?.series?.length || 1) - 1) hiddenSeries.add(name);
+  if (trendData) drawTrendSVG(trendData);
 }
 
 function calcAlertMatches() {
