@@ -151,6 +151,22 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .pref-section{display:flex;flex-direction:column;gap:12px}
 .pref-divider{border:none;border-top:1px solid var(--border)}
 
+/* ── Resume Upload ── */
+.resume-zone{border:2px dashed var(--border-2);border-radius:var(--r);padding:20px 16px;text-align:center;cursor:pointer;transition:all .15s;background:var(--surface-2);position:relative}
+.resume-zone:hover,.resume-zone.drag-over{border-color:var(--accent);background:var(--accent-bg)}
+.resume-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.resume-icon{width:36px;height:36px;border-radius:8px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.resume-icon svg{width:18px;height:18px;color:var(--accent)}
+.resume-zone-title{font-weight:700;font-size:13px;color:var(--fg);margin-bottom:3px}
+.resume-zone-sub{font-size:11px;color:var(--fg-3)}
+.resume-state{display:none;align-items:center;gap:10px;padding:12px 14px;border-radius:var(--r-sm);font-size:12px;font-weight:600}
+.resume-state.loading{display:flex;background:var(--accent-bg);color:var(--accent)}
+.resume-state.done{display:flex;background:var(--success-bg);color:var(--success)}
+.resume-state.err{display:flex;background:var(--danger-bg);color:var(--danger)}
+.resume-spinner{width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ai-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;margin-left:6px;vertical-align:middle}
+
 
 /* ── Alert card ── */
 .alert-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;display:flex;align-items:center;gap:11px;box-shadow:var(--sh)}
@@ -424,6 +440,34 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
           <div>
             <div class="prefs-title">My Job Preferences</div>
             <div class="prefs-sub">HireRadar uses these to personalise your feed and match alerts.</div>
+          </div>
+          <!-- Resume Upload -->
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--fg-2);margin-bottom:8px">
+              Smart Fill from Resume <span class="ai-tag">✦ AI</span>
+            </div>
+            <div class="resume-zone" id="resume-zone" ondragover="resumeDragOver(event)" ondragleave="resumeDragLeave()" ondrop="resumeDrop(event)">
+              <input type="file" id="resume-file" accept=".pdf,.txt,application/pdf,text/plain" onchange="resumeFileSelected(this.files[0])">
+              <div id="resume-idle">
+                <div class="resume-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                </div>
+                <div class="resume-zone-title">Upload your resume</div>
+                <div class="resume-zone-sub">AI reads it and auto-fills all preferences · PDF or TXT · up to 10 MB</div>
+              </div>
+            </div>
+            <div class="resume-state loading" id="resume-loading">
+              <div class="resume-spinner"></div>
+              <span>AI is reading your resume…</span>
+            </div>
+            <div class="resume-state done" id="resume-done">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>
+              <span id="resume-done-text">Preferences filled from your resume — review and save!</span>
+            </div>
+            <div class="resume-state err" id="resume-err">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span id="resume-err-text">Could not parse resume. Please fill in manually.</span>
+            </div>
           </div>
           <hr class="pref-divider">
           <div class="pref-section">
@@ -955,6 +999,55 @@ function renderAlerts() {
   }).join('');
 }
 
+
+// ─── Resume Upload ────────────────────────────────────────────────────────────
+function resumeDragOver(e) {
+  e.preventDefault();
+  document.getElementById('resume-zone').classList.add('drag-over');
+}
+function resumeDragLeave() {
+  document.getElementById('resume-zone').classList.remove('drag-over');
+}
+function resumeDrop(e) {
+  e.preventDefault();
+  document.getElementById('resume-zone').classList.remove('drag-over');
+  const file = e.dataTransfer?.files?.[0];
+  if (file) resumeFileSelected(file);
+}
+function resumeFileSelected(file) {
+  if (!file) return;
+  document.getElementById('resume-idle').style.display = 'none';
+  document.getElementById('resume-loading').style.display = 'flex';
+  document.getElementById('resume-done').style.display = 'none';
+  document.getElementById('resume-err').style.display = 'none';
+
+  const fd = new FormData();
+  fd.append('resume', file);
+
+  fetch('/api/parse-resume', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('resume-loading').style.display = 'none';
+      if (data.error) throw new Error(data.error);
+      const p = data.prefs || {};
+      if (p.role)     document.getElementById('p-role').value    = p.role;
+      if (p.skills)   document.getElementById('p-skills').value  = p.skills;
+      if (p.exp)      document.getElementById('p-exp').value     = p.exp;
+      if (p.type)     document.getElementById('p-type').value    = p.type;
+      if (p.location) document.getElementById('p-loc').value     = p.location;
+      if (p.salMin)   document.getElementById('p-sal-min').value = p.salMin;
+      document.getElementById('resume-done-text').textContent =
+        `Filled: ${[p.role, p.skills && (p.skills.split(',').slice(0,3).join(', ')+'…')].filter(Boolean).join(' · ')} — review and save!`;
+      document.getElementById('resume-done').style.display = 'flex';
+      document.getElementById('resume-idle').style.display = 'block';
+    })
+    .catch(err => {
+      document.getElementById('resume-loading').style.display = 'none';
+      document.getElementById('resume-err-text').textContent = 'Could not parse resume: ' + err.message;
+      document.getElementById('resume-err').style.display = 'flex';
+      document.getElementById('resume-idle').style.display = 'block';
+    });
+}
 
 // ─── Preferences ─────────────────────────────────────────────────────────────
 function loadPrefsForm() {
