@@ -2263,6 +2263,7 @@ async function vsLoadConnections() {
 // Called on page ready
 async function vsInit() {
   ensureVsConnectScript();
+  vsPreloadServiceIds(); // non-blocking pre-warm
   await vsLoadConnections();
   // Update all visible connect buttons
   document.querySelectorAll('.auto-qc-btn').forEach(btn => {
@@ -2438,8 +2439,26 @@ async function vsQuickConnectForAuto(appLabel, autoId, checkbox) {
     autoSwitchTab('integrations', document.querySelector('[data-tab="integrations"]'));
     return;
   }
-  // Open the full embed in a modal — avoids the "No data found" issue with the connect component
-  openVsConnModal(appLabel, autoId, checkbox);
+  ensureVsConnectScript();
+  for (let i = 0; i < 12; i++) {
+    if (typeof openViasocketConnection === 'function') break;
+    await new Promise(r => setTimeout(r, 300));
+  }
+  const serviceId = await vsGetServiceId(appLabel);
+  if (!serviceId || typeof openViasocketConnection !== 'function') {
+    // Fallback: open the full embed modal
+    openVsConnModal(appLabel, autoId, checkbox);
+    return;
+  }
+  _qcPending = { appLabel, jobId: null, serviceId, autoId, checkbox };
+  try {
+    const { token } = await fetch('/api/embed-token', { method: 'POST' }).then(r => r.json());
+    openViasocketConnection(token, serviceId);
+  } catch(e) {
+    _qcPending = null;
+    checkbox.checked = false;
+    showToast('Could not open connect popup: ' + e.message, 'error');
+  }
 }
 
 async function autoConnectApp(appLabel) {
@@ -2447,7 +2466,23 @@ async function autoConnectApp(appLabel) {
     showToast(appLabel + ' connect: use viaSocket Flow Builder tab', 'info');
     return;
   }
-  openVsConnModal(appLabel, null, null);
+  ensureVsConnectScript();
+  for (let i = 0; i < 12; i++) {
+    if (typeof openViasocketConnection === 'function') break;
+    await new Promise(r => setTimeout(r, 300));
+  }
+  const serviceId = await vsGetServiceId(appLabel);
+  if (!serviceId || typeof openViasocketConnection !== 'function') {
+    openVsConnModal(appLabel, null, null);
+    return;
+  }
+  _qcPending = { appLabel, jobId: null, serviceId, autoId: null, checkbox: null };
+  try {
+    const { token } = await fetch('/api/embed-token', { method: 'POST' }).then(r => r.json());
+    openViasocketConnection(token, serviceId);
+  } catch(e) {
+    showToast('Connect failed: ' + e.message, 'error');
+  }
 }
 
 function updateAutoActiveCount() {
@@ -2570,17 +2605,18 @@ function showToast(msg, type='info') {
   t._tid = setTimeout(() => { t.style.opacity='0'; }, 2800);
 }
 
+// Pre-load service IDs once from server (includes hardcoded WhatsApp: row3icnwu2su)
+async function vsPreloadServiceIds() {
+  try {
+    const d = await fetch('/api/vs/service-ids').then(r => r.json());
+    Object.assign(_vsServiceIds, d);
+  } catch(e) { console.warn('[vs] service-ids preload failed:', e.message); }
+}
+
 async function vsGetServiceId(appLabel) {
   if (_vsServiceIds[appLabel]) return _vsServiceIds[appLabel];
-  const q = { whatsapp:'whatsapp', gmail:'gmail', sheets:'google sheets', slack:'slack' }[appLabel];
-  if (!q) return null;
-  try {
-    const r = await fetch('/api/vs/find-app?q=' + encodeURIComponent(q));
-    const d = await r.json();
-    const sid = d.data?.[0]?.service_id;
-    if (sid) _vsServiceIds[appLabel] = sid;
-    return sid || null;
-  } catch(e) { return null; }
+  await vsPreloadServiceIds();
+  return _vsServiceIds[appLabel] || null;
 }
 
 async function vsQuickConnect(appLabel, jobId, btn) {

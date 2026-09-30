@@ -14,7 +14,7 @@ app.use(express.json({ limit: '32kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const ORG_ID = '4160';
-const PROJECT_ID = 'projfJ7dZJJM';
+const PROJECT_ID = 'projCdg05SQs';
 const SECRET = process.env.VIASOCKET_EMBED_SECRET;
 
 // ─── Per-user identity (one unique_identifier per browser, forever) ────────────
@@ -936,12 +936,13 @@ function extractActionVerId(doc, keywords) {
   return null;
 }
 
-// App metadata — search terms and action keywords guide doc parsing
+// App metadata — service_id from viaSocket skill docs; actionKw guides action_version_id extraction
 const APP_META = {
-  whatsapp: { label: 'WhatsApp',      icon: '💬', color: '#25D366', q: 'whatsapp',      actionKw: ['send message','send text'] },
-  gmail:    { label: 'Gmail',         icon: '📧', color: '#EA4335', q: 'gmail',          actionKw: ['send email','send mail','compose'] },
-  sheets:   { label: 'Google Sheets', icon: '📊', color: '#0F9D58', q: 'google sheets',  actionKw: ['add row','append row','insert row'] },
-  slack:    { label: 'Slack',         icon: '💼', color: '#4A154B', q: 'slack',          actionKw: ['send message','post message','post to channel'] },
+  // service_id from: viasocket-whatsapp-business-cloud-meta skill
+  whatsapp: { label: 'WhatsApp',      icon: '💬', color: '#25D366', service_id: 'row3icnwu2su', q: 'whatsapp',      actionKw: ['send message','send text','send template'] },
+  gmail:    { label: 'Gmail',         icon: '📧', color: '#EA4335', service_id: null,            q: 'gmail',          actionKw: ['send email','send mail','compose'] },
+  sheets:   { label: 'Google Sheets', icon: '📊', color: '#0F9D58', service_id: null,            q: 'google sheets',  actionKw: ['add row','append row','insert row'] },
+  slack:    { label: 'Slack',         icon: '💼', color: '#4A154B', service_id: null,            q: 'slack',          actionKw: ['send message','post message','post to channel'] },
 };
 
 // Build viaSocket inputData per app + template
@@ -1048,6 +1049,18 @@ async function deliverToApps(uid, eventType, job) {
   return Promise.all(sends);
 }
 
+// Return known hardcoded service_ids + fallback via search
+app.get('/api/vs/service-ids', async (req, res) => {
+  const ids = {};
+  const searches = [];
+  for (const [key, meta] of Object.entries(APP_META)) {
+    if (meta.service_id) { ids[key] = meta.service_id; }
+    else { searches.push(vsSearch(meta.q).then(r => { if (r[0]?.service_id) ids[key] = r[0].service_id; }).catch(() => {})); }
+  }
+  await Promise.all(searches);
+  res.json(ids);
+});
+
 // Proxy: search viaSocket app catalog
 app.get('/api/vs/find-app', async (req, res) => {
   if (!SECRET) return res.status(500).json({ error: 'VIASOCKET_EMBED_SECRET not set' });
@@ -1060,10 +1073,18 @@ app.get('/api/vs/find-app', async (req, res) => {
 // Connect an app: user sends auth_id from popup, server enables + stores
 app.post('/api/vs/connect', async (req, res) => {
   if (!SECRET) return res.status(500).json({ error: 'VIASOCKET_EMBED_SECRET not set' });
-  const { app_label, service_id, auth_id } = req.body || {};
+  const { app_label, auth_id } = req.body || {};
+  let { service_id } = req.body || {};
   if (!APP_META[app_label]) return res.status(400).json({ error: 'Unknown app' });
-  if (!service_id || typeof service_id !== 'string') return res.status(400).json({ error: 'Missing service_id' });
   if (!auth_id || typeof auth_id !== 'string') return res.status(400).json({ error: 'Missing auth_id' });
+  // Use hardcoded service_id from APP_META when available (more reliable than client-provided)
+  if (APP_META[app_label].service_id) service_id = APP_META[app_label].service_id;
+  if (!service_id) {
+    // Fall back to dynamic lookup
+    const results = await vsSearch(APP_META[app_label].q).catch(() => []);
+    service_id = results[0]?.service_id || null;
+  }
+  if (!service_id) return res.status(400).json({ error: 'Could not resolve service_id for ' + app_label });
 
   try {
     const token = makeVsToken(req.uid);
