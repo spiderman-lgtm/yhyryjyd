@@ -1584,6 +1584,35 @@ app.post('/api/auto-config/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /api/vs/register-flow — called when viaSocket embed fires a 'flow' event
+// The flow object shape comes from viaSocket's embed SDK; we log it and extract what we can
+app.post('/api/vs/register-flow', (req, res) => {
+  const { app_label, flow } = req.body || {};
+  console.log('[vs-register-flow] uid:', req.uid, 'app:', app_label, 'flow:', JSON.stringify(flow));
+  if (!app_label || !APP_META[app_label]) return res.status(400).json({ error: 'Unknown app' });
+
+  // Extract useful fields — viaSocket flow event shape may vary; capture everything
+  const script_id = flow?.script_id || flow?.scriptId || flow?.flow_id || flow?._id || null;
+  const action_version_id = flow?.action_version_id || flow?.actionVersionId || null;
+  const auth_id = flow?.auth_id || flow?.authId || flow?.account_id || flow?.accountId || null;
+  const service_id = flow?.service_id || flow?.serviceId || flow?.service?.id || null;
+
+  const conns = userConns(req.uid);
+  // Merge — preserve fields already stored unless overridden
+  conns[app_label] = {
+    ...(conns[app_label] || {}),
+    app_label,
+    ...(service_id      ? { service_id }      : {}),
+    ...(auth_id         ? { auth_id }         : {}),
+    ...(script_id       ? { script_id }       : {}),
+    ...(action_version_id ? { action_version_id } : {}),
+    enabled: true,
+    connectedAt: new Date().toISOString(),
+  };
+  saveConnStore();
+  res.json({ ok: true, script_id, action_version_id, auth_id });
+});
+
 // POST /api/auto-test/:id — fire a test delivery for an enabled automation
 app.post('/api/auto-test/:id', async (req, res) => {
   const { id } = req.params;

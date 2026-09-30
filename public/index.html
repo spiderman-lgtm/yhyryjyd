@@ -2429,67 +2429,25 @@ async function autoTestFire(id) {
 const AUTO_APP_SUPPORTED = new Set(['whatsapp','gmail','slack','sheets']);
 
 async function vsQuickConnectForAuto(appLabel, autoId, checkbox) {
-  // Calendar / LinkedIn / Naukri not directly connectable via viaSocket embed
+  const badge = document.getElementById('auto-conn-badge-' + autoId);
+  if (badge) badge.style.display = 'none';
+  document.getElementById('auto-card-' + autoId)?.classList.remove('connecting');
   if (!AUTO_APP_SUPPORTED.has(appLabel)) {
-    const badge = document.getElementById('auto-conn-badge-' + autoId);
-    if (badge) badge.style.display = 'none';
-    document.getElementById('auto-card-' + autoId)?.classList.remove('connecting');
     checkbox.checked = false;
     showToast('Open Integrations tab → connect ' + appLabel + ' via viaSocket', 'info');
     autoSwitchTab('integrations', document.querySelector('[data-tab="integrations"]'));
     return;
   }
-  ensureVsConnectScript();
-  // Wait for script to be ready
-  for (let i = 0; i < 10; i++) {
-    if (typeof openViasocketConnection === 'function') break;
-    await new Promise(r => setTimeout(r, 300));
-  }
-  if (typeof openViasocketConnection !== 'function') {
-    const badge = document.getElementById('auto-conn-badge-' + autoId);
-    if (badge) badge.style.display = 'none';
-    document.getElementById('auto-card-' + autoId)?.classList.remove('connecting');
-    checkbox.checked = false;
-    showToast('viaSocket connect script not loaded. Try again.', 'error');
-    return;
-  }
-  const serviceId = await vsGetServiceId(appLabel);
-  if (!serviceId) {
-    document.getElementById('auto-conn-badge-' + autoId)?.style && (document.getElementById('auto-conn-badge-' + autoId).style.display = 'none');
-    document.getElementById('auto-card-' + autoId)?.classList.remove('connecting');
-    checkbox.checked = false;
-    showToast('Could not find ' + appLabel + ' service. Try again.', 'error');
-    return;
-  }
-  // Store pending auto-connect context; the window message handler below will finish it
-  _qcPending = { appLabel, jobId: null, serviceId, autoId, checkbox };
-  try {
-    const { token } = await fetch('/api/embed-token', { method: 'POST' }).then(r => r.json());
-    openViasocketConnection(token, serviceId);
-  } catch(e) {
-    document.getElementById('auto-conn-badge-' + autoId)?.style && (document.getElementById('auto-conn-badge-' + autoId).style.display = 'none');
-    document.getElementById('auto-card-' + autoId)?.classList.remove('connecting');
-    checkbox.checked = false;
-    showToast('Could not open connect popup: ' + e.message, 'error');
-    _qcPending = null;
-  }
+  // Open the full embed in a modal — avoids the "No data found" issue with the connect component
+  openVsConnModal(appLabel, autoId, checkbox);
 }
 
 async function autoConnectApp(appLabel) {
   if (!AUTO_APP_SUPPORTED.has(appLabel)) {
-    showToast(appLabel + ' connect: use viaSocket Flow Builder', 'info');
+    showToast(appLabel + ' connect: use viaSocket Flow Builder tab', 'info');
     return;
   }
-  ensureVsConnectScript();
-  for (let i = 0; i < 10; i++) {
-    if (typeof openViasocketConnection === 'function') break;
-    await new Promise(r => setTimeout(r, 300));
-  }
-  const serviceId = await vsGetServiceId(appLabel);
-  if (!serviceId) { showToast('Service not found', 'error'); return; }
-  _qcPending = { appLabel, jobId: null, serviceId, autoId: null, checkbox: null };
-  const { token } = await fetch('/api/embed-token', { method: 'POST' }).then(r => r.json());
-  openViasocketConnection(token, serviceId);
+  openVsConnModal(appLabel, null, null);
 }
 
 function updateAutoActiveCount() {
@@ -2515,21 +2473,82 @@ function renderConnChips() {
   }).join('');
 }
 
-async function autoConnectApp(appLabel) {
-  const serviceId = await vsGetServiceId(appLabel);
-  if (!serviceId) { showToast('Service not found', 'error'); return; }
-  const token = await fetch('/api/vs/token').then(r=>r.json()).then(d=>d.token);
-  await openViasocketConnection(token, serviceId, async (authId) => {
-    const cr = await fetch('/api/vs/connect', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ app_label:appLabel, service_id:serviceId, auth_id:authId }),
-    }).then(r=>r.json());
-    if (cr.error) { showToast(cr.error, 'error'); return; }
+// ─── viaSocket Connect Modal (full embed in popup) ───────────────────────────
+let _vsConnModal = null;    // {appLabel, autoId, checkbox}
+let _vsConnModalEmbed = null;
+let _vsConnModalMounted = false;
+
+async function openVsConnModal(appLabel, autoId, checkbox) {
+  _vsConnModal = { appLabel, autoId, checkbox };
+  const modal = document.getElementById('vs-conn-modal');
+  modal.style.display = 'flex';
+  const labels = { whatsapp:'WhatsApp 💬', gmail:'Gmail 📧', sheets:'Google Sheets 📊', slack:'Slack 💼' };
+  document.getElementById('vs-conn-modal-title').textContent = 'Connect ' + (labels[appLabel] || appLabel);
+  document.getElementById('vs-conn-modal-hint').textContent = 'Create your ' + (labels[appLabel] || appLabel) + ' flow below, then click Done';
+  document.getElementById('vs-conn-modal-status').textContent = '';
+  if (!_vsConnModalMounted) {
+    try {
+      await vsLoadSDK();
+      const embedToken = await vsGetToken();
+      _vsConnModalEmbed = viaSocket.mount({ embedToken, parent: '#vs-conn-modal-mount', config: { chatbot: false } });
+      _vsConnModalEmbed.on('flow', async (flow) => {
+        console.log('[HireRadar] conn-modal flow:', JSON.stringify(flow));
+        document.getElementById('vs-conn-modal-status').textContent = '✅ Flow created!';
+        const pending = _vsConnModal;
+        if (pending?.appLabel) {
+          await vsRegisterFlow(pending.appLabel, flow).catch(e => console.warn('[vs-reg]', e));
+        }
+      });
+      document.getElementById('vs-conn-modal-loading').style.display = 'none';
+      document.getElementById('vs-conn-modal-mount').style.display = 'block';
+      _vsConnModalMounted = true;
+    } catch(e) {
+      document.getElementById('vs-conn-modal-loading').innerHTML = '<span style="font-size:28px">❌</span><span style="font-size:13px">'+e.message+'</span>';
+    }
+  }
+}
+
+async function vsRegisterFlow(appLabel, flow) {
+  const r = await fetch('/api/vs/register-flow', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ app_label: appLabel, flow }),
+  });
+  const d = await r.json();
+  if (d.ok) {
     await vsLoadConnections();
     renderConnChips();
     renderAutomationCards();
+  }
+  return d;
+}
+
+async function vsConnModalDone() {
+  const { appLabel, autoId, checkbox } = _vsConnModal || {};
+  vsConnModalClose();
+  await vsLoadConnections();
+  const connected = !!_vsConns[appLabel]?.enabled;
+  if (connected && autoId) {
+    await fetch('/api/auto-config/' + autoId, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ enabled: true }),
+    });
+    _autoCfg[autoId] = { enabled: true };
+    if (checkbox) checkbox.checked = true;
+    renderAutomationCards();
+    updateAutoActiveCount();
+    showToast('✅ Connected & automation live!', 'success');
+  } else if (connected) {
     showToast('✅ ' + appLabel + ' connected!', 'success');
-  });
+  } else {
+    if (checkbox) checkbox.checked = false;
+    showToast('App not connected yet — create a flow first, then Done', 'info');
+  }
+}
+
+function vsConnModalClose() {
+  document.getElementById('vs-conn-modal').style.display = 'none';
+  if (_vsConnModal?.checkbox) _vsConnModal.checkbox.checked = false;
+  _vsConnModal = null;
 }
 
 function autoOpenBuilder() {
@@ -3279,7 +3298,19 @@ async function vsInitEmbed() {
     await vsLoadSDK();
     const embedToken=await vsGetToken();
     const embed=viaSocket.mount({embedToken,parent:'#vs-embed-mount',config:{chatbot:false}});
-    embed.on('flow',flow=>{ console.log('[HireRadar] flow:',flow); });
+    embed.on('flow', async (flow) => {
+      console.log('[HireRadar] integrations-tab flow:', JSON.stringify(flow));
+      // Try to detect which app was connected from the flow event
+      const svc = (flow?.service?.name || flow?.serviceName || '').toLowerCase();
+      let appLabel = null;
+      if (svc.includes('whatsapp')) appLabel = 'whatsapp';
+      else if (svc.includes('gmail') || svc.includes('email')) appLabel = 'gmail';
+      else if (svc.includes('sheets') || svc.includes('spreadsheet')) appLabel = 'sheets';
+      else if (svc.includes('slack')) appLabel = 'slack';
+      if (appLabel) {
+        await vsRegisterFlow(appLabel, flow).catch(e => console.warn('[vs-reg]', e));
+      }
+    });
     document.getElementById('vs-loading').style.display='none';
     document.getElementById('vs-embed-mount').style.display='block';
     vsInitialised=true;
@@ -3902,6 +3933,28 @@ if (obShouldShow()) setTimeout(obOpen, 900);
       <div class="ob-pill" id="ob-pill-3"></div>
     </div>
     <div class="ob-body" id="ob-body"></div>
+  </div>
+</div>
+
+<!-- viaSocket Connect Modal — full embed in a popup for app connection -->
+<div id="vs-conn-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:center;justify-content:center">
+  <div style="background:var(--surface,#fff);border-radius:16px;width:min(920px,96vw);height:86vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.35)">
+    <div style="padding:13px 18px;border-bottom:1px solid var(--border,#e5e7eb);display:flex;align-items:center;gap:12px;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:15px" id="vs-conn-modal-title">Connect App</div>
+        <div style="font-size:11px;color:var(--fg-3,#9ca3af);margin-top:2px" id="vs-conn-modal-hint">Create or connect your account in the panel, then click Done</div>
+      </div>
+      <div id="vs-conn-modal-status" style="font-size:11px;color:var(--success,#10b981);font-weight:600;flex-shrink:0"></div>
+      <button onclick="vsConnModalDone()" style="padding:7px 16px;border-radius:8px;background:var(--accent,#6366f1);color:#fff;border:none;cursor:pointer;font-weight:600;font-size:13px;flex-shrink:0">Done ✓</button>
+      <button onclick="vsConnModalClose()" style="padding:7px 12px;border-radius:8px;background:transparent;color:var(--fg-3,#9ca3af);border:1px solid var(--border,#e5e7eb);cursor:pointer;font-size:15px;flex-shrink:0" title="Cancel">✕</button>
+    </div>
+    <div style="flex:1;overflow:hidden;position:relative">
+      <div id="vs-conn-modal-loading" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--fg-3,#9ca3af)">
+        <span style="font-size:28px">⏳</span>
+        <span style="font-size:13px">Loading viaSocket…</span>
+      </div>
+      <div id="vs-conn-modal-mount" style="width:100%;height:100%;display:none"></div>
+    </div>
   </div>
 </div>
 </body>
