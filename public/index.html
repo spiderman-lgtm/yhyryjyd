@@ -2431,24 +2431,57 @@ function renderAutomationCards() {
 }
 
 // ── Config panel builder ──────────────────────────────────────────────────
+const JOB_FIELD_LABELS = {
+  title:'Job Title', company:'Company', location:'Location',
+  salary:'Salary', status:'Event Type', url:'Apply URL',
+  date:'Date', category:'Category',
+};
+
+function mappingPreview(rows) {
+  return `<div style="background:var(--surface);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px">
+    <div style="font-size:10px;font-weight:800;color:var(--fg-3);padding:7px 12px;background:var(--hover);letter-spacing:.5px;text-transform:uppercase">Data flow — what gets sent</div>
+    ${rows.map(([dest, field, ex]) => `
+      <div style="display:flex;align-items:center;gap:0;padding:7px 12px;border-top:1px solid var(--border)">
+        <div style="font-size:11.5px;font-weight:700;color:var(--fg);min-width:110px">${dest}</div>
+        <div style="font-size:11px;color:var(--fg-3);flex:1">← <span style="background:rgba(99,102,241,.1);color:var(--accent);padding:1px 6px;border-radius:5px;font-weight:600;font-size:10.5px">${field}</span></div>
+        <div style="font-size:10.5px;color:var(--fg-3);font-style:italic;max-width:130px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ex}</div>
+      </div>`).join('')}
+  </div>`;
+}
+
 function buildCfgPanel(t, mapping, app) {
   const v = k => esc(mapping[k] || '');
-  if (app === 'gmail') return `
+
+  if (app === 'gmail') {
+    const preview = mappingPreview([
+      ['To',      'your email',    mapping.to || '(connected Gmail)'],
+      ['Subject', 'job.title + company', '🔔 New Match: SDE @ Razorpay'],
+      ['Body',    'job details',   'Title, Company, Location, Salary, URL'],
+    ]);
+    return `${preview}
     <div class="auto-cfg-row">
       <div class="auto-cfg-label">Send To (email)</div>
       <input class="auto-cfg-input" id="cfg-${t.id}-to" placeholder="you@gmail.com" value="${v('to')}">
       <div class="auto-cfg-hint">Leave blank to use your connected Gmail address</div>
     </div>
     <div class="auto-cfg-row">
-      <div class="auto-cfg-label">Subject line</div>
-      <input class="auto-cfg-input" id="cfg-${t.id}-subject" placeholder="Auto (uses job title)" value="${v('subject')}">
+      <div class="auto-cfg-label">Subject override</div>
+      <input class="auto-cfg-input" id="cfg-${t.id}-subject" placeholder="Leave blank for auto subject" value="${v('subject')}">
     </div>
     <div class="auto-cfg-footer">
       <button class="auto-cfg-save" onclick="autoCfgSave('${t.id}','gmail')">Save</button>
       <button class="auto-cfg-toggle" onclick="autoCfgToggle('${t.id}')">Close</button>
     </div>`;
+  }
 
-  if (app === 'whatsapp') return `
+  if (app === 'whatsapp') {
+    const preview = mappingPreview([
+      ['To',      'phone number',  mapping.phone || '(connected number)'],
+      ['Message', 'job.title',     '🔔 New Job Alert! SDE @ Razorpay'],
+      ['',        'job.company',   'Bangalore · ₹25L'],
+      ['',        'job.url',       'Apply link included'],
+    ]);
+    return `${preview}
     <div class="auto-cfg-row">
       <div class="auto-cfg-label">WhatsApp number</div>
       <input class="auto-cfg-input" id="cfg-${t.id}-phone" placeholder="+91 9999999999" value="${v('phone')}">
@@ -2458,8 +2491,16 @@ function buildCfgPanel(t, mapping, app) {
       <button class="auto-cfg-save" onclick="autoCfgSave('${t.id}','whatsapp')">Save</button>
       <button class="auto-cfg-toggle" onclick="autoCfgToggle('${t.id}')">Close</button>
     </div>`;
+  }
 
-  if (app === 'slack') return `
+  if (app === 'slack') {
+    const preview = mappingPreview([
+      ['Channel',  'your channel', mapping.channel || '#jobs'],
+      ['Message',  'job.title',    '🔔 *New job match!*'],
+      ['',         'job.company',  'Meesho · ₹28-38 LPA'],
+      ['',         'job.url',      'Apply Now link'],
+    ]);
+    return `${preview}
     <div class="auto-cfg-row">
       <div class="auto-cfg-label">Slack channel</div>
       <input class="auto-cfg-input" id="cfg-${t.id}-channel" placeholder="#jobs or #general" value="${v('channel')}">
@@ -2468,37 +2509,55 @@ function buildCfgPanel(t, mapping, app) {
       <button class="auto-cfg-save" onclick="autoCfgSave('${t.id}','slack')">Save</button>
       <button class="auto-cfg-toggle" onclick="autoCfgToggle('${t.id}')">Close</button>
     </div>`;
+  }
 
   if (app === 'sheets') {
     const defaultCols = 'title,company,location,salary,status,url,date';
     const colMap = mapping.colMap || defaultCols;
     const cols = colMap.split(',').map(s => s.trim());
     const FIELDS = ['title','company','location','salary','status','url','date','category'];
+    const previewRows = cols.map((c, i) => [
+      `Column ${String.fromCharCode(65+i)}`,
+      `job.${c}`,
+      JOB_FIELD_LABELS[c] || c,
+    ]);
+    const preview = mappingPreview(previewRows);
     const colInputs = cols.map((c, i) => `
-      <div class="auto-cfg-row">
-        <div class="auto-cfg-label" style="text-transform:none">Column ${String.fromCharCode(65+i)}</div>
-        <select class="auto-cfg-input" id="cfg-${t.id}-col-${i}" style="padding:6px 10px">
-          ${FIELDS.map(f => `<option value="${f}"${f===c?' selected':''}>${f.charAt(0).toUpperCase()+f.slice(1)}</option>`).join('')}
+      <div>
+        <div class="auto-cfg-label" style="margin-bottom:4px">Col ${String.fromCharCode(65+i)}</div>
+        <select class="auto-cfg-input" id="cfg-${t.id}-col-${i}" style="padding:6px 8px" onchange="refreshSheetPreview('${t.id}',${cols.length})">
+          ${FIELDS.map(f => `<option value="${f}"${f===c?' selected':''}>${JOB_FIELD_LABELS[f]||f}</option>`).join('')}
         </select>
       </div>`).join('');
-    return `
+    return `<div id="sheet-preview-${t.id}">${preview}</div>
       <div class="auto-cfg-row">
         <div class="auto-cfg-label">Google Sheet URL or ID</div>
         <input class="auto-cfg-input" id="cfg-${t.id}-sheetUrl" placeholder="Paste spreadsheet URL or ID" value="${v('sheetUrl')}">
-        <div class="auto-cfg-hint">Share the sheet with edit access, then paste URL here</div>
+        <div class="auto-cfg-hint">Share sheet → Edit access → paste URL here</div>
       </div>
       <div class="auto-cfg-row">
-        <div class="auto-cfg-label">Sheet name (tab)</div>
+        <div class="auto-cfg-label">Sheet tab name</div>
         <input class="auto-cfg-input" id="cfg-${t.id}-sheetName" placeholder="Sheet1" value="${esc(mapping.sheetName||'')}">
       </div>
       <div class="auto-cfg-label" style="margin-bottom:8px">Column mapping</div>
-      <div class="auto-cfg-cols">${colInputs}</div>
-      <div class="auto-cfg-footer" style="margin-top:10px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px">${colInputs}</div>
+      <div class="auto-cfg-footer" style="margin-top:12px">
         <button class="auto-cfg-save" onclick="autoCfgSave('${t.id}','sheets',${cols.length})">Save</button>
         <button class="auto-cfg-toggle" onclick="autoCfgToggle('${t.id}')">Close</button>
       </div>`;
   }
   return '<div style="font-size:12px;color:var(--fg-3)">No configuration needed.</div>';
+}
+
+function refreshSheetPreview(tmplId, count) {
+  const cols = Array.from({length: count}, (_, i) => {
+    const el = document.getElementById(`cfg-${tmplId}-col-${i}`);
+    return el ? el.value : '';
+  });
+  const previewEl = document.getElementById('sheet-preview-' + tmplId);
+  if (!previewEl) return;
+  const rows = cols.map((c, i) => [`Column ${String.fromCharCode(65+i)}`, `job.${c}`, JOB_FIELD_LABELS[c]||c]);
+  previewEl.innerHTML = mappingPreview(rows);
 }
 
 function autoCfgToggle(id) {
