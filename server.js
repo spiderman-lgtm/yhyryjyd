@@ -944,47 +944,77 @@ const APP_META = {
   slack:    { label: 'Slack',         icon: '💼', color: '#4A154B', q: 'slack',          actionKw: ['send message','post message','post to channel'] },
 };
 
-// Build viaSocket inputData per app
-function buildVsInputData(appLabel, conn, eventType, job) {
+// Build viaSocket inputData per app + template
+function buildVsInputData(appLabel, conn, eventType, job, tmplId) {
   const jp = {
     title: job.title, company: job.company_name,
-    location: job.candidate_required_location,
-    salary: job.salary || '', url: job.url,
-    category: job.category, event: eventType,
+    location: job.candidate_required_location || 'India',
+    salary: job.salary || 'Not disclosed', url: job.url || '',
+    category: job.category || 'Tech', event: eventType,
+    date: new Date().toLocaleDateString('en-IN'),
   };
   const cfg = conn.config || {};
+
+  // Per-template message text
+  const waMsg = {
+    wa_new_job:   `🔔 *New Job Alert!*\n📌 ${jp.title} @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary}\n\n👉 Apply: ${jp.url}`,
+    wa_expiry:    `⏰ *Expiring Soon — Apply Today!*\n📌 ${jp.title} @ ${jp.company}\nPosted weeks ago — closing soon!\n\n👉 Apply now: ${jp.url}`,
+    wa_followup:  `📬 *Follow-Up Reminder*\nYou applied to ${jp.company} (${jp.title}) 7 days ago.\n\n💡 Tip: Email the hiring manager directly.`,
+    wa_interview: `🎯 *Interview Reminder!*\n🏢 ${jp.company} — ${jp.title}\n\n✅ Review: DSA, System Design, HR questions\n📄 Your resume is ready`,
+    wa_weekly:    `☀️ *Weekly Job Digest*\nTop matches for you this week — check HireRadar for the full list!`,
+    linkedin_wa:  `🔗 *LinkedIn Job Alert*\n📌 ${jp.title} @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary}\nVia LinkedIn · ${jp.url}`,
+    naukri_wa:    `📋 *Naukri Job Alert*\n📌 ${jp.title} @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary}\nVia Naukri · ${jp.url}`,
+  };
+  const gmailSubj = {
+    gmail_new_job:  `🔔 New Match: ${jp.title} @ ${jp.company} (${jp.salary})`,
+    gmail_daily:    `☀️ Your Daily Job Digest — HireRadar`,
+    gmail_applied:  `✅ Applied — ${jp.title} @ ${jp.company}`,
+    gmail_followup: `Following up — ${jp.title} Application`,
+  };
+  const gmailBody = {
+    gmail_new_job:  `Hi,\n\nA new job matching your profile just dropped:\n\n📌 ${jp.title}\n🏢 ${jp.company}\n📍 ${jp.location}\n💰 ${jp.salary}\n\n👉 Apply here: ${jp.url}\n\n— HireRadar`,
+    gmail_daily:    `Good morning!\n\nHere are your top matching jobs today. Log into HireRadar to see the full list.\n\n— HireRadar`,
+    gmail_applied:  `You applied to ${jp.title} at ${jp.company} today.\n\n💡 Follow up in 7 days if you don't hear back.\n📧 Check their careers page for the hiring manager's contact.\n\n— HireRadar`,
+    gmail_followup: `Dear Hiring Manager,\n\nI applied for the ${jp.title} role at ${jp.company} approximately 7 days ago and wanted to follow up.\n\nI remain very interested in this opportunity and would love to discuss how my skills can contribute.\n\nBest regards`,
+  };
+  const slackText = {
+    slack_new_job:  `🔔 *New job match!*\n*${jp.title}* @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary}\n<${jp.url}|Apply Now>`,
+    slack_applied:  `✅ Applied to *${jp.title} @ ${jp.company}*\n📅 Today · Status: Under review\n_Follow up after 7 days_`,
+    slack_expiry:   `⏰ *Saved jobs expiring soon — apply now!*\n• ${jp.title} @ ${jp.company}`,
+  };
+
   switch (appLabel) {
     case 'whatsapp': return {
       action_version_id: conn.action_version_id,
       inputData: {
         phone: cfg.phone || '',
-        message: `🔔 *Job Alert*: ${jp.title} at ${jp.company}\n📍 ${jp.location}\n💰 ${jp.salary || 'Not listed'}\n🔗 ${jp.url}`,
+        message: waMsg[tmplId] || waMsg.wa_new_job,
       },
     };
     case 'gmail': return {
       action_version_id: conn.action_version_id,
       inputData: {
         to: cfg.to || '',
-        subject: `HireRadar Alert: ${jp.title} at ${jp.company}`,
-        body: `New job found!\n\nRole: ${jp.title}\nCompany: ${jp.company}\nLocation: ${jp.location}\nSalary: ${jp.salary || 'Not listed'}\n\nApply here: ${jp.url}`,
+        subject: gmailSubj[tmplId] || `HireRadar: ${jp.title} @ ${jp.company}`,
+        body: gmailBody[tmplId] || `Job: ${jp.title} at ${jp.company}\nSalary: ${jp.salary}\nApply: ${jp.url}`,
       },
     };
     case 'sheets': return {
       action_version_id: conn.action_version_id,
       inputData: {
         spreadsheet_id: cfg.spreadsheet_id || '',
-        range: cfg.sheet_name ? `${cfg.sheet_name}!A:G` : 'Sheet1!A:G',
-        values: [[jp.title, jp.company, jp.location, jp.salary, eventType, jp.url, new Date().toLocaleDateString('en-IN')]],
+        range: cfg.sheet_name ? `${cfg.sheet_name}!A:H` : 'Sheet1!A:H',
+        values: [[jp.title, jp.company, jp.location, jp.salary, eventType, jp.url, jp.date, tmplId || '']],
       },
     };
     case 'slack': return {
       action_version_id: conn.action_version_id,
       inputData: {
         channel: cfg.channel || '',
-        text: `*Job Alert:* ${jp.title} at *${jp.company}*\n📍 ${jp.location}  💰 ${jp.salary || 'Not listed'}\n🔗 ${jp.url}`,
+        text: slackText[tmplId] || `*Job Alert:* ${jp.title} @ *${jp.company}*\n📍 ${jp.location}  💰 ${jp.salary}\n🔗 ${jp.url}`,
       },
     };
-    default: return { action_version_id: conn.action_version_id, inputData: jp };
+    default: return { action_version_id: conn.action_version_id, inputData: { ...jp, tmplId } };
   }
 }
 
@@ -1004,7 +1034,7 @@ async function deliverToApps(uid, eventType, job) {
   );
   for (const tmpl of activeTmpls) {
     const conn = conns[tmpl.app];
-    const payload = buildVsInputData(tmpl.app, conn, eventType, job);
+    const payload = buildVsInputData(tmpl.app, conn, eventType, job, tmpl.id);
     sends.push(
       fetch(`${VS_RUN}/${conn.script_id}`, {
         method: 'POST',
@@ -1552,4 +1582,36 @@ app.post('/api/auto-config/:id', (req, res) => {
   cfg[id] = { ...( cfg[id] || {} ), enabled: Boolean(enabled), updatedAt: new Date().toISOString() };
   saveAutoCfg();
   res.json({ ok: true });
+});
+
+// POST /api/auto-test/:id — fire a test delivery for an enabled automation
+app.post('/api/auto-test/:id', async (req, res) => {
+  const { id } = req.params;
+  const tmpl = AUTO_TEMPLATES.find(t => t.id === id);
+  if (!tmpl) return res.status(400).json({ error: 'Unknown template' });
+  const autoCfg = userAutoCfg(req.uid);
+  if (!autoCfg[id]?.enabled) return res.status(400).json({ error: 'Automation not enabled' });
+  const conns = userConns(req.uid);
+  const conn = conns[tmpl.app];
+  if (!conn?.script_id || !conn?.action_version_id) return res.status(400).json({ error: 'App not connected' });
+  const testJob = {
+    title: 'Senior Software Engineer (Test)', company: 'Acme Corp', location: 'Bangalore',
+    salary: '₹20-30 LPA', url: 'https://example.com/job/test', category: 'Engineering',
+    id: 'test-' + Date.now(),
+  };
+  try {
+    const payload = buildVsInputData(tmpl.app, conn, tmpl.trigger, testJob, tmpl.id);
+    const r = await fetch(`${VS_RUN}/${conn.script_id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload), signal: AbortSignal.timeout(12000),
+    });
+    const status = r.status;
+    console.log(`[vs-test] ${id} → ${status}`);
+    if (status >= 200 && status < 300) return res.json({ ok: true, status });
+    const body = await r.text();
+    return res.status(502).json({ error: `viaSocket returned ${status}`, body: body.slice(0, 200) });
+  } catch(e) {
+    console.warn(`[vs-test] ${id} failed: ${e.message}`);
+    return res.status(502).json({ error: e.message });
+  }
 });

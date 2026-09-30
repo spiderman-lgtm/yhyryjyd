@@ -2366,6 +2366,7 @@ function renderAutomationCards() {
       </div>
       <div class="auto-preview">${esc(t.preview)}</div>
       <div style="font-size:10.5px;color:var(--fg-3);line-height:1.45">${esc(t.desc)}</div>
+      ${isOn && connected ? `<div style="margin-top:10px;text-align:right"><button onclick="autoTestFire('${t.id}')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--accent,#6366f1);background:transparent;color:var(--accent,#6366f1);cursor:pointer;font-weight:600" title="Send a test delivery now">⚡ Test</button></div>` : ''}
     </div>`;
   }).join('');
 }
@@ -2410,44 +2411,85 @@ async function autoToggle(id, checkbox) {
   }
 }
 
+async function autoTestFire(id) {
+  const tmpl = _autoTemplates.find(t => t.id === id);
+  if (!tmpl) return;
+  showToast('Sending test delivery…', 'info');
+  try {
+    const r = await fetch('/api/auto-test/' + id, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) showToast('✅ Test sent! Check your ' + tmpl.appLabel, 'success');
+    else showToast('Test failed: ' + (d.error || 'unknown error'), 'error');
+  } catch(e) {
+    showToast('Test failed: ' + e.message, 'error');
+  }
+}
+
+// Apps not in viaSocket APP_META → show informational toast
+const AUTO_APP_SUPPORTED = new Set(['whatsapp','gmail','slack','sheets']);
+
 async function vsQuickConnectForAuto(appLabel, autoId, checkbox) {
-  // Show connection dialog to connect the app, then enable automation
+  // Calendar / LinkedIn / Naukri not directly connectable via viaSocket embed
+  if (!AUTO_APP_SUPPORTED.has(appLabel)) {
+    const badge = document.getElementById('auto-conn-badge-' + autoId);
+    if (badge) badge.style.display = 'none';
+    document.getElementById('auto-card-' + autoId)?.classList.remove('connecting');
+    checkbox.checked = false;
+    showToast('Open Integrations tab → connect ' + appLabel + ' via viaSocket', 'info');
+    autoSwitchTab('integrations', document.querySelector('[data-tab="integrations"]'));
+    return;
+  }
+  ensureVsConnectScript();
+  // Wait for script to be ready
+  for (let i = 0; i < 10; i++) {
+    if (typeof openViasocketConnection === 'function') break;
+    await new Promise(r => setTimeout(r, 300));
+  }
+  if (typeof openViasocketConnection !== 'function') {
+    const badge = document.getElementById('auto-conn-badge-' + autoId);
+    if (badge) badge.style.display = 'none';
+    document.getElementById('auto-card-' + autoId)?.classList.remove('connecting');
+    checkbox.checked = false;
+    showToast('viaSocket connect script not loaded. Try again.', 'error');
+    return;
+  }
   const serviceId = await vsGetServiceId(appLabel);
   if (!serviceId) {
-    document.getElementById('auto-conn-badge-' + autoId).style.display = 'none';
+    document.getElementById('auto-conn-badge-' + autoId)?.style && (document.getElementById('auto-conn-badge-' + autoId).style.display = 'none');
     document.getElementById('auto-card-' + autoId)?.classList.remove('connecting');
+    checkbox.checked = false;
     showToast('Could not find ' + appLabel + ' service. Try again.', 'error');
     return;
   }
-  const token = await fetch('/api/vs/token').then(r=>r.json()).then(d=>d.token);
-  await openViasocketConnection(token, serviceId, async (authId) => {
-    try {
-      const cr = await fetch('/api/vs/connect', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ app_label:appLabel, service_id:serviceId, auth_id:authId }),
-      }).then(r=>r.json());
-      if (cr.error) throw new Error(cr.error);
-      // Refresh connections
-      await vsLoadConnections();
-      // Now enable the automation
-      await fetch('/api/auto-config/' + autoId, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ enabled: true }),
-      });
-      _autoCfg[autoId] = { enabled:true };
-      checkbox.checked = true;
-      renderAutomationCards();
-      updateAutoActiveCount();
-      renderConnChips();
-      showToast('✅ ' + appLabel + ' connected & automation enabled!', 'success');
-    } catch(e) {
-      showToast('Connect failed: ' + e.message, 'error');
-    } finally {
-      const badge = document.getElementById('auto-conn-badge-' + autoId);
-      if (badge) badge.style.display = 'none';
-      document.getElementById('auto-card-' + autoId)?.classList.remove('connecting');
-    }
-  });
+  // Store pending auto-connect context; the window message handler below will finish it
+  _qcPending = { appLabel, jobId: null, serviceId, autoId, checkbox };
+  try {
+    const { token } = await fetch('/api/embed-token', { method: 'POST' }).then(r => r.json());
+    openViasocketConnection(token, serviceId);
+  } catch(e) {
+    document.getElementById('auto-conn-badge-' + autoId)?.style && (document.getElementById('auto-conn-badge-' + autoId).style.display = 'none');
+    document.getElementById('auto-card-' + autoId)?.classList.remove('connecting');
+    checkbox.checked = false;
+    showToast('Could not open connect popup: ' + e.message, 'error');
+    _qcPending = null;
+  }
+}
+
+async function autoConnectApp(appLabel) {
+  if (!AUTO_APP_SUPPORTED.has(appLabel)) {
+    showToast(appLabel + ' connect: use viaSocket Flow Builder', 'info');
+    return;
+  }
+  ensureVsConnectScript();
+  for (let i = 0; i < 10; i++) {
+    if (typeof openViasocketConnection === 'function') break;
+    await new Promise(r => setTimeout(r, 300));
+  }
+  const serviceId = await vsGetServiceId(appLabel);
+  if (!serviceId) { showToast('Service not found', 'error'); return; }
+  _qcPending = { appLabel, jobId: null, serviceId, autoId: null, checkbox: null };
+  const { token } = await fetch('/api/embed-token', { method: 'POST' }).then(r => r.json());
+  openViasocketConnection(token, serviceId);
 }
 
 function updateAutoActiveCount() {
@@ -2557,10 +2599,17 @@ window.addEventListener('message', async (e) => {
   if (e.data?.type !== 'viasocket_connection_success') return;
   const authId = e.data?.data?.id;
   if (!authId || !_qcPending) return;
-  const { appLabel, jobId, serviceId } = _qcPending;
+  const { appLabel, jobId, serviceId, autoId, checkbox } = _qcPending;
   _qcPending = null;
-  const statusEl = document.getElementById('qcs-' + appLabel + '-' + jobId);
+
+  // Cleanup any connecting badges
+  if (autoId) {
+    document.getElementById('auto-conn-badge-' + autoId)?.style && (document.getElementById('auto-conn-badge-' + autoId).style.display = 'none');
+    document.getElementById('auto-card-' + autoId)?.classList.remove('connecting');
+  }
+  const statusEl = jobId ? document.getElementById('qcs-' + appLabel + '-' + jobId) : null;
   if (statusEl) statusEl.textContent = '…';
+
   try {
     const r = await fetch('/api/vs/connect', {
       method: 'POST',
@@ -2569,14 +2618,42 @@ window.addEventListener('message', async (e) => {
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Connect failed');
+
+    // Update local connection state
     _vsConns[appLabel] = { connected: true, has_action: d.has_action, config: {}, enabled: true };
-    document.querySelectorAll(`.auto-qc-btn[data-app="${appLabel}"]`).forEach(b => b.classList.add('connected'));
-    document.querySelectorAll('#qcs-' + appLabel + '-' + jobId).forEach(s => s.textContent = '✓');
-    vsShowCfg(appLabel, jobId);
-    setTimeout(loadAutomations, 1000);
+
+    // ── Job-card quick connect path ──
+    if (jobId) {
+      document.querySelectorAll(`.auto-qc-btn[data-app="${appLabel}"]`).forEach(b => b.classList.add('connected'));
+      document.querySelectorAll('#qcs-' + appLabel + '-' + jobId).forEach(s => s.textContent = '✓');
+      vsShowCfg(appLabel, jobId);
+      setTimeout(loadAutomations, 1000);
+    }
+
+    // ── Automation-card toggle path ──
+    if (autoId) {
+      // Enable the specific automation now that app is connected
+      await fetch('/api/auto-config/' + autoId, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: true }),
+      });
+      _autoCfg[autoId] = { enabled: true };
+      if (checkbox) checkbox.checked = true;
+      renderAutomationCards();
+      updateAutoActiveCount();
+      renderConnChips();
+      showToast('✅ Connected & automation live!', 'success');
+    } else if (!jobId) {
+      // Came from autoConnectApp (Integrations tab chip)
+      renderConnChips();
+      renderAutomationCards();
+      showToast('✅ ' + appLabel + ' connected!', 'success');
+    }
   } catch(e2) {
     if (statusEl) statusEl.textContent = 'Err';
-    alert('Connect failed: ' + e2.message);
+    if (checkbox) checkbox.checked = false;
+    if (autoId) showToast('Connect failed: ' + e2.message, 'error');
+    else alert('Connect failed: ' + e2.message);
   }
 });
 
