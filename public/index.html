@@ -1764,33 +1764,10 @@ function jobCard(job, mode) {
         </button>
       </div>
       <div class="auto-qc-cfg" id="auto-qcc-${job.id}"></div>
-      <div class="auto-drawer-divider">or build a custom flow</div>
-      <div class="auto-tmpl" onclick="launchAutoTemplate('whatsapp',${job.id})">
-        <div class="auto-tmpl-icon" style="background:#DCFCE7">💬</div>
-        <div class="auto-tmpl-info">
-          <div class="auto-tmpl-name">WhatsApp Job Alert</div>
-          <div class="auto-tmpl-desc">Get a WhatsApp message whenever new ${esc(job.category||'similar')} jobs are posted</div>
-        </div>
-        <span class="auto-tmpl-tag">Build</span>
-        <span class="auto-tmpl-arr">→</span>
-      </div>
-      <div class="auto-tmpl" onclick="launchAutoTemplate('sheets',${job.id})">
-        <div class="auto-tmpl-icon" style="background:#DBEAFE">📊</div>
-        <div class="auto-tmpl-info">
-          <div class="auto-tmpl-name">Google Sheets Tracker</div>
-          <div class="auto-tmpl-desc">Automatically log every job you save or apply to in your tracking sheet</div>
-        </div>
-        <span class="auto-tmpl-tag">Build</span>
-        <span class="auto-tmpl-arr">→</span>
-      </div>
-      <div class="auto-tmpl" onclick="launchAutoTemplate('company',${job.id})">
-        <div class="auto-tmpl-icon" style="background:#FEF3C7">🔔</div>
-        <div class="auto-tmpl-info">
-          <div class="auto-tmpl-name">Follow ${esc(job.company_name)}</div>
-          <div class="auto-tmpl-desc">Get an Email/Slack alert as soon as ${esc(job.company_name)} posts a new job</div>
-        </div>
-        <span class="auto-tmpl-tag">Build</span>
-        <span class="auto-tmpl-arr">→</span>
+      <div class="auto-drawer-divider">manage all automations</div>
+      <div class="auto-tmpl" onclick="navigate('connections')" style="justify-content:center;gap:8px">
+        <span style="font-size:13px;font-weight:700;color:var(--accent)">⚡ Open Automation Centre</span>
+        <span class="auto-tmpl-arr" style="color:var(--accent)">→</span>
       </div>
     </div>` : ''}
   </div>`;
@@ -2133,146 +2110,19 @@ function toggleAutoDrawer(jobId, evt) {
   }
 }
 
-function launchAutoTemplate(templateId, jobId) {
-  const job = allJobs.find(j => j.id == jobId);
-  if (!job) { navigate('connections'); return; }
-  try {
-    localStorage.setItem('vs_tmpl', JSON.stringify({
-      templateId,
-      job: {
-        id: job.id,
-        title: job.title,
-        company: job.company_name,
-        category: job.category || 'Software Dev',
-        location: (job.candidate_required_location || 'India').split(',')[0]
-      }
-    }));
-  } catch(e) {}
-  // Close drawer first, then navigate
-  if (openAutoId) {
-    const d = document.getElementById('auto-' + openAutoId);
-    const b = document.getElementById('ab-'   + openAutoId);
-    if (d) d.style.display = 'none';
-    if (b) { b.classList.remove('open'); b.innerHTML = '⚡ Automate'; }
-    openAutoId = null;
-  }
-  navigate('connections');
-}
-
-const AUTO_TEMPLATES = {
-  whatsapp: { icon:'💬', type:'new_job', action:'WhatsApp — Send Message' },
-  sheets:   { icon:'📊', type:'tracker', action:'Google Sheets — Add Row' },
-  company:  { icon:'🔔', type:'company', action:'Gmail / Slack — Send Message' },
-  custom:   { icon:'⚡', type:'new_job', action:'any app (WhatsApp, Telegram, Slack, Sheets…)' },
-};
-
-function openCustomAutomation() {
-  try { localStorage.setItem('vs_tmpl', JSON.stringify({ templateId:'custom', job:null })); } catch(e) {}
-  navigate('connections');
-}
-
+function launchAutoTemplate() { navigate('connections'); }
+function openCustomAutomation() { navigate('connections'); }
 function renderVsContextBanner() {
   const el = document.getElementById('vs-ctx-banner');
-  if (!el) return;
-  let ctx = null;
-  try { ctx = JSON.parse(localStorage.getItem('vs_tmpl')); } catch(e) {}
-  if (!ctx || !AUTO_TEMPLATES[ctx.templateId]) { el.style.display = 'none'; return; }
-
-  const t = AUTO_TEMPLATES[ctx.templateId];
-  const job = ctx.job || {};
-  const cats = autoCategories.length ? autoCategories : ['Frontend','Backend','Full Stack','AI/ML','Data Science','DevOps','Mobile'];
-  const catOpts = sel => `<option value="">Any category</option>` +
-    cats.map(c => `<option value="${esc(c)}"${c===sel?' selected':''}>${esc(c)}</option>`).join('');
-  const companies = [...new Set(allJobs.map(j => j.company_name))].sort();
-
-  const META = {
-    whatsapp: { title:'WhatsApp Job Alert', desc:`Get a WhatsApp message whenever new ${job.category||'matching'} jobs are posted${job.location ? ' in ' + job.location : ''}` },
-    sheets:   { title:'Google Sheets Tracker', desc:'Every job you save or apply to is added as a new row in your sheet' },
-    company:  { title:`Follow ${job.company||'company'}`, desc:`Get an Email or Slack alert as soon as ${job.company||'this company'} posts a new job` },
-    custom:   { title:'New automation', desc:'Pick an event, build a viaSocket flow, and connect its webhook URL here' },
-  };
-  const m = META[ctx.templateId];
-
-  let fields = '';
-  if (ctx.templateId === 'custom') {
-    fields += `<label class="cf-field"><span>Run when</span>
-      <select id="cf-type" onchange="syncCustomFields()">
-        <option value="new_job">A new matching job is posted</option>
-        <option value="company">A company posts a new job</option>
-        <option value="tracker">I save or apply to a job</option>
-      </select></label>`;
-  }
-  if (t.type === 'new_job') {
-    fields += `<label class="cf-field" data-for="new_job"><span>Category</span><select id="cf-cat">${catOpts(job.category)}</select></label>
-      <label class="cf-field" data-for="new_job"><span>City</span><input id="cf-loc" placeholder="Any city" value="${esc(job.location||'')}"></label>`;
-  }
-  if (t.type === 'company' || ctx.templateId === 'custom') {
-    fields += `<label class="cf-field" data-for="company"${ctx.templateId==='custom'?' style="display:none"':''}><span>Company</span>
-      <input id="cf-company" list="cf-company-list" placeholder="e.g. Razorpay" value="${esc(job.company||'')}"${ctx.templateId==='company'?' readonly':''}>
-      <datalist id="cf-company-list">${companies.map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label>`;
-  }
-
-  el.innerHTML = `
-    <span class="cf-icon">${t.icon}</span>
-    <div class="cf-body">
-      <div class="cf-title">${esc(m.title)}</div>
-      <div class="cf-desc">${esc(m.desc)}</div>
-      <ol class="cf-steps">
-        <li>In viaSocket below, create a <b>New Flow</b> → choose <b>Webhook</b> as the trigger → copy its URL.</li>
-        <li>Add an action: <b>${esc(t.action)}</b>. Job details (title, company, salary, link) arrive in the webhook data.</li>
-        <li>Paste the webhook URL here and click <b>Connect</b>.</li>
-      </ol>
-      ${fields ? `<div class="cf-fields">${fields}</div>` : ''}
-      <div class="cf-row">
-        <input id="cf-url" class="cf-url" type="url" placeholder="https://flow.sokt.io/func/…" autocomplete="off" spellcheck="false">
-        <button class="btn btn-automate btn-sm" id="cf-submit" onclick="submitAutomation()">Connect</button>
-      </div>
-      <div class="cf-msg" id="cf-msg"></div>
-    </div>
-    <button class="cf-close" onclick="dismissVsContext()" aria-label="Close">×</button>
-  `;
-  el.style.display = 'flex';
+  if (el) el.style.display = 'none';
+  try { localStorage.removeItem('vs_tmpl'); } catch(e) {}
 }
-
-function syncCustomFields() {
-  const type = document.getElementById('cf-type')?.value;
-  document.querySelectorAll('#vs-ctx-banner [data-for]').forEach(f => { f.style.display = f.dataset.for === type ? '' : 'none'; });
-}
-
-async function submitAutomation() {
-  let ctx = null;
-  try { ctx = JSON.parse(localStorage.getItem('vs_tmpl')); } catch(e) {}
-  if (!ctx) return;
-  const t = AUTO_TEMPLATES[ctx.templateId];
-  const type = document.getElementById('cf-type')?.value || t.type;
-  const val = id => (document.getElementById(id)?.value || '').trim();
-  const filter = type === 'new_job' ? { category: val('cf-cat'), location: val('cf-loc') }
-               : type === 'company' ? { company: val('cf-company') } : {};
-  const names = {
-    new_job: `${filter.category || 'All'} jobs${filter.location ? ' · ' + filter.location : ''}`,
-    company: `Follow ${filter.company}`,
-    tracker: 'Save/Apply → tracker',
-  };
-  const prefix = { whatsapp:'WhatsApp: ', sheets:'Sheets: ', company:'', custom:'' }[ctx.templateId];
-  const msg = document.getElementById('cf-msg');
-  const btn = document.getElementById('cf-submit');
-  const urlInput = document.getElementById('cf-url');
-  btn.disabled = true; msg.className = 'cf-msg'; msg.textContent = 'Connecting…';
-  try {
-    const r = await fetch('/api/automations', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ type, template: ctx.templateId, name: prefix + names[type], filter, webhookUrl: urlInput.value })
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error || 'Could not connect');
-    urlInput.value = '';
-    try { localStorage.removeItem('vs_tmpl'); } catch(e) {}
-    msg.className = 'cf-msg ok';
-    msg.innerHTML = `✅ Connected! It now appears under "My Automations" in the sidebar. <button class="cf-link" onclick="testAutomation('${data.automation.id}', this)">Send a test →</button>`;
-    loadAutomations();
-  } catch(e) {
-    msg.className = 'cf-msg err'; msg.textContent = e.message;
-  } finally { btn.disabled = false; }
+function syncCustomFields() {}
+async function submitAutomation() {}
+function dismissVsContext() {
+  try { localStorage.removeItem('vs_tmpl'); } catch(e) {}
+  const el = document.getElementById('vs-ctx-banner');
+  if (el) el.style.display = 'none';
 }
 
 // ─── My Automations (sidebar) ─────────────────────────────────────────────────
@@ -2383,12 +2233,6 @@ function postJobEvent(type, jobId) {
   if (!myAutomations.some(a => a.enabled && a.type === 'tracker')) return;
   fetch('/api/events', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type, jobId }) })
     .then(() => setTimeout(loadAutomations, 2000)).catch(() => {});
-}
-
-function dismissVsContext() {
-  try { localStorage.removeItem('vs_tmpl'); } catch(e) {}
-  const el = document.getElementById('vs-ctx-banner');
-  if (el) el.style.display = 'none';
 }
 
 // ─── viaSocket Quick Connect (direct app connection, no webhook URL needed) ────
