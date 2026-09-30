@@ -1316,6 +1316,78 @@ app.get('/api/debug/state', (req, res) => {
   res.json({ connections: connSummary, automations: autoSummary });
 });
 
+// Debug: test email delivery and return result in browser
+app.get('/api/debug/test-email', async (req, res) => {
+  const uid = req.uid;
+  const conns = userConns(uid);
+  const autoCfg = userAutoCfg(uid);
+  const conn = conns['gmail'];
+  const cfg = autoCfg['gmail_applied'];
+  const log = [];
+
+  log.push(`uid: ${uid}`);
+  log.push(`SECRET set: ${Boolean(SECRET)}`);
+  log.push(`gmail conn exists: ${Boolean(conn)}`);
+  if (conn) {
+    log.push(`gmail.enabled: ${conn.enabled}`);
+    log.push(`gmail.has_script_id: ${Boolean(conn.script_id)}`);
+    log.push(`gmail.action_version_id: ${conn.action_version_id || 'MISSING'}`);
+  }
+  log.push(`gmail_applied cfg exists: ${Boolean(cfg)}`);
+  if (cfg) {
+    log.push(`gmail_applied.enabled: ${cfg.enabled}`);
+    log.push(`gmail_applied.mapping.to: ${cfg.mapping?.to || 'EMPTY'}`);
+  }
+
+  if (!SECRET) return res.json({ ok: false, log, error: 'VIASOCKET_EMBED_SECRET not set' });
+  if (!conn?.enabled) return res.json({ ok: false, log, error: 'Gmail not connected or not enabled' });
+  if (!cfg?.enabled) return res.json({ ok: false, log, error: 'gmail_applied automation not enabled' });
+  if (!conn.script_id) return res.json({ ok: false, log, error: 'No script_id' });
+
+  // Re-fetch action_version_id if missing
+  if (!conn.action_version_id) {
+    log.push('action_version_id missing — re-fetching...');
+    try {
+      const doc = await vsAppDoc(conn.service_id || APP_META['gmail']?.service_id);
+      const avid = extractActionVerId(doc, APP_META['gmail']?.actionKw || []);
+      if (avid) {
+        conn.action_version_id = avid;
+        connStore.users[uid] = connStore.users[uid] || {};
+        connStore.users[uid]['gmail'] = conn;
+        saveConnStore();
+        log.push(`action_version_id re-fetched: ${avid}`);
+      } else {
+        log.push('action_version_id NOT FOUND in viaSocket docs');
+        return res.json({ ok: false, log, error: 'Could not find action_version_id' });
+      }
+    } catch (e) {
+      log.push(`re-fetch error: ${e.message}`);
+      return res.json({ ok: false, log, error: e.message });
+    }
+  }
+
+  const testJob = { id: 999, title: 'Test Role', company_name: 'Test Co', company: 'Test Co', candidate_required_location: 'India', salary: '10 LPA', url: 'https://example.com', category: 'Tech' };
+  const mapping = cfg?.mapping || {};
+  const payload = buildVsInputData('gmail', conn, 'job.applied', testJob, 'gmail_applied', mapping);
+  log.push(`payload keys: ${Object.keys(payload.inputData || {}).join(', ')}`);
+  log.push(`to: ${payload.inputData?.to || 'EMPTY'}`);
+  log.push(`sending to: ${VS_RUN}/${conn.script_id}`);
+
+  try {
+    const r = await fetch(`${VS_RUN}/${conn.script_id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload), signal: AbortSignal.timeout(15000),
+    });
+    const body = await r.text().catch(() => '');
+    log.push(`HTTP status: ${r.status}`);
+    log.push(`response: ${body.slice(0, 500)}`);
+    res.json({ ok: r.ok, status: r.status, log, response: body.slice(0, 500) });
+  } catch (e) {
+    log.push(`fetch error: ${e.message}`);
+    res.json({ ok: false, log, error: e.message });
+  }
+});
+
 // Update config or toggle enabled
 app.patch('/api/vs/connections/:app', (req, res) => {
   const conns = userConns(req.uid);
