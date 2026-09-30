@@ -1,0 +1,1544 @@
+<title>OpenClaw System Spec</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  /* Layout: sidebar nav + scrollable main content */
+  :root {
+    --bg: #f8f8f7;
+    --surface: #ffffff;
+    --border: #e4e2dd;
+    --fg: #1a1916;
+    --fg-muted: #6b6860;
+    --accent: #2563eb;
+    --accent-bg: #eff6ff;
+    --tag-ai: #dbeafe;
+    --tag-ai-fg: #1d4ed8;
+    --tag-mcp: #dcfce7;
+    --tag-mcp-fg: #15803d;
+    --tag-int: #fef9c3;
+    --tag-int-fg: #854d0e;
+    --code-bg: #f1f0ee;
+    --warn: #b45309;
+    --bad-bg: #fef2f2;
+    --bad-fg: #991b1b;
+    --good-bg: #f0fdf4;
+    --good-fg: #166534;
+    --sidebar-w: 240px;
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141413;
+      --surface: #1e1d1b;
+      --border: #2e2d2a;
+      --fg: #f0ede8;
+      --fg-muted: #9b9790;
+      --accent: #60a5fa;
+      --accent-bg: #1e3a5f;
+      --tag-ai: #1e3a5f;
+      --tag-ai-fg: #93c5fd;
+      --tag-mcp: #14432a;
+      --tag-mcp-fg: #86efac;
+      --tag-int: #3f2a00;
+      --tag-int-fg: #fde047;
+      --code-bg: #2a2926;
+      --warn: #fbbf24;
+      --bad-bg: #450a0a;
+      --bad-fg: #fca5a5;
+      --good-bg: #052e16;
+      --good-fg: #86efac;
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #141413;
+    --surface: #1e1d1b;
+    --border: #2e2d2a;
+    --fg: #f0ede8;
+    --fg-muted: #9b9790;
+    --accent: #60a5fa;
+    --accent-bg: #1e3a5f;
+    --tag-ai: #1e3a5f;
+    --tag-ai-fg: #93c5fd;
+    --tag-mcp: #14432a;
+    --tag-mcp-fg: #86efac;
+    --tag-int: #3f2a00;
+    --tag-int-fg: #fde047;
+    --code-bg: #2a2926;
+    --warn: #fbbf24;
+    --bad-bg: #450a0a;
+    --bad-fg: #fca5a5;
+    --good-bg: #052e16;
+    --good-fg: #86efac;
+    color-scheme: dark;
+  }
+  .flow-step.human { border-color: var(--warn); color: var(--warn); }
+  .tag-plain { background: var(--code-bg); color: var(--fg-muted); }
+  .tag-bad { background: var(--bad-bg); color: var(--bad-fg); }
+  .tag-good { background: var(--good-bg); color: var(--good-fg); }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.7;
+    display: flex;
+    min-height: 100%;
+  }
+
+  /* ── Sidebar ─────────────────────────────── */
+  #sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+    z-index: 10;
+  }
+
+  .sidebar-logo {
+    padding: 0 16px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+
+  .sidebar-logo .product {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+
+  .sidebar-logo .title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--fg);
+    line-height: 1.3;
+    margin-top: 2px;
+  }
+
+  .nav-section {
+    padding: 4px 0;
+  }
+
+  .nav-group-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    padding: 8px 16px 4px;
+  }
+
+  .nav-link {
+    display: block;
+    padding: 5px 16px;
+    font-size: 13px;
+    color: var(--fg-muted);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: color .15s, border-color .15s, background .15s;
+    line-height: 1.4;
+  }
+
+  .nav-link:hover {
+    color: var(--fg);
+    background: var(--accent-bg);
+    border-left-color: var(--accent);
+  }
+
+  .nav-link.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: var(--accent-bg);
+    font-weight: 500;
+  }
+
+  /* ── Main ────────────────────────────────── */
+  #main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    padding: 40px 48px 80px;
+    max-width: 860px;
+  }
+
+  .page-header {
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .page-header .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .page-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  .page-header p {
+    margin-top: 10px;
+    color: var(--fg-muted);
+    font-size: 14px;
+  }
+
+  /* ── Sections ────────────────────────────── */
+  .section {
+    margin-bottom: 56px;
+    scroll-margin-top: 24px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .section-num {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    color: var(--fg-muted);
+    min-width: 28px;
+  }
+
+  .section h2 {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.3;
+    text-wrap: balance;
+  }
+
+  .section h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 20px 0 8px;
+    color: var(--fg);
+  }
+
+  .section p {
+    margin-bottom: 12px;
+    color: var(--fg);
+  }
+
+  .section p:last-child { margin-bottom: 0; }
+
+  /* ── Agent cards ─────────────────────────── */
+  .agent-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin-bottom: 16px;
+  }
+
+  .agent-card .agent-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin-bottom: 4px;
+  }
+
+  .agent-card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 10px;
+  }
+
+  .agent-card p, .agent-card li {
+    font-size: 14px;
+    color: var(--fg-muted);
+    line-height: 1.65;
+  }
+
+  /* ── Lists ───────────────────────────────── */
+  ul, ol {
+    padding-left: 20px;
+    margin-bottom: 12px;
+  }
+
+  li {
+    margin-bottom: 4px;
+    line-height: 1.65;
+  }
+
+  li:last-child { margin-bottom: 0; }
+
+  /* ── Code / JSON ─────────────────────────── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--fg);
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  /* ── Tags / badges ───────────────────────── */
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin: 2px 3px 2px 0;
+    letter-spacing: .02em;
+  }
+
+  .tag-ai { background: var(--tag-ai); color: var(--tag-ai-fg); }
+  .tag-mcp { background: var(--tag-mcp); color: var(--tag-mcp-fg); }
+  .tag-int { background: var(--tag-int); color: var(--tag-int-fg); }
+
+  /* ── State machine flow ──────────────────── */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 16px 0;
+  }
+
+  .flow-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+
+  .flow-step.terminal {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .flow-arrow {
+    text-align: center;
+    color: var(--fg-muted);
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 0 2px 14px;
+  }
+
+  /* ── Table ───────────────────────────────── */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 16px 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--fg-muted);
+  }
+
+  td {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  tr:nth-child(even) td { background: var(--bg); }
+
+  /* ── Callout boxes ───────────────────────── */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-bg);
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+
+  .callout strong { color: var(--accent); }
+
+  .callout-warn {
+    border-left-color: #f59e0b;
+    background: #fffbeb;
+    color: #78350f;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .callout-warn {
+      background: #451a00;
+      color: #fde68a;
+    }
+  }
+
+  :root[data-theme="dark"] .callout-warn {
+    background: #451a00;
+    color: #fde68a;
+  }
+
+  /* ── Phase steps ─────────────────────────── */
+  .phase-list {
+    counter-reset: phase;
+    list-style: none;
+    padding: 0;
+  }
+
+  .phase-list li {
+    counter-increment: phase;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+
+  .phase-list li:last-child { border-bottom: none; }
+
+  .phase-list li::before {
+    content: "Phase " counter(phase);
+    font-size: 10px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    color: var(--accent);
+    letter-spacing: .04em;
+    white-space: nowrap;
+    min-width: 60px;
+  }
+
+  /* ── Search query clusters ───────────────── */
+  .query-cluster {
+    margin-bottom: 16px;
+  }
+
+  .query-cluster h4 {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--fg-muted);
+    margin-bottom: 6px;
+  }
+
+  .query-cluster .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+  /* ── Divider ─────────────────────────────── */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+
+  /* ── Responsive ──────────────────────────── */
+  @media (max-width: 700px) {
+    #sidebar { display: none; }
+    #main { margin-left: 0; padding: 24px 16px 60px; }
+  }
+</style>
+
+<!-- Sidebar navigation -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="product">viaSocket</div>
+    <div class="title">Community Opportunity Intelligence</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-group-label">Overview</div>
+    <a class="nav-link" href="#env">1. My Environment</a>
+    <a class="nav-link" href="#usecase">2. Use Case</a>
+    <a class="nav-link" href="#platforms">3. Platforms</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-group-label">Architecture</div>
+    <a class="nav-link" href="#arch">4. 4-Agent Architecture</a>
+    <a class="nav-link" href="#agent1">5. Agent 1 — Orchestrator</a>
+    <a class="nav-link" href="#agent2">6. Agent 2 — Discovery</a>
+    <a class="nav-link" href="#agent3">7. Agent 3 — Verification</a>
+    <a class="nav-link" href="#agent4">8. Agent 4 — Response</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-group-label">Operations</div>
+    <a class="nav-link" href="#approval">9. Human Approval</a>
+    <a class="nav-link" href="#sheets">10. Google Sheets</a>
+    <a class="nav-link" href="#monitoring">11. Monitoring</a>
+    <a class="nav-link" href="#slack">12. Slack</a>
+    <a class="nav-link" href="#state">13. State Machine</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-group-label">Engineering</div>
+    <a class="nav-link" href="#security">14. Security</a>
+    <a class="nav-link" href="#failure">15. Failure Handling</a>
+    <a class="nav-link" href="#multiagent">16. Multi-Agent Comms</a>
+    <a class="nav-link" href="#contracts">17. Data Contracts</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-group-label">Implementation</div>
+    <a class="nav-link" href="#openclaw">18. OpenClaw Guide</a>
+    <a class="nav-link" href="#first">19. First Step</a>
+    <a class="nav-link" href="#order">20. Build Order</a>
+    <a class="nav-link" href="#testing">21. Testing</a>
+    <a class="nav-link" href="#rules">22. Behavior Rules</a>
+    <a class="nav-link" href="#style">23. Response Style</a>
+  </div>
+</nav>
+
+<!-- Main content -->
+<main id="main">
+
+  <div class="page-header">
+    <div class="eyebrow">OpenClaw · Multi-Agent System</div>
+    <h1>Community Opportunity Intelligence</h1>
+    <p>Full specification for building a 4-agent autonomous system to discover, verify, and respond to relevant public conversations — for viaSocket Action Layer.</p>
+  </div>
+
+  <!-- ── Section 1 ── -->
+  <div class="section" id="env">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2>My Current Environment</h2>
+    </div>
+
+    <div class="callout">
+      <strong>Status:</strong> OpenClaw is already installed. Anthropic/Claude is connected and working. Do NOT reinstall OpenClaw unless inspection determines it is necessary.
+    </div>
+
+    <ul>
+      <li>OpenClaw is installed and running</li>
+      <li>Anthropic / Claude is connected and functional</li>
+      <li>Final system will serve <strong>viaSocket</strong></li>
+      <li>No other assumptions about current config — must be inspected first</li>
+    </ul>
+  </div>
+
+  <!-- ── Section 2 ── -->
+  <div class="section" id="usecase">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2>The Actual Use Case</h2>
+    </div>
+
+    <div class="callout-warn callout">
+      <strong>Primary goal:</strong> This is NOT a sales-pitch bot. The goal is to find genuine problems and contribute real value.
+    </div>
+
+    <h3>Find public conversations about:</h3>
+    <div class="query-cluster">
+      <div class="tags">
+        <span class="tag tag-ai">AI agents</span>
+        <span class="tag tag-ai">AI agent actions</span>
+        <span class="tag tag-ai">AI agent tools</span>
+        <span class="tag tag-ai">AI agent integrations</span>
+        <span class="tag tag-mcp">MCP</span>
+        <span class="tag tag-mcp">MCP servers</span>
+        <span class="tag tag-mcp">MCP tools</span>
+        <span class="tag tag-int">SaaS integrations</span>
+        <span class="tag tag-int">third-party APIs</span>
+        <span class="tag tag-int">OAuth</span>
+        <span class="tag tag-int">multi-tenant OAuth</span>
+        <span class="tag tag-int">connected accounts</span>
+        <span class="tag tag-int">integration infrastructure</span>
+        <span class="tag tag-int">webhook integrations</span>
+        <span class="tag tag-int">API maintenance</span>
+        <span class="tag tag-int">integration engineering</span>
+        <span class="tag tag-int">building many integrations</span>
+        <span class="tag tag-int">app authentication</span>
+        <span class="tag tag-ai">letting AI agents interact with external apps</span>
+      </div>
+    </div>
+
+    <h3>Then do this (in order):</h3>
+    <ol>
+      <li>Understand the conversation</li>
+      <li>Understand what the person is actually building or trying to solve</li>
+      <li>Identify the exact technical / problem context</li>
+      <li>Determine whether viaSocket Action Layer could genuinely provide value</li>
+      <li>Verify actual viaSocket capability using the relevant skill/documentation</li>
+      <li>Determine what useful contribution can be made</li>
+      <li>Decide whether mentioning viaSocket is actually natural</li>
+      <li>Generate a useful, natural response</li>
+      <li>Save the opportunity and activity in Google Sheets</li>
+      <li>Ask a human for approval</li>
+      <li>If approved, automatically post the response via the authorized platform mechanism</li>
+      <li>Track the posted comment / reply</li>
+      <li>Monitor the conversation for meaningful replies</li>
+      <li>If a meaningful follow-up occurs, analyze and prepare the next response</li>
+      <li>Ask for human approval again before posting</li>
+      <li>Maintain complete date-wise and post-wise history in Google Sheets</li>
+    </ol>
+
+    <div class="callout">
+      <strong>North star:</strong> Find the right conversations where we can genuinely contribute useful information — NOT find people and pitch viaSocket. A technically useful response without mentioning viaSocket is completely valid.
+    </div>
+  </div>
+
+  <!-- ── Section 3 ── -->
+  <div class="section" id="platforms">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2>Platforms &amp; Sources</h2>
+    </div>
+
+    <p><strong>Priority order:</strong> LinkedIn → X → Reddit → then others.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Platform</th>
+            <th>Search/Read</th>
+            <th>Post/Reply</th>
+            <th>Official API</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>LinkedIn</td><td>To verify</td><td>To verify</td><td>To verify</td><td>Priority 1</td></tr>
+          <tr><td>X</td><td>To verify</td><td>To verify</td><td>To verify</td><td>Priority 2</td></tr>
+          <tr><td>Reddit</td><td>To verify</td><td>To verify</td><td>To verify</td><td>Priority 3</td></tr>
+          <tr><td>Hacker News</td><td>To verify</td><td>To verify</td><td>To verify</td><td>Later</td></tr>
+          <tr><td>Product Hunt</td><td>To verify</td><td>To verify</td><td>To verify</td><td>Later</td></tr>
+          <tr><td>AI / SaaS / developer communities &amp; forums</td><td>To verify</td><td>To verify</td><td>To verify</td><td>Later</td></tr>
+          <tr><td>Other relevant public sources</td><td colspan="3">Only if OpenClaw can access them legitimately</td><td>Later</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout-warn callout">
+      <strong>Rules:</strong> NEVER bypass platform restrictions. NEVER use unauthorized scraping. NEVER use someone else's credentials. NEVER ask for social-media passwords. Use official APIs / OAuth only.
+    </div>
+
+    <p>Do not assume every platform has the same API or automation capability. For each platform, determine:</p>
+    <ul>
+      <li>Can we search/read? Can we retrieve public posts?</li>
+      <li>Can we publish comments/replies?</li>
+      <li>What authentication is required? What permissions/scopes?</li>
+      <li>Is official API access available? What are the platform restrictions?</li>
+      <li>Is browser automation permitted?</li>
+      <li>If automatic posting is not safely/legitimately possible, what fallback should we use?</li>
+    </ul>
+  </div>
+
+  <!-- ── Section 4 ── -->
+  <div class="section" id="arch">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2>Final 4-Agent Architecture</h2>
+    </div>
+
+    <p>Start with <strong>four logical agents</strong>. Do NOT create 10+ agents unless there is a demonstrated need later. All four must be interconnected and work together as ONE system. The Orchestrator coordinates them and maintains workflow state.</p>
+
+    <pre>
+         ORCHESTRATOR (Agent 1)
+               |
+    +----------+-----------+
+    |          |           |
+Discovery  Opportunity  Response
+(Agent 2)  + Verify     + Execute
+           (Agent 3)    (Agent 4)
+               |
+          Shared State
+               |
+         Google Sheets</pre>
+  </div>
+
+  <!-- ── Section 5 ── -->
+  <div class="section" id="agent1">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2>Agent 1 — Orchestrator</h2>
+    </div>
+
+    <div class="agent-card">
+      <div class="agent-label">Agent 1</div>
+      <h3>Orchestrator</h3>
+      <p>The manager of the entire workflow. Routes work based on state and thresholds — does NOT blindly run every agent on every conversation.</p>
+    </div>
+
+    <h3>Responsibilities:</h3>
+    <ul>
+      <li>Receive / start discovery jobs</li>
+      <li>Send discovered conversations to Agent 2</li>
+      <li>Receive relevance analysis, send qualified opportunities to Agent 3</li>
+      <li>Receive opportunity / capability analysis, send approved opportunities to Agent 4</li>
+      <li>Manage opportunity state and lifecycle</li>
+      <li>Prevent duplicate processing</li>
+      <li>Coordinate Google Sheet updates</li>
+      <li>Manage retries, errors, follow-ups, and monitoring</li>
+      <li>Know which stage each opportunity is in and decide the next action</li>
+    </ul>
+  </div>
+
+  <!-- ── Section 6 ── -->
+  <div class="section" id="agent2">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <h2>Agent 2 — Discovery + Relevance</h2>
+    </div>
+
+    <div class="agent-card">
+      <div class="agent-label">Agent 2</div>
+      <h3>Discovery + Relevance</h3>
+      <p>Finds potentially useful public conversations and filters them using problem-oriented queries.</p>
+    </div>
+
+    <h3>Search query clusters:</h3>
+
+    <div class="query-cluster">
+      <h4>AI Agent Cluster</h4>
+      <div class="tags">
+        <span class="tag tag-ai">AI agents</span>
+        <span class="tag tag-ai">AI agent tools</span>
+        <span class="tag tag-ai">AI agent actions</span>
+        <span class="tag tag-ai">agentic AI</span>
+        <span class="tag tag-ai">AI tool calling</span>
+        <span class="tag tag-ai">AI APIs</span>
+      </div>
+    </div>
+
+    <div class="query-cluster">
+      <h4>MCP Cluster</h4>
+      <div class="tags">
+        <span class="tag tag-mcp">MCP</span>
+        <span class="tag tag-mcp">MCP server</span>
+        <span class="tag tag-mcp">MCP tools</span>
+        <span class="tag tag-mcp">Model Context Protocol</span>
+        <span class="tag tag-mcp">MCP integrations</span>
+      </div>
+    </div>
+
+    <div class="query-cluster">
+      <h4>Integration Cluster</h4>
+      <div class="tags">
+        <span class="tag tag-int">SaaS integrations</span>
+        <span class="tag tag-int">integration platform</span>
+        <span class="tag tag-int">integration API</span>
+        <span class="tag tag-int">build integrations</span>
+        <span class="tag tag-int">integration infrastructure</span>
+        <span class="tag tag-int">third-party APIs</span>
+        <span class="tag tag-int">integration maintenance</span>
+      </div>
+    </div>
+
+    <div class="query-cluster">
+      <h4>Auth Cluster</h4>
+      <div class="tags">
+        <span class="tag tag-int">OAuth</span>
+        <span class="tag tag-int">OAuth integrations</span>
+        <span class="tag tag-int">OAuth for SaaS</span>
+        <span class="tag tag-int">multi-tenant OAuth</span>
+        <span class="tag tag-int">connected accounts</span>
+        <span class="tag tag-int">API authentication</span>
+      </div>
+    </div>
+
+    <div class="query-cluster">
+      <h4>Developer Pain Cluster</h4>
+      <div class="tags">
+        <span class="tag tag-int">building 100 integrations</span>
+        <span class="tag tag-int">maintaining integrations</span>
+        <span class="tag tag-int">integration engineering</span>
+        <span class="tag tag-int">API maintenance</span>
+        <span class="tag tag-int">webhook integrations</span>
+        <span class="tag tag-int">supporting customer integration requests</span>
+      </div>
+    </div>
+
+    <div class="query-cluster">
+      <h4>Specific Combos</h4>
+      <div class="tags">
+        <span class="tag tag-ai">AI agent + Salesforce</span>
+        <span class="tag tag-ai">AI agent + HubSpot</span>
+        <span class="tag tag-ai">AI agent + Gmail</span>
+        <span class="tag tag-ai">AI agent + Slack</span>
+        <span class="tag tag-ai">AI agent + Shopify</span>
+        <span class="tag tag-mcp">MCP + Salesforce</span>
+        <span class="tag tag-mcp">MCP + HubSpot</span>
+        <span class="tag tag-mcp">MCP + Gmail</span>
+        <span class="tag tag-mcp">MCP + Slack</span>
+      </div>
+    </div>
+
+    <h3>For every candidate conversation, capture:</h3>
+    <ul>
+      <li>Platform, unique post/conversation ID, URL</li>
+      <li>Author, author role (if identifiable)</li>
+      <li>Published date/time</li>
+      <li>Conversation text / relevant excerpt</li>
+      <li>Topic, problem, applications mentioned</li>
+      <li>Trigger / search terms matched</li>
+      <li>Whether it is a genuine discussion</li>
+      <li>Initial relevance score</li>
+    </ul>
+
+    <h3>Classify each conversation:</h3>
+    <div class="tags">
+      <span class="tag tag-mcp">HIGH</span>
+      <span class="tag tag-int">MEDIUM</span>
+      <span class="tag tag-ai">LOW</span>
+      <span class="tag tag-plain">IGNORE</span>
+    </div>
+
+    <h3>Identify intent:</h3>
+    <ul>
+      <li>solution_request, technical_question, tool_comparison</li>
+      <li>architecture_discussion, implementation_problem, recommendation_request</li>
+      <li>product_building, complaint, general_discussion, promotional, other</li>
+    </ul>
+
+    <div class="callout-warn callout">
+      <strong>Be conservative.</strong> A conversation should NOT become high opportunity simply because it contains words like "AI", "MCP", "OAuth", or "integration". There must be an actual useful problem or discussion.
+    </div>
+  </div>
+
+  <!-- ── Section 7 ── -->
+  <div class="section" id="agent3">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <h2>Agent 3 — Opportunity + viaSocket Verification</h2>
+    </div>
+
+    <div class="agent-card">
+      <div class="agent-label">Agent 3</div>
+      <h3>Opportunity + viaSocket Verification</h3>
+      <p>The technical / product intelligence agent. Thinks like a practitioner, NOT a salesperson.</p>
+    </div>
+
+    <h3>Questions this agent must answer:</h3>
+    <ul>
+      <li>What is the actual problem?</li>
+      <li>What is the person building?</li>
+      <li>What have they tried? What are they struggling with?</li>
+      <li>What apps are involved?</li>
+      <li>What exact integration/action capability is needed?</li>
+      <li>Could viaSocket genuinely help?</li>
+      <li>What useful technical contribution can we provide?</li>
+      <li>Should viaSocket be mentioned at all?</li>
+      <li>What should NOT be claimed?</li>
+    </ul>
+
+    <div class="callout-warn callout">
+      <strong>CRITICAL:</strong> The agent MUST NOT hallucinate viaSocket capabilities. The relevant viaSocket app skill/documentation is the source of truth. If a capability is not verified — DO NOT CLAIM IT.
+    </div>
+
+    <h3>Verification process:</h3>
+    <p>If the conversation mentions Salesforce → find Salesforce viaSocket skill/docs and verify actual supported capabilities. Same for Gmail, Slack, or any other app mentioned. Verify: app availability, actions, triggers, authentication, OAuth, fields, required parameters, limitations, relevant APIs, supported workflows.</p>
+
+    <h3>Participation strategies:</h3>
+    <ol type="A">
+      <li>Pure educational answer</li>
+      <li>Educational answer + subtle viaSocket mention</li>
+      <li>Technical architecture explanation</li>
+      <li>Ask a useful question</li>
+      <li>Direct solution if explicitly requested</li>
+      <li>Do not participate</li>
+    </ol>
+  </div>
+
+  <!-- ── Section 8 ── -->
+  <div class="section" id="agent4">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <h2>Agent 4 — Response + Execution</h2>
+    </div>
+
+    <div class="agent-card">
+      <div class="agent-label">Agent 4</div>
+      <h3>Response + Execution</h3>
+      <p>Two major responsibilities: (A) generate the response, (B) execute the approved post.</p>
+    </div>
+
+    <h3>Part A — Response Generation</h3>
+    <p>Generate:</p>
+    <ol>
+      <li>Recommended response</li>
+      <li>Shorter response</li>
+      <li>Product-mention version — ONLY if Agent 3 approved it</li>
+      <li>Why the response is useful</li>
+      <li>Risk flags</li>
+    </ol>
+
+    <h3>Response must:</h3>
+    <ul>
+      <li>Answer the actual conversation, help the person first</li>
+      <li>Sound human and be platform-appropriate</li>
+      <li>Avoid corporate marketing language, generic praise, unnecessary jargon</li>
+      <li>Never invent personal experience or fabricate customer stories</li>
+      <li>Never make unsupported claims or attack competitors</li>
+      <li>Never force viaSocket into the conversation</li>
+    </ul>
+
+    <h3>Platform tone guide:</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Platform</th><th>Tone</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Reddit</td><td>Conversational, technical when appropriate, no corporate tone, avoid unnecessary brand mentions, genuine community contribution</td></tr>
+          <tr><td>X</td><td>Concise, direct, one clear idea, no sales pitch</td></tr>
+          <tr><td>LinkedIn</td><td>Professional but conversational, useful perspective, no generic "Great post", don't just repeat the author's statement</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Normally 2–6 sentences unless the discussion requires more.</p>
+
+    <h3>Part B — Execution (after human approval)</h3>
+    <ul>
+      <li>Publish the approved response via the appropriate authorized platform integration/API</li>
+      <li>Capture: platform response, comment/reply ID, URL, timestamp</li>
+      <li>Update Google Sheets</li>
+      <li>Change opportunity status to MONITORING</li>
+    </ul>
+
+    <div class="callout-warn callout">
+      <strong>Never post anything without explicit approval.</strong> Approval is per specific response/conversation. An approval does NOT permanently authorize unrestricted posting.
+    </div>
+  </div>
+
+  <!-- ── Section 9 ── -->
+  <div class="section" id="approval">
+    <div class="section-header">
+      <span class="section-num">09</span>
+      <h2>Human Approval Model</h2>
+    </div>
+
+    <div class="flow">
+      <div class="flow-step">DISCOVER</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">ANALYZE</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">VERIFY</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">DRAFT</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step human">HUMAN APPROVAL ← Approve / Edit / Skip</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">POST</div>
+    </div>
+
+    <h3>Audit trail must record:</h3>
+    <ul>
+      <li>Who approved</li>
+      <li>What was approved (exact content)</li>
+      <li>When it was approved</li>
+      <li>Where it was posted</li>
+      <li>When it was posted</li>
+    </ul>
+
+    <p>If edited: post the edited response after approval. If skipped: do nothing except update state.</p>
+  </div>
+
+  <!-- ── Section 10 ── -->
+  <div class="section" id="sheets">
+    <div class="section-header">
+      <span class="section-num">10</span>
+      <h2>Google Sheets — Data Model</h2>
+    </div>
+
+    <div class="callout">
+      Google Sheets acts as the operational history and state layer.
+    </div>
+
+    <h3>Sheet 1 — Opportunities</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Column</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>opportunity_id</code></td><td>Deterministic unique key: platform + post_id</td></tr>
+          <tr><td><code>platform</code></td><td>linkedin / x / reddit / hn / etc.</td></tr>
+          <tr><td><code>post_id</code></td><td>Platform's own unique ID</td></tr>
+          <tr><td><code>post_url</code></td><td>Direct URL to the conversation</td></tr>
+          <tr><td><code>author</code></td><td>Username or display name</td></tr>
+          <tr><td><code>author_role</code></td><td>If identifiable (developer, founder, etc.)</td></tr>
+          <tr><td><code>first_seen_at</code></td><td>Timestamp of first discovery</td></tr>
+          <tr><td><code>last_updated_at</code></td><td>Timestamp of last update</td></tr>
+          <tr><td><code>original_post</code></td><td>Relevant excerpt of the conversation</td></tr>
+          <tr><td><code>problem</code></td><td>What problem the person is facing</td></tr>
+          <tr><td><code>intent</code></td><td>solution_request / technical_question / etc.</td></tr>
+          <tr><td><code>audience</code></td><td>Developer / founder / enterprise / etc.</td></tr>
+          <tr><td><code>apps_mentioned</code></td><td>Comma-separated list</td></tr>
+          <tr><td><code>opportunity_score</code></td><td>HIGH / MEDIUM / LOW</td></tr>
+          <tr><td><code>relevance_reason</code></td><td>Why this was flagged</td></tr>
+          <tr><td><code>viaSocket_capability</code></td><td>What viaSocket can do here</td></tr>
+          <tr><td><code>capability_verified</code></td><td>TRUE / FALSE</td></tr>
+          <tr><td><code>participation_strategy</code></td><td>A / B / C / D / E / F</td></tr>
+          <tr><td><code>viaSocket_mention</code></td><td>TRUE / FALSE</td></tr>
+          <tr><td><code>status</code></td><td>Current lifecycle state</td></tr>
+          <tr><td><code>owner</code></td><td>Who is handling this</td></tr>
+          <tr><td><code>next_action</code></td><td>What happens next</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Sheet 2 — Interactions</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Column</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>interaction_id</code></td><td>Unique ID per interaction event</td></tr>
+          <tr><td><code>opportunity_id</code></td><td>FK to Sheet 1</td></tr>
+          <tr><td><code>date</code></td><td>Date of this interaction</td></tr>
+          <tr><td><code>platform</code></td><td>Platform name</td></tr>
+          <tr><td><code>post_id</code></td><td>Platform post ID</td></tr>
+          <tr><td><code>post_url</code></td><td>URL</td></tr>
+          <tr><td><code>activity_type</code></td><td>See activity types below</td></tr>
+          <tr><td><code>draft_response</code></td><td>Draft text before approval</td></tr>
+          <tr><td><code>final_response</code></td><td>Approved/edited final text</td></tr>
+          <tr><td><code>viaSocket_mention</code></td><td>TRUE / FALSE</td></tr>
+          <tr><td><code>approval_status</code></td><td>PENDING / APPROVED / EDITED / SKIPPED</td></tr>
+          <tr><td><code>approved_at</code></td><td>Timestamp</td></tr>
+          <tr><td><code>posted_at</code></td><td>Timestamp</td></tr>
+          <tr><td><code>comment_id</code></td><td>Platform comment ID after posting</td></tr>
+          <tr><td><code>comment_url</code></td><td>Direct URL to posted comment</td></tr>
+          <tr><td><code>reply_received</code></td><td>TRUE / FALSE</td></tr>
+          <tr><td><code>follow_up_required</code></td><td>TRUE / FALSE</td></tr>
+          <tr><td><code>status</code></td><td>Current status</td></tr>
+          <tr><td><code>last_updated_at</code></td><td>Timestamp</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Activity Types:</h3>
+    <div class="tags" style="margin-top:8px">
+      <span class="tag tag-plain">DISCOVERED</span>
+      <span class="tag tag-plain">ANALYZED</span>
+      <span class="tag tag-plain">QUALIFIED</span>
+      <span class="tag tag-plain">CAPABILITY_VERIFIED</span>
+      <span class="tag tag-plain">RESPONSE_DRAFTED</span>
+      <span class="tag tag-plain">APPROVED</span>
+      <span class="tag tag-plain">EDITED</span>
+      <span class="tag tag-plain">SKIPPED</span>
+      <span class="tag tag-plain">POSTED</span>
+      <span class="tag tag-plain">REPLY_RECEIVED</span>
+      <span class="tag tag-plain">FOLLOW_UP_DRAFTED</span>
+      <span class="tag tag-plain">FOLLOW_UP_APPROVED</span>
+      <span class="tag tag-plain">CLOSED</span>
+    </div>
+
+    <div class="callout" style="margin-top:16px">
+      <strong>Deduplication rule:</strong> Use <code>platform + post_id</code> as the deterministic unique key. If the same post is discovered again — UPDATE the existing opportunity. NEVER create a duplicate.
+    </div>
+  </div>
+
+  <!-- ── Section 11 ── -->
+  <div class="section" id="monitoring">
+    <div class="section-header">
+      <span class="section-num">11</span>
+      <h2>Conversation Monitoring</h2>
+    </div>
+
+    <p>After a comment is successfully posted, the system monitors that conversation.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Reply Type</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>No reply</td><td>Continue monitoring</td></tr>
+          <tr><td>Simple acknowledgment</td><td>Usually no action</td></tr>
+          <tr><td>Technical question</td><td>Prepare response → human approval</td></tr>
+          <tr><td>Meaningful discussion</td><td>Analyze → human approval</td></tr>
+          <tr><td>Strong product/integration interest</td><td>Escalate</td></tr>
+          <tr><td>Pricing request</td><td>Human review required</td></tr>
+          <tr><td>Meeting request</td><td>Human review required</td></tr>
+          <tr><td>Partnership request</td><td>Human review required</td></tr>
+          <tr><td>Custom technical request</td><td>Human review required</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout-warn callout">
+      <strong>Every follow-up response requires human approval.</strong> The agent must never start an uncontrolled conversation.
+    </div>
+  </div>
+
+  <!-- ── Section 12 ── -->
+  <div class="section" id="slack">
+    <div class="section-header">
+      <span class="section-num">12</span>
+      <h2>Slack — Escalation Only</h2>
+    </div>
+
+    <div class="callout-warn callout">
+      <strong>Slack is NOT an activity log.</strong> Do NOT send a Slack message for every discovered post.
+    </div>
+
+    <h3>Use Slack ONLY when human attention is actually required:</h3>
+    <ul>
+      <li>High-value opportunity discovered / unusually strong technical fit / major integration demand</li>
+      <li>Pricing question</li>
+      <li>Meeting request</li>
+      <li>Enterprise or partnership request</li>
+      <li>Custom integration request</li>
+      <li>Legal / contract issue</li>
+      <li>Sensitive or ambiguous situation</li>
+    </ul>
+
+    <p>For routine discovery and processing, Google Sheets / state is enough. Consider a <strong>daily digest</strong> instead of hundreds of Slack messages.</p>
+  </div>
+
+  <!-- ── Section 13 ── -->
+  <div class="section" id="state">
+    <div class="section-header">
+      <span class="section-num">13</span>
+      <h2>State Machine</h2>
+    </div>
+
+    <div class="flow">
+      <div class="flow-step">DISCOVERED</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">ANALYZING</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">QUALIFIED</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">CAPABILITY_VERIFIED</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">RESPONSE_READY</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step human">AWAITING_APPROVAL</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">APPROVED</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">POSTED</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">MONITORING</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">REPLY_RECEIVED</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">FOLLOW_UP_REQUIRED</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step human">AWAITING_APPROVAL (again)</div>
+    </div>
+
+    <h3>Terminal states:</h3>
+    <div class="tags" style="margin-top:8px">
+      <span class="tag tag-bad">SKIPPED</span>
+      <span class="tag tag-bad">REJECTED</span>
+      <span class="tag tag-bad">CLOSED</span>
+      <span class="tag tag-good">CONVERTED</span>
+    </div>
+
+    <p style="margin-top:12px">The exact implementation should be adapted to what OpenClaw actually supports. Do NOT invent OpenClaw features.</p>
+  </div>
+
+  <!-- ── Section 14 ── -->
+  <div class="section" id="security">
+    <div class="section-header">
+      <span class="section-num">14</span>
+      <h2>Security Rules</h2>
+    </div>
+
+    <div class="callout-warn callout">
+      <strong>Never expose secrets</strong> in prompts, logs, Slack, Google Sheets, or responses.
+    </div>
+
+    <h3>Never print or expose:</h3>
+    <ul>
+      <li>API keys</li>
+      <li>OAuth client secrets</li>
+      <li>Access tokens or refresh tokens</li>
+      <li>Platform passwords</li>
+      <li>viaSocket secrets</li>
+    </ul>
+
+    <p>Use environment variables or OpenClaw's supported secure credential mechanism.</p>
+
+    <h3>Least-privilege principle:</h3>
+    <ul>
+      <li>Never give an agent more permissions than necessary</li>
+      <li>Separate READ permissions from WRITE/POST permissions</li>
+      <li>Posting permissions available ONLY to the execution component (Agent 4)</li>
+    </ul>
+  </div>
+
+  <!-- ── Section 15 ── -->
+  <div class="section" id="failure">
+    <div class="section-header">
+      <span class="section-num">15</span>
+      <h2>Failure Handling</h2>
+    </div>
+
+    <p>The system must gracefully handle all of these. <strong>Never silently lose state.</strong></p>
+
+    <ul>
+      <li>API failures, rate limits, timeout</li>
+      <li>Authentication expiry</li>
+      <li>Missing skills, unsupported apps, unsupported actions</li>
+      <li>Duplicate posts, deleted posts, inaccessible posts</li>
+      <li>Malformed responses</li>
+      <li>Google Sheets failure</li>
+      <li>Posting failure, partial execution</li>
+    </ul>
+
+    <h3>If posting fails:</h3>
+    <ul>
+      <li>Record the failure</li>
+      <li>Don't mark as posted</li>
+      <li>Preserve the approved response</li>
+      <li>Retry only according to a safe retry policy</li>
+      <li>Tell me if human intervention is required</li>
+    </ul>
+  </div>
+
+  <!-- ── Section 16 ── -->
+  <div class="section" id="multiagent">
+    <div class="section-header">
+      <span class="section-num">16</span>
+      <h2>Multi-Agent Communication</h2>
+    </div>
+
+    <p>These agents must NOT be isolated. They must communicate through a structured mechanism — not fragile natural-language messages.</p>
+
+    <h3>Must determine (during OpenClaw inspection):</h3>
+    <ul>
+      <li>How agent-to-agent communication works in the installed version</li>
+      <li>How to pass structured JSON between agents</li>
+      <li>How shared state / memory is implemented</li>
+      <li>How conversation IDs and opportunity IDs are tracked</li>
+      <li>How retries and task queues work</li>
+      <li>How scheduling works</li>
+    </ul>
+
+    <div class="callout">
+      <strong>Prefer structured machine-readable handoffs</strong> over natural-language messages between agents.
+    </div>
+  </div>
+
+  <!-- ── Section 17 ── -->
+  <div class="section" id="contracts">
+    <div class="section-header">
+      <span class="section-num">17</span>
+      <h2>Data Contracts Between Agents</h2>
+    </div>
+
+    <h3>Discovery → Relevance</h3>
+    <pre>{
+  "opportunity_id": "...",
+  "platform": "...",
+  "post_id": "...",
+  "post_url": "...",
+  "author": "...",
+  "problem": "...",
+  "intent": "...",
+  "apps": [],
+  "evidence": []
+}</pre>
+
+    <h3>Relevance → Opportunity</h3>
+    <pre>{
+  "opportunity_id": "...",
+  "classification": "HIGH|MEDIUM|LOW|IGNORE",
+  "score": 0,
+  "intent": "...",
+  "problem": "...",
+  "why_relevant": "...",
+  "participation": "A|B|C|D|E|F"
+}</pre>
+
+    <h3>Opportunity → Response</h3>
+    <pre>{
+  "opportunity_id": "...",
+  "core_problem": "...",
+  "verified_capabilities": [],
+  "contribution": [],
+  "strategy": "...",
+  "mention_viasocket": false,
+  "technical_points": [],
+  "avoid": []
+}</pre>
+
+    <h3>Response → Approval</h3>
+    <pre>{
+  "opportunity_id": "...",
+  "platform": "...",
+  "post_url": "...",
+  "response": "...",
+  "approval_required": true
+}</pre>
+
+    <h3>Approval → Execution</h3>
+    <pre>{
+  "opportunity_id": "...",
+  "platform": "...",
+  "post_id": "...",
+  "approved_response": "...",
+  "approved_at": "...",
+  "approved_by": "human"
+}</pre>
+    <p>Adapt these contracts to the actual OpenClaw implementation.</p>
+  </div>
+
+  <!-- ── Section 18 ── -->
+  <div class="section" id="openclaw">
+    <div class="section-header">
+      <span class="section-num">18</span>
+      <h2>OpenClaw Implementation Guide</h2>
+    </div>
+
+    <div class="callout">
+      <strong>One step at a time.</strong> Do not give Step 2 until Step 1 is confirmed complete. Assume the user knows nothing about OpenClaw internals.
+    </div>
+
+    <h3>For every step, explain:</h3>
+    <ol>
+      <li>Exactly what we are doing</li>
+      <li>WHY we are doing it</li>
+      <li>Exactly where to go / click / type</li>
+      <li>The exact command / configuration / code</li>
+      <li>What output to expect</li>
+      <li>How to verify success</li>
+      <li>What to do if the result is different</li>
+    </ol>
+
+    <h3>Explain these when they first appear:</h3>
+    <ul>
+      <li>Terminal commands and file paths</li>
+      <li>Environment variables</li>
+      <li>JSON / YAML syntax</li>
+      <li>OpenClaw workspace structure</li>
+      <li>Agent configuration, tool configuration, skills</li>
+      <li>Authentication and OAuth</li>
+      <li>Scheduling, memory, state</li>
+      <li>Agent routing and agent-to-agent communication</li>
+    </ul>
+
+    <p>Response style: beginner-friendly, Hinglish when explaining concepts, exact, practical, no skipped details, no assumptions. Commands in code blocks. End every step with: <em>"Complete this step and send me the output/screenshot. I will then give you the next step."</em></p>
+  </div>
+
+  <!-- ── Section 19 ── -->
+  <div class="section" id="first">
+    <div class="section-header">
+      <span class="section-num">19</span>
+      <h2>First Thing To Do</h2>
+    </div>
+
+    <div class="callout-warn callout">
+      <strong>Before creating ANYTHING:</strong> Inspect the current OpenClaw environment. Do NOT immediately create agents.
+    </div>
+
+    <h3>Inspect and determine:</h3>
+    <ul>
+      <li>OpenClaw version and operating system</li>
+      <li>Current workspace / project structure</li>
+      <li>Current configuration</li>
+      <li>Existing agents, skills, tools</li>
+      <li>Available connectors</li>
+      <li>Current Anthropic / Claude configuration</li>
+      <li>Whether multi-agent functionality is supported in this version</li>
+      <li>How agent-to-agent communication works</li>
+      <li>How shared state / memory can be implemented</li>
+      <li>How scheduling works</li>
+      <li>How Google Sheets can be connected</li>
+      <li>How web/public research can be performed</li>
+      <li>How authenticated platform actions can be implemented</li>
+      <li>How permissions should be separated</li>
+    </ul>
+
+    <div class="callout">
+      Use the CURRENT OpenClaw documentation/version. Do NOT assume syntax from an older version. If something is uncertain, verify it before asking the user to configure it.
+    </div>
+  </div>
+
+  <!-- ── Section 20 ── -->
+  <div class="section" id="order">
+    <div class="section-header">
+      <span class="section-num">20</span>
+      <h2>Implementation Order (15 Phases)</h2>
+    </div>
+
+    <ol class="phase-list">
+      <li>Inspect OpenClaw</li>
+      <li>Design the shared data / state model</li>
+      <li>Create the Orchestrator (Agent 1)</li>
+      <li>Create Discovery + Relevance Agent (Agent 2)</li>
+      <li>Create Opportunity + viaSocket Verification Agent (Agent 3)</li>
+      <li>Create Response + Execution Agent (Agent 4)</li>
+      <li>Connect the four agents</li>
+      <li>Connect Google Sheets</li>
+      <li>Implement human approval</li>
+      <li>Implement posting adapters</li>
+      <li>Implement conversation monitoring</li>
+      <li>Implement retries / error handling</li>
+      <li>Implement Slack escalation / digest</li>
+      <li>End-to-end testing</li>
+      <li>Production hardening</li>
+    </ol>
+
+    <div class="callout-warn callout">
+      <strong>Do not jump ahead.</strong> Each phase must be complete before the next begins.
+    </div>
+  </div>
+
+  <!-- ── Section 21 ── -->
+  <div class="section" id="testing">
+    <div class="section-header">
+      <span class="section-num">21</span>
+      <h2>Testing Before Production</h2>
+    </div>
+
+    <p>Before allowing real posting, create a safe test mode. The system should first be able to:</p>
+
+    <ol>
+      <li>Discover a conversation</li>
+      <li>Analyze it</li>
+      <li>Verify viaSocket capability</li>
+      <li>Generate a response</li>
+      <li>Save it to Google Sheets</li>
+      <li>Show it for approval</li>
+      <li>Simulate posting (no real post)</li>
+      <li>Record simulated posting</li>
+      <li>Simulate a reply</li>
+      <li>Process the reply</li>
+    </ol>
+
+    <p>Only after all of this works should real posting be enabled.</p>
+
+    <div class="callout">
+      Create explicit <strong>TEST MODE</strong> and <strong>PRODUCTION MODE</strong> if OpenClaw supports this cleanly.
+    </div>
+  </div>
+
+  <!-- ── Section 22 ── -->
+  <div class="section" id="rules">
+    <div class="section-header">
+      <span class="section-num">22</span>
+      <h2>Important Behavior Rules</h2>
+    </div>
+
+    <h3>The system MUST:</h3>
+    <ul>
+      <li>Prioritize genuine usefulness</li>
+      <li>Never spam or mass-comment</li>
+      <li>Never fabricate personal experiences</li>
+      <li>Never pretend to be an independent person</li>
+      <li>Never astroturf or manipulate votes/likes</li>
+      <li>Never attack competitors</li>
+      <li>Never make unsupported claims</li>
+      <li>Never force viaSocket into a conversation</li>
+      <li>Never assume viaSocket capability — always verify</li>
+      <li>Never post without approval</li>
+      <li>Never expose credentials</li>
+      <li>Never bypass platform restrictions</li>
+      <li>Avoid duplicate opportunities</li>
+      <li>Preserve conversation and approval history</li>
+      <li>Maintain Google Sheet records</li>
+      <li>Escalate meaningful human-required situations</li>
+    </ul>
+  </div>
+
+  <!-- ── Section 23 ── -->
+  <div class="section" id="style">
+    <div class="section-header">
+      <span class="section-num">23</span>
+      <h2>Response Style &amp; Mentor Instructions</h2>
+    </div>
+
+    <h3>Communication style:</h3>
+    <ul>
+      <li>Beginner-friendly</li>
+      <li>Hinglish when explaining concepts</li>
+      <li>Exact and practical</li>
+      <li>No skipped details, no assumptions</li>
+      <li>Commands always in code blocks</li>
+      <li>Explain every command, file, config field, permission, expected output</li>
+    </ul>
+
+    <h3>Do NOT:</h3>
+    <ul>
+      <li>Give a giant tutorial all at once</li>
+      <li>Skip to Step 2 before Step 1 is confirmed</li>
+      <li>Assume I know OpenClaw internals</li>
+      <li>Dump 20 steps at once</li>
+      <li>Overengineer (unnecessary databases, agents, microservices, infrastructure)</li>
+    </ul>
+
+    <h3>Start smallest:</h3>
+    <p>Build the smallest working version first: Discovery → Relevance → Opportunity/Verification → Response → Approval → Google Sheet → Test posting. Then expand.</p>
+
+    <div class="callout">
+      <strong>Starting point:</strong> STEP 1 is to inspect the current OpenClaw environment. Run the inspection commands. STOP. Wait for output. Do not create any agent yet.
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // Highlight the active nav link on scroll
+  const sections = document.querySelectorAll('.section');
+  const links = document.querySelectorAll('.nav-link');
+
+  function onScroll() {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY + 80 >= s.offsetTop) current = s.id;
+    });
+    links.forEach(l => {
+      l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+    });
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+</script>
