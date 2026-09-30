@@ -1060,7 +1060,7 @@ const APP_META = {
 };
 
 // Build viaSocket inputData per app + template
-function buildVsInputData(appLabel, conn, eventType, job, tmplId) {
+function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping) {
   const jp = {
     title: job.title, company: job.company_name,
     location: job.candidate_required_location || 'India',
@@ -1069,6 +1069,7 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId) {
     date: new Date().toLocaleDateString('en-IN'),
   };
   const cfg = conn.config || {};
+  const m = mapping || {};
 
   // Per-template message text
   const waMsg = {
@@ -1102,30 +1103,36 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId) {
     case 'whatsapp': return {
       action_version_id: conn.action_version_id,
       inputData: {
-        phone: cfg.phone || '',
-        message: waMsg[tmplId] || waMsg.wa_new_job,
+        phone: m.phone || cfg.phone || '',
+        message: m.message || waMsg[tmplId] || waMsg.wa_new_job,
       },
     };
     case 'gmail': return {
       action_version_id: conn.action_version_id,
       inputData: {
-        to: cfg.to || '',
-        subject: gmailSubj[tmplId] || `HireRadar: ${jp.title} @ ${jp.company}`,
+        to: m.to || cfg.to || '',
+        subject: m.subject || gmailSubj[tmplId] || `HireRadar: ${jp.title} @ ${jp.company}`,
         body: gmailBody[tmplId] || `Job: ${jp.title} at ${jp.company}\nSalary: ${jp.salary}\nApply: ${jp.url}`,
       },
     };
-    case 'sheets': return {
-      action_version_id: conn.action_version_id,
-      inputData: {
-        spreadsheet_id: cfg.spreadsheet_id || '',
-        range: cfg.sheet_name ? `${cfg.sheet_name}!A:H` : 'Sheet1!A:H',
-        values: [[jp.title, jp.company, jp.location, jp.salary, eventType, jp.url, jp.date, tmplId || '']],
-      },
-    };
+    case 'sheets': {
+      // Column order from user mapping or default
+      const colOrder = (m.colMap || 'title,company,location,salary,status,url,date').split(',').map(s => s.trim());
+      const fieldMap = { title: jp.title, company: jp.company, location: jp.location, salary: jp.salary, status: eventType, url: jp.url, date: jp.date, category: jp.category };
+      const row = colOrder.map(f => fieldMap[f] ?? '');
+      return {
+        action_version_id: conn.action_version_id,
+        inputData: {
+          spreadsheet_id: m.sheetUrl || cfg.spreadsheet_id || '',
+          range: `${m.sheetName || 'Sheet1'}!A:${String.fromCharCode(64 + row.length)}`,
+          values: [row],
+        },
+      };
+    }
     case 'slack': return {
       action_version_id: conn.action_version_id,
       inputData: {
-        channel: cfg.channel || '',
+        channel: m.channel || cfg.channel || '',
         text: slackText[tmplId] || `*Job Alert:* ${jp.title} @ *${jp.company}*\n📍 ${jp.location}  💰 ${jp.salary}\n🔗 ${jp.url}`,
       },
     };
@@ -1149,7 +1156,8 @@ async function deliverToApps(uid, eventType, job) {
   );
   for (const tmpl of activeTmpls) {
     const conn = conns[tmpl.app];
-    const payload = buildVsInputData(tmpl.app, conn, eventType, job, tmpl.id);
+    const mapping = autoCfg[tmpl.id]?.mapping || {};
+    const payload = buildVsInputData(tmpl.app, conn, eventType, job, tmpl.id, mapping);
     sends.push(
       fetch(`${VS_RUN}/${conn.script_id}`, {
         method: 'POST',
@@ -1719,6 +1727,20 @@ app.post('/api/auto-config/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// PATCH /api/auto-config/:id/mapping — save per-automation field mapping / config
+app.patch('/api/auto-config/:id/mapping', (req, res) => {
+  const { id } = req.params;
+  const tmpl = AUTO_TEMPLATES.find(t => t.id === id);
+  if (!tmpl) return res.status(400).json({ error: 'Unknown template' });
+  const cfg = userAutoCfg(req.uid);
+  const allowed = ['to', 'subject', 'channel', 'sheetUrl', 'colMap', 'phone', 'filter'];
+  const mapping = {};
+  for (const k of allowed) { if (req.body[k] !== undefined) mapping[k] = req.body[k]; }
+  cfg[id] = { ...(cfg[id] || {}), mapping, updatedAt: new Date().toISOString() };
+  saveAutoCfg();
+  res.json({ ok: true, mapping });
+});
+
 // POST /api/vs/register-flow — called when viaSocket embed fires a 'flow' event
 // The flow object shape comes from viaSocket's embed SDK; we log it and extract what we can
 app.post('/api/vs/register-flow', (req, res) => {
@@ -1764,7 +1786,8 @@ app.post('/api/auto-test/:id', async (req, res) => {
     id: 'test-' + Date.now(),
   };
   try {
-    const payload = buildVsInputData(tmpl.app, conn, tmpl.trigger, testJob, tmpl.id);
+    const mapping = userAutoCfg(req.uid)[id]?.mapping || {};
+    const payload = buildVsInputData(tmpl.app, conn, tmpl.trigger, testJob, tmpl.id, mapping);
     const r = await fetch(`${VS_RUN}/${conn.script_id}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload), signal: AbortSignal.timeout(12000),

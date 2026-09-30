@@ -317,10 +317,25 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .auto-list-row:last-child{border-bottom:none}
 .auto-list-row:hover{background:var(--hover)}
 .auto-list-row.enabled{background:rgba(99,102,241,.03)}
-.auto-list-row-info{display:flex;align-items:center;gap:9px;flex:1;min-width:0}
-.auto-list-icon{font-size:17px;flex-shrink:0}
+.auto-list-row-info{display:flex;align-items:flex-start;gap:9px;flex:1;min-width:0}
+.auto-list-icon{font-size:17px;flex-shrink:0;margin-top:2px}
 .auto-list-title{font-size:12.5px;font-weight:600;color:var(--fg);line-height:1.3}
-.auto-list-trigger{font-size:10.5px;color:var(--fg-3);margin-top:1px}
+.auto-list-desc{font-size:11px;color:var(--fg-3);margin-top:2px;line-height:1.4}
+.auto-list-trigger{font-size:10px;color:var(--fg-3);margin-top:3px;display:inline-flex;align-items:center;gap:4px;background:var(--hover);padding:1px 7px;border-radius:20px}
+/* Config panel */
+.auto-cfg-panel{padding:12px 16px 14px;background:var(--bg);border-top:1px solid var(--border);display:none}
+.auto-cfg-panel.open{display:block}
+.auto-cfg-row{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.auto-cfg-label{font-size:10.5px;font-weight:700;color:var(--fg-2);letter-spacing:.3px;text-transform:uppercase}
+.auto-cfg-input{font-size:12.5px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--fg);width:100%;font-family:inherit;outline:none;transition:border-color .15s}
+.auto-cfg-input:focus{border-color:var(--accent)}
+.auto-cfg-hint{font-size:10.5px;color:var(--fg-3);margin-top:2px}
+.auto-cfg-cols{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.auto-cfg-badge{font-size:10px;padding:1px 6px;border-radius:5px;background:rgba(99,102,241,.1);color:var(--accent);font-weight:600;margin-right:4px;cursor:grab}
+.auto-cfg-footer{display:flex;gap:8px;margin-top:12px}
+.auto-cfg-save{font-size:12px;font-weight:700;padding:6px 16px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer}
+.auto-cfg-save:hover{opacity:.85}
+.auto-cfg-toggle{font-size:11px;color:var(--fg-3);background:none;border:none;cursor:pointer;padding:0}
 .auto-coming-soon{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--hover);color:var(--fg-3);border:1px solid var(--border)}
 .auto-test-btn{font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:8px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;transition:all .15s}
 .auto-test-btn:hover{background:var(--accent);color:#fff}
@@ -2355,24 +2370,34 @@ function renderAutomationCards() {
     const count = groups[app].length;
     const activeCount = groups[app].filter(t => !!(_autoCfg[t.id]?.enabled && connected)).length;
 
-    // When connected: show automation rows with toggles + test button
+    // When connected: show automation rows with desc + config panel + toggles
     // When not connected / not supported: only show the app card header
     const rows = connected ? groups[app].map(t => {
       const cfg = _autoCfg[t.id] || {};
       const isOn = !!cfg.enabled;
+      const mapping = cfg.mapping || {};
+      const cfgPanel = buildCfgPanel(t, mapping, app);
       return `<div class="auto-list-row${isOn?' enabled':''}" id="auto-row-${t.id}">
-        <div class="auto-list-row-info">
+        <div style="display:flex;align-items:flex-start;gap:9px;flex:1;min-width:0">
           <span class="auto-list-icon">${t.icon}</span>
-          <div><div class="auto-list-title">${esc(t.title)}</div><div class="auto-list-trigger">⚡ ${esc(trigLabel(t))}</div></div>
+          <div style="flex:1;min-width:0">
+            <div class="auto-list-title">${esc(t.title)}</div>
+            <div class="auto-list-desc">${esc(t.desc || '')}</div>
+            <div style="margin-top:5px;display:flex;align-items:center;gap:6px">
+              <span class="auto-list-trigger">⚡ ${esc(trigLabel(t))}</span>
+              ${isOn ? `<button class="auto-cfg-toggle" onclick="autoCfgToggle('${t.id}')">⚙️ Configure</button>` : ''}
+            </div>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
           ${isOn ? `<button class="auto-test-btn" onclick="autoTestRun('${t.id}',this)" title="Send test now">⚡ Test</button>` : ''}
           <label class="auto-toggle" title="${isOn?'Disable':'Enable'}">
             <input type="checkbox" ${isOn?'checked':''} onchange="autoToggle('${t.id}',this)">
             <div class="auto-toggle-track"></div><div class="auto-toggle-thumb"></div>
           </label>
         </div>
-      </div>`;
+      </div>
+      <div class="auto-cfg-panel" id="cfg-panel-${t.id}">${cfgPanel}</div>`;
     }).join('') : '';
 
     return `<div class="auto-app-group" id="auto-group-${app}">
@@ -2390,6 +2415,104 @@ function renderAutomationCards() {
       ${rows ? `<div class="auto-app-rows">${rows}</div>` : ''}
     </div>`;
   }).join('') || '<div class="auto-loading-state">No automations in this category</div>';
+}
+
+// ── Config panel builder ──────────────────────────────────────────────────
+function buildCfgPanel(t, mapping, app) {
+  const v = k => esc(mapping[k] || '');
+  if (app === 'gmail') return `
+    <div class="auto-cfg-row">
+      <div class="auto-cfg-label">Send To (email)</div>
+      <input class="auto-cfg-input" id="cfg-${t.id}-to" placeholder="you@gmail.com" value="${v('to')}">
+      <div class="auto-cfg-hint">Leave blank to use your connected Gmail address</div>
+    </div>
+    <div class="auto-cfg-row">
+      <div class="auto-cfg-label">Subject line</div>
+      <input class="auto-cfg-input" id="cfg-${t.id}-subject" placeholder="Auto (uses job title)" value="${v('subject')}">
+    </div>
+    <div class="auto-cfg-footer">
+      <button class="auto-cfg-save" onclick="autoCfgSave('${t.id}','gmail')">Save</button>
+      <button class="auto-cfg-toggle" onclick="autoCfgToggle('${t.id}')">Close</button>
+    </div>`;
+
+  if (app === 'whatsapp') return `
+    <div class="auto-cfg-row">
+      <div class="auto-cfg-label">WhatsApp number</div>
+      <input class="auto-cfg-input" id="cfg-${t.id}-phone" placeholder="+91 9999999999" value="${v('phone')}">
+      <div class="auto-cfg-hint">With country code. Leave blank to use connected number.</div>
+    </div>
+    <div class="auto-cfg-footer">
+      <button class="auto-cfg-save" onclick="autoCfgSave('${t.id}','whatsapp')">Save</button>
+      <button class="auto-cfg-toggle" onclick="autoCfgToggle('${t.id}')">Close</button>
+    </div>`;
+
+  if (app === 'slack') return `
+    <div class="auto-cfg-row">
+      <div class="auto-cfg-label">Slack channel</div>
+      <input class="auto-cfg-input" id="cfg-${t.id}-channel" placeholder="#jobs or #general" value="${v('channel')}">
+    </div>
+    <div class="auto-cfg-footer">
+      <button class="auto-cfg-save" onclick="autoCfgSave('${t.id}','slack')">Save</button>
+      <button class="auto-cfg-toggle" onclick="autoCfgToggle('${t.id}')">Close</button>
+    </div>`;
+
+  if (app === 'sheets') {
+    const defaultCols = 'title,company,location,salary,status,url,date';
+    const colMap = mapping.colMap || defaultCols;
+    const cols = colMap.split(',').map(s => s.trim());
+    const FIELDS = ['title','company','location','salary','status','url','date','category'];
+    const colInputs = cols.map((c, i) => `
+      <div class="auto-cfg-row">
+        <div class="auto-cfg-label" style="text-transform:none">Column ${String.fromCharCode(65+i)}</div>
+        <select class="auto-cfg-input" id="cfg-${t.id}-col-${i}" style="padding:6px 10px">
+          ${FIELDS.map(f => `<option value="${f}"${f===c?' selected':''}>${f.charAt(0).toUpperCase()+f.slice(1)}</option>`).join('')}
+        </select>
+      </div>`).join('');
+    return `
+      <div class="auto-cfg-row">
+        <div class="auto-cfg-label">Google Sheet URL or ID</div>
+        <input class="auto-cfg-input" id="cfg-${t.id}-sheetUrl" placeholder="Paste spreadsheet URL or ID" value="${v('sheetUrl')}">
+        <div class="auto-cfg-hint">Share the sheet with edit access, then paste URL here</div>
+      </div>
+      <div class="auto-cfg-row">
+        <div class="auto-cfg-label">Sheet name (tab)</div>
+        <input class="auto-cfg-input" id="cfg-${t.id}-sheetName" placeholder="Sheet1" value="${esc(mapping.sheetName||'')}">
+      </div>
+      <div class="auto-cfg-label" style="margin-bottom:8px">Column mapping</div>
+      <div class="auto-cfg-cols">${colInputs}</div>
+      <div class="auto-cfg-footer" style="margin-top:10px">
+        <button class="auto-cfg-save" onclick="autoCfgSave('${t.id}','sheets',${cols.length})">Save</button>
+        <button class="auto-cfg-toggle" onclick="autoCfgToggle('${t.id}')">Close</button>
+      </div>`;
+  }
+  return '<div style="font-size:12px;color:var(--fg-3)">No configuration needed.</div>';
+}
+
+function autoCfgToggle(id) {
+  const panel = document.getElementById('cfg-panel-' + id);
+  if (panel) panel.classList.toggle('open');
+}
+
+async function autoCfgSave(id, app, sheetCols) {
+  const g = sel => { const el = document.getElementById('cfg-' + id + '-' + sel); return el ? el.value.trim() : ''; };
+  let mapping = {};
+  if (app === 'gmail')     { mapping = { to: g('to'), subject: g('subject') }; }
+  if (app === 'whatsapp')  { mapping = { phone: g('phone') }; }
+  if (app === 'slack')     { mapping = { channel: g('channel') }; }
+  if (app === 'sheets') {
+    const cols = Array.from({length: sheetCols}, (_, i) => g('col-' + i)).join(',');
+    mapping = { sheetUrl: g('sheetUrl'), sheetName: g('sheetName') || 'Sheet1', colMap: cols };
+  }
+  try {
+    const r = await fetch('/api/auto-config/' + id + '/mapping', {
+      method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(mapping),
+    });
+    const d = await r.json();
+    if (!r.ok) { showToast('Save failed: ' + (d.error || ''), 'error'); return; }
+    _autoCfg[id] = { ...(_autoCfg[id] || {}), mapping };
+    showToast('✅ Saved!', 'success');
+    autoCfgToggle(id);
+  } catch(e) { showToast('Network error', 'error'); }
 }
 
 async function autoTestRun(id, btn) {
