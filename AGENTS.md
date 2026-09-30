@@ -308,6 +308,28 @@ Send this format to #ai-intelligence-radar. Use `━━━━━━━━━━�
 
 ---
 
+## LANGUAGE — BILINGUAL FORMAT
+
+Write the report in **Bilingual format (English + Hindi)**:
+
+- Headlines and technical terms: English
+- "What" explanation: English first, then Hindi translation on next line starting with **Matlab:**
+- "Why it matters": English first, then Hindi translation on next line starting with **Kyun zaroori hai:**
+- Section headers: English with emoji (as defined in report format)
+- Model names, API names, company names: always keep in English
+
+Example:
+```
+🔴 OpenAI Launches Dots — Persistent AI Agents
+• What: Always-on agents that work 24/7, connect to 4,000+ apps
+• Matlab: Ye agents background mein chalte rehte hain, tumhe baar baar kuch karna nahi padta
+• Why it matters: First large-scale persistent agent platform from a major AI company
+• Kyun zaroori hai: Developers ab aise apps bana sakte hain jo sote waqt bhi kaam karte hain
+• Source: https://openai.com/dots
+```
+
+---
+
 ## QUALITY RULES
 
 Never:
