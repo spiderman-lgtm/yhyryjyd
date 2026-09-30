@@ -608,22 +608,7 @@ app.get('/api/trends', (req, res) => {
 // Resume parsing
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
-
-  try {
-    const client = new Anthropic({ apiKey });
-    const base64 = req.file.buffer.toString('base64');
-    const mime = req.file.mimetype || 'application/pdf';
-
-    const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      messages: [{ role:'user', content: [
-        { type:'document', source:{ type:'base64', media_type:mime, data:base64 } },
-        { type:'text', text:`Analyze this resume for Indian tech job market. Return ONLY valid JSON:
+const RESUME_PROMPT = `Analyze this resume for Indian tech job market. Return ONLY valid JSON:
 {
   "prefs": {
     "role": "<target job title>",
@@ -641,21 +626,53 @@ app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
     "strengths": ["one line strength 1","one line strength 2"],
     "gaps": ["one line gap 1","one line gap 2"],
     "suggestions": ["actionable tip 1","actionable tip 2","actionable tip 3"],
-    "sections": {
-      "contact": <true|false>,
-      "summary": <true|false>,
-      "experience": <true|false>,
-      "education": <true|false>,
-      "skills": <true|false>,
-      "projects": <true|false>
-    }
+    "sections": { "contact": <true|false>, "summary": <true|false>, "experience": <true|false>, "education": <true|false>, "skills": <true|false>, "projects": <true|false> }
   }
-}` },
-      ]}],
-    });
+}`;
 
-    const raw = message.content.find(b => b.type === 'text')?.text || '{}';
-    const m = raw.match(/\{[\s\S]*\}/);
+app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!geminiKey && !anthropicKey) return res.status(500).json({ error: 'No AI key configured. Add GEMINI_API_KEY (free) or ANTHROPIC_API_KEY in Railway Variables.' });
+
+  const base64 = req.file.buffer.toString('base64');
+  const mime = req.file.mimetype || 'application/pdf';
+
+  try {
+    let rawText = '';
+
+    if (geminiKey) {
+      // Use Gemini (free)
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { inline_data: { mime_type: mime, data: base64 } },
+            { text: RESUME_PROMPT },
+          ]}],
+          generationConfig: { maxOutputTokens: 2048, temperature: 0.1 },
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+      const d = await r.json();
+      rawText = d?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    } else {
+      // Fallback: Anthropic
+      const client = new Anthropic({ apiKey: anthropicKey });
+      const message = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001', max_tokens: 2048,
+        messages: [{ role:'user', content: [
+          { type:'document', source:{ type:'base64', media_type: mime, data: base64 } },
+          { type:'text', text: RESUME_PROMPT },
+        ]}],
+      });
+      rawText = message.content.find(b => b.type === 'text')?.text || '{}';
+    }
+
+    const m = rawText.match(/\{[\s\S]*\}/);
     const parsed = m ? JSON.parse(m[0]) : {};
 
     // Save profile per user
