@@ -1063,8 +1063,10 @@ const APP_META = {
 // Build viaSocket inputData per app + template
 function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping) {
   const jp = {
-    title: job.title, company: job.company_name,
-    location: job.candidate_required_location || 'India',
+    // job objects from feed use company_name; test jobs use company — handle both
+    title: job.title || 'Unknown Role',
+    company: job.company_name || job.company || 'Unknown Company',
+    location: job.candidate_required_location || job.location || 'India',
     salary: job.salary || 'Not disclosed', url: job.url || '',
     category: job.category || 'Tech', event: eventType,
     date: new Date().toLocaleDateString('en-IN'),
@@ -1141,30 +1143,63 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping) {
 
 // Deliver event to all connected apps for a user
 async function deliverToApps(uid, eventType, job) {
-  if (!SECRET) return;
+  if (!SECRET) { console.warn('[vs-app] VIASOCKET_EMBED_SECRET not set — skipping delivery'); return; }
   const conns = userConns(uid);
   const autoCfg = userAutoCfg(uid);
+
+  // Debug: log all template checks
+  const matching = AUTO_TEMPLATES.filter(t => t.trigger === eventType);
+  console.log(`[vs-app] event=${eventType} job="${job?.title}" uid=${uid} | ${matching.length} template(s) match trigger`);
+  for (const t of matching) {
+    const cfg = autoCfg[t.id];
+    const conn = conns[t.app];
+    const ok = cfg?.enabled && conn?.enabled && conn?.script_id && conn?.action_version_id;
+    console.log(`  [${t.id}] enabled=${!!cfg?.enabled} conn.enabled=${!!conn?.enabled} script_id=${conn?.script_id ? 'OK' : 'MISSING'} action_version_id=${conn?.action_version_id || 'MISSING'} → ${ok ? 'WILL SEND' : 'SKIP'}`);
+  }
+
   const sends = [];
-  // Find enabled automation templates that match this eventType
-  const activeTmpls = AUTO_TEMPLATES.filter(t =>
-    t.trigger === eventType &&
-    autoCfg[t.id]?.enabled &&
-    conns[t.app]?.enabled &&
-    conns[t.app]?.script_id &&
-    conns[t.app]?.action_version_id
-  );
-  for (const tmpl of activeTmpls) {
+  for (const tmpl of matching) {
+    const cfg = autoCfg[tmpl.id];
     const conn = conns[tmpl.app];
-    const mapping = autoCfg[tmpl.id]?.mapping || {};
+    if (!cfg?.enabled) continue;
+    if (!conn?.enabled) { console.warn(`[vs-app] ${tmpl.id}: app ${tmpl.app} not connected`); continue; }
+    if (!conn?.script_id) { console.warn(`[vs-app] ${tmpl.id}: no script_id`); continue; }
+
+    // If action_version_id missing, try to re-fetch from viaSocket docs
+    if (!conn.action_version_id) {
+      console.log(`[vs-app] ${tmpl.id}: action_version_id missing — attempting re-fetch`);
+      try {
+        const doc = await vsAppDoc(conn.service_id || APP_META[tmpl.app]?.service_id);
+        const avid = extractActionVerId(doc, APP_META[tmpl.app]?.actionKw || []);
+        if (avid) {
+          conn.action_version_id = avid;
+          const allConns = store.connStore || {};
+          if (allConns[uid]?.[tmpl.app]) { allConns[uid][tmpl.app].action_version_id = avid; saveConnStore(); }
+          console.log(`[vs-app] ${tmpl.id}: re-fetched action_version_id=${avid}`);
+        } else {
+          console.warn(`[vs-app] ${tmpl.id}: could not find action_version_id in docs — skipping`);
+          continue;
+        }
+      } catch(e) {
+        console.warn(`[vs-app] ${tmpl.id}: re-fetch failed: ${e.message} — skipping`);
+        continue;
+      }
+    }
+
+    const mapping = cfg?.mapping || {};
     const payload = buildVsInputData(tmpl.app, conn, eventType, job, tmpl.id, mapping);
+    console.log(`[vs-app] ${tmpl.id}: sending to ${VS_RUN}/${conn.script_id}`);
+    console.log(`[vs-app] ${tmpl.id}: payload keys=${Object.keys(payload.inputData || {}).join(',')}`);
     sends.push(
       fetch(`${VS_RUN}/${conn.script_id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(10000),
-      }).then(r => console.log(`[vs-app] ${tmpl.id} → ${r.status}`))
-        .catch(e => console.warn(`[vs-app] ${tmpl.id} failed: ${e.message}`))
+      }).then(async r => {
+        const body = await r.text().catch(() => '');
+        console.log(`[vs-app] ${tmpl.id} → HTTP ${r.status} | body: ${body.slice(0, 200)}`);
+      }).catch(e => console.warn(`[vs-app] ${tmpl.id} fetch error: ${e.message}`))
     );
   }
   return Promise.all(sends);
@@ -1253,6 +1288,32 @@ app.get('/api/vs/connections', (req, res) => {
     Object.entries(APP_META).map(([k, v]) => [k, { label: v.label, icon: v.icon, color: v.color }])
   );
   res.json({ connections: safe, appDefs });
+});
+
+// Debug: show connection + automation state (no secrets exposed)
+app.get('/api/debug/state', (req, res) => {
+  const conns = userConns(req.uid);
+  const autoCfg = userAutoCfg(req.uid);
+  const connSummary = {};
+  for (const [k, v] of Object.entries(conns)) {
+    connSummary[k] = {
+      enabled: v.enabled,
+      has_script_id: Boolean(v.script_id),
+      has_action_version_id: Boolean(v.action_version_id),
+      action_version_id: v.action_version_id || null,
+    };
+  }
+  const autoSummary = {};
+  for (const t of AUTO_TEMPLATES) {
+    autoSummary[t.id] = {
+      trigger: t.trigger,
+      app: t.app,
+      enabled: Boolean(autoCfg[t.id]?.enabled),
+      conn_ok: Boolean(conns[t.app]?.enabled && conns[t.app]?.script_id && conns[t.app]?.action_version_id),
+      would_fire: Boolean(autoCfg[t.id]?.enabled && conns[t.app]?.enabled && conns[t.app]?.script_id && conns[t.app]?.action_version_id),
+    };
+  }
+  res.json({ connections: connSummary, automations: autoSummary });
 });
 
 // Update config or toggle enabled
