@@ -3137,6 +3137,31 @@ function resumeFileSelected(file) {
       document.getElementById('resume-done').style.display = 'flex';
       document.getElementById('resume-idle').style.display = 'block';
       if (data.ats) renderAtsCard(data.ats);
+      // Show "View matching jobs" button
+      let viewBtn = document.getElementById('resume-view-jobs-btn');
+      if (!viewBtn) {
+        viewBtn = document.createElement('button');
+        viewBtn.id = 'resume-view-jobs-btn';
+        viewBtn.className = 'btn btn-primary';
+        viewBtn.style.cssText = 'margin-top:12px;width:100%;font-size:13px';
+        document.getElementById('ats-card').after(viewBtn);
+      }
+      const role = p.role || '';
+      const skills = (p.skills || '').split(',').slice(0,3).map(s=>s.trim()).filter(Boolean);
+      const query = [role, ...skills].filter(Boolean).join(' ');
+      viewBtn.textContent = `🔍 View jobs matching "${role || 'your profile'}" →`;
+      viewBtn.onclick = () => {
+        // Switch to feed tab
+        navigate('feed');
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === 'feed'));
+        // Apply filter
+        const searchEl = document.getElementById('q-search');
+        if (searchEl) searchEl.value = query;
+        if (p.location) { const locEl = document.getElementById('q-loc'); if (locEl) locEl.value = p.location; }
+        applyFilter();
+        // Show toast
+        showToast(`Showing jobs for "${role || 'your profile'}"`, 'success');
+      };
     })
     .catch(err => {
       document.getElementById('resume-loading').style.display = 'none';
