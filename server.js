@@ -938,9 +938,9 @@ function extractActionVerId(doc, keywords) {
 
 // App metadata — service_id from viaSocket skill docs; actionKw guides action_version_id extraction
 const APP_META = {
-  // service_id from: viasocket-whatsapp-business-cloud-meta skill
+  // service_ids from viaSocket skill docs
   whatsapp: { label: 'WhatsApp',      icon: '💬', color: '#25D366', service_id: 'row3icnwu2su', q: 'whatsapp',      actionKw: ['send message','send text','send template'] },
-  gmail:    { label: 'Gmail',         icon: '📧', color: '#EA4335', service_id: null,            q: 'gmail',          actionKw: ['send email','send mail','compose'] },
+  gmail:    { label: 'Gmail',         icon: '📧', color: '#EA4335', service_id: 'rowo0bqrhj5g', q: 'gmail',          actionKw: ['send email','send mail','compose'] },
   sheets:   { label: 'Google Sheets', icon: '📊', color: '#0F9D58', service_id: null,            q: 'google sheets',  actionKw: ['add row','append row','insert row'] },
   slack:    { label: 'Slack',         icon: '💼', color: '#4A154B', service_id: null,            q: 'slack',          actionKw: ['send message','post message','post to channel'] },
 };
