@@ -1084,20 +1084,18 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping) {
   };
   const gmailSubj = {
     gmail_new_job:  `🔔 New Match: ${jp.title} @ ${jp.company} (${jp.salary})`,
-    gmail_daily:    `☀️ Your Daily Job Digest — HireRadar`,
+    gmail_saved:    `🔖 Saved: ${jp.title} @ ${jp.company}`,
     gmail_applied:  `✅ Applied — ${jp.title} @ ${jp.company}`,
-    gmail_followup: `Following up — ${jp.title} Application`,
   };
   const gmailBody = {
     gmail_new_job:  `Hi,\n\nA new job matching your profile just dropped:\n\n📌 ${jp.title}\n🏢 ${jp.company}\n📍 ${jp.location}\n💰 ${jp.salary}\n\n👉 Apply here: ${jp.url}\n\n— HireRadar`,
-    gmail_daily:    `Good morning!\n\nHere are your top matching jobs today. Log into HireRadar to see the full list.\n\n— HireRadar`,
+    gmail_saved:    `Hi,\n\nYou bookmarked a job on HireRadar:\n\n📌 ${jp.title}\n🏢 ${jp.company}\n📍 ${jp.location}\n💰 ${jp.salary}\n\n👉 Apply here: ${jp.url}\n\n— HireRadar`,
     gmail_applied:  `You applied to ${jp.title} at ${jp.company} today.\n\n💡 Follow up in 7 days if you don't hear back.\n📧 Check their careers page for the hiring manager's contact.\n\n— HireRadar`,
-    gmail_followup: `Dear Hiring Manager,\n\nI applied for the ${jp.title} role at ${jp.company} approximately 7 days ago and wanted to follow up.\n\nI remain very interested in this opportunity and would love to discuss how my skills can contribute.\n\nBest regards`,
   };
   const slackText = {
     slack_new_job:  `🔔 *New job match!*\n*${jp.title}* @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary}\n<${jp.url}|Apply Now>`,
-    slack_applied:  `✅ Applied to *${jp.title} @ ${jp.company}*\n📅 Today · Status: Under review\n_Follow up after 7 days_`,
-    slack_expiry:   `⏰ *Saved jobs expiring soon — apply now!*\n• ${jp.title} @ ${jp.company}`,
+    slack_saved:    `🔖 *Job Saved!*\n*${jp.title}* @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary}\n<${jp.url}|View Job>`,
+    slack_applied:  `✅ *Applied!*\n*${jp.title}* @ *${jp.company}*\n📅 ${jp.date} · Status: Under review\n_Follow up after 7 days_`,
   };
 
   switch (appLabel) {
@@ -1542,135 +1540,48 @@ Suggest 3 interview slots that work for an Indian candidate. Return ONLY valid J
 // ─── 18 Automation Templates ──────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════
 
-// live:true = trigger actually fires in this app right now
-// live:false = coming soon (hidden from UI until implemented)
-const LIVE_TRIGGERS = new Set(['job.new', 'job.saved', 'job.applied']);
-
+// Automations whose triggers fire in this app: job.new (auto), job.saved (Save btn), job.applied (Mark Applied btn)
 const AUTO_TEMPLATES = [
-  // ── WhatsApp ──────────────────────────────────────────────────────────
-  {
-    id: 'wa_new_job',  app: 'whatsapp', trigger: 'job.new',  live: true,
+  // WhatsApp
+  { id: 'wa_new_job',     app: 'whatsapp', trigger: 'job.new',
     icon: '💬', title: 'New matching job → WhatsApp alert',
     desc: 'Instant WhatsApp message when HireRadar finds a job matching your profile',
-    appColor: '#25D366', category: 'whatsapp',
-  },
-  {
-    id: 'wa_expiry',   app: 'whatsapp', trigger: 'job.expiry', live: false,
-    icon: '⏰', title: 'Expiring job → WhatsApp urgent nudge',
-    desc: 'Alert when a saved job is 25+ days old — apply before it closes',
-    appColor: '#25D366', category: 'whatsapp',
-  },
-  {
-    id: 'wa_followup', app: 'whatsapp', trigger: 'job.followup', live: false,
-    icon: '🔁', title: 'No reply 7 days → WhatsApp follow-up nudge',
-    desc: 'Auto-remind yourself to follow up when HR ghosts you',
-    appColor: '#25D366', category: 'whatsapp',
-  },
-  {
-    id: 'wa_interview', app: 'whatsapp', trigger: 'job.interview', live: false,
-    icon: '📅', title: 'Interview scheduled → WhatsApp reminder',
-    desc: '1 hour before your interview — get a prep reminder on WhatsApp',
-    appColor: '#25D366', category: 'whatsapp',
-  },
-  {
-    id: 'wa_weekly',   app: 'whatsapp', trigger: 'weekly', live: false,
-    icon: '📊', title: 'Sunday digest → WhatsApp top 5 jobs',
-    desc: 'Every Sunday morning — top 5 matching jobs of the week',
-    appColor: '#25D366', category: 'whatsapp',
-  },
-  // ── Gmail ─────────────────────────────────────────────────────────────
-  {
-    id: 'gmail_new_job', app: 'gmail', trigger: 'job.new', live: true,
+    appColor: '#25D366', category: 'whatsapp' },
+  // Gmail
+  { id: 'gmail_new_job',  app: 'gmail',    trigger: 'job.new',
     icon: '📧', title: 'New matching job → Gmail alert',
     desc: 'Rich email with full job details, salary, and direct apply link',
-    appColor: '#EA4335', category: 'gmail',
-  },
-  {
-    id: 'gmail_applied', app: 'gmail', trigger: 'job.applied', live: true,
+    appColor: '#EA4335', category: 'gmail' },
+  { id: 'gmail_saved',    app: 'gmail',    trigger: 'job.saved',
+    icon: '🔖', title: 'Job saved → Gmail notification',
+    desc: 'Get an email every time you bookmark a job — with full details',
+    appColor: '#EA4335', category: 'gmail' },
+  { id: 'gmail_applied',  app: 'gmail',    trigger: 'job.applied',
     icon: '✅', title: 'Job applied → Gmail confirmation',
-    desc: 'Confirmation email when you mark a job as Applied in HireRadar',
-    appColor: '#EA4335', category: 'gmail',
-  },
-  {
-    id: 'gmail_daily',   app: 'gmail', trigger: 'daily', live: false,
-    icon: '☀️', title: 'Daily job digest → Gmail',
-    desc: 'Every morning at 8 AM — all new matching jobs from last 24 hours',
-    appColor: '#EA4335', category: 'gmail',
-  },
-  {
-    id: 'gmail_followup', app: 'gmail', trigger: 'job.followup', live: false,
-    icon: '📝', title: 'No reply 7 days → Gmail draft follow-up',
-    desc: 'Auto-draft a professional follow-up email for you to review & send',
-    appColor: '#EA4335', category: 'gmail',
-  },
-  // ── Slack ─────────────────────────────────────────────────────────────
-  {
-    id: 'slack_new_job', app: 'slack', trigger: 'job.new', live: true,
+    desc: 'Confirmation email when you click "Mark Applied" on any job',
+    appColor: '#EA4335', category: 'gmail' },
+  // Slack
+  { id: 'slack_new_job',  app: 'slack',    trigger: 'job.new',
     icon: '💼', title: 'New matching job → Slack post',
     desc: 'Post to your #jobs channel instantly when a match appears',
-    appColor: '#4A154B', category: 'slack',
-  },
-  {
-    id: 'slack_applied', app: 'slack', trigger: 'job.applied', live: true,
+    appColor: '#4A154B', category: 'slack' },
+  { id: 'slack_saved',    app: 'slack',    trigger: 'job.saved',
+    icon: '🔖', title: 'Job saved → Slack notification',
+    desc: 'Get a Slack message every time you bookmark a job',
+    appColor: '#4A154B', category: 'slack' },
+  { id: 'slack_applied',  app: 'slack',    trigger: 'job.applied',
     icon: '📨', title: 'Job applied → Slack notification',
-    desc: 'Log every application to Slack when you mark a job as Applied',
-    appColor: '#4A154B', category: 'slack',
-  },
-  {
-    id: 'slack_expiry',  app: 'slack', trigger: 'weekly', live: false,
-    icon: '⚡', title: 'Expiring saved jobs → Slack weekly alert',
-    desc: 'Sunday Slack message listing all saved jobs about to expire',
-    appColor: '#4A154B', category: 'slack',
-  },
-  // ── Google Sheets ─────────────────────────────────────────────────────
-  {
-    id: 'sheets_saved',   app: 'sheets', trigger: 'job.saved', live: true,
+    desc: 'Log to Slack every time you click "Mark Applied" on a job',
+    appColor: '#4A154B', category: 'slack' },
+  // Google Sheets
+  { id: 'sheets_saved',   app: 'sheets',   trigger: 'job.saved',
     icon: '🔖', title: 'Job saved → Google Sheets row',
-    desc: 'Every bookmarked job lands in Sheets — never lose a good lead',
-    appColor: '#0F9D58', category: 'sheets',
-  },
-  {
-    id: 'sheets_applied', app: 'sheets', trigger: 'job.applied', live: true,
+    desc: 'Every bookmarked job lands in your spreadsheet automatically',
+    appColor: '#0F9D58', category: 'sheets' },
+  { id: 'sheets_applied', app: 'sheets',   trigger: 'job.applied',
     icon: '📊', title: 'Job applied → Google Sheets row',
-    desc: 'Auto-add every application to your Sheets tracker with full details',
-    appColor: '#0F9D58', category: 'sheets',
-  },
-  {
-    id: 'sheets_status',  app: 'sheets', trigger: 'job.status', live: false,
-    icon: '🔄', title: 'Status change → Sheets update',
-    desc: 'When you update to Interviewing/Offered/Rejected — Sheets updates automatically',
-    appColor: '#0F9D58', category: 'sheets',
-  },
-  // ── Calendar ──────────────────────────────────────────────────────────
-  {
-    id: 'cal_interview',  app: 'calendar', appLabel: 'Calendar',   trigger: 'job.interview',
-    icon: '📅', title: 'Interview scheduled → Google Calendar event',
-    desc: 'Auto-create calendar event with company name, role, and Meet/Zoom link',
-    preview: '📅 Event created:\nCRED — Product Eng Interview\n📆 Fri, 30 Jan · 3:00–4:00 PM IST\n🔗 meet.google.com/xyz-abc',
-    appColor: '#1967D2', category: 'calendar',
-  },
-  {
-    id: 'cal_followup',   app: 'calendar', appLabel: 'Calendar',   trigger: 'job.followup',
-    icon: '🔔', title: 'No reply 7 days → Calendar reminder',
-    desc: 'Block time in your calendar to send the follow-up email',
-    preview: '📅 Reminder added:\n"Follow up — Swiggy Backend Eng"\n📆 Mon, 3 Feb · 10:00 AM IST',
-    appColor: '#1967D2', category: 'calendar',
-  },
-  // ── LinkedIn + Naukri source ───────────────────────────────────────────
-  {
-    id: 'linkedin_wa',    app: 'whatsapp', appLabel: 'WhatsApp',   trigger: 'job.new',
-    icon: '🔗', title: 'New LinkedIn job → WhatsApp alert',
-    desc: 'Only LinkedIn-sourced matches → instant WhatsApp (filter by source)',
-    preview: '🔗 *LinkedIn Job Alert*\n📌 Principal Eng @ Flipkart\n📍 Bangalore · ₹50L+\nVia LinkedIn · Easy Apply ✅',
-    appColor: '#0077B5', category: 'linkedin',
-  },
-  {
-    id: 'naukri_wa',      app: 'whatsapp', appLabel: 'WhatsApp',   trigger: 'job.new',
-    icon: '📋', title: 'New Naukri job → WhatsApp alert',
-    desc: 'Only Naukri-sourced matches → instant WhatsApp (filter by source)',
-    preview: '📋 *Naukri Job Alert*\n📌 SDE-3 @ Amazon\n📍 Hyderabad · ₹35-50 LPA\nVia Naukri.com ✅',
-    appColor: '#FF7555', category: 'naukri',
-  },
+    desc: 'Auto-add every application to your tracker when you mark it Applied',
+    appColor: '#0F9D58', category: 'sheets' },
 ];
 
 // Automation config store (per user, per template id)

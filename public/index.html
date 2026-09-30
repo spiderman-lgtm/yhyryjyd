@@ -145,10 +145,6 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .stat-tile:hover{box-shadow:var(--sh-md);transform:translateY(-1px)}
 .stat-num{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:22px;line-height:1}
 .stat-lbl{font-size:11px;color:var(--fg-3);margin-top:4px}
-/* tracker tiles */
-@keyframes countup{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-#tracker-strip .stat-num{font-size:28px;animation:countup .3s ease}
-
 /* ── Preferences ── */
 .prefs-wrap{padding:20px;display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
 @media(max-width:800px){.prefs-wrap{grid-template-columns:1fr}}
@@ -795,24 +791,6 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
           </div>
           <div class="stat-lbl">Companies Hiring</div>
           <div id="st-co-sub" style="font-size:10px;color:var(--fg-3);font-weight:600;margin-top:2px"></div>
-        </div>
-      </div>
-      <!-- Analytics Tracker Strip -->
-      <div id="tracker-strip" class="stat-strip" style="display:none;grid-template-columns:repeat(3,1fr);padding-top:8px">
-        <div class="stat-tile" style="border-top:2px solid var(--accent)">
-          <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);margin-bottom:8px">📌 Saved</div>
-          <div class="stat-num" id="tr-saved" style="color:var(--accent)">0</div>
-          <div class="stat-lbl">jobs bookmarked</div>
-        </div>
-        <div class="stat-tile" style="border-top:2px solid var(--success)">
-          <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);margin-bottom:8px">✅ Applied</div>
-          <div class="stat-num" id="tr-applied" style="color:var(--success)">0</div>
-          <div class="stat-lbl">applications sent</div>
-        </div>
-        <div class="stat-tile" style="border-top:2px solid #6366f1">
-          <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);margin-bottom:8px">⚡ Automations</div>
-          <div class="stat-num" id="tr-autos" style="color:#6366f1">0</div>
-          <div class="stat-lbl">active workflows</div>
         </div>
       </div>
       <!-- Trending Jobs Chart -->
@@ -1737,8 +1715,8 @@ function jobCard(job, mode) {
       </select>`;
   } else {
     footActions = `<button class="btn btn-ghost btn-sm" id="sb-${job.id}" onclick="toggleSave(${job.id})">${saved?'✓ Saved':'Save'}</button>`;
-    if (applied) footActions += `<span class="badge b-green">Applied</span>`;
-    else if (saved) footActions += `<button class="btn btn-success btn-sm" onclick="markApplied(${job.id})">Mark Applied</button>`;
+    if (applied) footActions += `<button class="btn btn-success btn-sm" disabled style="opacity:.6;cursor:default">✓ Applied</button>`;
+    else footActions += `<button class="btn btn-success btn-sm" id="ab2-${job.id}" onclick="markApplied(${job.id})">Mark Applied</button>`;
     footActions += `<button class="btn btn-automate btn-sm" id="ab-${job.id}" onclick="toggleAutoDrawer(${job.id},event)">⚡ Automate</button>`;
   }
   return `<div class="job-card${applied&&mode!=='saved'?' applied':''}" style="--pcolor:${p.color}">
@@ -3237,12 +3215,18 @@ function renderSaved() {
 function markApplied(id) {
   let job = getSaved().find(j=>j.id===id) || allJobs.find(j=>j.id===id);
   if (!job) return;
-  // auto-save if marking applied from feed without saving first
-  const saved = getSaved();
-  if (!saved.find(j=>j.id===id)) { saved.push(job); setSaved(saved); }
+  // auto-save if not already saved
+  const savedList = getSaved();
+  if (!savedList.find(j=>j.id===id)) { savedList.push(job); setSaved(savedList); }
   const applied = getApplied();
   applied[id] = { ...job, status:'applied', appliedAt: new Date().toISOString() };
-  setApplied(applied); renderSaved(); renderFeed && renderFeed(); updateBadges();
+  setApplied(applied);
+  // update feed card button instantly without full re-render
+  const btn = document.getElementById('ab2-'+id);
+  if (btn) { btn.textContent = '✓ Applied'; btn.disabled = true; btn.style.opacity = '.6'; btn.style.cursor = 'default'; }
+  const sb = document.getElementById('sb-'+id);
+  if (sb) sb.textContent = '✓ Saved';
+  renderSaved(); updateBadges();
   postJobEvent('job.applied', id);
 }
 function updateStatus(id, status) {
@@ -3479,18 +3463,6 @@ function updateBadges() {
   b('b-saved',sv); b('b-applied',ap); b('b-alerts',al);
   updateTopbarAvatar();
   updateBellBadge();
-  // analytics tracker strip
-  const tsEl = document.getElementById('tracker-strip');
-  if (tsEl) {
-    const activeAutos = Object.values(_autoCfg||{}).filter(c=>c.enabled).length;
-    const trSaved = document.getElementById('tr-saved');
-    const trApplied = document.getElementById('tr-applied');
-    const trAutos = document.getElementById('tr-autos');
-    if (trSaved) trSaved.textContent = sv;
-    if (trApplied) trApplied.textContent = ap;
-    if (trAutos) trAutos.textContent = activeAutos;
-    if (sv || ap || activeAutos) tsEl.style.display = 'grid';
-  }
 }
 
 // ─── Trends ───────────────────────────────────────────────────────────────────
