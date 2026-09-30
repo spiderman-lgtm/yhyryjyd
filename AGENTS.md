@@ -14,9 +14,13 @@ After completing all research, send your report to the Slack channel **#ai-intel
 
 Use the `send_slack_message` tool (or equivalent Slack tool available to you).
 
+**IMPORTANT — Channel target format:** Always use the channel ID `C0C5GTLN1EJ` as the target, NOT the channel name. Use `target: "channel:C0C5GTLN1EJ"` in the tool call. Do NOT use `#ai-intelligence-radar` as the target — OpenClaw requires the channel ID.
+
 The report must be formatted for Slack — use plain text with emoji, not markdown headers.
 
 Split long reports into multiple Slack messages if needed (Slack has a 4000 character limit per message).
+
+After all messages are sent successfully, reply with exactly: `NO_REPLY`
 
 ---
 
