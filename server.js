@@ -1146,6 +1146,7 @@ async function deliverToApps(uid, eventType, job) {
   if (!SECRET) { console.warn('[vs-app] VIASOCKET_EMBED_SECRET not set — skipping delivery'); return; }
   const conns = userConns(uid);
   const autoCfg = userAutoCfg(uid);
+  const userEmail = Object.values(usersStore).find(u => u.uid === uid)?.email || '';
 
   // Debug: log all template checks
   const matching = AUTO_TEMPLATES.filter(t => t.trigger === eventType);
@@ -1186,7 +1187,7 @@ async function deliverToApps(uid, eventType, job) {
       }
     }
 
-    const mapping = cfg?.mapping || {};
+    const mapping = { to: userEmail, phone: '', ...cfg?.mapping };
     const payload = buildVsInputData(tmpl.app, conn, eventType, job, tmpl.id, mapping);
     console.log(`[vs-app] ${tmpl.id}: sending to ${VS_RUN}/${conn.script_id}`);
     console.log(`[vs-app] ${tmpl.id}: payload keys=${Object.keys(payload.inputData || {}).join(',')}`);
@@ -1270,6 +1271,21 @@ app.post('/api/vs/connect', async (req, res) => {
       connectedAt: new Date().toISOString(),
     };
     saveConnStore();
+
+    // Auto-fill 'to' with user's email for all gmail automations
+    if (app_label === 'gmail') {
+      const userEmail = Object.values(usersStore).find(u => u.uid === req.uid)?.email;
+      if (userEmail) {
+        const autoCfg = userAutoCfg(req.uid);
+        for (const t of AUTO_TEMPLATES.filter(t => t.app === 'gmail')) {
+          if (!autoCfg[t.id]) autoCfg[t.id] = {};
+          if (!autoCfg[t.id].mapping) autoCfg[t.id].mapping = {};
+          if (!autoCfg[t.id].mapping.to) autoCfg[t.id].mapping.to = userEmail;
+        }
+        saveAutoCfg();
+      }
+    }
+
     res.json({ ok: true, has_action: Boolean(action_version_id) });
   } catch (e) {
     res.status(502).json({ error: e.message });
