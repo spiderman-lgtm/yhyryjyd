@@ -1133,7 +1133,7 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping) {
     case 'slack': return {
       action_version_id: conn.action_version_id,
       inputData: {
-        channel: m.channel || cfg.channel || '',
+        channel: m.channel || cfg.channel || 'general',
         text: slackText[tmplId] || `*Job Alert:* ${jp.title} @ *${jp.company}*\n📍 ${jp.location}  💰 ${jp.salary}\n🔗 ${jp.url}`,
       },
     };
@@ -1187,7 +1187,7 @@ async function deliverToApps(uid, eventType, job) {
       }
     }
 
-    const mapping = { to: userEmail, phone: '', ...cfg?.mapping };
+    const mapping = { to: userEmail, phone: '', channel: 'general', ...cfg?.mapping };
     const payload = buildVsInputData(tmpl.app, conn, eventType, job, tmpl.id, mapping);
     console.log(`[vs-app] ${tmpl.id}: sending to ${VS_RUN}/${conn.script_id}`);
     console.log(`[vs-app] ${tmpl.id}: payload keys=${Object.keys(payload.inputData || {}).join(',')}`);
@@ -1272,11 +1272,11 @@ app.post('/api/vs/connect', async (req, res) => {
     };
     saveConnStore();
 
-    // Auto-fill 'to' with user's email for all gmail automations
+    // Auto-fill defaults on connect so user doesn't need to configure manually
+    const autoCfg = userAutoCfg(req.uid);
     if (app_label === 'gmail') {
       const userEmail = Object.values(usersStore).find(u => u.uid === req.uid)?.email;
       if (userEmail) {
-        const autoCfg = userAutoCfg(req.uid);
         for (const t of AUTO_TEMPLATES.filter(t => t.app === 'gmail')) {
           if (!autoCfg[t.id]) autoCfg[t.id] = {};
           if (!autoCfg[t.id].mapping) autoCfg[t.id].mapping = {};
@@ -1284,6 +1284,14 @@ app.post('/api/vs/connect', async (req, res) => {
         }
         saveAutoCfg();
       }
+    }
+    if (app_label === 'slack') {
+      for (const t of AUTO_TEMPLATES.filter(t => t.app === 'slack')) {
+        if (!autoCfg[t.id]) autoCfg[t.id] = {};
+        if (!autoCfg[t.id].mapping) autoCfg[t.id].mapping = {};
+        if (!autoCfg[t.id].mapping.channel) autoCfg[t.id].mapping.channel = 'general';
+      }
+      saveAutoCfg();
     }
 
     res.json({ ok: true, has_action: Boolean(action_version_id) });
