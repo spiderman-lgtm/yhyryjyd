@@ -965,7 +965,12 @@ app.post('/api/events', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`HireRadar running at http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`HireRadar running at http://localhost:${PORT}`);
+  console.log(`[env] GEMINI_API_KEY: ${process.env.GEMINI_API_KEY ? 'SET (' + process.env.GEMINI_API_KEY.slice(0,6) + '...)' : 'NOT SET'}`);
+  console.log(`[env] ANTHROPIC_API_KEY: ${process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT SET'}`);
+  console.log(`[env] VIASOCKET_EMBED_SECRET: ${process.env.VIASOCKET_EMBED_SECRET ? 'SET' : 'NOT SET'}`);
+});
 
 // ─── viaSocket Direct App Connections ─────────────────────────────────────────
 // Each user can connect WhatsApp / Gmail / Google Sheets / Slack directly.
