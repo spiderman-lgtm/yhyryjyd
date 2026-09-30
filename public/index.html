@@ -2322,20 +2322,16 @@ function renderAutomationCards() {
   const visible = _autoTemplates.filter(t =>
     _autoCatFilter === 'all' || t.category === _autoCatFilter
   );
-  if (!visible.length) {
-    grid.innerHTML = '<div class="auto-loading-state">No automations in this category</div>';
-    return;
-  }
 
   const SUPPORTED = new Set(['whatsapp','gmail','slack','sheets']);
   const APP_INFO = {
-    whatsapp: { label:'WhatsApp',      icon:'💬', color:'#25D366' },
-    gmail:    { label:'Gmail',         icon:'📧', color:'#EA4335' },
-    slack:    { label:'Slack',         icon:'💼', color:'#4A154B' },
-    sheets:   { label:'Google Sheets', icon:'📊', color:'#0F9D58' },
-    calendar: { label:'Google Calendar',icon:'📅',color:'#1967D2' },
-    linkedin: { label:'LinkedIn',      icon:'🔗', color:'#0077B5' },
-    naukri:   { label:'Naukri',        icon:'📋', color:'#FF7555' },
+    whatsapp: { label:'WhatsApp',       icon:'💬', color:'#25D366' },
+    gmail:    { label:'Gmail',          icon:'📧', color:'#EA4335' },
+    slack:    { label:'Slack',          icon:'💼', color:'#4A154B' },
+    sheets:   { label:'Google Sheets',  icon:'📊', color:'#0F9D58' },
+    calendar: { label:'Google Calendar',icon:'📅', color:'#1967D2' },
+    linkedin: { label:'LinkedIn',       icon:'🔗', color:'#0077B5' },
+    naukri:   { label:'Naukri',         icon:'📋', color:'#FF7555' },
   };
 
   // Group by app, preserving first-seen order
@@ -2346,55 +2342,48 @@ function renderAutomationCards() {
     groups[t.app].push(t);
   });
 
+  const trigLabel = t => TRIGGER_LABEL[t.trigger] || t.trigger;
+
   grid.innerHTML = groupOrder.map(app => {
     const info = APP_INFO[app] || { label: app, icon:'🔗', color:'#6366f1' };
     const conn = _vsConns[app];
     const connected = !!(conn?.enabled);
     const supported = SUPPORTED.has(app);
-    const trigLabel = t => TRIGGER_LABEL[t.trigger] || t.trigger;
+    const count = groups[app].length;
+    const activeCount = groups[app].filter(t => !!(_autoCfg[t.id]?.enabled && connected)).length;
 
-    const rows = groups[app].map(t => {
+    // When connected: show automation rows with toggles
+    // When not connected / not supported: only show the app card header
+    const rows = connected ? groups[app].map(t => {
       const cfg = _autoCfg[t.id] || {};
-      const isOn = !!(cfg.enabled && connected);
-      if (!supported) {
-        return `<div class="auto-list-row">
-          <div class="auto-list-row-info">
-            <span class="auto-list-icon">${t.icon}</span>
-            <div><div class="auto-list-title">${esc(t.title)}</div><div class="auto-list-trigger">⚡ ${esc(trigLabel(t))}</div></div>
-          </div>
-          <span class="auto-coming-soon">Coming soon</span>
-        </div>`;
-      }
+      const isOn = !!cfg.enabled;
       return `<div class="auto-list-row${isOn?' enabled':''}" id="auto-row-${t.id}">
         <div class="auto-list-row-info">
           <span class="auto-list-icon">${t.icon}</span>
           <div><div class="auto-list-title">${esc(t.title)}</div><div class="auto-list-trigger">⚡ ${esc(trigLabel(t))}</div></div>
         </div>
-        ${connected
-          ? `<label class="auto-toggle" title="${isOn?'Disable':'Enable'}">
-              <input type="checkbox" ${isOn?'checked':''} onchange="autoToggle('${t.id}',this)">
-              <div class="auto-toggle-track"></div><div class="auto-toggle-thumb"></div>
-            </label>`
-          : `<span style="font-size:10.5px;color:var(--fg-3)">—</span>`
-        }
+        <label class="auto-toggle" title="${isOn?'Disable':'Enable'}">
+          <input type="checkbox" ${isOn?'checked':''} onchange="autoToggle('${t.id}',this)">
+          <div class="auto-toggle-track"></div><div class="auto-toggle-thumb"></div>
+        </label>
       </div>`;
-    }).join('');
+    }).join('') : '';
 
     return `<div class="auto-app-group" id="auto-group-${app}">
       <div class="auto-app-group-header">
         <span class="auto-app-group-icon" style="background:${info.color}20;color:${info.color}">${info.icon}</span>
         <span class="auto-app-group-name">${info.label}</span>
-        <span class="auto-app-group-count">${groups[app].length} automation${groups[app].length>1?'s':''}</span>
+        <span class="auto-app-group-count">${count} automation${count>1?'s':''}</span>
         ${!supported
           ? `<span class="auto-coming-soon">Coming soon</span>`
           : connected
-            ? `<span class="auto-app-connected">● Connected</span>`
+            ? `<span class="auto-app-connected">● Connected${activeCount ? ' · ' + activeCount + ' active' : ''}</span>`
             : `<button class="auto-app-connect-btn" onclick="autoConnectApp('${app}')">+ Connect</button>`
         }
       </div>
-      <div class="auto-app-rows">${rows}</div>
+      ${rows ? `<div class="auto-app-rows">${rows}</div>` : ''}
     </div>`;
-  }).join('');
+  }).join('') || '<div class="auto-loading-state">No automations in this category</div>';
 }
 
 async function autoToggle(id, checkbox) {
