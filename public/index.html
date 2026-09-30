@@ -2238,9 +2238,22 @@ async function testAutomation(id, btn) {
 }
 
 function postJobEvent(type, jobId) {
-  if (!myAutomations.some(a => a.enabled && a.type === 'tracker')) return;
-  fetch('/api/events', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type, jobId }) })
-    .then(() => setTimeout(loadAutomations, 2000)).catch(() => {});
+  // Fire for both old webhook automations AND new template-based automations (deliverToApps)
+  const matchingTriggers = [type];
+  const hasTemplateMatch = _autoTemplates.some(t =>
+    matchingTriggers.includes(t.trigger) && _autoCfg[t.id]?.enabled
+  );
+  const hasOldMatch = myAutomations.some(a => a.enabled && a.type === 'tracker');
+  if (!hasTemplateMatch && !hasOldMatch) return;
+  // Send inline job object so server can find it even if not in current feed
+  const job = allJobs.find(j => j.id === jobId) || getSaved().find(j => j.id === jobId) || null;
+  fetch('/api/events', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ type, jobId, job }),
+  })
+    .then(r => r.json())
+    .then(() => showToast('⚡ Automation triggered!', 'success'))
+    .catch(() => {});
 }
 
 // ─── viaSocket Quick Connect (direct app connection, no webhook URL needed) ────

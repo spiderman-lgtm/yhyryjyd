@@ -956,9 +956,10 @@ app.get('/api/sources', (req, res) => {
 });
 
 app.post('/api/events', (req, res) => {
-  const { type, jobId } = req.body || {};
+  const { type, jobId, job: inlineJob } = req.body || {};
   if (!['job.saved', 'job.applied'].includes(type)) return res.status(400).json({ error: 'Unknown event' });
-  const job = findJob(jobId);
+  // Accept either a jobId (lookup in feed) or an inline job object (from client localStorage)
+  const job = findJob(jobId) || (inlineJob?.id ? inlineJob : null);
   if (!job) return res.status(404).json({ error: 'Unknown job' });
   fanOut(type, job, req.uid);
   res.status(202).json({ ok: true });
