@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HireRadar — Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f8f9fb;--surface:#fff;--fg:#111827;--fg-2:#4b5563;--fg-3:#9ca3af;--border:#e5e7eb;--accent:#6366f1;--accent-h:#4f46e5;--danger:#ef4444;--sh:0 4px 24px rgba(0,0,0,.08)}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1117;--surface:#1a1d27;--fg:#f1f5f9;--fg-2:#94a3b8;--fg-3:#64748b;--border:#2d3748;--sh:0 4px 24px rgba(0,0,0,.4)}}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.card{background:var(--surface);border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:var(--sh)}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+.logo-icon{width:40px;height:40px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.logo-name{font-size:20px;font-weight:700;color:var(--fg)}
+.tabs{display:flex;gap:0;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px}
+.tab{flex:1;padding:9px;font-size:13px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--fg-3);transition:all .15s}
+.tab.active{background:var(--accent);color:#fff}
+.field{margin-bottom:16px}
+label{display:block;font-size:12px;font-weight:600;color:var(--fg-2);margin-bottom:6px}
+input{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;background:var(--bg);color:var(--fg);outline:none;transition:border-color .15s;font-family:inherit}
+input:focus{border-color:var(--accent)}
+.btn{width:100%;padding:12px;border:none;border-radius:10px;background:var(--accent);color:#fff;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;margin-top:8px}
+.btn:hover{background:var(--accent-h)}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.err{font-size:12px;color:var(--danger);margin-top:12px;text-align:center;min-height:18px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">🎯</div>
+    <div class="logo-name">HireRadar</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('login')">Login</button>
+    <button class="tab" onclick="switchTab('signup')">Sign Up</button>
+  </div>
+
+  <!-- Login -->
+  <div id="panel-login">
+    <div class="field"><label>Email</label><input type="email" id="l-email" placeholder="you@example.com" autocomplete="email"></div>
+    <div class="field"><label>Password</label><input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="btn" onclick="doLogin()">Login →</button>
+    <div class="err" id="l-err"></div>
+  </div>
+
+  <!-- Signup -->
+  <div id="panel-signup" style="display:none">
+    <div class="field"><label>Name</label><input type="text" id="s-name" placeholder="Your name"></div>
+    <div class="field"><label>Email</label><input type="email" id="s-email" placeholder="you@example.com" autocomplete="email"></div>
+    <div class="field"><label>Password</label><input type="password" id="s-pass" placeholder="Min 6 characters" autocomplete="new-password"></div>
+    <button class="btn" onclick="doSignup()">Create Account →</button>
+    <div class="err" id="s-err"></div>
+  </div>
+</div>
+
+<script>
+function switchTab(t) {
+  document.getElementById('panel-login').style.display = t === 'login' ? '' : 'none';
+  document.getElementById('panel-signup').style.display = t === 'signup' ? '' : 'none';
+  document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', (i === 0) === (t === 'login')));
+}
+
+async function doLogin() {
+  const email = document.getElementById('l-email').value.trim();
+  const password = document.getElementById('l-pass').value;
+  const err = document.getElementById('l-err');
+  err.textContent = '';
+  if (!email || !password) { err.textContent = 'Fill all fields'; return; }
+  try {
+    const r = await fetch('/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, password }) });
+    const d = await r.json();
+    if (!r.ok) { err.textContent = d.error || 'Login failed'; return; }
+    window.location.href = '/';
+  } catch(e) { err.textContent = 'Network error'; }
+}
+
+async function doSignup() {
+  const name = document.getElementById('s-name').value.trim();
+  const email = document.getElementById('s-email').value.trim();
+  const password = document.getElementById('s-pass').value;
+  const err = document.getElementById('s-err');
+  err.textContent = '';
+  if (!email || !password) { err.textContent = 'Fill all fields'; return; }
+  try {
+    const r = await fetch('/auth/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, email, password }) });
+    const d = await r.json();
+    if (!r.ok) { err.textContent = d.error || 'Signup failed'; return; }
+    window.location.href = '/';
+  } catch(e) { err.textContent = 'Network error'; }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (document.getElementById('panel-login').style.display !== 'none') doLogin();
+  else doSignup();
+});
+</script>
+</body>
+</html>

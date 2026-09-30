@@ -6,6 +6,7 @@ const multer = require('multer');
 const Anthropic = require('@anthropic-ai/sdk');
 const crypto = require('crypto');
 const fs = require('fs');
+const bcrypt = require('bcrypt');
 const { createLiveSource } = require('./jobs-live');
 
 const app = express();
@@ -47,6 +48,84 @@ app.use('/api', (req, res, next) => {
   }
   req.uid = uid;
   next();
+});
+
+// ─── User auth store ────────────────────────────────────────────────────────────
+const USERS_FILE = path.join(__dirname, 'data', 'users.json');
+let usersStore = {};
+try { usersStore = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); } catch {}
+
+function saveUsers() {
+  try {
+    fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
+    fs.writeFileSync(USERS_FILE + '.tmp', JSON.stringify(usersStore, null, 2));
+    fs.renameSync(USERS_FILE + '.tmp', USERS_FILE);
+  } catch (e) { console.error('[users] save failed:', e.message); }
+}
+
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
+
+// Auth: protect / → serve login page if not logged in
+app.get('/', (req, res, next) => {
+  const uid = readUid(req);
+  const email = uid && Object.values(usersStore).find(u => u.uid === uid)?.email;
+  if (!email) return res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  next();
+});
+
+// Signup
+app.post('/auth/signup', async (req, res) => {
+  const { email, password, name } = req.body || {};
+  if (!email || !password || password.length < 6) return res.status(400).json({ error: 'Email and password (min 6 chars) required' });
+  const key = email.toLowerCase().trim();
+  if (usersStore[key]) return res.status(409).json({ error: 'Email already registered' });
+  const passwordHash = await bcrypt.hash(password, 10);
+  const uid = 'hr_' + crypto.randomUUID();
+  usersStore[key] = { uid, email: key, name: name || key.split('@')[0], role: key === ADMIN_EMAIL ? 'admin' : 'user', createdAt: new Date().toISOString(), passwordHash };
+  saveUsers();
+  const secure = req.secure ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `${UID_COOKIE}=${uid}.${signUid(uid)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=315360000${secure}`);
+  res.json({ ok: true, name: usersStore[key].name, role: usersStore[key].role });
+});
+
+// Login
+app.post('/auth/login', async (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+  const key = email.toLowerCase().trim();
+  const user = usersStore[key];
+  if (!user) return res.status(401).json({ error: 'Invalid email or password' });
+  const ok = await bcrypt.compare(password, user.passwordHash);
+  if (!ok) return res.status(401).json({ error: 'Invalid email or password' });
+  const secure = req.secure ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `${UID_COOKIE}=${user.uid}.${signUid(user.uid)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=315360000${secure}`);
+  res.json({ ok: true, name: user.name, role: user.role });
+});
+
+// Logout
+app.post('/auth/logout', (req, res) => {
+  res.setHeader('Set-Cookie', `${UID_COOKIE}=; Path=/; HttpOnly; Max-Age=0`);
+  res.json({ ok: true });
+});
+
+// Current user info
+app.get('/api/auth/me', (req, res) => {
+  const uid = readUid(req);
+  if (!uid) return res.status(401).json({ error: 'Not logged in' });
+  const user = Object.values(usersStore).find(u => u.uid === uid);
+  if (!user) return res.status(401).json({ error: 'Not logged in' });
+  res.json({ name: user.name, email: user.email, role: user.role });
+});
+
+// Admin: list users
+app.get('/api/admin/users', (req, res) => {
+  const uid = readUid(req);
+  const user = uid && Object.values(usersStore).find(u => u.uid === uid);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const list = Object.values(usersStore).map(u => ({
+    name: u.name, email: u.email, role: u.role, createdAt: u.createdAt,
+  }));
+  res.json({ users: list });
 });
 
 app.post('/api/embed-token', (req, res) => {
@@ -578,10 +657,23 @@ app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
     const raw = message.content.find(b => b.type === 'text')?.text || '{}';
     const m = raw.match(/\{[\s\S]*\}/);
     const parsed = m ? JSON.parse(m[0]) : {};
+
+    // Save profile per user
+    if (req.uid && parsed.prefs) {
+      profileStore[req.uid] = { ...(profileStore[req.uid] || {}), prefs: parsed.prefs, ats: parsed.ats || null, updatedAt: new Date().toISOString() };
+      saveProfiles();
+    }
+
     res.json({ prefs: parsed.prefs || {}, ats: parsed.ats || null });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// Get saved profile
+app.get('/api/resume/profile', (req, res) => {
+  const p = profileStore[req.uid] || {};
+  res.json({ prefs: p.prefs || null, ats: p.ats || null, updatedAt: p.updatedAt || null });
 });
 
 // ─── Automations: viaSocket webhook-trigger flows fed by HireRadar events ──────

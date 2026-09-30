@@ -683,6 +683,7 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
         <span class="bell-badge" id="bell-badge" style="display:none"></span>
       </div>
       <div class="topbar-avatar" id="topbar-avatar" onclick="navigate('prefs')" title="My Profile">D</div>
+      <button id="logout-btn" onclick="doLogout()" title="Logout" style="display:none;background:none;border:none;cursor:pointer;padding:6px;border-radius:8px;color:var(--fg-3);font-size:12px;font-weight:600">↩ Logout</button>
     </div>
   </div>
 
@@ -947,6 +948,23 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 
     <!-- MY PREFERENCES -->
     <div class="page" id="page-prefs">
+      <!-- User info bar -->
+      <div id="user-info-bar" style="display:none;align-items:center;gap:12px;padding:12px 20px;background:var(--surface);border-bottom:1.5px solid var(--border);margin-bottom:0">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px" id="user-avatar-big">?</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:14px" id="user-name-big">—</div>
+          <div style="font-size:11.5px;color:var(--fg-3)" id="user-email-big">—</div>
+        </div>
+        <span id="user-role-badge" style="display:none;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:#fef3c7;color:#d97706">Admin</span>
+        <button onclick="doLogout()" style="font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:none;color:var(--fg-2);cursor:pointer">Logout</button>
+      </div>
+
+      <!-- Admin panel -->
+      <div id="admin-panel" style="display:none;padding:16px 20px;border-bottom:1.5px solid var(--border)">
+        <div style="font-weight:700;font-size:14px;margin-bottom:10px">👑 Admin — All Users</div>
+        <div id="admin-users-list" style="font-size:12px;color:var(--fg-2)">Loading…</div>
+      </div>
+
       <div class="prefs-wrap">
 
         <!-- LEFT column: Resume + Platform picker -->
@@ -3398,6 +3416,7 @@ vsInit();
 renderRightPanel([]);
 refreshFeed();
 setInterval(refreshFeed, 5*60*1000);
+loadCurrentUser();
 
 
 // ─── AI Tools ────────────────────────────────────────────────────────────────
@@ -3971,6 +3990,63 @@ async function obHandleResume(file) {
 }
 
 if (obShouldShow()) setTimeout(obOpen, 900);
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+let _currentUser = null;
+
+async function loadCurrentUser() {
+  try {
+    const r = await fetch('/api/auth/me');
+    if (!r.ok) { window.location.href = '/login.html'; return; }
+    const u = await r.json();
+    _currentUser = u;
+    // Topbar avatar
+    const av = document.getElementById('topbar-avatar');
+    if (av) av.textContent = (u.name || u.email || '?')[0].toUpperCase();
+    // Logout button
+    const lb = document.getElementById('logout-btn');
+    if (lb) lb.style.display = '';
+    // User info bar in prefs
+    const bar = document.getElementById('user-info-bar');
+    if (bar) bar.style.display = 'flex';
+    const nameBig = document.getElementById('user-name-big');
+    if (nameBig) nameBig.textContent = u.name || '—';
+    const emailBig = document.getElementById('user-email-big');
+    if (emailBig) emailBig.textContent = u.email || '—';
+    const avatarBig = document.getElementById('user-avatar-big');
+    if (avatarBig) avatarBig.textContent = (u.name || u.email || '?')[0].toUpperCase();
+    // Admin
+    if (u.role === 'admin') {
+      const rb = document.getElementById('user-role-badge');
+      if (rb) rb.style.display = '';
+      loadAdminUsers();
+    }
+  } catch(e) { console.warn('[auth]', e.message); }
+}
+
+async function doLogout() {
+  await fetch('/auth/logout', { method: 'POST' }).catch(() => {});
+  window.location.href = '/login.html';
+}
+
+async function loadAdminUsers() {
+  try {
+    const r = await fetch('/api/admin/users');
+    const d = await r.json();
+    const panel = document.getElementById('admin-panel');
+    const list = document.getElementById('admin-users-list');
+    if (!panel || !list) return;
+    panel.style.display = '';
+    if (!d.users?.length) { list.textContent = 'No users yet.'; return; }
+    list.innerHTML = d.users.map(u => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px">${(u.name||u.email)[0].toUpperCase()}</div>
+        <div style="flex:1"><div style="font-weight:600">${esc(u.name)}</div><div style="color:var(--fg-3);font-size:11px">${esc(u.email)}</div></div>
+        <div style="font-size:10px;color:var(--fg-3)">${u.role === 'admin' ? '👑 admin' : 'user'}</div>
+        <div style="font-size:10px;color:var(--fg-3)">${new Date(u.createdAt).toLocaleDateString('en-IN')}</div>
+      </div>`).join('');
+  } catch(e) { console.warn('[admin]', e.message); }
+}
 </script>
 
 <!-- ── Onboarding Modal ──────────────────────────────────────── -->
