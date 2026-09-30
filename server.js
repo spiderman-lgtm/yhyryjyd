@@ -1092,12 +1092,12 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping) {
   const gmailBody = {
     gmail_new_job:  `Hi,\n\nA new job matching your profile just dropped:\n\n📌 ${jp.title}\n🏢 ${jp.company}\n📍 ${jp.location}\n💰 ${jp.salary}\n\n👉 Apply here: ${jp.url}\n\n— HireRadar`,
     gmail_saved:    `Hi,\n\nYou bookmarked a job on HireRadar:\n\n📌 ${jp.title}\n🏢 ${jp.company}\n📍 ${jp.location}\n💰 ${jp.salary}\n\n👉 Apply here: ${jp.url}\n\n— HireRadar`,
-    gmail_applied:  `You applied to ${jp.title} at ${jp.company} today.\n\n💡 Follow up in 7 days if you don't hear back.\n📧 Check their careers page for the hiring manager's contact.\n\n— HireRadar`,
+    gmail_applied:  `Hi,\n\nYou applied to a job on HireRadar. Here are the details:\n\n📌 Role: ${jp.title}\n🏢 Company: ${jp.company}\n📍 Location: ${jp.location}\n💰 Salary: ${jp.salary}\n🗂 Category: ${jp.category}\n📅 Applied on: ${jp.date}\n\n👉 Job link: ${jp.url}\n\n💡 Tip: Follow up in 7 days if you don't hear back.\n\n— HireRadar`,
   };
   const slackText = {
     slack_new_job:  `🔔 *New job match!*\n*${jp.title}* @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary}\n<${jp.url}|Apply Now>`,
     slack_saved:    `🔖 *Job Saved!*\n*${jp.title}* @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary}\n<${jp.url}|View Job>`,
-    slack_applied:  `✅ *Applied!*\n*${jp.title}* @ *${jp.company}*\n📅 ${jp.date} · Status: Under review\n_Follow up after 7 days_`,
+    slack_applied:  `✅ *Applied!*\n*${jp.title}* @ *${jp.company}*\n📍 ${jp.location} · 💰 ${jp.salary}\n🗂 ${jp.category} · 📅 ${jp.date}\n<${jp.url}|View Job> · _Follow up after 7 days_`,
   };
 
   switch (appLabel) {
