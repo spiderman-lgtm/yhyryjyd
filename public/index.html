@@ -302,22 +302,26 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .auto-filter-btn{display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;background:none;font-size:12px;font-weight:600;color:var(--fg-2);cursor:pointer;transition:all .15s;white-space:nowrap}
 .auto-filter-btn:hover{background:var(--hover);border-color:var(--accent);color:var(--accent)}
 .auto-filter-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
-/* Cards grid */
-.auto-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
-.auto-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;transition:border-color .2s,box-shadow .2s;position:relative}
-.auto-card:hover{border-color:var(--accent-light, #a78bfa);box-shadow:var(--sh-md)}
-.auto-card.enabled{border-color:var(--accent);background:var(--accent-subtle,rgba(99,102,241,.04))}
-.auto-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
-.auto-card-meta{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
-.auto-card-icon{font-size:22px;flex-shrink:0}
-.auto-card-titles{flex:1;min-width:0}
-.auto-card-title{font-size:13px;font-weight:700;line-height:1.3;color:var(--fg)}
-.auto-card-app{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;color:#fff;display:inline-block;margin-top:3px}
-.auto-card-trigger{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--fg-3);flex-wrap:wrap}
-.auto-trigger-pill{padding:2px 8px;border-radius:10px;background:var(--hover);font-weight:600;color:var(--fg-2);font-size:10.5px}
-.auto-arrow{opacity:.5}
-.auto-preview{background:var(--hover);border-radius:8px;padding:10px 11px;font-size:10.5px;color:var(--fg-3);white-space:pre-line;line-height:1.5;max-height:70px;overflow:hidden;border-left:3px solid var(--border)}
-.auto-card.enabled .auto-preview{border-left-color:var(--accent)}
+/* Automation list */
+.auto-cards-grid{display:flex;flex-direction:column;gap:12px}
+.auto-app-group{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;overflow:hidden}
+.auto-app-group-header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--hover);border-bottom:1.5px solid var(--border)}
+.auto-app-group-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.auto-app-group-name{font-size:13.5px;font-weight:700;color:var(--fg);flex:1}
+.auto-app-group-count{font-size:11px;color:var(--fg-3);font-weight:500}
+.auto-app-connected{font-size:11px;font-weight:700;color:var(--success,#10b981);padding:3px 10px;border-radius:20px;background:rgba(16,185,129,.1)}
+.auto-app-connect-btn{font-size:11.5px;font-weight:700;padding:5px 13px;border-radius:20px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;transition:opacity .15s}
+.auto-app-connect-btn:hover{opacity:.85}
+.auto-app-rows{}
+.auto-list-row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--border);transition:background .15s}
+.auto-list-row:last-child{border-bottom:none}
+.auto-list-row:hover{background:var(--hover)}
+.auto-list-row.enabled{background:rgba(99,102,241,.03)}
+.auto-list-row-info{display:flex;align-items:center;gap:9px;flex:1;min-width:0}
+.auto-list-icon{font-size:17px;flex-shrink:0}
+.auto-list-title{font-size:12.5px;font-weight:600;color:var(--fg);line-height:1.3}
+.auto-list-trigger{font-size:10.5px;color:var(--fg-3);margin-top:1px}
+.auto-coming-soon{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--hover);color:var(--fg-3);border:1px solid var(--border)}
 /* Toggle switch */
 .auto-toggle{position:relative;width:40px;height:22px;flex-shrink:0}
 .auto-toggle input{opacity:0;width:0;height:0;position:absolute}
@@ -2336,38 +2340,73 @@ function renderAutomationCards() {
     grid.innerHTML = '<div class="auto-loading-state">No automations in this category</div>';
     return;
   }
-  grid.innerHTML = visible.map(t => {
-    const cfg = _autoCfg[t.id] || {};
-    const isOn = cfg.enabled || false;
-    const appConn = _vsConns[t.app];
-    const connected = !!(appConn?.enabled);
-    const trigLabel = TRIGGER_LABEL[t.trigger] || t.trigger;
-    const appColor = APP_COLOR[t.app] || '#6366f1';
-    return `<div class="auto-card${isOn?' enabled':''}" id="auto-card-${t.id}">
-      <div style="position:absolute;top:8px;right:8px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#fef3c7;color:#d97706;display:none" id="auto-conn-badge-${t.id}">Connecting…</div>
-      <div class="auto-card-header">
-        <div class="auto-card-meta">
-          <div class="auto-card-icon">${t.icon}</div>
-          <div class="auto-card-titles">
-            <div class="auto-card-title">${esc(t.title)}</div>
-            <div class="auto-card-app" style="background:${appColor}">${esc(t.appLabel)}</div>
+
+  const SUPPORTED = new Set(['whatsapp','gmail','slack','sheets']);
+  const APP_INFO = {
+    whatsapp: { label:'WhatsApp',      icon:'💬', color:'#25D366' },
+    gmail:    { label:'Gmail',         icon:'📧', color:'#EA4335' },
+    slack:    { label:'Slack',         icon:'💼', color:'#4A154B' },
+    sheets:   { label:'Google Sheets', icon:'📊', color:'#0F9D58' },
+    calendar: { label:'Google Calendar',icon:'📅',color:'#1967D2' },
+    linkedin: { label:'LinkedIn',      icon:'🔗', color:'#0077B5' },
+    naukri:   { label:'Naukri',        icon:'📋', color:'#FF7555' },
+  };
+
+  // Group by app, preserving first-seen order
+  const groupOrder = [];
+  const groups = {};
+  visible.forEach(t => {
+    if (!groups[t.app]) { groups[t.app] = []; groupOrder.push(t.app); }
+    groups[t.app].push(t);
+  });
+
+  grid.innerHTML = groupOrder.map(app => {
+    const info = APP_INFO[app] || { label: app, icon:'🔗', color:'#6366f1' };
+    const conn = _vsConns[app];
+    const connected = !!(conn?.enabled);
+    const supported = SUPPORTED.has(app);
+    const trigLabel = t => TRIGGER_LABEL[t.trigger] || t.trigger;
+
+    const rows = groups[app].map(t => {
+      const cfg = _autoCfg[t.id] || {};
+      const isOn = !!(cfg.enabled && connected);
+      if (!supported) {
+        return `<div class="auto-list-row">
+          <div class="auto-list-row-info">
+            <span class="auto-list-icon">${t.icon}</span>
+            <div><div class="auto-list-title">${esc(t.title)}</div><div class="auto-list-trigger">⚡ ${esc(trigLabel(t))}</div></div>
           </div>
+          <span class="auto-coming-soon">Coming soon</span>
+        </div>`;
+      }
+      return `<div class="auto-list-row${isOn?' enabled':''}" id="auto-row-${t.id}">
+        <div class="auto-list-row-info">
+          <span class="auto-list-icon">${t.icon}</span>
+          <div><div class="auto-list-title">${esc(t.title)}</div><div class="auto-list-trigger">⚡ ${esc(trigLabel(t))}</div></div>
         </div>
-        <label class="auto-toggle" title="${isOn?'Disable':'Enable'} this automation">
-          <input type="checkbox" ${isOn?'checked':''} onchange="autoToggle('${t.id}',this)">
-          <div class="auto-toggle-track"></div>
-          <div class="auto-toggle-thumb"></div>
-        </label>
+        ${connected
+          ? `<label class="auto-toggle" title="${isOn?'Disable':'Enable'}">
+              <input type="checkbox" ${isOn?'checked':''} onchange="autoToggle('${t.id}',this)">
+              <div class="auto-toggle-track"></div><div class="auto-toggle-thumb"></div>
+            </label>`
+          : `<span style="font-size:10.5px;color:var(--fg-3)">—</span>`
+        }
+      </div>`;
+    }).join('');
+
+    return `<div class="auto-app-group" id="auto-group-${app}">
+      <div class="auto-app-group-header">
+        <span class="auto-app-group-icon" style="background:${info.color}20;color:${info.color}">${info.icon}</span>
+        <span class="auto-app-group-name">${info.label}</span>
+        <span class="auto-app-group-count">${groups[app].length} automation${groups[app].length>1?'s':''}</span>
+        ${!supported
+          ? `<span class="auto-coming-soon">Coming soon</span>`
+          : connected
+            ? `<span class="auto-app-connected">● Connected</span>`
+            : `<button class="auto-app-connect-btn" onclick="autoConnectApp('${app}')">+ Connect</button>`
+        }
       </div>
-      <div class="auto-card-trigger">
-        <span class="auto-trigger-pill">⚡ ${esc(trigLabel)}</span>
-        <span class="auto-arrow">→</span>
-        <span class="auto-trigger-pill">📲 ${esc(t.appLabel)}</span>
-        ${connected?'<span style="color:var(--success,#10b981);font-size:10px;margin-left:auto">● Connected</span>':'<span style="color:var(--fg-4,#9ca3af);font-size:10px;margin-left:auto">○ Not connected</span>'}
-      </div>
-      <div class="auto-preview">${esc(t.preview)}</div>
-      <div style="font-size:10.5px;color:var(--fg-3);line-height:1.45">${esc(t.desc)}</div>
-      ${isOn && connected ? `<div style="margin-top:10px;text-align:right"><button onclick="autoTestFire('${t.id}')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--accent,#6366f1);background:transparent;color:var(--accent,#6366f1);cursor:pointer;font-weight:600" title="Send a test delivery now">⚡ Test</button></div>` : ''}
+      <div class="auto-app-rows">${rows}</div>
     </div>`;
   }).join('');
 }
@@ -2376,34 +2415,14 @@ async function autoToggle(id, checkbox) {
   const wantOn = checkbox.checked;
   const tmpl = _autoTemplates.find(t => t.id === id);
   if (!tmpl) return;
-  const appConn = _vsConns[tmpl.app];
-  const connected = !!(appConn?.enabled);
-
-  if (wantOn && !connected) {
-    // Need to connect app first
-    checkbox.checked = false;
-    const badge = document.getElementById('auto-conn-badge-' + id);
-    if (badge) badge.style.display = 'block';
-    document.getElementById('auto-card-' + id)?.classList.add('connecting');
-    try {
-      await vsQuickConnectForAuto(tmpl.app, id, checkbox);
-    } catch(e) {
-      if (badge) badge.style.display = 'none';
-      document.getElementById('auto-card-' + id)?.classList.remove('connecting');
-      showToast('Could not connect ' + tmpl.appLabel + '. Try again.', 'error');
-    }
-    return;
-  }
-
-  // App is connected (or we're turning off) — just toggle config
   try {
     await fetch('/api/auto-config/' + id, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ enabled: wantOn }),
     });
     _autoCfg[id] = { ...(_autoCfg[id]||{}), enabled: wantOn };
-    const card = document.getElementById('auto-card-' + id);
-    if (card) card.classList.toggle('enabled', wantOn);
+    const row = document.getElementById('auto-row-' + id);
+    if (row) row.classList.toggle('enabled', wantOn);
     updateAutoActiveCount();
     showToast(wantOn ? '✅ Automation enabled!' : 'Automation disabled', wantOn?'success':'info');
   } catch(e) {
