@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion, useScroll, useSpring, useTransform } from "framer-motion";
+import { motion, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useSpring, useTransform, type MotionValue } from "framer-motion";
 import { useLayoutEffect, useRef, useState } from "react";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { SplitText } from "@/components/ui/SplitText";
@@ -69,9 +69,9 @@ function PinnedProducts() {
             <Intro />
           </div>
           {products.map((p, i) => (
-            <div key={p.slug} className="w-[min(34vw,480px)] shrink-0">
+            <CoverItem key={p.slug} x={x} className="w-[min(34vw,480px)] shrink-0">
               <ProductCard product={p} index={i} />
-            </div>
+            </CoverItem>
           ))}
           <div aria-hidden className="w-[var(--gutter)] shrink-0" />
         </motion.div>
@@ -82,6 +82,33 @@ function PinnedProducts() {
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * Coverflow: each card turns toward the viewer as it reaches the centre of the
+ * screen and swings away (and back in depth) as it travels to either side.
+ */
+function CoverItem({ x, className, children }: { x: MotionValue<number>; className?: string; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const rotateY = useMotionValue(0);
+  const z = useMotionValue(0);
+  const update = () => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const d = Math.max(-1.2, Math.min(1.2, (r.left + r.width / 2 - window.innerWidth / 2) / window.innerWidth));
+    rotateY.set(-d * 38);
+    z.set(-Math.abs(d) * 220);
+  };
+  useMotionValueEvent(x, "change", update);
+  useLayoutEffect(update, []);
+  return (
+    <div ref={ref} className={className} style={{ perspective: 1400 }}>
+      <motion.div style={{ rotateY, z, transformStyle: "preserve-3d" }} className="h-full">
+        {children}
+      </motion.div>
+    </div>
   );
 }
 

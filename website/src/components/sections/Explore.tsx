@@ -100,13 +100,14 @@ export function Explore({ index = "03" }: { index?: string }) {
 
           {/* Pointer devices: one large preview panel beside the list */}
           <div className={cn("lg:col-span-7", fine ? "block" : "hidden")}>
-            <div id="explore-preview" className="glass relative min-h-[460px] overflow-hidden rounded-[32px] p-8 md:p-10 lg:sticky lg:top-28">
+            <div id="explore-preview" className="glass relative min-h-[460px] overflow-hidden rounded-[32px] p-8 [perspective:1400px] md:p-10 lg:sticky lg:top-28">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={active}
-                  initial={{ opacity: 0, filter: "blur(12px)", y: 14 }}
-                  animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-                  exit={{ opacity: 0, filter: "blur(12px)", y: -10 }}
+                  initial={{ opacity: 0, filter: "blur(8px)", rotateY: -38, x: 40 }}
+                  animate={{ opacity: 1, filter: "blur(0px)", rotateY: 0, x: 0 }}
+                  exit={{ opacity: 0, filter: "blur(8px)", rotateY: 38, x: -40 }}
+                  style={{ transformOrigin: "50% 50%" }}
                   transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
                 >
                   <Preview k={active} href={items.find((i) => i.key === active)!.href} />

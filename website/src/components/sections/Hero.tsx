@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { SplitText } from "@/components/ui/SplitText";
 import { Aurora } from "@/components/visuals/Aurora";
-import { NetworkField } from "@/components/visuals/NetworkField";
+import { Hero3D } from "@/components/visuals/Hero3D";
 import { company, products } from "@/content/site";
 
 const verbs = [
@@ -31,10 +31,10 @@ export function Hero() {
   return (
     <section ref={ref} aria-labelledby="hero-title" className="relative flex min-h-[100svh] flex-col overflow-hidden">
       <Aurora intensity={0.22} />
-      <NetworkField className="absolute inset-0 h-full w-full" />
-      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,var(--color-ink)_85%)]" />
+      <Hero3D />
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_45%,transparent_35%,var(--color-ink)_90%)]" />
 
-      <motion.div style={{ y, opacity: fade, scale }} className="container-x relative flex flex-1 flex-col justify-center pb-16 pt-32">
+      <motion.div style={{ y, opacity: fade, scale }} className="container-x pointer-events-none relative flex flex-1 flex-col justify-center pb-16 pt-32 [&_a]:pointer-events-auto [&_button]:pointer-events-auto">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -50,7 +50,7 @@ export function Hero() {
           id="hero-title"
           immediate
           delay={0.15}
-          className="display text-[clamp(3.2rem,11vw,11rem)]"
+          className="display text-[clamp(3.2rem,9.4vw,9.6rem)]"
           lines={["We don't do", "projects.", { text: "We build products.", serif: true, className: "text-aurora" }]}
         />
 

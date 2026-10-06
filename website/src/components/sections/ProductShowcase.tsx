@@ -12,13 +12,14 @@ export function ProductShowcase({ product, index }: { product: Product; index: n
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
   const y = useTransform(scrollYProgress, [0, 1], [60, -60]);
-  const rotate = useTransform(scrollYProgress, [0, 1], [index % 2 ? 4 : -4, index % 2 ? -4 : 4]);
+  const rotateY = useTransform(scrollYProgress, [0, 1], [index % 2 ? 22 : -22, index % 2 ? -22 : 22]);
+  const rotateX = useTransform(scrollYProgress, [0, 0.5, 1], [14, 0, -14]);
   const flip = index % 2 === 1;
 
   return (
     <section ref={ref} id={product.slug} aria-labelledby={`${product.slug}-title`} className="relative border-t border-line py-20 md:py-32">
       <div className="container-x grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
-        <motion.div style={{ y, rotate }} className={cn("relative", flip && "lg:order-2")}>
+        <motion.div style={{ y, rotateY, rotateX, transformPerspective: 1200 }} className={cn("relative", flip && "lg:order-2")}>
           <div className="relative overflow-hidden rounded-[32px] border border-line" style={{ background: `linear-gradient(150deg, ${product.ink}, #0e0e13 70%)` }}>
             <ProductVisual product={product} className="aspect-[4/3] w-full" />
           </div>

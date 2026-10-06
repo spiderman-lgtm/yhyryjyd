@@ -32,12 +32,13 @@ export function SplitText({
           const l = typeof line === "string" ? { text: line } : line;
           return (
             <Fragment key={i}>
-              <span className="block overflow-hidden pb-[0.08em] -mb-[0.08em]">
+              <span className="block overflow-hidden pb-[0.08em] -mb-[0.08em] [perspective:900px]">
                 <motion.span
+                  style={{ transformOrigin: "50% 100%" }}
                   className={`block ${l.serif ? "font-display font-extrabold tracking-[-0.05em]" : ""} ${l.className ?? ""}`}
                   variants={{
-                    hidden: { y: "110%", rotate: 2 },
-                    show: { y: "0%", rotate: 0, transition: { duration: 1.1, ease: [0.16, 1, 0.3, 1] } },
+                    hidden: { y: "100%", rotateX: -85, opacity: 0 },
+                    show: { y: "0%", rotateX: 0, opacity: 1, transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] } },
                   }}
                 >
                   {l.text}{" "}

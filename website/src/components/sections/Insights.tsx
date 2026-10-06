@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { SplitText } from "@/components/ui/SplitText";
+import { TiltCard } from "@/components/ui/TiltCard";
 import { company, insights, type Insight } from "@/content/site";
 
 export function Insights({ index = "08" }: { index?: string }) {
@@ -39,6 +40,7 @@ function InsightCard({ post, index }: { post: Insight; index: number }) {
       transition={{ duration: 0.9, delay: index * 0.1, ease: [0.16, 1, 0.3, 1] }}
       className={index === 1 ? "md:mt-16" : undefined}
     >
+      <TiltCard max={10} glow="rgba(255,255,255,0.12)">
       <a href={post.href} target="_blank" rel="noopener noreferrer" data-cursor="Read" className="group block">
         <motion.div
           initial={{ clipPath: "inset(100% 0 0 0)" }}
@@ -59,6 +61,7 @@ function InsightCard({ post, index }: { post: Insight; index: number }) {
         <h3 className="mt-6 text-2xl font-medium leading-tight tracking-[-0.03em] decoration-brand decoration-2 underline-offset-4 group-hover:underline">{post.title}</h3>
         <p className="mt-3 text-mute">{post.excerpt}</p>
       </a>
+      </TiltCard>
     </motion.article>
   );
 }
