@@ -285,7 +285,7 @@ export const nav = [
   { label: "Home", href: "/" },
   { label: "Products", href: "/products" },
   { label: "About", href: "/about" },
-  { label: "Culture", href: "/#culture" },
+  { label: "Culture", href: "/about#culture" },
   { label: "Careers", href: "/careers" },
   { label: "Insights", href: "/#insights" },
   { label: "Contact", href: "/contact" },
