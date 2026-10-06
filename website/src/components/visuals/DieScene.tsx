@@ -6,7 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { products } from "@/content/site";
 
-const AURORA = ["#9fb4ff", "#c8a8ff", "#8be3d6", "#b9c6ff"];
+const WALKOVER_RED = "#ed3338"; // sampled from the official logo
+const PIP_WHITE = "#fff6f4";
 const S = 0.5; // pip spacing
 
 // Classic pip layouts, in face-local coordinates.
@@ -40,7 +41,7 @@ function Pip({ u, v }: { u: number; v: number }) {
   return (
     <mesh position={[u, v, 1.0]} scale={[1, 1, 0.35]}>
       <sphereGeometry args={[0.15, 32, 16]} />
-      <meshPhysicalMaterial color="#0d0d16" roughness={0.25} clearcoat={1} />
+      <meshPhysicalMaterial color={PIP_WHITE} roughness={0.3} clearcoat={1} />
     </mesh>
   );
 }
@@ -52,7 +53,7 @@ function WMark() {
         const [x2, y2] = W_POINTS[i + 1];
         const len = Math.hypot(x2 - x1, y2 - y1);
         const angle = Math.atan2(y2 - y1, x2 - x1);
-        return { pos: [(x1 + x2) / 2, (y1 + y2) / 2, 1.01] as [number, number, number], len, angle, color: AURORA[i % AURORA.length] };
+        return { pos: [(x1 + x2) / 2, (y1 + y2) / 2, 1.01] as [number, number, number], len, angle };
       }),
     [],
   );
@@ -61,13 +62,13 @@ function WMark() {
       {segments.map((s, i) => (
         <mesh key={i} position={s.pos} rotation={[0, 0, s.angle - Math.PI / 2]}>
           <capsuleGeometry args={[0.065, s.len, 8, 16]} />
-          <meshStandardMaterial color={s.color} emissive={s.color} emissiveIntensity={1.6} toneMapped={false} />
+          <meshPhysicalMaterial color={PIP_WHITE} roughness={0.3} clearcoat={1} />
         </mesh>
       ))}
       {W_POINTS.map(([x, y], i) => (
         <mesh key={i} position={[x, y, 1.02]}>
           <sphereGeometry args={[0.12, 32, 16]} />
-          <meshStandardMaterial color="#ffffff" emissive={AURORA[i % AURORA.length]} emissiveIntensity={1.2} toneMapped={false} />
+          <meshPhysicalMaterial color={PIP_WHITE} roughness={0.3} clearcoat={1} />
         </mesh>
       ))}
     </group>
@@ -125,16 +126,13 @@ function Die({ reduce, onHover }: { reduce: boolean; onHover: (on: boolean) => v
           onClick={onClick}
         >
           <meshPhysicalMaterial
-            color="#eef0ff"
-            roughness={0.12}
-            metalness={0.05}
+            color={WALKOVER_RED}
+            roughness={0.22}
+            metalness={0}
             clearcoat={1}
-            clearcoatRoughness={0.08}
-            iridescence={1}
-            iridescenceIOR={1.35}
-            iridescenceThicknessRange={[200, 800]}
-            sheen={0.4}
-            sheenColor="#c8a8ff"
+            clearcoatRoughness={0.06}
+            sheen={0.3}
+            sheenColor="#ff8a80"
           />
         </RoundedBox>
         <WMark />
