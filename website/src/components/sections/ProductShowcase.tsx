@@ -39,7 +39,7 @@ export function ProductShowcase({ product, index }: { product: Product; index: n
           <h2 id={`${product.slug}-title`} className="display mt-6 text-[clamp(3rem,7vw,6.5rem)]">
             {product.name}
           </h2>
-          <p className="mt-4 font-serif text-[clamp(1.5rem,2.6vw,2.2rem)] italic leading-tight" style={{ color: product.color }}>
+          <p className="mt-4 font-display text-[clamp(1.5rem,2.6vw,2.2rem)] font-semibold leading-tight tracking-[-0.03em]" style={{ color: product.color }}>
             {product.oneLiner}
           </p>
           <p className="mt-6 max-w-lg leading-relaxed text-paper/70">{product.description}</p>

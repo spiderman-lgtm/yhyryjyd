@@ -98,7 +98,7 @@ export function Innovation({ index = "04" }: { index?: string }) {
                       className="lg:absolute lg:inset-x-8 lg:bottom-8 lg:left-[40%] lg:!h-auto"
                     >
                       <div className="px-6 pb-6 lg:p-0">
-                        <p className="font-serif text-[clamp(1.6rem,2.6vw,2.5rem)] italic leading-tight">{p.lead}</p>
+                        <p className="font-display text-[clamp(1.6rem,2.6vw,2.5rem)] font-semibold leading-tight tracking-[-0.03em]">{p.lead}</p>
                         <p className="mt-4 max-w-md text-paper/70">{p.body}</p>
                         <p className="label mt-6">{p.tag}</p>
                       </div>

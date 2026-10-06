@@ -70,7 +70,7 @@ export function Hero() {
                   animate={{ y: "0%" }}
                   exit={{ y: "-100%" }}
                   transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                  className="col-start-1 row-start-1 font-serif text-[1.2em] italic"
+                  className="col-start-1 row-start-1 font-display text-[1.05em] font-bold"
                   style={{ color: verbs[i].color }}
                 >
                   {verbs[i].word}.

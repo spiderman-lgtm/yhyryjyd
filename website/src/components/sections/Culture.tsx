@@ -86,7 +86,7 @@ export function Culture({ index = "06" }: { index?: string }) {
           <Reveal className="rounded-[28px] border border-line bg-ink-2 p-8">
             <p className="label">Home base</p>
             <p className="mt-6 text-3xl font-medium tracking-[-0.03em]">
-              Built in <span className="font-serif italic text-aurora">{company.city}</span>, the heart of India.
+              Built in <span className="font-display font-bold text-aurora">{company.city}</span>, the heart of India.
             </p>
             <p className="mt-4 text-sm text-mute">{company.address.lines.join(", ")}</p>
           </Reveal>

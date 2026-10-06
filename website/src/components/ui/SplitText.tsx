@@ -34,7 +34,7 @@ export function SplitText({
             <Fragment key={i}>
               <span className="block overflow-hidden pb-[0.08em] -mb-[0.08em]">
                 <motion.span
-                  className={`block ${l.serif ? "font-serif italic font-normal tracking-[-0.02em]" : ""} ${l.className ?? ""}`}
+                  className={`block ${l.serif ? "font-display font-extrabold tracking-[-0.05em]" : ""} ${l.className ?? ""}`}
                   variants={{
                     hidden: { y: "110%", rotate: 2 },
                     show: { y: "0%", rotate: 0, transition: { duration: 1.1, ease: [0.16, 1, 0.3, 1] } },

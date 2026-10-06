@@ -11,7 +11,7 @@
   --color-line: rgb(255 255 255 / 0.09);
 
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-instrument), ui-serif, Georgia, serif;
+  --font-display: var(--font-bricolage), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 
   --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -23,6 +23,7 @@
 }
 
 html {
+  overflow-x: clip;
   background: var(--color-ink);
   color: var(--color-paper);
   -webkit-font-smoothing: antialiased;
@@ -34,6 +35,12 @@ body {
   background: var(--color-ink);
   font-family: var(--font-sans);
   overflow-x: clip;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
 }
 
 ::selection {
@@ -75,9 +82,11 @@ html.lenis body {
 }
 
 @utility display {
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-weight: 700;
   letter-spacing: -0.045em;
   line-height: 0.92;
+  font-variation-settings: "opsz" 96;
 }
 
 /* Iridescent accent used for highlighted words instead of a flat brand colour */

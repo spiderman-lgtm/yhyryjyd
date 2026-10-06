@@ -44,7 +44,7 @@ export default function CareersPage() {
           <div>
             <SectionLabel index="02">Open roles</SectionLabel>
             <h2 id="openings-title" className="display mt-6 text-[clamp(2.6rem,5vw,4.8rem)]">
-              Find your <span className="font-serif font-normal italic text-aurora">next problem.</span>
+              Find your <span className="font-extrabold text-aurora">next problem.</span>
             </h2>
           </div>
           <Button href={company.urls.careers} external>
@@ -59,7 +59,7 @@ export default function CareersPage() {
           <Aurora intensity={0.6} follow className="-z-10" />
           <p className="label">Internship programme</p>
           <h2 id="avengers-title" className="display mt-6 text-[clamp(2.4rem,5vw,4.6rem)]">
-            Walkover <span className="font-serif font-normal italic text-aurora">Avengers</span>
+            Walkover <span className="font-extrabold text-aurora">Avengers</span>
           </h2>
           <p className="mt-6 max-w-xl text-lg text-paper/75">
             A six-month mission in Indore for students and freshers: build real features for real products, alongside the people who run them — with the chance of a pre-placement offer at the end.
