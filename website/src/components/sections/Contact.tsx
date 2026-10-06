@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BlurText } from "@/components/ui/BlurText";
 import { Button } from "@/components/ui/Button";
 import { Magnetic } from "@/components/ui/Magnetic";
@@ -99,7 +99,6 @@ export function Contact({ asPage = false, index = "09" }: { asPage?: boolean; in
           </div>
 
           <div className="flex flex-col gap-6 lg:col-span-4">
-            <IndoreClock />
             <div className="glass rounded-[28px] p-6 md:p-8">
               <p className="label">Follow Walkover</p>
               <ul className="mt-5 flex flex-wrap gap-2">
@@ -245,34 +244,5 @@ function VisitPanel() {
         </button>
       </div>
     </>
-  );
-}
-
-/** Live local time at the Indore office (IST). Renders after mount to avoid hydration drift. */
-function IndoreClock() {
-  const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => {
-    setNow(new Date());
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const parts = now
-    ? new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).formatToParts(now)
-    : null;
-  const get = (type: string) => parts?.find((p) => p.type === type)?.value ?? "--";
-  const hour = Number(get("hour"));
-  const day = parts ? hour >= 6 && hour < 19 : true;
-
-  return (
-    <div className="glass relative overflow-hidden rounded-[28px] p-6 md:p-8">
-      <div aria-hidden className={cn("absolute -right-10 -top-10 h-40 w-40 rounded-full blur-3xl transition-colors duration-1000", day ? "bg-[#ffd27a]/40" : "bg-[#6b7bff]/40")} />
-      <p className="label relative">Indore, India · IST</p>
-      <p className="relative mt-5 font-mono text-[clamp(2.6rem,5vw,3.6rem)] font-medium tabular-nums tracking-tight" suppressHydrationWarning>
-        {get("hour")}:{get("minute")}
-        <span className="text-paper/35">:{get("second")}</span>
-      </p>
-      <p className="relative mt-2 text-sm text-mute">{parts ? (day ? "Daytime at the office" : "Night-time in Indore right now") : "Local time at our office"}</p>
-    </div>
   );
 }
