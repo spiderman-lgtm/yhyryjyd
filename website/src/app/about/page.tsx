@@ -18,7 +18,7 @@ export default function AboutPage() {
     <>
       <PageHero
         eyebrow="About Walkover"
-        lines={["Built in Indore.", { text: "Used everywhere.", serif: true, className: "text-brand" }]}
+        lines={["Built in Indore.", { text: "Used everywhere.", serif: true, className: "text-aurora" }]}
         intro="Walkover was founded in 2010 by siblings Pushpendra, Ankita and Shubhendra Agrawal in the heart of India. What began as college experiments became MSG91 — and then a whole family of products."
       />
       <WhatIsWalkover index="01" />
@@ -26,7 +26,7 @@ export default function AboutPage() {
       <Innovation index="03" />
       <Experiments index="04" />
       <Culture index="05" />
-      <Contact />
+      <Contact index="06" />
     </>
   );
 }

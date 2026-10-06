@@ -52,7 +52,7 @@ export function Innovation({ index = "04" }: { index?: string }) {
             <SplitText
               id="innovation-title"
               className="display mt-8 text-[clamp(2.6rem,5.4vw,5.4rem)]"
-              lines={["How we build", { text: "what we build.", serif: true, className: "text-brand" }]}
+              lines={["How we build", { text: "what we build.", serif: true, className: "text-aurora" }]}
             />
           </div>
           <p className="max-w-md text-paper/70 md:col-span-5 md:justify-self-end">

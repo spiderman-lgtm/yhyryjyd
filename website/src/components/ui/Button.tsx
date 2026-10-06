@@ -13,7 +13,7 @@ type Props = {
 export function Button({ href, children, variant = "solid", external, className }: Props) {
   const classes = cn(
     "group relative inline-flex items-center gap-3 overflow-hidden rounded-full px-6 py-3.5 text-sm font-medium transition-colors duration-300",
-    variant === "solid" ? "bg-brand text-ink" : "border border-paper/20 text-paper hover:border-paper/60",
+    variant === "solid" ? "glass text-paper hover:text-ink" : "border border-paper/20 text-paper hover:border-paper/60",
     className,
   );
   const inner = (

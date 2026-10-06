@@ -16,7 +16,7 @@ export function Careers({ index = "07" }: { index?: string }) {
               <SplitText
                 id="careers-title"
                 className="display mt-8 text-[clamp(2.8rem,5.6vw,5.6rem)]"
-                lines={["Come build", { text: "the next one", serif: true, className: "text-brand" }, "with us."]}
+                lines={["Come build", { text: "the next one", serif: true, className: "text-aurora" }, "with us."]}
               />
               <ul className="mt-12 grid gap-px overflow-hidden rounded-3xl border border-line bg-line sm:grid-cols-2">
                 {perks.map((p, i) => (

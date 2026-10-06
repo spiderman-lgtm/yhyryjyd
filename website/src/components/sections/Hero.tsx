@@ -4,14 +4,15 @@ import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion"
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { SplitText } from "@/components/ui/SplitText";
+import { Aurora } from "@/components/visuals/Aurora";
 import { NetworkField } from "@/components/visuals/NetworkField";
 import { company, products } from "@/content/site";
 
 const verbs = [
-  { word: "talk", color: "#3D7BFF" },
-  { word: "automate", color: "#FF6A3D" },
-  { word: "think", color: "#9B7BFF" },
-  { word: "account", color: "#22C59A" },
+  { word: "talk", color: "#9fb4ff" },
+  { word: "automate", color: "#8be3d6" },
+  { word: "think", color: "#c8a8ff" },
+  { word: "account", color: "#b9c6ff" },
 ];
 
 export function Hero() {
@@ -29,6 +30,7 @@ export function Hero() {
 
   return (
     <section ref={ref} aria-labelledby="hero-title" className="relative flex min-h-[100svh] flex-col overflow-hidden">
+      <Aurora intensity={0.22} />
       <NetworkField className="absolute inset-0 h-full w-full" />
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,var(--color-ink)_85%)]" />
 
@@ -39,7 +41,7 @@ export function Hero() {
           transition={{ duration: 0.8, delay: 0.1 }}
           className="label mb-8 flex items-center gap-3"
         >
-          <span className="inline-flex h-2 w-2 rounded-full bg-brand" />
+          <span className="inline-flex h-2 w-2 rounded-full bg-brand shadow-[0_0_12px_rgba(201,211,255,0.9)]" />
           Product company · {company.city}, India · Est. {company.founded}
         </motion.div>
 
@@ -49,7 +51,7 @@ export function Hero() {
           immediate
           delay={0.15}
           className="display text-[clamp(3.2rem,11vw,11rem)]"
-          lines={["We don't do", "projects.", { text: "We build products.", serif: true, className: "text-brand" }]}
+          lines={["We don't do", "projects.", { text: "We build products.", serif: true, className: "text-aurora" }]}
         />
 
         <div className="mt-12 grid gap-10 md:grid-cols-12 md:items-end">

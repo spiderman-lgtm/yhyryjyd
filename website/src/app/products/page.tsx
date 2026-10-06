@@ -16,7 +16,7 @@ export default function ProductsPage() {
     <>
       <PageHero
         eyebrow="The Walkover family"
-        lines={["Products that", { text: "run businesses.", serif: true, className: "text-brand" }]}
+        lines={["Products that", { text: "run businesses.", serif: true, className: "text-aurora" }]}
         intro="From the messaging backbone behind thousands of companies to AI that anyone can put to work — every product here was imagined, built and scaled by Walkover."
       />
       <nav aria-label="Jump to product" className="container-x -mt-6 mb-16 flex flex-wrap gap-2">
@@ -30,7 +30,7 @@ export default function ProductsPage() {
       {products.map((p, i) => (
         <ProductShowcase key={p.slug} product={p} index={i} />
       ))}
-      <Contact />
+      <Contact index="07" />
     </>
   );
 }

@@ -37,7 +37,7 @@ export function Journey({ index = "03" }: { index?: string }) {
                   animate={{ y: "0%", opacity: 1 }}
                   exit={{ y: "-100%", opacity: 0 }}
                   transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                  className="display absolute inset-0 text-[clamp(6rem,12vw,11rem)] text-brand"
+                  className="display absolute inset-0 text-[clamp(6rem,12vw,11rem)] text-aurora"
                 >
                   {journey[active].year}
                 </motion.span>
@@ -48,7 +48,7 @@ export function Journey({ index = "03" }: { index?: string }) {
 
         <ol ref={list} className="relative lg:col-span-7">
           <div aria-hidden className="absolute bottom-0 left-[7px] top-0 w-px bg-line">
-            <motion.div className="h-full w-px origin-top bg-brand" style={{ scaleY: fill }} />
+            <motion.div className="h-full w-px origin-top bg-gradient-to-b from-[#9fb4ff] via-[#c8a8ff] to-[#8be3d6]" style={{ scaleY: fill }} />
           </div>
           {journey.map((m, i) => (
             <MilestoneItem key={m.year} m={m} active={i === active} />
@@ -72,7 +72,7 @@ function MilestoneItem({ m, active }: { m: Milestone; active: boolean }) {
         aria-hidden
         className={cn(
           "absolute left-0 top-2 h-[15px] w-[15px] rounded-full border-2 transition-all duration-500",
-          active ? "scale-125 border-brand bg-brand shadow-[0_0_24px_rgba(237,51,56,0.6)]" : "border-paper/30 bg-ink",
+          active ? "scale-125 border-brand bg-brand shadow-[0_0_28px_rgba(180,190,255,0.8)]" : "border-paper/30 bg-ink",
         )}
       />
       <p className={cn("font-mono text-sm tracking-widest transition-colors duration-500", active ? "text-brand" : "text-mute")}>{m.year}</p>

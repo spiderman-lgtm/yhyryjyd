@@ -26,7 +26,7 @@ function Intro() {
         <SplitText
           id="products-title"
           className="display text-[clamp(3rem,6vw,6.5rem)]"
-          lines={["Six products.", { text: "One obsession.", serif: true, className: "text-brand" }]}
+          lines={["Six products.", { text: "One obsession.", serif: true, className: "text-aurora" }]}
         />
         <p className="mt-6 max-w-sm text-paper/70">
           Communication, automation, AI, accounting and docs. Each one is a company of its own — built, run and scaled by Walkover.
@@ -77,7 +77,7 @@ function PinnedProducts() {
         </motion.div>
         <div className="container-x mt-8">
           <div className="h-px w-full bg-line">
-            <motion.div className="h-px bg-brand" style={{ width: bar }} />
+            <motion.div className="h-px bg-gradient-to-r from-[#9fb4ff] via-[#c8a8ff] to-[#8be3d6]" style={{ width: bar }} />
           </div>
         </div>
       </div>

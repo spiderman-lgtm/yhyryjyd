@@ -270,7 +270,7 @@ export const insights: Insight[] = [
     excerpt: "Got an idea worth building? Walkover brings the team, the infrastructure and the experience.",
     tag: "Announcement",
     href: "https://blog.walkover.in/walkover-ready-to-invest-in-your-idea-youridea-ourresources-db46e7b6a6f7",
-    tone: "#FF6A3D",
+    tone: "#9B7BFF",
   },
   {
     title: "How we're making Walkover a diverse and inclusive workplace",
@@ -288,5 +288,5 @@ export const nav = [
   { label: "Culture", href: "/#culture" },
   { label: "Careers", href: "/careers" },
   { label: "Insights", href: "/#insights" },
-  { label: "Contact", href: "/#contact" },
+  { label: "Contact", href: "/contact" },
 ];

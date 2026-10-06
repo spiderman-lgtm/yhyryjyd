@@ -58,7 +58,7 @@ export function WhatIsWalkover({ index = "01" }: { index?: string }) {
 function Word({ children, progress, range, accent }: { children: string; progress: MotionValue<number>; range: [number, number]; accent: boolean }) {
   const opacity = useTransform(progress, range, [0.14, 1]);
   return (
-    <motion.span style={{ opacity }} className={accent ? "font-serif italic font-normal text-brand" : undefined}>
+    <motion.span style={{ opacity }} className={accent ? "font-serif italic font-normal text-aurora" : undefined}>
       {children}{" "}
     </motion.span>
   );

@@ -4,6 +4,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { Culture } from "@/components/sections/Culture";
 import { Openings } from "@/components/sections/Openings";
+import { Aurora } from "@/components/visuals/Aurora";
 import { PageHero } from "@/components/sections/PageHero";
 import { company, perks } from "@/content/site";
 
@@ -18,7 +19,7 @@ export default function CareersPage() {
     <>
       <PageHero
         eyebrow="Careers at Walkover"
-        lines={["Don't join a project.", { text: "Own a product.", serif: true, className: "text-brand" }]}
+        lines={["Don't join a project.", { text: "Own a product.", serif: true, className: "text-aurora" }]}
         intro="Small teams, real users, real scale. At Walkover you'll work on products that move billions of messages, power automations and put AI to work — from week one."
       />
 
@@ -43,7 +44,7 @@ export default function CareersPage() {
           <div>
             <SectionLabel index="02">Open roles</SectionLabel>
             <h2 id="openings-title" className="display mt-6 text-[clamp(2.6rem,5vw,4.8rem)]">
-              Find your <span className="font-serif font-normal italic text-brand">next problem.</span>
+              Find your <span className="font-serif font-normal italic text-aurora">next problem.</span>
             </h2>
           </div>
           <Button href={company.urls.careers} external>
@@ -54,16 +55,17 @@ export default function CareersPage() {
       </section>
 
       <section aria-labelledby="avengers-title" className="container-x pb-12">
-        <Reveal className="relative overflow-hidden rounded-[32px] bg-brand p-8 text-ink md:p-14">
-          <p className="font-mono text-xs uppercase tracking-widest text-ink/60">Internship programme</p>
+        <Reveal className="glass relative isolate overflow-hidden rounded-[32px] p-8 md:p-14">
+          <Aurora intensity={0.6} follow className="-z-10" />
+          <p className="label">Internship programme</p>
           <h2 id="avengers-title" className="display mt-6 text-[clamp(2.4rem,5vw,4.6rem)]">
-            Walkover <span className="font-serif font-normal italic">Avengers</span>
+            Walkover <span className="font-serif font-normal italic text-aurora">Avengers</span>
           </h2>
-          <p className="mt-6 max-w-xl text-lg text-ink/75">
+          <p className="mt-6 max-w-xl text-lg text-paper/75">
             A six-month mission in Indore for students and freshers: build real features for real products, alongside the people who run them — with the chance of a pre-placement offer at the end.
           </p>
           <div className="mt-8">
-            <a href={company.urls.careers} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3.5 text-sm font-medium text-paper transition-transform hover:scale-105">
+            <a href={company.urls.careers} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full bg-paper px-6 py-3.5 text-sm font-medium text-ink transition-transform hover:scale-105">
               Join the mission ↗
             </a>
           </div>

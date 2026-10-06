@@ -3,12 +3,13 @@
 import { AnimatePresence, motion, useMotionValue, useSpring } from "framer-motion";
 import { useState } from "react";
 import { Reveal } from "@/components/ui/Reveal";
+import { Aurora } from "@/components/visuals/Aurora";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { SplitText } from "@/components/ui/SplitText";
 import { company, insights, values } from "@/content/site";
 import { useFinePointer } from "@/lib/hooks";
 
-const tones = ["#3D7BFF", "#FF6A3D", "#9B7BFF", "#22C59A", "#FF4F9A"];
+const tones = ["#3D7BFF", "#8be3d6", "#9B7BFF", "#22C59A", "#c8a8ff"];
 
 export function Culture({ index = "06" }: { index?: string }) {
   const fine = useFinePointer();
@@ -32,7 +33,7 @@ export function Culture({ index = "06" }: { index?: string }) {
             <SplitText
               id="culture-title"
               className="display mt-8 text-[clamp(2.8rem,6vw,6rem)]"
-              lines={["The Spartans", { text: "behind the products.", serif: true, className: "text-brand" }]}
+              lines={["The Spartans", { text: "behind the products.", serif: true, className: "text-aurora" }]}
             />
           </div>
           <p className="max-w-sm text-paper/70 md:col-span-4 md:justify-self-end">
@@ -85,7 +86,7 @@ export function Culture({ index = "06" }: { index?: string }) {
           <Reveal className="rounded-[28px] border border-line bg-ink-2 p-8">
             <p className="label">Home base</p>
             <p className="mt-6 text-3xl font-medium tracking-[-0.03em]">
-              Built in <span className="font-serif italic text-brand">{company.city}</span>, the heart of India.
+              Built in <span className="font-serif italic text-aurora">{company.city}</span>, the heart of India.
             </p>
             <p className="mt-4 text-sm text-mute">{company.address.lines.join(", ")}</p>
           </Reveal>
@@ -101,9 +102,10 @@ export function Culture({ index = "06" }: { index?: string }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 data-cursor="Read"
-                className="group flex h-full flex-col justify-between rounded-[28px] bg-brand p-8 text-ink transition-transform duration-500 ease-expo hover:-rotate-1"
+                className="glass group relative isolate flex h-full flex-col justify-between overflow-hidden rounded-[28px] p-8 transition-transform duration-500 ease-expo hover:-translate-y-1"
               >
-                <p className="font-mono text-xs uppercase tracking-widest text-ink/60">From the blog</p>
+                <Aurora intensity={0.55} className="-z-10 transition-opacity duration-700 group-hover:opacity-90" />
+                <p className="label">From the blog</p>
                 <p className="mt-6 text-2xl font-medium leading-tight tracking-[-0.03em]">{inclusion.title}</p>
                 <span className="mt-6 text-sm font-medium">Read the story ↗</span>
               </a>

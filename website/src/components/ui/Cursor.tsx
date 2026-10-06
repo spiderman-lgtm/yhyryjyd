@@ -61,8 +61,8 @@ export function Cursor() {
         animate={{
           width: size,
           height: size,
-          backgroundColor: state.label ? "rgb(237 51 56 / 1)" : state.hover ? "rgb(243 241 234 / 0.08)" : "rgb(243 241 234 / 0)",
-          borderColor: state.label ? "rgb(237 51 56 / 0)" : "rgb(243 241 234 / 0.4)",
+          backgroundColor: state.label ? "rgb(255 255 255 / 0.92)" : state.hover ? "rgb(243 241 234 / 0.08)" : "rgb(243 241 234 / 0)",
+          borderColor: state.label ? "rgb(255 255 255 / 0)" : "rgb(243 241 234 / 0.4)",
           scale: state.down ? 0.85 : 1,
         }}
         transition={{ type: "spring", stiffness: 300, damping: 26 }}
