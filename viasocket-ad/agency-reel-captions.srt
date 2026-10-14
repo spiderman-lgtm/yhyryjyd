@@ -1,0 +1,23 @@
+1
+00:00:00,300 --> 00:00:04,310
+If you run an agency, you know onboarding a new client eats your whole day.
+
+2
+00:00:04,760 --> 00:00:11,864
+Collecting their details, creating folders, setting up the Slack channel, sending the welcome email, adding them to the CRM...
+
+3
+00:00:12,314 --> 00:00:14,426
+I automated all of it with viaSocket.
+
+4
+00:00:14,876 --> 00:00:19,100
+Now the moment a client fills our form, everything is set up in under a minute.
+
+5
+00:00:19,550 --> 00:00:21,470
+No copy-paste, no missed steps.
+
+6
+00:00:21,920 --> 00:00:24,864
+Seriously, try viaSocket. It's free to start.
