@@ -1,6 +1,6 @@
-// Live jobs from companies' public career boards (Greenhouse, Lever).
-// These are the boards' official public APIs for embedding job listings; no key needed.
-// Configure with JOB_BOARDS, e.g. "lever:cred,greenhouse:postman".
+// Live jobs from companies' public career boards (Greenhouse, Lever) and the Adzuna India API.
+// Career boards need no key: JOB_BOARDS, e.g. "lever:cred,greenhouse:postman".
+// Adzuna needs ADZUNA_APP_ID + ADZUNA_APP_KEY; search terms come from ADZUNA_QUERIES.
 
 const crypto = require('crypto');
 
@@ -122,7 +122,43 @@ async function fetchLever(slug, name) {
   }));
 }
 
-const FETCHERS = { greenhouse: fetchGreenhouse, lever: fetchLever };
+function lakhs(n) { return Math.round(n / 1e5); }
+
+function adzunaSalary(j) {
+  if (j.salary_is_predicted === '1' || !j.salary_min) return '';
+  const lo = lakhs(j.salary_min), hi = lakhs(j.salary_max || j.salary_min);
+  return lo === hi ? `${lo} LPA` : `${lo}-${hi} LPA`;
+}
+
+// Adzuna aggregates Indian job boards; free key at developer.adzuna.com.
+// The free tier is rate-limited, so each query is fetched at most once per ADZUNA_MIN_MINUTES.
+const adzunaCache = new Map();
+async function fetchAdzuna(query, _name, { appId, appKey, minMinutes = 60 }) {
+  const hit = adzunaCache.get(query);
+  if (hit && Date.now() - hit.at < minMinutes * 60 * 1000) return hit.jobs;
+  const qs = new URLSearchParams({
+    app_id: appId, app_key: appKey, results_per_page: '50', what: query, max_days_old: '14', sort_by: 'date',
+  });
+  const data = await getJSON(`https://api.adzuna.com/v1/api/jobs/in/search/1?${qs}`);
+  const jobs = (data.results || []).map(j => ({
+    ...normalize({
+      key: `adzuna:${j.id}`,
+      title: plainText(j.title),
+      company: j.company?.display_name || 'Unknown Company',
+      location: j.location?.display_name,
+      url: j.redirect_url,
+      description: j.description,
+      commitment: j.contract_type === 'contract' ? 'contract' : j.contract_time,
+      postedAt: j.created,
+    }),
+    salary: adzunaSalary(j),
+    _india: true,
+  }));
+  adzunaCache.set(query, { at: Date.now(), jobs });
+  return jobs;
+}
+
+const FETCHERS = { greenhouse: fetchGreenhouse, lever: fetchLever, adzuna: fetchAdzuna };
 
 // "lever:cred" or "lever:cred=CRED" (display name after =)
 function parseBoards(spec) {
@@ -133,8 +169,13 @@ function parseBoards(spec) {
   }).filter(b => FETCHERS[b.kind] && /^[A-Za-z0-9._-]+$/.test(b.slug || ''));
 }
 
-function createLiveSource({ boards, indiaOnly = true, refreshMinutes = 15 }) {
+function createLiveSource({ boards, indiaOnly = true, refreshMinutes = 15, adzuna = null }) {
   const list = parseBoards(boards);
+  if (adzuna?.appId && adzuna?.appKey) {
+    for (const q of String(adzuna.queries || '').split(',').map(s => s.trim()).filter(Boolean)) {
+      list.push({ kind: 'adzuna', slug: q, name: 'Adzuna', opts: adzuna });
+    }
+  }
   const status = list.map(b => ({ board: `${b.kind}:${b.slug}`, company: b.name, ok: null, jobs: 0, error: null, fetchedAt: null }));
   let jobs = [];
   let refreshing = null;
@@ -143,12 +184,13 @@ function createLiveSource({ boards, indiaOnly = true, refreshMinutes = 15 }) {
     if (!list.length) return jobs;
     if (refreshing) return refreshing;
     refreshing = (async () => {
-      const results = await Promise.allSettled(list.map(b => FETCHERS[b.kind](b.slug, b.name)));
+      const results = await Promise.allSettled(list.map(b => FETCHERS[b.kind](b.slug, b.name, b.opts)));
       const next = [];
       results.forEach((r, i) => {
         const s = status[i];
         s.fetchedAt = new Date().toISOString();
         if (r.status === 'fulfilled') {
+          r.value.forEach(j => { j._board = s.board; });
           const kept = indiaOnly ? r.value.filter(j => j._india) : r.value;
           s.ok = true; s.error = null; s.jobs = kept.length;
           next.push(...kept);
@@ -156,7 +198,7 @@ function createLiveSource({ boards, indiaOnly = true, refreshMinutes = 15 }) {
           s.ok = false; s.error = r.reason?.message || 'fetch failed';
           console.warn(`[jobs] ${s.board} failed: ${s.error}`);
           // keep this board's previous jobs so one outage doesn't look like every job was removed
-          next.push(...jobs.filter(j => j.company_name === s.company));
+          next.push(...jobs.filter(j => j._board === s.board));
         }
       });
       const seen = new Set();

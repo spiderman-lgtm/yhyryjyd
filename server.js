@@ -8,6 +8,8 @@ const crypto = require('crypto');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
 const { createLiveSource } = require('./jobs-live');
+const { createStorage } = require('./storage');
+const { extractText, analyzeResume } = require('./resume-local');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -52,20 +54,13 @@ app.use('/api', (req, res, next) => {
 
 // Railway sets RAILWAY_VOLUME_MOUNT_PATH when a volume is attached; without one, data is lost on every deploy.
 const DATA_DIR = process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
-console.log(`[storage] DATA_DIR=${DATA_DIR}${process.env.RAILWAY_VOLUME_MOUNT_PATH ? ' (Railway volume)' : process.env.DATA_DIR ? '' : ' (ephemeral — attach a volume to persist)'}`);
+if (!process.env.DATABASE_URL) console.log(`[storage] DATA_DIR=${DATA_DIR}${process.env.RAILWAY_VOLUME_MOUNT_PATH ? ' (Railway volume)' : process.env.DATA_DIR ? '' : ' (ephemeral — add Postgres or a volume to persist)'}`);
+
+const storage = createStorage({ dataDir: DATA_DIR, databaseUrl: process.env.DATABASE_URL });
 
 // ─── User auth store ────────────────────────────────────────────────────────────
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
-let usersStore = {};
-try { usersStore = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); } catch {}
-
-function saveUsers() {
-  try {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(USERS_FILE + '.tmp', JSON.stringify(usersStore, null, 2));
-    fs.renameSync(USERS_FILE + '.tmp', USERS_FILE);
-  } catch (e) { console.error('[users] save failed:', e.message); }
-}
+const usersStore = storage.load('users', {});
+function saveUsers() { storage.save('users', usersStore); }
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
 
@@ -510,6 +505,12 @@ const live = createLiveSource({
   boards: process.env.JOB_BOARDS,
   indiaOnly: process.env.JOB_INDIA_ONLY !== 'false',
   refreshMinutes: parseInt(process.env.JOB_REFRESH_MINUTES, 10) || 15,
+  adzuna: {
+    appId: process.env.ADZUNA_APP_ID,
+    appKey: process.env.ADZUNA_APP_KEY,
+    queries: process.env.ADZUNA_QUERIES || 'software developer,frontend developer,backend developer,data scientist,devops engineer',
+    minMinutes: parseInt(process.env.ADZUNA_MIN_MINUTES, 10) || 60,
+  },
 });
 
 function getJobs() {
@@ -637,59 +638,63 @@ const RESUME_PROMPT = `Analyze this resume for Indian tech job market. Return ON
 app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-  const geminiKey = process.env.GEMINI_API_KEY;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  if (!geminiKey && !anthropicKey) return res.status(500).json({ error: 'No AI key configured. Add GEMINI_API_KEY (free) or ANTHROPIC_API_KEY in Railway Variables.' });
+  let text = '';
+  try { text = await extractText(req.file.buffer, req.file.mimetype, req.file.originalname); }
+  catch (e) { console.warn('[resume] text extraction failed:', e.message); }
 
-  const base64 = req.file.buffer.toString('base64');
-  const mime = req.file.mimetype || 'application/pdf';
-
-  try {
-    let rawText = '';
-
-    if (geminiKey) {
-      // Use Gemini (free)
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [
-            { inline_data: { mime_type: mime, data: base64 } },
-            { text: RESUME_PROMPT },
-          ]}],
-          generationConfig: { maxOutputTokens: 2048, temperature: 0.1 },
-        }),
-        signal: AbortSignal.timeout(30000),
-      });
-      const d = await r.json();
-      rawText = d?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    } else {
-      // Fallback: Anthropic
-      const client = new Anthropic({ apiKey: anthropicKey });
-      const message = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001', max_tokens: 2048,
-        messages: [{ role:'user', content: [
-          { type:'document', source:{ type:'base64', media_type: mime, data: base64 } },
-          { type:'text', text: RESUME_PROMPT },
-        ]}],
-      });
-      rawText = message.content.find(b => b.type === 'text')?.text || '{}';
-    }
-
-    const m = rawText.match(/\{[\s\S]*\}/);
-    const parsed = m ? JSON.parse(m[0]) : {};
-
-    // Save profile per user
-    if (req.uid && parsed.prefs) {
-      profileStore[req.uid] = { ...(profileStore[req.uid] || {}), prefs: parsed.prefs, ats: parsed.ats || null, updatedAt: new Date().toISOString() };
-      saveProfiles();
-    }
-
-    res.json({ prefs: parsed.prefs || {}, ats: parsed.ats || null });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+  let parsed = null;
+  let source = 'basic';
+  if (process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY) {
+    try { parsed = await aiParseResume(req.file, text); source = 'ai'; }
+    catch (e) { console.warn('[resume] AI parse failed, using basic analysis:', e.message); }
   }
+  if (!parsed?.prefs) {
+    if (!text.trim()) return res.status(422).json({ error: 'Could not read any text from this file. Upload a text-based PDF (not a scanned image) or a .txt file.' });
+    parsed = analyzeResume(text);
+    source = 'basic';
+  }
+
+  profileStore[req.uid] = { ...(profileStore[req.uid] || {}), prefs: parsed.prefs, ats: parsed.ats || null, updatedAt: new Date().toISOString() };
+  saveProfiles();
+  res.json({ prefs: parsed.prefs, ats: parsed.ats || null, source });
 });
+
+// Sends extracted text when we have it (works for PDF and .txt); falls back to the raw PDF for scanned files.
+async function aiParseResume(file, text) {
+  const isPdf = !text.trim();
+  const base64 = file.buffer.toString('base64');
+  let raw = '';
+
+  if (process.env.GEMINI_API_KEY) {
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const parts = isPdf
+      ? [{ inline_data: { mime_type: 'application/pdf', data: base64 } }, { text: RESUME_PROMPT }]
+      : [{ text: `RESUME:\n${text.slice(0, 30000)}\n\n${RESUME_PROMPT}` }];
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: { maxOutputTokens: 4096, temperature: 0.1, responseMimeType: 'application/json' } }),
+      signal: AbortSignal.timeout(45000),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(`Gemini ${r.status}: ${d?.error?.message || 'request failed'}`);
+    raw = d?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+  } else {
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const content = isPdf
+      ? [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }, { type: 'text', text: RESUME_PROMPT }]
+      : [{ type: 'text', text: `<resume>\n${text.slice(0, 30000)}\n</resume>\n\n${RESUME_PROMPT}` }];
+    const message = await client.messages.create({
+      model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5', max_tokens: 2048,
+      messages: [{ role: 'user', content }],
+    });
+    raw = message.content.find(b => b.type === 'text')?.text || '';
+  }
+
+  const m = raw.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('AI returned no JSON');
+  return JSON.parse(m[0]);
+}
 
 // Get saved profile
 app.get('/api/resume/profile', (req, res) => {
@@ -702,21 +707,8 @@ app.get('/api/resume/profile', (req, res) => {
 // returned to the browser and never logged.
 
 // ─── User setup profile (onboarding: resume prefs + chosen platforms) ──────────
-const PROFILE_FILE = path.join(DATA_DIR, 'profiles.json');
-let profileStore = {};
-try { profileStore = JSON.parse(fs.readFileSync(PROFILE_FILE, 'utf8')); } catch {}
-
-let profileSaveTimer = null;
-function saveProfiles() {
-  clearTimeout(profileSaveTimer);
-  profileSaveTimer = setTimeout(() => {
-    try {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-      fs.writeFileSync(PROFILE_FILE + '.tmp', JSON.stringify(profileStore));
-      fs.renameSync(PROFILE_FILE + '.tmp', PROFILE_FILE);
-    } catch (e) { console.error('[profiles] save failed:', e.message); }
-  }, 200);
-}
+const profileStore = storage.load('profiles', {});
+function saveProfiles() { storage.save('profiles', profileStore); }
 
 app.get('/api/profile', (req, res) => {
   res.json(profileStore[req.uid] || { onboarded: false });
@@ -732,7 +724,6 @@ app.post('/api/profile', (req, res) => {
   saveProfiles();
   res.json({ ok: true });
 });
-const STORE_FILE = path.join(DATA_DIR, 'automations.json');
 const WEBHOOK_HOSTS = (process.env.VIASOCKET_WEBHOOK_HOSTS || 'sokt.io,viasocket.com')
   .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 const JOB_CATEGORIES = [...new Set(TEMPLATES.map(t => t.cat))];
@@ -744,20 +735,8 @@ const AUTOMATION_TYPES = {
 const MAX_AUTOMATIONS = 20;
 const MAX_NEW_JOBS_PER_RUN = 5;
 
-let store = { users: {}, seenJobIds: null };
-try { store = { ...store, ...JSON.parse(fs.readFileSync(STORE_FILE, 'utf8')) }; } catch {}
-
-let saveTimer = null;
-function saveStore() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-      fs.writeFileSync(STORE_FILE + '.tmp', JSON.stringify(store));
-      fs.renameSync(STORE_FILE + '.tmp', STORE_FILE);
-    } catch (e) { console.error('[automations] save failed:', e.code || e.message); }
-  }, 200);
-}
+const store = storage.load('automations', { users: {}, seenJobIds: null });
+function saveStore() { storage.save('automations', store); }
 
 function userAutomations(uid) {
   if (!store.users[uid]) store.users[uid] = { automations: [] };
@@ -968,32 +947,23 @@ app.post('/api/events', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`HireRadar running at http://localhost:${PORT}`);
-  console.log(`[env] GEMINI_API_KEY: ${process.env.GEMINI_API_KEY ? 'SET (' + process.env.GEMINI_API_KEY.slice(0,6) + '...)' : 'NOT SET'}`);
+// setImmediate: every store below this line must be defined before hydrating
+setImmediate(() => storage.hydrate({
+  users: usersStore, profiles: profileStore, automations: store, connections: connStore, 'auto-config': autoCfgStore,
+}).then(() => app.listen(PORT, () => {
+  console.log(`HireRadar running at http://localhost:${PORT} (storage: ${storage.kind})`);
+  console.log(`[env] GEMINI_API_KEY: ${process.env.GEMINI_API_KEY ? 'SET' : 'NOT SET'}`);
   console.log(`[env] ANTHROPIC_API_KEY: ${process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT SET'}`);
   console.log(`[env] VIASOCKET_EMBED_SECRET: ${process.env.VIASOCKET_EMBED_SECRET ? 'SET' : 'NOT SET'}`);
-});
+  console.log(`[env] ADZUNA: ${process.env.ADZUNA_APP_ID && process.env.ADZUNA_APP_KEY ? 'SET' : 'NOT SET'}`);
+})).catch(e => { console.error('[storage] could not load data:', e.message); process.exit(1); }));
 
 // ─── viaSocket Direct App Connections ─────────────────────────────────────────
 // Each user can connect WhatsApp / Gmail / Google Sheets / Slack directly.
 // auth_id and script_id stay server-side — never sent to the browser.
 
-const CONN_FILE = path.join(DATA_DIR, 'connections.json');
-let connStore = { users: {} };
-try { connStore = { ...connStore, ...JSON.parse(fs.readFileSync(CONN_FILE, 'utf8')) }; } catch {}
-
-let connSaveTimer = null;
-function saveConnStore() {
-  clearTimeout(connSaveTimer);
-  connSaveTimer = setTimeout(() => {
-    try {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-      fs.writeFileSync(CONN_FILE + '.tmp', JSON.stringify(connStore));
-      fs.renameSync(CONN_FILE + '.tmp', CONN_FILE);
-    } catch (e) { console.error('[connections] save failed:', e.message); }
-  }, 200);
-}
+const connStore = storage.load('connections', { users: {} });
+function saveConnStore() { storage.save('connections', connStore); }
 
 function userConns(uid) {
   if (!connStore.users[uid]) connStore.users[uid] = {};
@@ -1178,8 +1148,7 @@ async function deliverToApps(uid, eventType, job) {
         const avid = extractActionVerId(doc, APP_META[tmpl.app]?.actionKw || []);
         if (avid) {
           conn.action_version_id = avid;
-          const allConns = store.connStore || {};
-          if (allConns[uid]?.[tmpl.app]) { allConns[uid][tmpl.app].action_version_id = avid; saveConnStore(); }
+          saveConnStore();
           console.log(`[vs-app] ${tmpl.id}: re-fetched action_version_id=${avid}`);
         } else {
           console.warn(`[vs-app] ${tmpl.id}: could not find action_version_id in docs — skipping`);
@@ -1341,7 +1310,7 @@ app.get('/api/debug/state', (req, res) => {
       would_fire: Boolean(autoCfg[t.id]?.enabled && conns[t.app]?.enabled && conns[t.app]?.script_id && conns[t.app]?.action_version_id),
     };
   }
-  res.json({ storage: { persistent: Boolean(process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.DATA_DIR) }, connections: connSummary, automations: autoSummary });
+  res.json({ storage: { kind: storage.kind, persistent: storage.kind === 'postgres' || Boolean(process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.DATA_DIR) }, connections: connSummary, automations: autoSummary });
 });
 
 // Debug: test email delivery and return result in browser
@@ -1746,17 +1715,8 @@ const AUTO_TEMPLATES = [
 ];
 
 // Automation config store (per user, per template id)
-const AUTO_CFG_FILE = path.join(DATA_DIR, 'auto-config.json');
-let autoCfgStore = {};
-try { autoCfgStore = JSON.parse(fs.readFileSync(AUTO_CFG_FILE, 'utf8')); } catch {}
-
-function saveAutoCfg() {
-  try {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(AUTO_CFG_FILE + '.tmp', JSON.stringify(autoCfgStore));
-    fs.renameSync(AUTO_CFG_FILE + '.tmp', AUTO_CFG_FILE);
-  } catch (e) { console.error('[auto-cfg] save failed:', e.message); }
-}
+const autoCfgStore = storage.load('auto-config', {});
+function saveAutoCfg() { storage.save('auto-config', autoCfgStore); }
 
 function userAutoCfg(uid) {
   if (!autoCfgStore[uid]) autoCfgStore[uid] = {};
