@@ -1,0 +1,16 @@
+{
+  "name": "dukaan-ai-manager",
+  "version": "0.1.0",
+  "description": "WhatsApp Business AI shop manager — AI brain + viaSocket embed hands",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0"
+  }
+}

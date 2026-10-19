@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="hi-Latn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dukaan Dashboard</title>
+<meta name="description" content="Dukaan ka AI Manager — owner dashboard: live WhatsApp simulator, orders, udhaar, apps and setup.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--surface:#fff;--surface-2:#f0eee8;--text:#1c1b19;--muted:#6b6862;--line:#e3e0d8;
+  --brand:#0f7a5c;--brand-soft:#e3f4ee;--on-brand:#fff;--accent:#d9771c;--accent-soft:#fdf0e2;
+  --go:#138a5e;--go-soft:#e2f5ec;--cond:#a86c12;--cond-soft:#fbf1dc;--no:#c0392b;--no-soft:#fbe6e3;
+  --chat-bg:#ece5dd;--bubble-in:#fff;--bubble-out:#d9fdd3}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#121412;--surface:#1b1e1c;--surface-2:#232725;--text:#ecebe7;--muted:#a3a19b;--line:#2e3330;
+  --brand:#3dd39f;--brand-soft:#173a2e;--on-brand:#0b1a14;--accent:#f0a24f;--accent-soft:#3a2a17;--go:#4fd49b;--go-soft:#16352a;--cond:#e8b04f;--cond-soft:#3a2f17;--no:#ef7a6c;--no-soft:#3d1d1a;
+  --chat-bg:#0b141a;--bubble-in:#202c33;--bubble-out:#005c4b}}
+:root[data-theme="dark"]{--bg:#121412;--surface:#1b1e1c;--surface-2:#232725;--text:#ecebe7;--muted:#a3a19b;--line:#2e3330;
+  --brand:#3dd39f;--brand-soft:#173a2e;--on-brand:#0b1a14;--accent:#f0a24f;--accent-soft:#3a2a17;--go:#4fd49b;--go-soft:#16352a;--cond:#e8b04f;--cond-soft:#3a2f17;--no:#ef7a6c;--no-soft:#3d1d1a;
+  --chat-bg:#0b141a;--bubble-in:#202c33;--bubble-out:#005c4b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar{max-width:1240px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:16px;height:56px}
+.logo{font-weight:800;display:flex;gap:8px;align-items:center;white-space:nowrap}
+.logo i{font-style:normal;width:28px;height:28px;border-radius:8px;background:var(--brand);color:var(--on-brand);display:grid;place-items:center}
+nav{display:flex;gap:4px;overflow-x:auto;flex:1}
+nav button{border:0;background:none;padding:8px 12px;border-radius:8px;color:var(--muted);font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+nav button[aria-selected="true"]{background:var(--brand-soft);color:var(--brand)}
+main{max-width:1240px;margin:0 auto;padding:20px 16px 60px}
+section{display:none}section.on{display:block}
+h2{margin:0 0 4px;font-size:22px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){.g2,.g3{grid-template-columns:1fr}.g4{grid-template-columns:1fr 1fr}}
+button.b,.b{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:9px;padding:7px 12px;font-weight:600;font-size:13.5px}
+.b.p{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.b.s{padding:4px 9px;font-size:12.5px}
+.b:disabled{opacity:.5;cursor:default}
+input,select,textarea{width:100%;font:inherit;padding:9px 11px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--text)}
+label{display:block;font-size:12.5px;font-weight:600;margin:10px 0 5px;color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.kpi{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.muted{color:var(--muted)}.small{font-size:12.5px}
+.chip{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.st-PAID,.st-FULFILLED,.v-GO{background:var(--go-soft);color:var(--go)}
+.st-AWAITING_PAYMENT,.st-CONFIRMED{background:var(--brand-soft);color:var(--brand)}
+.st-UDHAAR,.v-CONDITIONAL{background:var(--cond-soft);color:var(--cond)}
+.st-ESCALATED,.v-NO-GO{background:var(--no-soft);color:var(--no)}
+.st-CANCELLED{text-decoration:line-through}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.tw{overflow-x:auto}
+/* chat */
+.phone{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column}
+.ph{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--brand);color:var(--on-brand)}
+.ph b{display:block}.ph small{opacity:.85}
+.ph select{width:auto;background:rgba(255,255,255,.18);color:inherit;border:0;padding:4px 8px;margin-left:auto}
+.ph select option{color:#000}
+.chat{background:var(--chat-bg);height:430px;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:5px}
+.msg{max-width:84%;min-width:80px;padding:6px 9px 16px;border-radius:9px;white-space:pre-wrap;word-break:break-word;position:relative;font-size:14px;box-shadow:0 1px .5px rgba(0,0,0,.12)}
+.msg.in{align-self:flex-end;background:var(--bubble-out)}
+.msg.out{align-self:flex-start;background:var(--bubble-in)}
+.owner .msg.in{align-self:flex-end}
+.msg time{position:absolute;right:7px;bottom:2px;font-size:10px;color:var(--muted)}
+.msg .tag{font-size:10px;font-weight:700;color:var(--accent);display:block}
+.msg a{color:var(--brand)}
+.compose{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line)}
+.compose input{flex:1}
+.quick{display:flex;gap:6px;flex-wrap:wrap;padding:0 8px 8px}
+.quick button{font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}
+.log{font-family:ui-monospace,Menlo,monospace;font-size:12px;max-height:260px;overflow:auto}
+.log div{padding:5px 0;border-bottom:1px dashed var(--line)}
+.ok{color:var(--go)}.err{color:var(--no)}
+.bars{display:grid;gap:5px;margin:10px 0}
+.br{display:grid;grid-template-columns:150px 1fr 44px;gap:8px;align-items:center;font-size:12.5px}
+.tr{height:7px;background:var(--surface-2);border-radius:9px;overflow:hidden}.tr i{display:block;height:100%;background:var(--brand)}
+.uc{border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-top:8px;font-size:13.5px}
+.callout{border-left:3px solid var(--accent);background:var(--accent-soft);padding:9px 11px;border-radius:8px;margin-top:10px;font-size:13.5px}
+.empty{color:var(--muted);text-align:center;padding:30px}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 14px;border-radius:9px;font-size:13.5px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+.toast.on{opacity:1}
+code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:5px;word-break:break-all}
+.cat-row{display:grid;grid-template-columns:2fr 2fr 90px 80px 32px;gap:6px;margin-bottom:6px}
+@media(max-width:700px){.cat-row{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header><div class="bar">
+  <div class="logo"><i>₹</i><span id="shopName">Dukaan</span></div>
+  <nav role="tablist" id="tabs">
+    <button data-t="live" aria-selected="true">💬 Live</button>
+    <button data-t="orders">📦 Orders</button>
+    <button data-t="udhaar">📒 Hisaab</button>
+    <button data-t="apps">🔌 Apps</button>
+    <button data-t="shop">🧁 Shop</button>
+    <button data-t="setup">⚙️ Setup</button>
+  </nav>
+  <button class="b s" id="theme" aria-label="Theme">◐</button>
+</div></header>
+
+<main>
+<!-- LIVE -->
+<section id="live" class="on">
+  <h2>Live WhatsApp</h2>
+  <p class="sub">Left: customer ka WhatsApp (simulator). Right: owner ka WhatsApp. Real number connect hone pe yahan asli chats dikhti hain.</p>
+  <div class="grid g2">
+    <div class="phone">
+      <div class="ph"><div>👤</div><div><b id="custTitle">Customer</b><small id="custSub"></small></div>
+        <select id="custSel" aria-label="Customer"></select></div>
+      <div class="chat" id="custChat"></div>
+      <div class="quick" id="custQuick"></div>
+      <form class="compose" id="custForm"><input id="custInput" placeholder="Customer bankar message likho…" autocomplete="off"><button class="b p">Send</button></form>
+    </div>
+    <div class="phone owner">
+      <div class="ph"><div>🧑‍💼</div><div><b>Owner</b><small id="ownerSub"></small></div></div>
+      <div class="chat" id="ownerChat"></div>
+      <div class="quick" id="ownerQuick"></div>
+      <form class="compose" id="ownerForm"><input id="ownerInput" placeholder="Owner command: hisaab, due, 341 done…" autocomplete="off"><button class="b p">Send</button></form>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="row" style="justify-content:space-between">
+      <div><b>⏰ Time machine</b> <span class="muted small">— reminders aur udhaar ladder dekhne ke liye time aage badhao. Clock: <span id="clock"></span></span></div>
+      <div class="row">
+        <button class="b s" data-travel="2">+2 ghante</button>
+        <button class="b s" data-travel="20">+20 ghante</button>
+        <button class="b s" data-travel="24">+1 din</button>
+        <button class="b s" data-travel="72">+3 din</button>
+        <button class="b s" id="forceReport">📊 Monthly report bhejo</button>
+        <button class="b s" data-travel="reset">Reset clock</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ORDERS -->
+<section id="orders">
+  <h2>Orders</h2>
+  <p class="sub">AI ne jo orders liye — har action viaSocket flow ke through jaata hai.</p>
+  <div class="card tw"><table><thead><tr><th>#</th><th>Customer</th><th>Items</th><th>Total</th><th>Kab</th><th>Stage</th><th></th></tr></thead><tbody id="orderRows"></tbody></table></div>
+</section>
+
+<!-- UDHAAR / HISAAB -->
+<section id="udhaar">
+  <h2>Hisaab</h2>
+  <p class="sub" id="monthLine"></p>
+  <div class="grid g4" id="kpis"></div>
+  <div class="card tw" style="margin-top:16px"><b>📒 Udhaar ladder</b>
+    <p class="muted small">Day 1 polite → Day 3 link ke saath → Day 7 owner ko escalate. 9 PM–9 AM koi reminder nahi. 1 din mein max 1.</p>
+    <table><thead><tr><th>Customer</th><th>Amount</th><th>Din</th><th>Reminders</th><th>Stage</th><th></th></tr></thead><tbody id="dueRows"></tbody></table></div>
+</section>
+
+<!-- APPS -->
+<section id="apps">
+  <h2>Apps — add karne se pehle check</h2>
+  <p class="sub">viaSocket plugin-validator rubric: GO pe hi connect. <span id="analyzerMode"></span></p>
+  <div class="grid g2">
+    <form class="card" id="anForm">
+      <label for="anApp">App ka naam</label><input id="anApp" placeholder="Shiprocket, Zoho Books, Instagram…" required>
+      <label for="anCat">Category</label>
+      <select id="anCat"><option value="auto">Auto-detect</option><option>payments</option><option>shipping</option><option>accounting</option><option>calendar</option><option>social</option><option>sheets</option><option>ecommerce</option><option>email</option><option>ledger</option><option>aggregator</option><option>other</option></select>
+      <label for="anGoal">Kya karwana hai?</label><textarea id="anGoal" rows="2" placeholder="e.g. delivery order PAID hote hi courier book ho"></textarea>
+      <div class="row" style="margin-top:12px"><button class="b p">🔍 Analyse</button></div>
+      <label>Connected</label><div id="connected" class="row"></div>
+    </form>
+    <div id="anOut"><div class="card empty">Result yahan aayega.</div></div>
+  </div>
+</section>
+
+<!-- SHOP -->
+<section id="shop">
+  <h2>Shop & catalog</h2>
+  <p class="sub">AI sirf yahi prices bolta hai. Aliases = customer jo naam bolte hain (comma se).</p>
+  <form class="grid g2" id="shopForm">
+    <div class="card">
+      <label>Dukaan ka naam</label><input name="name">
+      <label>Type</label><select name="type"><option value="bakery">Bakery</option><option value="boutique">Boutique</option><option value="tuition">Tuition</option><option value="salon">Salon</option><option value="kirana">Kirana</option></select>
+      <label>Owner WhatsApp (country code ke saath)</label><input name="owner_phone" inputmode="tel">
+      <label>Address</label><input name="address">
+      <label>Timing</label><input name="open_hours">
+      <label>Policies (AI ko batao)</label><textarea name="policies" rows="3"></textarea>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><b>Catalog</b><button type="button" class="b s" id="addItem">+ Item</button></div>
+      <div class="cat-row muted small" style="margin-top:8px"><span>Naam</span><span>Aliases</span><span>₹ Price</span><span>Lead hrs</span><span></span></div>
+      <div id="catRows"></div>
+      <div class="row" style="margin-top:12px"><button class="b p">💾 Save</button></div>
+    </div>
+  </form>
+</section>
+
+<!-- SETUP -->
+<section id="setup">
+  <h2>Setup</h2>
+  <p class="sub">Jo cheez configure nahi hai wo demo mode mein chalti hai — app phir bhi end-to-end kaam karta hai.</p>
+  <div class="grid g2">
+    <div class="card"><b>Status</b><div id="modes" style="margin-top:8px"></div></div>
+    <div class="card"><b>URLs</b>
+      <label>WhatsApp webhook (Meta → Configuration)</label><code id="whUrl"></code>
+      <label>viaSocket payment callback (payment_received flow ka last step)</label><code id="cbUrl"></code>
+      <div class="row" style="margin-top:14px"><button class="b s" id="runSched">Scheduler abhi chalao</button><button class="b s" id="resetDemo">Demo data reset</button></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px"><b>viaSocket flow log</b><div class="log" id="flowLog"></div></div>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const linkify=s=>esc(s).replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
+const rs=n=>'₹'+Number(n||0).toLocaleString('en-IN');
+const when=iso=>new Date(iso).toLocaleString('en-IN',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
+const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),2200);};
+
+let token='';try{token=localStorage.getItem('dk-admin')||'';}catch(e){}
+async function api(path,opt={}){
+  const r=await fetch(path,{...opt,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...(opt.headers||{})},body:opt.body&&JSON.stringify(opt.body)});
+  if(r.status===401){token=prompt('Admin token (ADMIN_TOKEN)')||'';try{localStorage.setItem('dk-admin',token);}catch(e){}return api(path,opt);}
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error||r.statusText);
+  return j;
+}
+
+// theme
+const root=document.documentElement;
+try{const t=localStorage.getItem('dk-theme');if(t)root.dataset.theme=t;}catch(e){}
+$('#theme').onclick=()=>{const d=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;root.dataset.theme=d?'light':'dark';try{localStorage.setItem('dk-theme',root.dataset.theme);}catch(e){}};
+
+// tabs
+const loaders={};
+function show(t){$$('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.t===t)));$$('main>section').forEach(s=>s.classList.toggle('on',s.id===t));try{history.replaceState(null,'','#'+t);}catch(e){}loaders[t]?.();}
+$$('#tabs button').forEach(b=>b.onclick=()=>show(b.dataset.t));
+
+let status={};
+async function loadStatus(){
+  status=await api('/api/status');
+  $('#shopName').textContent=status.shop.name;
+  $('#ownerSub').textContent='+'+status.shop.owner_phone;
+  $('#clock').textContent=when(status.now)+(status.travelled_hours?` (+${status.travelled_hours}h)`:'');
+  $('#analyzerMode').textContent=status.modes.ai==='claude'?'Live research (Claude + web search).':'Demo: catalog/heuristic score — ANTHROPIC_API_KEY lagao live research ke liye.';
+}
+
+// ---------- LIVE ----------
+const CUSTOMERS=[{phone:'919811111111',name:'Priya Sharma'},{phone:'919822222222',name:'Rahul Verma'},{phone:'919833333333',name:'Neha Gupta'}];
+CUSTOMERS.forEach(c=>$('#custSel').insertAdjacentHTML('beforeend',`<option value="${c.phone}">${c.name}</option>`));
+const cust=()=>CUSTOMERS.find(c=>c.phone===$('#custSel').value);
+$('#custSel').onchange=()=>{renderCust();pollChats();};
+function renderCust(){const c=cust();$('#custTitle').textContent=c.name;$('#custSub').textContent='+'+c.phone;}
+renderCust();
+const quick=(el,list,form,input)=>list.forEach(q=>{const b=document.createElement('button');b.type='button';b.textContent=q;b.onclick=()=>{$(input).value=q;$(form).requestSubmit();};$(el).appendChild(b);});
+quick('#custQuick',['hi','2 chocolate cake kal shaam 6 baje','haan','mera order?','payment kar diya','cancel'],'#custForm','#custInput');
+quick('#ownerQuick',['aaj','hisaab','due','341 done','341 paid','Shiprocket jod do','haan','khatabook jod do'],'#ownerForm','#ownerInput');
+
+function bubbles(list,ownerView){
+  if(!list.length)return '<div class="empty">Abhi koi message nahi.</div>';
+  return list.map(m=>{
+    const tag=m.kind&&!['reply','owner_reply'].includes(m.kind)?`<span class="tag">${esc(m.kind.replace(/_/g,' '))}${m.template?' · template':''}</span>`:'';
+    return `<div class="msg ${m.direction}">${tag}${linkify(m.text)}<time>${new Date(m.at).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}</time></div>`;
+  }).join('');
+}
+const lastSig={};
+async function paint(el,phone){
+  const list=await api('/api/messages?phone='+phone);
+  const sig=list.length+':'+(list.at(-1)?.id||'');
+  if(lastSig[el]===sig)return;lastSig[el]=sig;
+  const box=$(el);box.innerHTML=bubbles(list);box.scrollTop=box.scrollHeight;
+}
+async function pollChats(){if(!$('#live').classList.contains('on'))return;await Promise.all([paint('#custChat',cust().phone),paint('#ownerChat',status.shop?.owner_phone||'')]).catch(()=>{});}
+async function send(phone,name,input,btnForm){
+  const t=$(input).value.trim();if(!t)return;$(input).value='';
+  const btn=$('button',$(btnForm));btn.disabled=true;
+  try{await api('/api/simulate',{method:'POST',body:{phone,name,text:t}});}catch(e){toast(e.message);}finally{btn.disabled=false;}
+  await pollChats();
+}
+$('#custForm').onsubmit=e=>{e.preventDefault();send(cust().phone,cust().name,'#custInput','#custForm');};
+$('#ownerForm').onsubmit=e=>{e.preventDefault();send(status.shop.owner_phone,'Owner','#ownerInput','#ownerForm');};
+$$('[data-travel]').forEach(b=>b.onclick=async()=>{
+  const v=b.dataset.travel;
+  await api('/api/demo/time-travel',{method:'POST',body:v==='reset'?{reset:true}:{hours:+v}});
+  await loadStatus();await pollChats();toast(v==='reset'?'Clock reset':`+${v}h — scheduler chala`);
+});
+$('#forceReport').onclick=async()=>{await api('/api/scheduler/run',{method:'POST',body:{force_report:true}});await pollChats();toast('Monthly report owner ko gaya');};
+loaders.live=pollChats;
+setInterval(pollChats,2500);
+
+// ---------- ORDERS ----------
+loaders.orders=async()=>{
+  const list=await api('/api/orders');
+  $('#orderRows').innerHTML=list.length?list.map(o=>`<tr>
+    <td><b>#${o.id}</b></td><td>${esc(o.customer_name||'')}<div class="muted small">+${o.phone}</div></td>
+    <td>${o.items.map(l=>`${l.qty} × ${esc(l.name)}`).join('<br>')}${o.notes?`<div class="muted small">${esc(o.notes)}</div>`:''}</td>
+    <td>${rs(o.total)}</td><td>${when(o.fulfil_at)}<div class="muted small">${o.mode}${o.address?': '+esc(o.address):''}</div></td>
+    <td><span class="chip st-${o.stage}">${o.stage.replace('_',' ')}</span></td>
+    <td class="row">${o.payment!=='PAID'&&o.status!=='CANCELLED'?`<button class="b s" data-act="paid" data-id="${o.id}">Cash mila</button>`:''}
+      ${o.status==='CONFIRMED'?`<button class="b s" data-act="fulfilled" data-id="${o.id}">De diya</button>`:''}
+      ${o.payment!=='PAID'&&o.status==='CONFIRMED'?`<button class="b s" data-act="cancel" data-id="${o.id}">Cancel</button>`:''}
+      ${o.payment_link?.url&&o.payment!=='PAID'?`<a class="b s" href="${esc(o.payment_link.url)}" target="_blank" rel="noopener">Link</a>`:''}</td></tr>`).join(''):'<tr><td colspan="7" class="empty">Abhi koi order nahi — Live tab se customer bankar order karo.</td></tr>';
+};
+$('#orderRows').onclick=async e=>{const b=e.target.closest('[data-act]');if(!b)return;b.disabled=true;
+  try{await api(`/api/orders/${b.dataset.id}/${b.dataset.act}`,{method:'POST',body:{}});toast('Done');}catch(err){toast(err.message);}loaders.orders();};
+
+// ---------- HISAAB ----------
+loaders.udhaar=async()=>{
+  const s=await api('/api/summary');
+  $('#monthLine').textContent=s.line;
+  $('#kpis').innerHTML=[['Orders',s.orders],['Collected',rs(s.collected)],['Due log',s.due_count],['Due amount',rs(s.due_amount)]]
+    .map(([k,v])=>`<div class="card"><div class="muted small">${k} · ${s.month}</div><div class="kpi">${v}</div></div>`).join('');
+  $('#dueRows').innerHTML=s.due.length?s.due.map(o=>{const days=Math.floor((Date.now()-new Date(o.due_at))/864e5);return `<tr>
+    <td>${esc(o.customer_name||'')}<div class="muted small">+${o.phone} · #${o.id}</div></td><td>${rs(o.total)}</td><td>${Math.max(0,days)}</td>
+    <td>${o.reminders.udhaar.map(u=>`Day ${u.day}`).join(', ')||'—'}${o.reminders.escalated_at?' · ⚠️ owner':''}</td>
+    <td><span class="chip st-${o.stage}">${o.stage}</span></td>
+    <td><button class="b s" data-paid="${o.id}">Cash mila</button></td></tr>`;}).join(''):'<tr><td colspan="6" class="empty">Koi udhaar nahi 🎉</td></tr>';
+};
+$('#dueRows').onclick=async e=>{const b=e.target.closest('[data-paid]');if(!b)return;await api(`/api/orders/${b.dataset.paid}/paid`,{method:'POST',body:{}});toast('Paid ✅');loaders.udhaar();};
+
+// ---------- APPS ----------
+const DIM={fit:['Dukaan fit',20],demand:['Real demand',20],technical:['API / webhooks',15],viasocket:['On viaSocket',15],better_than_manual:['Better than manual',10],risk:['Low risk',10],evidence:['Evidence',10]};
+let lastResult=null;
+async function loadApps(){const apps=await api('/api/apps');$('#connected').innerHTML=apps.map(a=>`<span class="chip v-GO">✓ ${esc(a.name)}</span>`).join(' ');}
+loaders.apps=loadApps;
+$('#anForm').onsubmit=async e=>{
+  e.preventDefault();$('#anOut').innerHTML='<div class="card empty">viaSocket rubric se analyse ho raha hai…</div>';
+  try{
+    const r=await api('/api/analyze-app',{method:'POST',body:{app:$('#anApp').value,category:$('#anCat').value,goal:$('#anGoal').value}});
+    lastResult=r;
+    if(r.already_connected){$('#anOut').innerHTML=`<div class="card">✅ ${esc(r.app)} already connected hai.</div>`;return;}
+    const next=r.verdict==='GO'?`<div class="callout" style="border-color:var(--go);background:var(--go-soft)">✅ Use case genuine hai.<div class="row" style="margin-top:8px"><button class="b p" id="connectBtn">➕ Connect via viaSocket</button></div></div>`
+      :r.verdict==='CONDITIONAL'?`<div class="callout">🤔 Pehle ye bataiye: <b>${esc(r.ask_owner||'Ye app roz kis kaam mein aayega?')}</b><br><span class="small muted">Jawab "Kya karwana hai" mein likh ke dobara analyse karo.</span><div class="row" style="margin-top:8px"><button class="b s" id="forceBtn">Phir bhi connect (owner override)</button></div></div>`
+      :`<div class="callout" style="border-color:var(--no);background:var(--no-soft)">⛔ Abhi connect nahi karenge. ${esc(r.biggest_risk)}</div>`;
+    $('#anOut').innerHTML=`<div class="card">
+      <div class="row" style="justify-content:space-between"><div><span class="muted small">VERDICT · ${esc(r.app)}</span><br><span class="chip v-${r.verdict}" style="font-size:16px;padding:4px 12px">${r.verdict}</span></div><div class="kpi">${r.score}<span class="muted" style="font-size:14px">/100</span></div></div>
+      <p class="small muted">Connector: <b>${r.connector}</b> · Confidence: <b>${r.confidence}</b> · Source: ${r.source}</p>
+      <p style="margin:6px 0"><b>Opportunity:</b> ${esc(r.biggest_opportunity)}</p><p style="margin:0"><b>Risk:</b> ${esc(r.biggest_risk)}</p>
+      <div class="bars">${Object.entries(DIM).map(([k,[l,m]])=>`<div class="br"><span>${l}</span><div class="tr"><i style="width:${(r.breakdown[k]||0)/m*100}%"></i></div><span class="muted">${r.breakdown[k]||0}/${m}</span></div>`).join('')}</div>
+      ${(r.notes||[]).length?`<p class="small muted">${r.notes.map(esc).join(' · ')}</p>`:''}
+      ${(r.use_cases||[]).map((u,i)=>`<div class="uc"><b>${i+1}. ${esc(u.name)}</b> <span class="chip">${u.status}</span><div class="small">${esc(u.trigger)} → ${esc(u.action)} → ${esc(u.result)}</div></div>`).join('')}
+      <p class="small"><b>Success:</b> ${esc(r.success)}<br><b>Kill:</b> ${esc(r.kill)}</p>
+      ${(r.unknowns||[]).length?`<p class="small muted">UNKNOWN: ${r.unknowns.map(esc).join('; ')}</p>`:''}
+      ${next}</div>`;
+    const connect=async force=>{const c=await api('/api/apps/connect',{method:'POST',body:{result:lastResult,force}}).catch(e=>({error:e.message}));toast(c.error||`${lastResult.app} connected ✅`);loadApps();};
+    $('#connectBtn')?.addEventListener('click',()=>connect(false));
+    $('#forceBtn')?.addEventListener('click',()=>connect(true));
+  }catch(err){$('#anOut').innerHTML=`<div class="card err">${esc(err.message)}</div>`;}
+};
+
+// ---------- SHOP ----------
+function catRow(c={}){return `<div class="cat-row"><input placeholder="Chocolate Cake" value="${esc(c.name||'')}" data-k="name"><input placeholder="choco cake, cake" value="${esc((c.aliases||[]).join(', '))}" data-k="aliases"><input type="number" min="1" value="${c.price||''}" data-k="price"><input type="number" min="0" value="${c.lead_time_hours??0}" data-k="lead_time_hours"><button type="button" class="b s" data-del>✕</button></div>`;}
+loaders.shop=async()=>{
+  const {shop,catalog}=await api('/api/shop');
+  for(const [k,v] of Object.entries(shop)){const el=$(`#shopForm [name="${k}"]`);if(el)el.value=v;}
+  $('#catRows').innerHTML=catalog.map(catRow).join('');
+};
+$('#addItem').onclick=()=>$('#catRows').insertAdjacentHTML('beforeend',catRow());
+$('#catRows').onclick=e=>{if(e.target.matches('[data-del]'))e.target.closest('.cat-row').remove();};
+$('#shopForm').onsubmit=async e=>{
+  e.preventDefault();
+  const shop=Object.fromEntries($$('#shopForm [name]').map(el=>[el.name,el.value]));
+  const catalog=$$('#catRows .cat-row').map(r=>Object.fromEntries($$('[data-k]',r).map(el=>[el.dataset.k,el.value])));
+  try{await api('/api/shop',{method:'PUT',body:{shop,catalog}});toast('Saved ✅');loadStatus();loaders.shop();}catch(err){toast(err.message);}
+};
+
+// ---------- SETUP ----------
+loaders.setup=async()=>{
+  await loadStatus();
+  const m=status.modes;
+  const line=(k,v,hint)=>`<div class="row" style="justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--line)"><span>${k}</span><span class="chip ${v==='live'||v==='claude'?'v-GO':'v-CONDITIONAL'}" title="${esc(hint)}">${v}</span></div>`;
+  $('#modes').innerHTML=line('WhatsApp',m.whatsapp,'WHATSAPP_TOKEN + WHATSAPP_PHONE_ID')+line('AI brain',m.ai,'ANTHROPIC_API_KEY')+
+    Object.entries(m.viasocket).map(([k,v])=>line('viaSocket · '+k,v,'VIASOCKET_FLOW_'+k.toUpperCase())).join('');
+  $('#whUrl').textContent=status.webhook_url;$('#cbUrl').textContent=status.payment_callback_url;
+  const log=await api('/api/flows');
+  $('#flowLog').innerHTML=log.length?log.map(f=>`<div><span class="${f.ok?'ok':'err'}">${f.ok?'✓':'✗'}</span> ${new Date(f.at).toLocaleTimeString('en-IN')} <b>${f.flow}</b> [${f.mode}] ${esc(JSON.stringify(f.payload).slice(0,140))}${f.error?` <span class="err">${esc(f.error)}</span>`:''}</div>`).join(''):'<div class="muted">Abhi koi flow nahi chala.</div>';
+};
+$('#runSched').onclick=async()=>{await api('/api/scheduler/run',{method:'POST',body:{}});toast('Scheduler chala');loaders.setup();};
+$('#resetDemo').onclick=async()=>{if(!confirm('Saara demo data reset karein?'))return;await api('/api/demo/reset',{method:'POST',body:{}});toast('Reset');for(const k in lastSig)delete lastSig[k];await loadStatus();loaders.setup();};
+
+loadStatus().then(()=>{const t=location.hash.slice(1);show(loaders[t]?t:'live');}).catch(e=>toast(e.message));
+})();
+</script>
+</body>
+</html>
