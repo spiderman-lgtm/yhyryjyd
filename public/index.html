@@ -2211,21 +2211,14 @@ async function testAutomation(id, btn) {
 }
 
 function postJobEvent(type, jobId) {
-  // Fire for both old webhook automations AND new template-based automations (deliverToApps)
-  const matchingTriggers = [type];
-  const hasTemplateMatch = _autoTemplates.some(t =>
-    matchingTriggers.includes(t.trigger) && _autoCfg[t.id]?.enabled
-  );
-  const hasOldMatch = myAutomations.some(a => a.enabled && a.type === 'tracker');
-  if (!hasTemplateMatch && !hasOldMatch) return;
-  // Send inline job object so server can find it even if not in current feed
+  // Always tell the server: automation settings may not be loaded in this tab yet, and the server knows which are on.
   const job = allJobs.find(j => j.id === jobId) || getSaved().find(j => j.id === jobId) || null;
   fetch('/api/events', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ type, jobId, job, saved: getSaved().map(j => ({ title: j.title, company: j.company_name || j.company, location: j.candidate_required_location, url: j.url })) }),
+    body: JSON.stringify({ type, jobId, job, saved: (() => { const ap = getApplied(); return getSaved().map(j => ({ title: j.title, company: j.company_name || j.company, location: j.candidate_required_location, url: j.url, salary: j.salary, status: ap[j.id] ? 'applied' : '' })); })() }),
   })
     .then(r => r.json())
-    .then(() => showToast('⚡ Automation triggered!', 'success'))
+    .then(d => { if (d.automations > 0) showToast('⚡ Automation triggered!', 'success'); })
     .catch(() => {});
 }
 

@@ -986,23 +986,45 @@ app.get('/api/sources', (req, res) => {
   res.json({ dataSource: dataSource(), configured: live.configured, boards: live.status() });
 });
 
+// The browser's copy of the job; it only ever reaches this user's own apps, but keep it bounded.
+function cleanInlineJob(j) {
+  if (!j || typeof j !== 'object' || !j.title || !/^https?:\/\//.test(String(j.url || ''))) return null;
+  return {
+    id: Number(j.id) || 0,
+    title: cleanText(j.title, 150),
+    company_name: cleanText(j.company_name || j.company, 100),
+    candidate_required_location: cleanText(j.candidate_required_location || j.location, 100),
+    url: cleanText(j.url, 500),
+    salary: cleanText(j.salary, 60),
+    job_type: cleanText(j.job_type, 20),
+    category: cleanText(j.category, 40),
+    tags: Array.isArray(j.tags) ? j.tags.slice(0, 12).map(t => cleanText(t, 30)).filter(Boolean) : [],
+    publication_date: cleanText(j.publication_date, 40),
+    description: cleanText(j.description, 2000),
+  };
+}
+
 // Saved jobs live in the browser; the client sends a summary so the email can list them.
 function cleanSavedList(list) {
   if (!Array.isArray(list)) return [];
   const str = (v, n) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
   return list.slice(0, 50).map(j => ({
     title: str(j?.title, 150), company: str(j?.company, 100), location: str(j?.location, 80), url: str(j?.url, 500),
+    salary: str(j?.salary, 60), status: j?.status === 'applied' ? 'applied' : '',
   })).filter(j => j.title && /^https?:\/\//.test(j.url));
 }
 
 app.post('/api/events', (req, res) => {
   const { type, jobId, job: inlineJob, saved } = req.body || {};
   if (!['job.saved', 'job.applied'].includes(type)) return res.status(400).json({ error: 'Unknown event' });
-  // Accept either a jobId (lookup in feed) or an inline job object (from client localStorage)
-  const job = findJob(jobId) || (inlineJob?.id ? inlineJob : null);
+  // Prefer the job exactly as the user saved it; the feed may have changed since.
+  const job = cleanInlineJob(inlineJob) || findJob(jobId);
   if (!job) return res.status(404).json({ error: 'Unknown job' });
   fanOut(type, job, req.uid, { saved: cleanSavedList(saved) });
-  res.status(202).json({ ok: true });
+  const conns = userConns(req.uid), cfg = userAutoCfg(req.uid);
+  const automations = AUTO_TEMPLATES.filter(t => t.trigger === type && cfg[t.id]?.enabled && conns[t.app]?.enabled).length
+    + userAutomations(req.uid).filter(a => matches(a, type, job)).length;
+  res.status(202).json({ ok: true, automations });
 });
 
 const PORT = process.env.PORT || 3000;
@@ -1139,7 +1161,7 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping, extra
   ].join('\n') + (jp.about ? `\n\nAbout the role:\n${jp.about}` : '');
   const saved = extra.saved || [];
   const savedList = saved.length
-    ? `\n\nAll your saved jobs (${saved.length}):\n` + saved.map((j, i) => `${i + 1}. ${j.title} at ${j.company}${j.location ? ` (${j.location})` : ''}\n   ${j.url}`).join('\n')
+    ? `\n\nAll your saved jobs (${saved.length}):\n` + saved.map((j, i) => `${i + 1}. ${j.title} at ${j.company}${j.location ? ` (${j.location})` : ''}${j.salary ? `, ${j.salary}` : ''}${j.status ? ' [applied]' : ''}\n   ${j.url}`).join('\n')
     : '';
   const gmailBody = {
     gmail_new_job:  `Hi,\n\nA new job matching your profile was posted.\n\n${details}\n\nJob posting: ${jp.url}\n\nYou are receiving this because you turned on the "New matching job" automation in HireRadar.`,
