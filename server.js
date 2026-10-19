@@ -1128,9 +1128,9 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping, extra
     naukri_wa:    `📋 *Naukri Job Alert*\n📌 ${jp.title} @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary}\nVia Naukri · ${jp.url}`,
   };
   const gmailSubj = {
-    gmail_new_job:  `New job match: ${jp.title} at ${jp.company}`,
-    gmail_saved:    `Job saved: ${jp.title} at ${jp.company}`,
-    gmail_applied:  `Application record: ${jp.title} at ${jp.company}`,
+    gmail_new_job:  `New job alert from HireRadar: ${jp.title} at ${jp.company}`,
+    gmail_saved:    `Job saved alert from HireRadar: ${jp.title} at ${jp.company}`,
+    gmail_applied:  `Job applied alert from HireRadar: ${jp.title} at ${jp.company}`,
   };
   // Plain text, no emojis, one link — keeps Gmail's spam filter happy
   const details = [

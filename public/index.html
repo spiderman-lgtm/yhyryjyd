@@ -2418,21 +2418,31 @@ function buildCfgPanel(t, mapping, app) {
   const v = k => esc(mapping[k] || '');
 
   if (app === 'gmail') {
+    const account = _vsConns.gmail?.account_email;
+    const defaultTo = account || 'your connected Gmail';
+    const subjectLead = { gmail_new_job: 'New job alert', gmail_saved: 'Job saved alert', gmail_applied: 'Job applied alert' }[t.id] || 'Job alert';
+    const defaultSubject = `${subjectLead} from HireRadar: {role} at {company}`;
+    const custom = Boolean(mapping.to || mapping.subject);
     const preview = mappingPreview([
-      ['To',      mapping.to ? 'your email' : 'connected Gmail', mapping.to || _vsConns.gmail?.account_email || '(connected Gmail)'],
-      ['Subject', 'job.title + company', '🔔 New Match: SDE @ Razorpay'],
-      ['Body',    'job details',   'Title, Company, Location, Salary, URL'],
+      ['To',      mapping.to ? 'custom email' : 'connected Gmail', mapping.to || defaultTo],
+      ['Subject', mapping.subject ? 'custom subject' : 'automatic', mapping.subject || defaultSubject],
+      ['Body',    'job details',   'Role, company, salary, skills, link'],
     ]);
     return `${preview}
-    <div class="auto-cfg-row">
-      <div class="auto-cfg-label">Send To (email)</div>
-      <input class="auto-cfg-input" id="cfg-${t.id}-to" placeholder="${esc(_vsConns.gmail?.account_email || 'you@gmail.com')}" value="${v('to')}">
-      <div class="auto-cfg-hint">Leave blank to send to your connected Gmail${_vsConns.gmail?.account_email ? ' (' + esc(_vsConns.gmail.account_email) + ')' : ''}</div>
-    </div>
-    <div class="auto-cfg-row">
-      <div class="auto-cfg-label">Subject override</div>
-      <input class="auto-cfg-input" id="cfg-${t.id}-subject" placeholder="Leave blank for auto subject" value="${v('subject')}">
-    </div>
+    <div class="auto-cfg-hint" style="margin-bottom:12px">Nothing to fill in: emails go to ${esc(defaultTo)} with an automatic subject.</div>
+    <details ${custom ? 'open' : ''} style="margin-bottom:12px">
+      <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--fg-2)">Change recipient or subject (optional)</summary>
+      <div class="auto-cfg-row" style="margin-top:10px">
+        <div class="auto-cfg-label">Send to a different email</div>
+        <input class="auto-cfg-input" id="cfg-${t.id}-to" type="email" autocomplete="off" placeholder="${esc(account || 'you@gmail.com')}" value="${v('to')}">
+        <div class="auto-cfg-hint">Leave blank to use ${esc(defaultTo)}</div>
+      </div>
+      <div class="auto-cfg-row">
+        <div class="auto-cfg-label">Custom subject</div>
+        <input class="auto-cfg-input" id="cfg-${t.id}-subject" autocomplete="off" placeholder="${esc(defaultSubject)}" value="${v('subject')}">
+        <div class="auto-cfg-hint">Leave blank for the automatic subject</div>
+      </div>
+    </details>
     <div class="auto-cfg-footer">
       <button class="auto-cfg-save" onclick="autoCfgSave('${t.id}','gmail')">Save</button>
       <button class="auto-cfg-toggle" onclick="autoCfgToggle('${t.id}')">Close</button>
