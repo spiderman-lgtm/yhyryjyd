@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="hi-Latn">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dukaan ka AI Manager</title>
-<meta name="description" content="WhatsApp Business mein baitha AI jo poori dukaan chalata hai — orders, payments, reminders, udhaar aur monthly hisaab. Powered by viaSocket embed.">
+<title>Dukaan AI Manager</title>
+<meta name="description" content="An AI inside WhatsApp Business that runs the whole shop — orders, payments, reminders, credit collection and the monthly accounts. Powered by viaSocket embed.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -165,12 +165,13 @@ footer{padding:28px 0 48px;color:var(--muted);font-size:14px}
 
 <header class="top">
   <div class="wrap">
-    <div class="logo"><span class="dot">₹</span> Dukaan ka AI Manager</div>
+    <div class="logo"><span class="dot">₹</span> Dukaan AI Manager</div>
     <nav class="links">
       <a href="#usecases">Use cases</a>
-      <a href="#how">Kaise kaam karta hai</a>
+      <a href="#how">How it works</a>
       <a href="#analyzer">Add any app</a>
       <a href="#deploy">Deploy</a>
+      <a href="/">Open app</a>
     </nav>
     <button id="themeBtn" aria-label="Toggle theme">◐</button>
   </div>
@@ -181,16 +182,16 @@ footer{padding:28px 0 48px;color:var(--muted);font-size:14px}
   <div class="wrap hero">
     <div>
       <div class="kicker">WhatsApp Business + AI + viaSocket</div>
-      <h1>Aapka WhatsApp ab khud dukaan chalata hai.</h1>
-      <p class="lead">Boutique, bakery, tuition center — jo bhi business WhatsApp pe chalta hai, uske peeche ek AI baith jaata hai. Order lena, payment link, reminder, udhaar ki vasooli, mahine ka hisaab — sab khud. Owner ko na koi naya app seekhna, na hisaab rakhna.</p>
+      <h1>Your WhatsApp now runs the shop by itself.</h1>
+      <p class="lead">Boutique, bakery, tuition center — whatever business runs on WhatsApp, an AI sits behind it. Taking orders, payment links, reminders, collecting credit, the monthly accounts — all on its own. The owner doesn't learn a new app or keep the books.</p>
       <div class="pill-row">
         <span class="pill">🧁 Bakery</span><span class="pill">👗 Boutique</span><span class="pill">📚 Tuition</span><span class="pill">✂️ Salon</span><span class="pill">🛒 Kirana</span>
       </div>
       <div class="brainhands">
-        <div class="bh"><b>🧠 AI = Dimaag</b><small>Samjhe customer kya bol raha hai — order hai, sawaal hai, ya shikayat.</small></div>
-        <div class="bh"><b>🤝 viaSocket embed = Haath</b><small>Order sheet, payment link, reminder, report — backend mein execute.</small></div>
+        <div class="bh"><b>🧠 AI = Brain</b><small>Understands what the customer is saying — an order, a question, or a complaint.</small></div>
+        <div class="bh"><b>🤝 viaSocket embed = Hands</b><small>Order sheet, payment link, reminder, report — executed in the backend.</small></div>
       </div>
-      <p style="margin-top:22px"><a class="btn btn-primary" href="#usecases" style="text-decoration:none;display:inline-block">Demo dekho ↓</a></p>
+      <p style="margin-top:22px"><a class="btn btn-primary" href="#usecases" style="text-decoration:none;display:inline-block">See the demo ↓</a></p>
     </div>
     <div class="phone" aria-label="Hero WhatsApp preview">
       <div class="bar"><div class="avatar">🧁</div><div><b>Sweet Crumbs Bakery</b><small>AI Manager • online</small></div></div>
@@ -203,12 +204,12 @@ footer{padding:28px 0 48px;color:var(--muted);font-size:14px}
 <section>
   <div class="wrap">
     <div class="kicker">Problem</div>
-    <h2>Poora business WhatsApp pe — aur sab owner ke dimaag mein.</h2>
-    <p class="lead">Order WhatsApp pe, payment WhatsApp pe, follow-up WhatsApp pe. Sab manual. Ek message miss = ek order miss. Ek udhaar bhoola = paisa gaya.</p>
+    <h2>The whole business is on WhatsApp — and all of it lives in the owner's head.</h2>
+    <p class="lead">Orders on WhatsApp, payments on WhatsApp, follow-ups on WhatsApp. All manual. One missed message = one missed order. One forgotten credit = money gone.</p>
     <div class="grid3" style="margin-top:24px">
-      <div class="card"><div class="stat">3–4 ghante</div><p class="muted" style="margin:4px 0 0">roz sirf messages ka reply, price batana, “payment kiya?” poochna — owner ka assumed daily time.</p></div>
-      <div class="card"><div class="stat">Udhaar</div><p class="muted" style="margin:4px 0 0">Customer se paise maangna awkward lagta hai — isliye reminder jaata hi nahi, aur paisa doobta hai.</p></div>
-      <div class="card"><div class="stat">“Kitna kamaya?”</div><p class="muted" style="margin:4px 0 0">Mahine ke end mein kisi ko pata nahi hota — kitne order, kitna collect, kaun due hai.</p></div>
+      <div class="card"><div class="stat">3–4 hours</div><p class="muted" style="margin:4px 0 0">a day just replying to messages, quoting prices, asking “did you pay?” — the owner's assumed daily time.</p></div>
+      <div class="card"><div class="stat">Credit</div><p class="muted" style="margin:4px 0 0">Asking customers for money feels awkward — so the reminder never goes out, and the money is lost.</p></div>
+      <div class="card"><div class="stat">“How much did I earn?”</div><p class="muted" style="margin:4px 0 0">At month end nobody knows — how many orders, how much collected, who still owes.</p></div>
     </div>
   </div>
 </section>
@@ -217,8 +218,8 @@ footer{padding:28px 0 48px;color:var(--muted);font-size:14px}
 <section id="usecases">
   <div class="wrap">
     <div class="kicker">5 core use cases</div>
-    <h2>Har flow: Trigger → AI samjhe → viaSocket kare → Result</h2>
-    <p class="lead">Kisi bhi use case pe click karo — right side WhatsApp mein live chalega.</p>
+    <h2>Every flow: Trigger → AI understands → viaSocket acts → Result</h2>
+    <p class="lead">Click any use case — it plays live in the WhatsApp chat on the right.</p>
     <div class="uc-layout">
       <div class="tabs" role="tablist" id="tabs"></div>
       <div class="phone">
@@ -233,34 +234,34 @@ footer{padding:28px 0 48px;color:var(--muted);font-size:14px}
 <section id="how">
   <div class="wrap">
     <div class="kicker">Structure</div>
-    <h2>Kaise kaam karta hai</h2>
-    <p class="lead">AI kabhi directly kisi app ko touch nahi karta. Har action viaSocket flow ke through jaata hai — retries, audit trail aur owner ka auth ek jagah.</p>
+    <h2>How it works</h2>
+    <p class="lead">The AI never touches an app directly. Every action goes through a viaSocket flow — retries, audit trail and the owner's auth in one place.</p>
     <div class="arch">
-      <div class="box"><h3>📱 WhatsApp</h3><span class="muted" style="font-size:14px">Customer & owner — same number, koi naya app nahi</span>
+      <div class="box"><h3>📱 WhatsApp</h3><span class="muted" style="font-size:14px">Customer & owner — same number, no new app</span>
         <ul><li>Inbound webhook</li><li>Text + template messages</li><li>Meta Cloud API / BSP</li></ul></div>
       <div class="arrow">⇄</div>
       <div class="box core"><h3>⚙️ Dukaan Backend <span class="muted" style="font-weight:400;font-size:13px">(embarko.ai)</span></h3>
         <div class="inner">
-          <div><b>🧠 AI Brain</b>Intent + entities, catalog se price, reply draft</div>
-          <div><b>📋 State engine</b>Order lifecycle, reminders, udhaar ladder</div>
-          <div><b>🔍 App Analyzer</b>Naya app — GO / NO-GO</div>
-          <div><b>⏰ Scheduler</b>Reminder, daily scan, monthly cron</div>
+          <div><b>🧠 AI Brain</b>Intent + entities, price from catalog, reply draft</div>
+          <div><b>📋 State engine</b>Order lifecycle, reminders, credit ladder</div>
+          <div><b>🔍 App Analyzer</b>New app — GO / NO-GO</div>
+          <div><b>⏰ Scheduler</b>Reminders, daily scan, monthly cron</div>
         </div></div>
       <div class="arrow">⇄</div>
-      <div class="box"><h3>🤝 viaSocket embed</h3><span class="muted" style="font-size:14px">The hands — saare external actions</span>
-        <ul><li>Google Sheets (order sheet)</li><li>Razorpay / Cashfree</li><li>Calendar, Shiprocket…</li><li>+ jo bhi app GO ho</li></ul></div>
+      <div class="box"><h3>🤝 viaSocket embed</h3><span class="muted" style="font-size:14px">The hands — all external actions</span>
+        <ul><li>Google Sheets (order sheet)</li><li>Razorpay / Cashfree</li><li>Calendar, Shiprocket…</li><li>+ any app that gets a GO</li></ul></div>
     </div>
 
     <div class="tablewrap">
     <table class="flowtable">
-      <thead><tr><th>viaSocket flow</th><th>Trigger</th><th>Kya karta hai</th></tr></thead>
+      <thead><tr><th>viaSocket flow</th><th>Trigger</th><th>What it does</th></tr></thead>
       <tbody>
-        <tr><td><code>save_order</code></td><td>AI ne order confirm kiya</td><td>Google Sheet mein row add, order id wapas</td></tr>
-        <tr><td><code>create_payment_link</code></td><td>Order confirmed</td><td>Razorpay link banao → WhatsApp pe bhejo</td></tr>
-        <tr><td><code>payment_received</code></td><td>Razorpay “link paid” webhook</td><td>Sheet mein PAID mark → customer ko “payment mila ✅”</td></tr>
-        <tr><td><code>send_reminder</code></td><td>Scheduler (delivery − 2 ghante / udhaar ladder)</td><td>WhatsApp template message</td></tr>
-        <tr><td><code>escalate_to_owner</code></td><td>Udhaar &gt; 7 din</td><td>Owner ko list + call button</td></tr>
-        <tr><td><code>monthly_report</code></td><td>Mahine ki aakhri raat 9 baje</td><td>Sheet aggregate → AI one-liner → owner</td></tr>
+        <tr><td><code>save_order</code></td><td>AI confirmed an order</td><td>Adds a row to the Google Sheet, returns the order id</td></tr>
+        <tr><td><code>create_payment_link</code></td><td>Order confirmed</td><td>Creates a Razorpay link → sends it on WhatsApp</td></tr>
+        <tr><td><code>payment_received</code></td><td>Razorpay “link paid” webhook</td><td>Marks PAID in the Sheet → tells the customer “payment received ✅”</td></tr>
+        <tr><td><code>send_reminder</code></td><td>Scheduler (delivery − 2 hours / credit ladder)</td><td>WhatsApp template message</td></tr>
+        <tr><td><code>escalate_to_owner</code></td><td>Credit overdue &gt; 7 days</td><td>List + call button to the owner</td></tr>
+        <tr><td><code>monthly_report</code></td><td>Last night of the month, 9 PM</td><td>Sheet aggregate → AI one-liner → owner</td></tr>
         <tr><td><code>connect_new_app</code></td><td>App Analyzer verdict = GO</td><td>viaSocket embed auth → template flow on</td></tr>
       </tbody>
     </table>
@@ -272,12 +273,12 @@ footer{padding:28px 0 48px;color:var(--muted);font-size:14px}
 <section id="analyzer">
   <div class="wrap">
     <div class="kicker">Add any app · viaSocket rubric</div>
-    <h2>Owner koi bhi app jodna chahe — pehle AI check karega ki use case genuine hai ya nahi.</h2>
-    <p class="lead">viaSocket ke <b>plugin-validator</b> rubric pe chalta hai: verdict, score /100, connector decision, 3 Trigger → Action → Result use cases, risk. Sirf <b>GO</b> pe app judta hai — dukaan mein kachra nahi.</p>
+    <h2>Whatever app the owner wants to connect — the AI first checks whether the use case is genuine.</h2>
+    <p class="lead">Runs on viaSocket's <b>plugin-validator</b> rubric: verdict, score /100, connector decision, 3 Trigger → Action → Result use cases, risk. An app is connected only on a <b>GO</b> — no clutter in the shop.</p>
 
     <div class="an-layout">
       <form class="card" id="anForm" autocomplete="off">
-        <label for="shopType">Dukaan ka type</label>
+        <label for="shopType">Shop type</label>
         <select id="shopType">
           <option value="bakery">🧁 Bakery / Cake shop</option>
           <option value="boutique">👗 Boutique / Tailor</option>
@@ -286,12 +287,12 @@ footer{padding:28px 0 48px;color:var(--muted);font-size:14px}
           <option value="kirana">🛒 Kirana / General store</option>
         </select>
 
-        <label for="appName">App ka naam</label>
+        <label for="appName">App name</label>
         <input id="appName" placeholder="e.g. Shiprocket, Zoho Books, Instagram…" list="appList" required>
         <datalist id="appList"></datalist>
         <div class="quick" id="quick"></div>
 
-        <label for="appCat">Category <span class="muted" style="font-weight:400">(naya/unknown app ho to)</span></label>
+        <label for="appCat">Category <span class="muted" style="font-weight:400">(for a new/unknown app)</span></label>
         <select id="appCat">
           <option value="auto">Auto-detect</option>
           <option value="payments">Payments</option>
@@ -302,13 +303,13 @@ footer{padding:28px 0 48px;color:var(--muted);font-size:14px}
           <option value="sheets">Spreadsheet / Database</option>
           <option value="ecommerce">Online store</option>
           <option value="email">Email</option>
-          <option value="ledger">Khata / Udhaar app</option>
+          <option value="ledger">Ledger / Credit book app</option>
           <option value="aggregator">Food / Marketplace aggregator</option>
           <option value="other">Other</option>
         </select>
 
-        <label for="goal">Owner kya karwana chahta hai?</label>
-        <textarea id="goal" placeholder="e.g. order confirm hote hi courier book ho jaaye"></textarea>
+        <label for="goal">What does the owner want it to do?</label>
+        <textarea id="goal" placeholder="e.g. book a courier as soon as an order is confirmed"></textarea>
 
         <label>Already connected</label>
         <div class="connected" id="connected"></div>
@@ -317,7 +318,7 @@ footer{padding:28px 0 48px;color:var(--muted);font-size:14px}
       </form>
 
       <div id="anResult" aria-live="polite">
-        <div class="result-empty">Koi app ka naam daalo ya upar se chip choose karo.<br><small>Demo: known apps ke verdict pre-computed hain; production mein <code>/api/analyze-app</code> live research ke saath chalta hai.</small></div>
+        <div class="result-empty">Enter an app name or pick a chip above.<br><small>Demo: verdicts for known apps are pre-computed; in production <code>/api/analyze-app</code> runs with live research.</small></div>
       </div>
     </div>
   </div>
@@ -326,12 +327,12 @@ footer{padding:28px 0 48px;color:var(--muted);font-size:14px}
 <!-- WHY IT SELLS -->
 <section>
   <div class="wrap">
-    <div class="kicker">Ye accha kyun hai</div>
-    <h2>Koi nayi aadat nahi sikhata. Aur khud bik jaata hai.</h2>
+    <div class="kicker">Why it works</div>
+    <h2>It teaches no new habit. And it sells itself.</h2>
     <div class="grid3" style="margin-top:24px">
-      <div class="card"><h3>📱 Zero new habit</h3><p class="muted" style="margin:0">Owner already WhatsApp pe business chalata hai. Bas ab peeche AI kaam kar raha hai.</p></div>
-      <div class="card"><h3>🗣️ Word of mouth</h3><p class="muted" style="margin:0">“Dekh, mera WhatsApp khud order le leta hai.” — ek dukaandaar dusre ko dikhata hai.</p></div>
-      <div class="card"><h3>🔌 Grows with the shop</h3><p class="muted" style="margin:0">Naye apps viaSocket se judte hain — par sirf tab jab use case genuine ho.</p></div>
+      <div class="card"><h3>📱 Zero new habit</h3><p class="muted" style="margin:0">The owner already runs the business on WhatsApp. Now an AI works behind it.</p></div>
+      <div class="card"><h3>🗣️ Word of mouth</h3><p class="muted" style="margin:0">“Look, my WhatsApp takes orders by itself.” — one shopkeeper shows the next.</p></div>
+      <div class="card"><h3>🔌 Grows with the shop</h3><p class="muted" style="margin:0">New apps connect through viaSocket — but only when the use case is genuine.</p></div>
     </div>
   </div>
 </section>
@@ -344,14 +345,14 @@ footer{padding:28px 0 48px;color:var(--muted);font-size:14px}
     <div class="steps">
       <div class="card"><h3>MVP</h3><p class="muted" style="margin:0">WhatsApp inbound → AI → reply. Catalog-based pricing. <code>save_order</code>.</p></div>
       <div class="card"><h3>Payments</h3><p class="muted" style="margin:0"><code>create_payment_link</code> + <code>payment_received</code> webhook → auto PAID.</p></div>
-      <div class="card"><h3>Reminders</h3><p class="muted" style="margin:0">Delivery reminder, udhaar ladder (Day 1 / 3 / 7), owner escalation.</p></div>
+      <div class="card"><h3>Reminders</h3><p class="muted" style="margin:0">Delivery reminder, credit ladder (Day 1 / 3 / 7), owner escalation.</p></div>
       <div class="card"><h3>Grow</h3><p class="muted" style="margin:0">Monthly one-liner + App Analyzer + <code>connect_new_app</code>.</p></div>
     </div>
-    <p class="muted" style="margin-top:20px;font-size:14px">Deploy: ye page static hai — seedha embarko.ai pe host karo. Phase 2 backend env: <code>WHATSAPP_TOKEN</code>, <code>WHATSAPP_PHONE_ID</code>, <code>LLM_API_KEY</code>, <code>VIASOCKET_EMBED_TOKEN</code>, <code>VIASOCKET_FLOW_*</code>, <code>DATABASE_URL</code>. Detail: <code>docs/ARCHITECTURE.md</code>.</p>
+    <p class="muted" style="margin-top:20px;font-size:14px">Deploy: this page is static — host it directly on embarko.ai. Phase 2 backend env: <code>WHATSAPP_TOKEN</code>, <code>WHATSAPP_PHONE_ID</code>, <code>LLM_API_KEY</code>, <code>VIASOCKET_EMBED_TOKEN</code>, <code>VIASOCKET_FLOW_*</code>, <code>DATABASE_URL</code>. Details: <code>docs/ARCHITECTURE.md</code>.</p>
   </div>
 </section>
 
-<footer><div class="wrap">Dukaan ka AI Manager · AI dimaag hai, viaSocket haath hai.</div></footer>
+<footer><div class="wrap">Dukaan AI Manager · The AI is the brain, viaSocket is the hands.</div></footer>
 
 <script>
 (function(){
@@ -393,55 +394,55 @@ function player(el){
 
 /* ---------- use cases ---------- */
 const UC=[
- {n:'Order lena',icon:'🧁',shop:'Sweet Crumbs Bakery',
-  trig:'Customer: “2 cake chahiye kal ke liye”',ai:'Intent = ORDER · item, qty, date nikale · catalog se price',vs:'save_order → Google Sheet row',res:'Order confirm, owner ne kuch type nahi kiya',
+ {n:'Taking orders',icon:'🧁',shop:'Sweet Crumbs Bakery',
+  trig:'Customer: “Need 2 cakes for tomorrow”',ai:'Intent = ORDER · extracts item, qty, date · price from catalog',vs:'save_order → Google Sheet row',res:'Order confirmed, and the owner typed nothing',
   chat:[
-   {k:'in',x:'Bhaiya 2 chocolate cake chahiye kal ke liye, 1 kg wale',t:'10:02'},
-   {k:'out',x:'Namaste! 🙏\n2 × Chocolate Cake (1 kg) = ₹1,400\nKal pickup kitne baje? 11 AM se 8 PM tak ready rahega.',t:'10:02'},
-   {k:'in',x:'Shaam 6 baje',t:'10:03'},
-   {k:'out',x:'Perfect ✅ Order confirm karein?\n🗓 Kal, 6:00 PM pickup\n💰 Total ₹1,400',t:'10:03'},
-   {k:'in',x:'Haan confirm',t:'10:03'},
+   {k:'in',x:'Hi, I need 2 chocolate cakes for tomorrow, the 1 kg ones',t:'10:02'},
+   {k:'out',x:'Namaste! 🙏\n2 × Chocolate Cake (1 kg) = ₹1,400\nWhat time will you pick up tomorrow? Ready any time from 11 AM to 8 PM.',t:'10:02'},
+   {k:'in',x:'6 in the evening',t:'10:03'},
+   {k:'out',x:'Perfect ✅ Shall I confirm the order?\n🗓 Tomorrow, 6:00 PM pickup\n💰 Total ₹1,400',t:'10:03'},
+   {k:'in',x:'Yes, confirm',t:'10:03'},
    {k:'sys',x:'⚙️ viaSocket · save_order → Google Sheets row #341 added'},
-   {k:'out',x:'Order #341 confirm ho gaya! 🎂 Payment link agle message mein bhej raha hoon.',t:'10:03'}
+   {k:'out',x:'Order #341 is confirmed! 🎂 Sending the payment link in the next message.',t:'10:03'}
  ]},
  {n:'Payment link + auto “paid”',icon:'💳',shop:'Sweet Crumbs Bakery',
-  trig:'Order confirm hua',ai:'—',vs:'create_payment_link → Razorpay · payment_received webhook → Sheet PAID',res:'Payment track karna owner ka kaam nahi',
+  trig:'Order confirmed',ai:'—',vs:'create_payment_link → Razorpay · payment_received webhook → Sheet PAID',res:'Tracking payments is no longer the owner\'s job',
   chat:[
    {k:'sys',x:'⚙️ viaSocket · create_payment_link → Razorpay ₹1,400'},
-   {k:'out',x:'Order #341 ka payment link 👇\nrzp.io/l/dk341  (₹1,400)\nUPI / card / netbanking — sab chalega.',t:'10:04'},
-   {k:'in',x:'Done kar diya',t:'10:09'},
+   {k:'out',x:'Payment link for order #341 👇\nrzp.io/l/dk341  (₹1,400)\nUPI / card / netbanking — all work.',t:'10:04'},
+   {k:'in',x:'Done',t:'10:09'},
    {k:'sys',x:'🔔 Razorpay webhook: payment_link.paid'},
    {k:'sys',x:'⚙️ viaSocket · payment_received → Sheet row #341 = PAID'},
-   {k:'out',x:'Payment mil gaya ✅ ₹1,400 — Thank you!\nKal 6 baje aapka cake ready rahega 🎂',t:'10:09'}
+   {k:'out',x:'Payment received ✅ ₹1,400 — Thank you!\nYour cake will be ready tomorrow at 6 🎂',t:'10:09'}
  ]},
  {n:'Delivery / pickup reminder',icon:'⏰',shop:'Sweet Crumbs Bakery',
-  trig:'Scheduler: pickup time − 2 ghante',ai:'Friendly reminder likhe',vs:'send_reminder → WhatsApp template',res:'No-show kam, cake waste nahi',
+  trig:'Scheduler: pickup time − 2 hours',ai:'Writes a friendly reminder',vs:'send_reminder → WhatsApp template',res:'Fewer no-shows, no wasted cakes',
   chat:[
    {k:'sys',x:'⏰ Scheduler · Order #341 pickup in 2h'},
-   {k:'out',x:'Hi Priya ji 👋 Aapka 2 × Chocolate Cake aaj 6 PM ke liye ready ho raha hai.\n📍 Sweet Crumbs, MG Road\nTime change karna ho to bata dijiye.',t:'4:00 PM'},
-   {k:'in',x:'7 baje aa jaun?',t:'4:05 PM'},
+   {k:'out',x:'Hi Priya ji 👋 Your 2 × Chocolate Cake is being readied for 6 PM today.\n📍 Sweet Crumbs, MG Road\nLet us know if you need to change the time.',t:'4:00 PM'},
+   {k:'in',x:'Can I come at 7?',t:'4:05 PM'},
    {k:'sys',x:'⚙️ viaSocket · update_order → pickup 7:00 PM'},
-   {k:'out',x:'Bilkul, 7 PM update kar diya ✅',t:'4:05 PM'}
+   {k:'out',x:'Of course, updated to 7 PM ✅',t:'4:05 PM'}
  ]},
- {n:'Udhaar ki vasooli',icon:'📒',shop:'Style Studio Boutique',
-  trig:'Daily scan: due date nikal gaya, PAID nahi',ai:'Tone choose kare: polite → firm',vs:'Day 1 polite · Day 3 + link · Day 7 escalate_to_owner',res:'Paisa wapas, owner ko awkward baat nahi',
+ {n:'Collecting credit',icon:'📒',shop:'Style Studio Boutique',
+  trig:'Daily scan: due date passed, not PAID',ai:'Picks the tone: polite → firm',vs:'Day 1 polite · Day 3 + link · Day 7 escalate_to_owner',res:'Money comes back, no awkward conversation for the owner',
   chat:[
    {k:'sys',x:'📒 Day 1 · Rahul — ₹2,300 due (blouse stitching)'},
-   {k:'out',x:'Namaste Rahul ji 🙏 Aapke blouse stitching ka ₹2,300 baaki hai. Jab convenient ho, is link se kar dijiye: rzp.io/l/ss88',t:'Mon'},
+   {k:'out',x:'Namaste Rahul ji 🙏 ₹2,300 is still pending for your blouse stitching. Whenever convenient, you can pay via this link: rzp.io/l/ss88',t:'Mon'},
    {k:'sys',x:'📒 Day 3 · still unpaid'},
-   {k:'out',x:'Rahul ji, ek chhota sa reminder — ₹2,300 pending hai. Aaj ho sake to bahut madad hogi 🙂 rzp.io/l/ss88',t:'Wed'},
+   {k:'out',x:'Rahul ji, a small reminder — ₹2,300 is pending. It would really help if you could pay today 🙂 rzp.io/l/ss88',t:'Wed'},
    {k:'sys',x:'📒 Day 7 · escalate_to_owner'},
-   {k:'out',x:'👤 Owner ko: Rahul (98xxxxxx21) — ₹2,300, 7 din se due. 2 reminder ja chuke. [📞 Call] [⏸ Pause reminders]',t:'Mon'}
+   {k:'out',x:'👤 To owner: Rahul (98xxxxxx21) — ₹2,300, overdue 7 days. 2 reminders already sent. [📞 Call] [⏸ Pause reminders]',t:'Mon'}
  ]},
- {n:'Mahine ka hisaab — ek line',icon:'📊',shop:'Owner · Monthly report',
-  trig:'Cron: mahine ki aakhri raat 9 PM',ai:'Data → 1 line summary',vs:'monthly_report → Sheet aggregate → WhatsApp owner',res:'Hisaab bina calculator ke',
+ {n:'The month\'s accounts — in one line',icon:'📊',shop:'Owner · Monthly report',
+  trig:'Cron: last night of the month, 9 PM',ai:'Data → 1-line summary',vs:'monthly_report → Sheet aggregate → WhatsApp owner',res:'Accounts without a calculator',
   chat:[
    {k:'sys',x:'📊 Cron · 31 Oct 9:00 PM · monthly_report'},
-   {k:'out',x:'Is mahine 340 order, ₹85,000 collect hua, 3 log abhi bhi due hain (₹6,450).',t:'9:00 PM'},
-   {k:'in',x:'Kaun kaun due hai?',t:'9:02 PM'},
-   {k:'out',x:'1. Rahul — ₹2,300 (9 din)\n2. Neha — ₹2,650 (4 din)\n3. Amit — ₹1,500 (2 din)\nReminders chal rahe hain ✅',t:'9:02 PM'},
-   {k:'in',x:'Sabse zyada kya bika?',t:'9:03 PM'},
-   {k:'out',x:'Chocolate cake 🎂 — 96 order (28%). Weekend pe double demand.',t:'9:03 PM'}
+   {k:'out',x:'This month: 340 orders, ₹85,000 collected, 3 people still owe (₹6,450).',t:'9:00 PM'},
+   {k:'in',x:'Who still owes?',t:'9:02 PM'},
+   {k:'out',x:'1. Rahul — ₹2,300 (9 days)\n2. Neha — ₹2,650 (4 days)\n3. Amit — ₹1,500 (2 days)\nReminders are running ✅',t:'9:02 PM'},
+   {k:'in',x:'What sold the most?',t:'9:03 PM'},
+   {k:'out',x:'Chocolate cake 🎂 — 96 orders (28%). Double the demand on weekends.',t:'9:03 PM'}
  ]}
 ];
 const tabs=document.getElementById('tabs');
@@ -463,129 +464,129 @@ function select(i){
 }
 select(0);
 player(document.getElementById('heroChat'))([
-  {k:'in',x:'2 cake chahiye kal ke liye',t:'10:02',d:400},
-  {k:'out',x:'2 × Chocolate Cake = ₹1,400 ✅\nKal kitne baje pickup?',t:'10:02'},
-  {k:'in',x:'6 baje',t:'10:03'},
+  {k:'in',x:'Need 2 cakes for tomorrow',t:'10:02',d:400},
+  {k:'out',x:'2 × Chocolate Cake = ₹1,400 ✅\nWhat time for pickup tomorrow?',t:'10:02'},
+  {k:'in',x:'6 PM',t:'10:03'},
   {k:'sys',x:'⚙️ Order #341 → Google Sheet'},
-  {k:'out',x:'Confirm! Payment link 👉 rzp.io/l/dk341',t:'10:03'},
+  {k:'out',x:'Confirmed! Payment link 👉 rzp.io/l/dk341',t:'10:03'},
   {k:'sys',x:'🔔 Payment received → PAID ✅'}
 ]);
 
-/* ---------- App Analyzer (viaSocket plugin-validator rubric, dukaan-scoped) ---------- */
-const DIM=[['fit','Dukaan fit',20],['demand','Real automation demand',20],['technical','Technical fit (API/webhooks)',15],['viasocket','Available via viaSocket',15],['better','Better than manual',10],['risk','Data & trust risk (low = high)',10],['evidence','Evidence strength',10]];
+/* ---------- App Analyzer (viaSocket plugin-validator rubric, shop-scoped) ---------- */
+const DIM=[['fit','Shop fit',20],['demand','Real automation demand',20],['technical','Technical fit (API/webhooks)',15],['viasocket','Available via viaSocket',15],['better','Better than manual',10],['risk','Data & trust risk (low = high)',10],['evidence','Evidence strength',10]];
 let connected=['WhatsApp Business','Google Sheets','Razorpay'];
 try{const c=JSON.parse(localStorage.getItem('dk-connected')||'null');if(Array.isArray(c))connected=c;}catch(e){}
 
 // Pre-computed demo verdicts for common Indian-SMB apps. Production: /api/analyze-app (docs/APP_ANALYZER.md).
 const KNOWN={
  'shiprocket':{cat:'shipping',b:{fit:16,demand:16,technical:13,viasocket:11,better:9,risk:7,evidence:6},conn:'NOT REQUIRED',conf:'MEDIUM',
-   opp:'Delivery wale orders ka courier khud book ho aur tracking customer ko WhatsApp pe chali jaaye.',
-   risk:'Sirf delivery-heavy dukaan ke kaam ka — pickup-only bakery/salon ke liye bekaar.',
+   opp:'Couriers for delivery orders get booked automatically and tracking goes to the customer on WhatsApp.',
+   risk:'Only useful for delivery-heavy shops — useless for a pickup-only bakery/salon.',
    fitFor:['boutique','kirana','bakery'],
-   uc:[['Auto courier booking','Order PAID + mode = delivery','Shiprocket order + AWB create','Owner courier site pe nahi jaata','PLAUSIBLE'],
-       ['Tracking on WhatsApp','Shipment status = shipped / out for delivery','Customer ko tracking link WhatsApp','“Parcel kahan hai?” messages band','PLAUSIBLE'],
-       ['RTO alert','Shipment = RTO / failed','Owner ko alert + customer se address confirm','Return cost kam','PLAUSIBLE']],
-   succ:'Pehle 20 delivery orders bina owner ke courier book ho jaayein.',kill:'Mahine mein < 10 delivery orders → disconnect.'},
+   uc:[['Auto courier booking','Order PAID + mode = delivery','Create Shiprocket order + AWB','Owner never opens the courier site','PLAUSIBLE'],
+       ['Tracking on WhatsApp','Shipment status = shipped / out for delivery','Tracking link to the customer on WhatsApp','No more “where is my parcel?” messages','PLAUSIBLE'],
+       ['RTO alert','Shipment = RTO / failed','Alert the owner + confirm address with the customer','Lower return cost','PLAUSIBLE']],
+   succ:'The first 20 delivery orders get a courier booked without the owner.',kill:'< 10 delivery orders a month → disconnect.'},
  'cashfree':{cat:'payments',dupOf:'Razorpay',b:{fit:16,demand:14,technical:13,viasocket:11,better:8,risk:7,evidence:6},conn:'NOT REQUIRED',conf:'MEDIUM',
-   opp:'Payment link + auto PAID — agar Razorpay nahi hai to ye bhi wahi kaam karega.',
-   risk:'Razorpay already connected ho to duplicate — do gateway = do jagah hisaab.',
-   uc:[['Payment link','Order confirmed','Cashfree payment link → WhatsApp','Customer 1 tap mein pay','PLAUSIBLE'],
-       ['Auto PAID','Payment success webhook','Sheet row = PAID + thank-you message','Owner ko check nahi karna','PLAUSIBLE'],
-       ['Udhaar link','Udhaar reminder Day 3','Fresh link reminder ke saath','Vasooli fast','PLAUSIBLE']],
-   succ:'Razorpay replace ho ya Razorpay na ho.',kill:'Dono gateway active → ek hatao.'},
+   opp:'Payment link + auto PAID — if there is no Razorpay, this does the same job.',
+   risk:'Duplicate if Razorpay is already connected — two gateways = accounts in two places.',
+   uc:[['Payment link','Order confirmed','Cashfree payment link → WhatsApp','Customer pays in 1 tap','PLAUSIBLE'],
+       ['Auto PAID','Payment success webhook','Sheet row = PAID + thank-you message','Owner doesn\'t have to check','PLAUSIBLE'],
+       ['Credit link','Credit reminder Day 3','Fresh link with the reminder','Faster collection','PLAUSIBLE']],
+   succ:'It replaces Razorpay, or Razorpay isn\'t in use.',kill:'Both gateways active → remove one.'},
  'razorpay':{cat:'payments',b:{fit:19,demand:19,technical:14,viasocket:13,better:9,risk:7,evidence:8},conn:'NOT REQUIRED',conf:'HIGH',
-   opp:'Payment link bhejna aur PAID auto-detect — core flow ka hissa.',risk:'Gateway fees owner ko samjhaani padengi.',
-   uc:[['Payment link','Order confirmed','Razorpay payment link → WhatsApp','Customer 1 tap mein pay','PROVEN'],
-       ['Auto PAID','payment_link.paid webhook','Sheet row = PAID + thank-you','Hisaab zero effort','PROVEN'],
-       ['Udhaar link','Udhaar ladder Day 3','Link reminder ke saath','Vasooli fast','PLAUSIBLE']],
-   succ:'90% orders link se pay hon.',kill:'—'},
+   opp:'Sending payment links and auto-detecting PAID — part of the core flow.',risk:'Gateway fees need to be explained to the owner.',
+   uc:[['Payment link','Order confirmed','Razorpay payment link → WhatsApp','Customer pays in 1 tap','PROVEN'],
+       ['Auto PAID','payment_link.paid webhook','Sheet row = PAID + thank-you','Zero-effort bookkeeping','PROVEN'],
+       ['Credit link','Credit ladder Day 3','Link with the reminder','Faster collection','PLAUSIBLE']],
+   succ:'90% of orders paid via link.',kill:'—'},
  'google calendar':{cat:'calendar',b:{fit:15,demand:15,technical:14,viasocket:13,better:8,risk:8,evidence:6},conn:'NOT REQUIRED',conf:'MEDIUM',
-   opp:'Appointment / class slots WhatsApp se seedha calendar mein — double booking khatam.',
-   risk:'Bakery/kirana jaise order-based dukaan ke liye zaroorat kam.',fitFor:['tuition','salon','boutique'],
-   uc:[['Slot booking','Customer: “kal 4 baje haircut”','Free slot check → event create','Double booking nahi','PLAUSIBLE'],
-       ['Class reminder','Event − 1 ghanta','Student/parent ko WhatsApp reminder','Attendance up','PLAUSIBLE'],
-       ['Reschedule','Customer: “time badal do”','Event update + confirm','Owner ka phone free','PLAUSIBLE']],
-   succ:'Pehle 2 hafte mein 30+ bookings WhatsApp se calendar mein.',kill:'Owner calendar dekhta hi nahi → disconnect.'},
+   opp:'Appointment / class slots go straight from WhatsApp into the calendar — no more double bookings.',
+   risk:'Less needed for order-based shops like a bakery or kirana.',fitFor:['tuition','salon','boutique'],
+   uc:[['Slot booking','Customer: “haircut tomorrow at 4”','Check free slot → create event','No double booking','PLAUSIBLE'],
+       ['Class reminder','Event − 1 hour','WhatsApp reminder to student/parent','Attendance up','PLAUSIBLE'],
+       ['Reschedule','Customer: “change the time”','Update event + confirm','Owner\'s phone stays free','PLAUSIBLE']],
+   succ:'30+ bookings from WhatsApp into the calendar in the first 2 weeks.',kill:'Owner never looks at the calendar → disconnect.'},
  'zoho books':{cat:'accounting',b:{fit:12,demand:11,technical:13,viasocket:11,better:6,risk:6,evidence:5},conn:'NOT REQUIRED',conf:'MEDIUM',
-   opp:'GST invoice har PAID order pe khud ban jaaye.',risk:'Chhoti dukaan GST invoice maangti hi nahi — Sheet kaafi hai.',
-   ask:'Kya aapke customers GST invoice maangte hain, ya CA ko monthly data chahiye?',
-   uc:[['Auto invoice','Order PAID','Zoho Books invoice create → PDF WhatsApp','GST-ready billing','PLAUSIBLE'],
-       ['Payment record','Razorpay payment','Invoice ko paid mark','Books match','PLAUSIBLE'],
-       ['CA export','Month end','Sales summary CA ko','Filing aasaan','PLAUSIBLE']],
-   succ:'Owner confirm kare ki GST invoice chahiye.',kill:'Mahine mein < 5 invoice requests.'},
+   opp:'A GST invoice is generated automatically for every PAID order.',risk:'Small shops rarely get asked for GST invoices — the Sheet is enough.',
+   ask:'Do your customers ask for GST invoices, or does your CA need monthly data?',
+   uc:[['Auto invoice','Order PAID','Create Zoho Books invoice → PDF on WhatsApp','GST-ready billing','PLAUSIBLE'],
+       ['Payment record','Razorpay payment','Mark invoice as paid','Books match','PLAUSIBLE'],
+       ['CA export','Month end','Sales summary to the CA','Easier filing','PLAUSIBLE']],
+   succ:'Owner confirms GST invoices are needed.',kill:'< 5 invoice requests a month.'},
  'tally':{cat:'accounting',b:{fit:12,demand:10,technical:5,viasocket:5,better:6,risk:6,evidence:4},conn:'PARTNER-BUILD',conf:'LOW',
-   opp:'Jo dukaan Tally use karti hai unke sales entries auto ho jaayein.',
-   risk:'Tally mostly desktop/local — cloud API reliable nahi (UNKNOWN), connector bhari kaam.',
-   ask:'Aapka Tally kis computer pe chalta hai aur CA usse kaise data leta hai?',
-   uc:[['Sales voucher','Order PAID','Tally sales voucher (via bridge)','CA ka kaam kam','PLAUSIBLE'],
-       ['Month export','Month end','Sheet → Tally import file','Manual entry khatam','PLAUSIBLE'],
-       ['Stock sync','Order fulfilled','Stock item reduce','Inventory sahi','PLAUSIBLE']],
-   succ:'Bridge/export route verify ho aur owner ka CA haan bole.',kill:'Local-only setup, koi sync route nahi.'},
- 'khatabook':{cat:'ledger',dupOf:'built-in udhaar',b:{fit:8,demand:6,technical:3,viasocket:3,better:2,risk:5,evidence:4},conn:'NO',conf:'MEDIUM',
-   opp:'Koi nahi — udhaar tracking + reminders Dukaan AI mein already built-in hain.',
-   risk:'Duplicate ledger = do jagah hisaab; public API UNKNOWN.',
-   uc:[['(Duplicate) Udhaar entry','Order unpaid','Khatabook entry','Already Sheet + udhaar ladder karta hai','PLAUSIBLE'],
-       ['(Duplicate) Reminder','Due date','Khatabook SMS','Already WhatsApp reminder jaata hai','PLAUSIBLE'],
-       ['Migration only','One-time','Purane udhaar Sheet mein import','Ek baar ka kaam, connector nahi','PLAUSIBLE']],
-   succ:'—',kill:'Built-in udhaar ladder already cover karta hai.'},
- 'vyapar':{cat:'ledger',dupOf:'built-in udhaar + Sheet',b:{fit:9,demand:7,technical:3,viasocket:3,better:3,risk:5,evidence:3},conn:'NO',conf:'LOW',
-   opp:'Billing + khata — par Dukaan AI + Sheet already wahi karta hai.',risk:'Public API UNKNOWN; duplicate data.',
-   uc:[['(Duplicate) Bill','Order PAID','Vyapar bill','Sheet already hai','PLAUSIBLE'],['(Duplicate) Khata','Unpaid','Khata entry','Udhaar ladder already','PLAUSIBLE'],['One-time import','Setup','Old data → Sheet','Connector ki zaroorat nahi','PLAUSIBLE']],
-   succ:'—',kill:'Built-in features cover karte hain.'},
+   opp:'Sales entries get recorded automatically for shops that use Tally.',
+   risk:'Tally is mostly desktop/local — no reliable cloud API (UNKNOWN), the connector is heavy work.',
+   ask:'Which computer does your Tally run on, and how does your CA get data from it?',
+   uc:[['Sales voucher','Order PAID','Tally sales voucher (via bridge)','Less work for the CA','PLAUSIBLE'],
+       ['Month export','Month end','Sheet → Tally import file','No more manual entry','PLAUSIBLE'],
+       ['Stock sync','Order fulfilled','Reduce stock item','Accurate inventory','PLAUSIBLE']],
+   succ:'A bridge/export route is verified and the owner\'s CA says yes.',kill:'Local-only setup, no sync route.'},
+ 'khatabook':{cat:'ledger',dupOf:'built-in credit tracking',b:{fit:8,demand:6,technical:3,viasocket:3,better:2,risk:5,evidence:4},conn:'NO',conf:'MEDIUM',
+   opp:'None — credit tracking + reminders are already built into Dukaan AI.',
+   risk:'Duplicate ledger = accounts in two places; public API UNKNOWN.',
+   uc:[['(Duplicate) Credit entry','Order unpaid','Khatabook entry','Sheet + credit ladder already do this','PLAUSIBLE'],
+       ['(Duplicate) Reminder','Due date','Khatabook SMS','A WhatsApp reminder already goes out','PLAUSIBLE'],
+       ['Migration only','One-time','Import old credit entries into the Sheet','One-off job, no connector','PLAUSIBLE']],
+   succ:'—',kill:'The built-in credit ladder already covers it.'},
+ 'vyapar':{cat:'ledger',dupOf:'built-in credit tracking + Sheet',b:{fit:9,demand:7,technical:3,viasocket:3,better:3,risk:5,evidence:3},conn:'NO',conf:'LOW',
+   opp:'Billing + ledger — but Dukaan AI + the Sheet already do that.',risk:'Public API UNKNOWN; duplicate data.',
+   uc:[['(Duplicate) Bill','Order PAID','Vyapar bill','Sheet already exists','PLAUSIBLE'],['(Duplicate) Ledger','Unpaid','Ledger entry','Credit ladder already','PLAUSIBLE'],['One-time import','Setup','Old data → Sheet','No connector needed','PLAUSIBLE']],
+   succ:'—',kill:'Built-in features cover it.'},
  'instagram':{cat:'social',b:{fit:13,demand:13,technical:10,viasocket:9,better:7,risk:6,evidence:5},conn:'NOT REQUIRED',conf:'LOW',
-   opp:'Instagram DM se aaye order bhi usi AI pipeline mein aa jaayein.',
-   risk:'DM API sirf Business/Creator account + Meta approval pe; owner ka account type UNKNOWN.',
-   ask:'Kya aapko Instagram DM pe bhi order aate hain — hafte mein kitne?',fitFor:['boutique','bakery','salon'],
-   uc:[['DM → order','Instagram DM “ye dress available hai?”','Same AI → order flow → Sheet','Ek pipeline, do channel','PLAUSIBLE'],
-       ['New post → broadcast','Naya post','Opted-in WhatsApp customers ko update','Repeat orders','PLAUSIBLE'],
-       ['Comment → lead','“Price?” comment','DM / WhatsApp link','Lead miss nahi','PLAUSIBLE']],
-   succ:'Hafte mein 10+ DM orders milte hon.',kill:'Account Business nahi / DMs < 5 per week.'},
+   opp:'Orders that come in via Instagram DM enter the same AI pipeline.',
+   risk:'DM API only for Business/Creator accounts + Meta approval; the owner\'s account type is UNKNOWN.',
+   ask:'Do you also get orders on Instagram DM — how many a week?',fitFor:['boutique','bakery','salon'],
+   uc:[['DM → order','Instagram DM “is this dress available?”','Same AI → order flow → Sheet','One pipeline, two channels','PLAUSIBLE'],
+       ['New post → broadcast','New post','Update to opted-in WhatsApp customers','Repeat orders','PLAUSIBLE'],
+       ['Comment → lead','“Price?” comment','DM / WhatsApp link','No missed leads','PLAUSIBLE']],
+   succ:'10+ DM orders a week.',kill:'Not a Business account / DMs < 5 per week.'},
  'shopify':{cat:'ecommerce',b:{fit:10,demand:11,technical:14,viasocket:13,better:6,risk:7,evidence:5},conn:'NOT REQUIRED',conf:'MEDIUM',
-   opp:'Website orders bhi WhatsApp confirmation + reminder pipeline mein aayein.',
-   risk:'Zyada tar WhatsApp dukaan ki website hoti hi nahi.',ask:'Kya aapki Shopify website live hai aur us pe mahine mein kitne order aate hain?',
-   uc:[['Web order → WhatsApp','New Shopify order','Sheet row + WhatsApp confirm','Ek jagah saare order','PROVEN'],
-       ['Order status','Customer: “mera order?”','Shopify se status padh ke reply','Support zero','PLAUSIBLE'],
+   opp:'Website orders also enter the WhatsApp confirmation + reminder pipeline.',
+   risk:'Most WhatsApp-run shops don\'t have a website at all.',ask:'Is your Shopify website live, and how many orders does it get a month?',
+   uc:[['Web order → WhatsApp','New Shopify order','Sheet row + WhatsApp confirm','All orders in one place','PROVEN'],
+       ['Order status','Customer: “where is my order?”','Read status from Shopify and reply','Zero support load','PLAUSIBLE'],
        ['Abandoned cart','Checkout abandoned','WhatsApp nudge (opt-in)','Recovered sales','PLAUSIBLE']],
-   succ:'Website pe mahine mein 20+ orders.',kill:'Website nahi / dead.'},
+   succ:'20+ website orders a month.',kill:'No website / dead website.'},
  'gmail':{cat:'email',b:{fit:6,demand:6,technical:14,viasocket:13,better:3,risk:6,evidence:5},conn:'NOT REQUIRED',conf:'MEDIUM',
-   opp:'Supplier/CA ko monthly report email — bas itna.',risk:'Customer WhatsApp pe hain, email pe nahi — real need kam.',
-   uc:[['CA report','Month end','Summary email CA ko','Thoda time bachta','PLAUSIBLE'],['Supplier order','Low stock','Supplier ko email','Rare for small shops','PLAUSIBLE'],['Invoice email','PAID','Invoice email','WhatsApp already karta hai','PLAUSIBLE']],
-   succ:'Owner ko specific email recipient chahiye (CA/supplier).',kill:'Koi recipient nahi.'},
+   opp:'Monthly report email to the supplier/CA — that\'s about it.',risk:'Customers are on WhatsApp, not email — little real need.',
+   uc:[['CA report','Month end','Summary email to the CA','Saves a little time','PLAUSIBLE'],['Supplier order','Low stock','Email the supplier','Rare for small shops','PLAUSIBLE'],['Invoice email','PAID','Invoice email','WhatsApp already does this','PLAUSIBLE']],
+   succ:'Owner needs a specific email recipient (CA/supplier).',kill:'No recipient.'},
  'swiggy':{cat:'aggregator',b:{fit:8,demand:9,technical:2,viasocket:2,better:3,risk:4,evidence:3},conn:'NO',conf:'LOW',
-   opp:'Aggregator orders ek jagah dikhna — par public partner API small shops ke liye UNKNOWN/restricted.',
-   risk:'Koi open API nahi → connector possible nahi; aggregator khud apna dashboard deta hai.',
-   uc:[['Order mirror','Swiggy order','Sheet row','API access nahi','PLAUSIBLE'],['Monthly merge','Month end','Aggregator sales in report','Manual CSV hi option','PLAUSIBLE'],['Review alert','New rating','Owner alert','API nahi','PLAUSIBLE']],
-   succ:'—',kill:'Public API available nahi.'},
+   opp:'See aggregator orders in one place — but a public partner API for small shops is UNKNOWN/restricted.',
+   risk:'No open API → no connector possible; the aggregator already provides its own dashboard.',
+   uc:[['Order mirror','Swiggy order','Sheet row','No API access','PLAUSIBLE'],['Monthly merge','Month end','Aggregator sales in report','Manual CSV is the only option','PLAUSIBLE'],['Review alert','New rating','Owner alert','No API','PLAUSIBLE']],
+   succ:'—',kill:'No public API available.'},
  'zomato':{alias:'swiggy'},
  'google business profile':{cat:'social',b:{fit:13,demand:12,technical:11,viasocket:9,better:8,risk:8,evidence:5},conn:'NOT REQUIRED',conf:'LOW',
-   opp:'Happy customer se review maangna — PAID + delivered ke baad khud.',risk:'API access approval chahiye; viaSocket pe availability verify karo.',
-   ask:'Kya aapki dukaan Google Maps pe listed hai?',
-   uc:[['Review request','Order FULFILLED','WhatsApp: “Review de dijiye 🙏” + link','Rating up','PLAUSIBLE'],['Bad review alert','New review ≤ 3★','Owner alert','Jaldi response','PLAUSIBLE'],['Hours update','Holiday','Profile hours update','Customer galat time pe nahi aata','PLAUSIBLE']],
-   succ:'30 din mein 15+ new reviews.',kill:'Listing nahi hai.'}
+   opp:'Ask happy customers for a review — automatically after PAID + delivered.',risk:'API access needs approval; verify availability on viaSocket.',
+   ask:'Is your shop listed on Google Maps?',
+   uc:[['Review request','Order FULFILLED','WhatsApp: “Please leave us a review 🙏” + link','Rating up','PLAUSIBLE'],['Bad review alert','New review ≤ 3★','Owner alert','Faster response','PLAUSIBLE'],['Hours update','Holiday','Update profile hours','Customers don\'t show up at the wrong time','PLAUSIBLE']],
+   succ:'15+ new reviews in 30 days.',kill:'No listing.'}
 };
 const CAT={
- payments:{b:{fit:16,demand:14,technical:11,viasocket:9,better:7,risk:6,evidence:3},opp:'Payment collect + auto PAID.',risk:'Agar dusra gateway already hai to duplicate.',
-   uc:[['Payment link','Order confirmed','Payment link → WhatsApp','1-tap pay'],['Auto PAID','Payment webhook','Sheet = PAID','Zero hisaab'],['Udhaar link','Udhaar reminder','Link attach','Fast vasooli']]},
- shipping:{b:{fit:14,demand:14,technical:10,viasocket:8,better:8,risk:6,evidence:3},opp:'Delivery orders ka courier auto-book.',risk:'Pickup-only dukaan ke liye bekaar.',
-   uc:[['Auto booking','PAID + delivery','Courier order create','Owner free'],['Tracking','Status change','WhatsApp tracking','No “kahan hai?”'],['Failed delivery','RTO','Owner alert','Cost bachat']]},
- accounting:{b:{fit:11,demand:10,technical:10,viasocket:8,better:6,risk:6,evidence:3},opp:'Invoice/books auto.',risk:'Chhoti dukaan ke liye Sheet kaafi ho sakti hai.',ask:'Kya GST invoice ya CA ko data chahiye?',
+ payments:{b:{fit:16,demand:14,technical:11,viasocket:9,better:7,risk:6,evidence:3},opp:'Collect payments + auto PAID.',risk:'Duplicate if another gateway is already connected.',
+   uc:[['Payment link','Order confirmed','Payment link → WhatsApp','1-tap pay'],['Auto PAID','Payment webhook','Sheet = PAID','Zero bookkeeping'],['Credit link','Credit reminder','Attach link','Faster collection']]},
+ shipping:{b:{fit:14,demand:14,technical:10,viasocket:8,better:8,risk:6,evidence:3},opp:'Auto-book couriers for delivery orders.',risk:'Useless for pickup-only shops.',
+   uc:[['Auto booking','PAID + delivery','Create courier order','Owner freed up'],['Tracking','Status change','WhatsApp tracking','No “where is it?”'],['Failed delivery','RTO','Owner alert','Cost savings']]},
+ accounting:{b:{fit:11,demand:10,technical:10,viasocket:8,better:6,risk:6,evidence:3},opp:'Automatic invoices/books.',risk:'For a small shop the Sheet may be enough.',ask:'Do you need GST invoices, or does your CA need data?',
    uc:[['Auto invoice','Order PAID','Invoice create','GST-ready'],['Payment sync','Payment','Invoice paid','Books match'],['CA export','Month end','Summary','Filing easy']]},
- calendar:{b:{fit:14,demand:13,technical:11,viasocket:9,better:8,risk:7,evidence:3},opp:'Appointments WhatsApp se calendar mein.',risk:'Order-based dukaan ke liye kam kaam ka.',
-   uc:[['Slot booking','“Kal 4 baje”','Event create','No double booking'],['Reminder','Event − 1h','WhatsApp reminder','Show-up up'],['Reschedule','“Time badlo”','Event update','Owner free']]},
- social:{b:{fit:12,demand:11,technical:8,viasocket:7,better:6,risk:6,evidence:3},opp:'Doosre channel ke leads bhi same AI mein.',risk:'API access/approval UNKNOWN.',ask:'Is channel se hafte mein kitne order/leads aate hain?',
-   uc:[['DM → order','New DM','AI order flow','Ek pipeline'],['Post → broadcast','New post','Opt-in customers ko update','Repeat sales'],['Lead capture','Comment/inquiry','WhatsApp link','No lead miss']]},
- sheets:{b:{fit:13,demand:12,technical:12,viasocket:10,better:6,risk:7,evidence:3},opp:'Order/catalog data ka alag store.',risk:'Google Sheets already connected — duplicate ho sakta hai.',
-   uc:[['Order row','Order confirmed','Row add','Record'],['Catalog sync','Price change','AI catalog update','Sahi price'],['Report','Month end','Aggregate','Hisaab']]},
- ecommerce:{b:{fit:10,demand:10,technical:12,viasocket:10,better:6,risk:7,evidence:3},opp:'Website orders bhi WhatsApp pipeline mein.',risk:'Website active hai ya nahi — UNKNOWN.',ask:'Website pe mahine mein kitne order aate hain?',
-   uc:[['Web → WhatsApp','New web order','Sheet + confirm','Ek jagah orders'],['Status','“Mera order?”','Status reply','Support zero'],['Cart nudge','Abandoned','WhatsApp nudge','Recovered sales']]},
- email:{b:{fit:6,demand:6,technical:12,viasocket:10,better:3,risk:6,evidence:3},opp:'CA/supplier ko report.',risk:'Customer email pe nahi hai.',
-   uc:[['CA report','Month end','Email summary','Thoda time'],['Supplier','Low stock','Email order','Rare'],['Invoice','PAID','Email invoice','WhatsApp already']]},
- ledger:{b:{fit:8,demand:6,technical:4,viasocket:3,better:2,risk:5,evidence:3},dup:'built-in udhaar',opp:'Udhaar already built-in hai.',risk:'Duplicate ledger.',
-   uc:[['(Dup) Khata entry','Unpaid','Entry','Already built-in'],['(Dup) Reminder','Due','SMS','WhatsApp already'],['Import','Setup','Old data → Sheet','One-time']]},
- aggregator:{b:{fit:8,demand:8,technical:3,viasocket:2,better:3,risk:4,evidence:3},opp:'Aggregator orders ek jagah.',risk:'Public partner API usually restricted — UNKNOWN.',
-   uc:[['Order mirror','Aggregator order','Sheet row','API nahi'],['Monthly merge','Month end','Report','Manual CSV'],['Rating alert','New rating','Owner alert','API nahi']]},
- other:{b:{fit:8,demand:7,technical:7,viasocket:6,better:4,risk:6,evidence:2},opp:'Abhi clear nahi — owner ka goal batao.',risk:'Real use case prove nahi hua.',ask:'Ye app roz ke kis kaam mein aata hai — aur kya manual karna padta hai?',
-   uc:[['Goal-based flow','Owner ka trigger','App action','Defined after owner answer'],['—','—','—','—'],['—','—','—','—']]}
+ calendar:{b:{fit:14,demand:13,technical:11,viasocket:9,better:8,risk:7,evidence:3},opp:'Appointments from WhatsApp into the calendar.',risk:'Of little use to order-based shops.',
+   uc:[['Slot booking','“Tomorrow at 4”','Event create','No double booking'],['Reminder','Event − 1h','WhatsApp reminder','Show-up up'],['Reschedule','“Change the time”','Event update','Owner freed up']]},
+ social:{b:{fit:12,demand:11,technical:8,viasocket:7,better:6,risk:6,evidence:3},opp:'Leads from other channels go into the same AI.',risk:'API access/approval UNKNOWN.',ask:'How many orders/leads a week come from this channel?',
+   uc:[['DM → order','New DM','AI order flow','One pipeline'],['Post → broadcast','New post','Update to opted-in customers','Repeat sales'],['Lead capture','Comment/inquiry','WhatsApp link','No lead miss']]},
+ sheets:{b:{fit:13,demand:12,technical:12,viasocket:10,better:6,risk:7,evidence:3},opp:'A separate store for order/catalog data.',risk:'Google Sheets is already connected — may be a duplicate.',
+   uc:[['Order row','Order confirmed','Row add','Record'],['Catalog sync','Price change','AI catalog update','Correct prices'],['Report','Month end','Aggregate','Accounts']]},
+ ecommerce:{b:{fit:10,demand:10,technical:12,viasocket:10,better:6,risk:7,evidence:3},opp:'Website orders in the WhatsApp pipeline too.',risk:'Whether the website is active — UNKNOWN.',ask:'How many orders a month come through the website?',
+   uc:[['Web → WhatsApp','New web order','Sheet + confirm','Orders in one place'],['Status','“Where is my order?”','Status reply','Support zero'],['Cart nudge','Abandoned','WhatsApp nudge','Recovered sales']]},
+ email:{b:{fit:6,demand:6,technical:12,viasocket:10,better:3,risk:6,evidence:3},opp:'Reports to the CA/supplier.',risk:'Customers aren\'t on email.',
+   uc:[['CA report','Month end','Email summary','A little time saved'],['Supplier','Low stock','Email order','Rare'],['Invoice','PAID','Email invoice','WhatsApp already']]},
+ ledger:{b:{fit:8,demand:6,technical:4,viasocket:3,better:2,risk:5,evidence:3},dup:'built-in credit tracking',opp:'Credit tracking is already built in.',risk:'Duplicate ledger.',
+   uc:[['(Dup) Ledger entry','Unpaid','Entry','Already built-in'],['(Dup) Reminder','Due','SMS','WhatsApp already'],['Import','Setup','Old data → Sheet','One-time']]},
+ aggregator:{b:{fit:8,demand:8,technical:3,viasocket:2,better:3,risk:4,evidence:3},opp:'Aggregator orders in one place.',risk:'Public partner API usually restricted — UNKNOWN.',
+   uc:[['Order mirror','Aggregator order','Sheet row','No API'],['Monthly merge','Month end','Report','Manual CSV'],['Rating alert','New rating','Owner alert','No API']]},
+ other:{b:{fit:8,demand:7,technical:7,viasocket:6,better:4,risk:6,evidence:2},opp:'Not clear yet — tell us the owner\'s goal.',risk:'No real use case proven yet.',ask:'What daily task is this app used for — and what has to be done manually?',
+   uc:[['Goal-based flow','Owner\'s trigger','App action','Defined after owner answer'],['—','—','—','—'],['—','—','—','—']]}
 };
 const KW=[['payments',/pay|upi|gateway|razor|cashfree|phonepe|paytm|stripe|instamojo/i],['shipping',/ship|courier|deliver|porter|dunzo|delhivery|logistic|parcel/i],
  ['accounting',/book|tally|invoice|gst|account|bill|ledger pro/i],['calendar',/calend|book(ing)?\s|appoint|slot|schedule|calendly/i],
@@ -606,35 +607,35 @@ function analyse(name,shop,catSel,goal){
   const b=Object.assign({},base.b);
   const notes=[];
   // shop-type fit
-  if(base.fitFor){ if(base.fitFor.includes(shop)){b.fit=Math.min(20,b.fit+2);} else {b.fit=Math.max(0,b.fit-6);b.demand=Math.max(0,b.demand-5);notes.push('Is dukaan type ke liye fit kam hai.');} }
+  if(base.fitFor){ if(base.fitFor.includes(shop)){b.fit=Math.min(20,b.fit+2);} else {b.fit=Math.max(0,b.fit-6);b.demand=Math.max(0,b.demand-5);notes.push('Weak fit for this shop type.');} }
   // duplicate check against connected apps
   const conns=connected.map(norm);
   if(conns.includes(key)){return {already:true,name};}
   const dupWith=(k&&k.dupOf)||base.dup;
-  if(dupWith){ const d=norm(dupWith); if(d.startsWith('built-in')||conns.includes(d)){b.demand=Math.max(0,b.demand-8);b.better=Math.max(0,b.better-4);notes.push('Duplicate: '+dupWith+' already ye kaam karta hai.');} }
+  if(dupWith){ const d=norm(dupWith); if(d.startsWith('built-in')||conns.includes(d)){b.demand=Math.max(0,b.demand-8);b.better=Math.max(0,b.better-4);notes.push('Duplicate: '+dupWith+' already does this job.');} }
   if(cat==='sheets'&&conns.includes('google sheets')&&key!=='google sheets'){b.demand=Math.max(0,b.demand-6);notes.push('Google Sheets already connected — duplicate data store.');}
   // owner goal: concrete trigger/action words = evidence of real demand
   if(goal&&goal.trim().length>8){
     const concrete=/(jab|hote hi|aate hi|automatic|khud|har|when|after|order|payment|reminder|book|send|bhej)/i.test(goal);
-    if(concrete){b.evidence=Math.min(10,b.evidence+3);b.demand=Math.min(20,b.demand+2);notes.push('Owner ne concrete trigger bataya → evidence +.');}
+    if(concrete){b.evidence=Math.min(10,b.evidence+3);b.demand=Math.min(20,b.demand+2);notes.push('Owner described a concrete trigger → evidence +.');}
   }
   const score=Object.values(b).reduce((a,c)=>a+c,0);
   const v=verdictOf(score);
   const conn=k?k.conn:(b.viasocket>=9?'NOT REQUIRED':b.technical>=8?'PARTNER-BUILD':'NO');
   return {name:name.trim(),cat,b,score,v,conn,conf:k?k.conf:'LOW',opp:base.opp,risk:base.risk,ask:base.ask,
-    uc:base.uc.map(u=>({n:u[0],t:u[1],a:u[2],r:u[3],s:u[4]||'PLAUSIBLE'})),succ:k?k.succ:'Pehle 2 hafte mein 10+ runs bina owner ke.',kill:k?k.kill:'Koi concrete trigger nahi / 2 hafte mein < 5 runs.',
+    uc:base.uc.map(u=>({n:u[0],t:u[1],a:u[2],r:u[3],s:u[4]||'PLAUSIBLE'})),succ:k?k.succ:'10+ runs without the owner in the first 2 weeks.',kill:k?k.kill:'No concrete trigger / < 5 runs in 2 weeks.',
     notes,known:!!k};
 }
 
 const res=document.getElementById('anResult');
 function render(r){
-  if(r.already){res.innerHTML=`<div class="card"><div class="callout go">✅ <b>${esc(r.name)}</b> already connected hai.</div></div>`;return;}
+  if(r.already){res.innerHTML=`<div class="card"><div class="callout go">✅ <b>${esc(r.name)}</b> is already connected.</div></div>`;return;}
   const bars=DIM.map(([k,l,max])=>`<div class="barrow"><span>${l}</span><div class="track"><div class="fill" style="width:0" data-w="${r.b[k]/max*100}"></div></div><span class="muted">${r.b[k]}/${max}</span></div>`).join('');
   const ucs=r.uc.filter(u=>u.n!=='—').map((u,i)=>`<div class="uc"><span class="st">${u.s}</span><b>${i+1}. ${esc(u.n)}</b><div class="tra" style="margin-top:6px"><b>Trigger</b><span>${esc(u.t)}</span><b>Action</b><span>${esc(u.a)}</span><b>Result</b><span>${esc(u.r)}</span></div></div>`).join('');
   let next='';
-  if(r.v==='GO')next=`<div class="callout go">✅ <b>Use case genuine hai.</b> viaSocket embed se connect karo — <code>connect_new_app</code> flow template ke saath on hoga.<div style="margin-top:10px"><button class="btn-primary" id="connectBtn">➕ Connect ${esc(r.name)} via viaSocket</button></div></div>`;
-  else if(r.v==='CONDITIONAL')next=`<div class="callout">🤔 <b>Pehle owner se ek sawaal (WhatsApp pe):</b><br>“${esc(r.ask||'Ye app roz ke kis kaam mein aayega?')}”<br><small class="muted">Jawab ke saath dobara analyse hoga — goal box mein likh ke retry karo.</small></div>`;
-  else next=`<div class="callout no">⛔ <b>Abhi connect nahi karenge.</b> ${esc(r.risk)}</div>`;
+  if(r.v==='GO')next=`<div class="callout go">✅ <b>The use case is genuine.</b> Connect it via viaSocket embed — the <code>connect_new_app</code> flow will switch on with a template.<div style="margin-top:10px"><button class="btn-primary" id="connectBtn">➕ Connect ${esc(r.name)} via viaSocket</button></div></div>`;
+  else if(r.v==='CONDITIONAL')next=`<div class="callout">🤔 <b>First, one question for the owner (on WhatsApp):</b><br>“${esc(r.ask||'What daily task will this app be used for?')}”<br><small class="muted">It will be re-analysed with the answer — write it in the goal box and retry.</small></div>`;
+  else next=`<div class="callout no">⛔ <b>Not connecting for now.</b> ${esc(r.risk)}</div>`;
   res.innerHTML=`<div class="card">
     <div class="verdict"><div><div class="muted" style="font-size:13px">VERDICT · ${esc(r.name)}</div><span class="vbadge v-${r.v}">${r.v}</span></div>
     <div class="scorebig">${r.score}<small>/100</small></div></div>
@@ -647,7 +648,7 @@ function render(r){
     <div class="ucs">${ucs}</div>
     <div class="meta" style="grid-template-columns:1fr 1fr"><div>Success<b style="font-weight:500">${esc(r.succ)}</b></div><div>Kill<b style="font-weight:500">${esc(r.kill)}</b></div></div>
     ${next}
-    ${r.known?'':'<p class="muted" style="font-size:12.5px;margin-top:10px">Unknown app — category heuristic se score. Production mein live research (API docs, webhooks, viaSocket listing) se confirm hoga; jo verify na ho wo UNKNOWN.</p>'}
+    ${r.known?'':'<p class="muted" style="font-size:12.5px;margin-top:10px">Unknown app — scored with a category heuristic. In production this is confirmed with live research (API docs, webhooks, viaSocket listing); anything that cannot be verified is marked UNKNOWN.</p>'}
   </div>`;
   requestAnimationFrame(()=>res.querySelectorAll('.fill').forEach(f=>f.style.width=f.dataset.w+'%'));
   const cb=document.getElementById('connectBtn');
@@ -672,7 +673,7 @@ const quick=document.getElementById('quick');
 function run(){
   const n=document.getElementById('appName').value;
   if(!n.trim())return;
-  res.innerHTML='<div class="card"><div class="typing" style="display:inline-flex"><i></i><i></i><i></i></div> <span class="muted">viaSocket rubric se analyse ho raha hai…</span></div>';
+  res.innerHTML='<div class="card"><div class="typing" style="display:inline-flex"><i></i><i></i><i></i></div> <span class="muted">Analysing with the viaSocket rubric…</span></div>';
   setTimeout(()=>render(analyse(n,document.getElementById('shopType').value,document.getElementById('appCat').value,document.getElementById('goal').value)),650);
 }
 document.getElementById('anForm').onsubmit=e=>{e.preventDefault();run();};

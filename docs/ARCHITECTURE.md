@@ -1,20 +1,20 @@
-# Dukaan ka AI Manager — Structure
+# Dukaan AI Manager — Structure
 
-> WhatsApp Business mein baitha AI jo poori dukaan chalata hai.
-> **AI = dimaag** (samajhta hai customer kya bol raha hai) · **viaSocket embed = haath** (order save, payment link, reminder — sab backend mein execute).
+> An AI inside WhatsApp Business that runs the whole shop.
+> **AI = brain** (understands what the customer is saying) · **viaSocket embed = hands** (order save, payment link, reminder — all executed in the backend).
 
 ---
 
-## 1. Ye app kya karega (scope)
+## 1. What this app does (scope)
 
 | # | Feature | Trigger | Brain (AI) | Hands (viaSocket) | Result |
 |---|---------|---------|------------|-------------------|--------|
-| 1 | **Order lena** | Customer WhatsApp: "2 cake chahiye kal ke liye" | Intent = `ORDER`, items + qty + date nikaale, catalog se price calculate kare | Order sheet mein row add, customer ko confirm message | Order confirmed, owner ne kuch type nahi kiya |
-| 2 | **Payment link + auto "paid"** | Order confirm hua | — | Razorpay/Cashfree payment link banaye → WhatsApp pe bheje; payment webhook aate hi order `PAID` mark | Owner ko hisaab nahi rakhna |
-| 3 | **Delivery/pickup reminder** | Scheduler: delivery time − 2 ghante | Friendly reminder text likhe | WhatsApp template message bheje | No-show kam |
-| 4 | **Udhaar recovery** | Daily scan: `due_date` nikal gaya, `PAID` nahi | Tone choose kare (polite → firm) | Day 1 polite, Day 3 reminder + link, Day 7 owner ko escalate | Paisa wapas, owner ko awkward baat nahi karni |
-| 5 | **Mahine ka hisaab** | Cron: mahine ki last date, 9 PM | Data ko 1 line summary mein convert kare | Sheet se aggregate → owner ko WhatsApp | "Is mahine 340 order, ₹85,000 collect, 3 log due" |
-| 6 | **Add any app (App Analyzer)** | Owner bole "mujhe Shiprocket bhi jodna hai" | viaSocket plugin-validator rubric se analyse kare | Agar use case genuine (GO) → viaSocket embed se connect flow | Sirf kaam ke apps judte hain, kachra nahi |
+| 1 | **Taking orders** | Customer on WhatsApp: "Need 2 cakes for tomorrow" | Intent = `ORDER`, extract items + qty + date, calculate price from the catalog | Add a row to the order sheet, send the customer a confirmation | Order confirmed, and the owner typed nothing |
+| 2 | **Payment link + auto "paid"** | Order confirmed | — | Create a Razorpay/Cashfree payment link → send it on WhatsApp; mark the order `PAID` as soon as the payment webhook arrives | Owner doesn't have to keep accounts |
+| 3 | **Delivery/pickup reminder** | Scheduler: delivery time − 2 hours | Write a friendly reminder text | Send a WhatsApp template message | Fewer no-shows |
+| 4 | **Credit (udhaar) recovery** | Daily scan: `due_date` has passed, not `PAID` | Choose the tone (polite → firm) | Day 1 polite, Day 3 reminder + link, Day 7 escalate to the owner | Money comes back, no awkward conversation for the owner |
+| 5 | **Monthly accounts** | Cron: last day of the month, 9 PM | Turn the data into a 1-line summary | Aggregate from the Sheet → WhatsApp to the owner | "This month: 340 orders, ₹85,000 collected, 3 people due" |
+| 6 | **Add any app (App Analyzer)** | Owner says "I also want to connect Shiprocket" | Analyse with the viaSocket plugin-validator rubric | If the use case is genuine (GO) → connect flow via viaSocket embed | Only useful apps get connected, no clutter |
 
 ---
 
@@ -50,11 +50,11 @@
 
 | Component | Responsibility | Tech suggestion |
 |-----------|----------------|-----------------|
-| **WhatsApp Gateway** | Incoming messages ka webhook, outgoing text/template messages | Meta WhatsApp Cloud API (ya BSP: Gupshup/Interakt/AiSensy) |
-| **AI Brain** | Intent detection (`ORDER`, `QUERY`, `PAYMENT_STATUS`, `CANCEL`, `SMALLTALK`), entity extraction (item, qty, date, time), reply drafting, tone control | LLM with tool calling; system prompt me dukaan ka catalog + policies |
-| **State / Rules engine** | Order lifecycle, reminders ka schedule, udhaar escalation ladder | Backend DB (Postgres/SQLite) + cron |
-| **viaSocket Embed** | Saare external actions: Sheets row, payment link, payment webhook, reminders, reports, naye apps | viaSocket embed SDK + flows per owner |
-| **App Analyzer** | Owner jo naya app jodna chahe, uska viaSocket rubric se GO/CONDITIONAL/NO-GO | LLM + `docs/APP_ANALYZER.md` prompt |
+| **WhatsApp Gateway** | Webhook for incoming messages, outgoing text/template messages | Meta WhatsApp Cloud API (or a BSP: Gupshup/Interakt/AiSensy) |
+| **AI Brain** | Intent detection (`ORDER`, `QUERY`, `PAYMENT_STATUS`, `CANCEL`, `SMALLTALK`), entity extraction (item, qty, date, time), reply drafting, tone control | LLM with tool calling; the shop's catalog + policies in the system prompt |
+| **State / Rules engine** | Order lifecycle, reminder schedule, credit escalation ladder | Backend DB (Postgres/SQLite) + cron |
+| **viaSocket Embed** | All external actions: Sheets row, payment link, payment webhook, reminders, reports, new apps | viaSocket embed SDK + flows per owner |
+| **App Analyzer** | GO/CONDITIONAL/NO-GO via the viaSocket rubric for any new app the owner wants to connect | LLM + `docs/APP_ANALYZER.md` prompt |
 | **Owner dashboard** (optional) | Catalog edit, connected apps, monthly view | Single page (`index.html` style) |
 
 ---
@@ -67,7 +67,7 @@ CatalogItem { id, shop_id, name, aliases[], price, unit, lead_time_hours }
 Customer    { id, shop_id, phone, name, credit_limit }
 Order       { id, shop_id, customer_id, items[{item_id, qty, price}], total,
               fulfil_at, mode(pickup|delivery), status, payment_link_id, paid_at, due_date }
-Reminder    { id, order_id, kind(fulfilment|udhaar_1|udhaar_2|escalate), send_at, sent_at }
+Reminder    { id, order_id, kind(pickup_reminder|reminder_polite|reminder_firm|escalation), send_at, sent_at }
 ConnectedApp{ id, shop_id, app_name, verdict, score, viasocket_flow_ids[], added_at }
 ```
 
@@ -87,13 +87,13 @@ DRAFT ──confirm──▶ CONFIRMED ──link sent──▶ AWAITING_PAYMENT
 |------|---------|-------|------|
 | `save_order` | Webhook from backend (AI confirmed order) | Add row → return row id | Google Sheets |
 | `create_payment_link` | Webhook from backend | Create payment link (amount, customer phone, order id in notes) → return URL | Razorpay / Cashfree |
-| `payment_received` | Razorpay `payment_link.paid` webhook | Find order row by id → set `PAID` → callback backend → WhatsApp "Thank you, payment mila ✅" | Razorpay → Sheets → backend |
-| `send_reminder` | Backend scheduler | Send WhatsApp template (`order_reminder`, `udhaar_polite`, `udhaar_firm`) | WhatsApp |
-| `escalate_to_owner` | Udhaar > 7 din | WhatsApp owner with list + one-tap "call" | WhatsApp |
+| `payment_received` | Razorpay `payment_link.paid` webhook | Find order row by id → set `PAID` → callback backend → WhatsApp "Thank you, payment received ✅" | Razorpay → Sheets → backend |
+| `send_reminder` | Backend scheduler | Send WhatsApp template (`dukaan_pickup_reminder`, `dukaan_reminder_polite`, `dukaan_reminder_firm`) | WhatsApp |
+| `escalate_to_owner` | Credit overdue > 7 days | WhatsApp owner with list + one-tap "call" | WhatsApp |
 | `monthly_report` | Cron last day 21:00 | Aggregate rows → AI writes one-liner → WhatsApp owner | Sheets → AI → WhatsApp |
 | `connect_new_app` | App Analyzer verdict = GO | Open viaSocket embed auth for that app → create owner's flow from template | Any viaSocket app |
 
-> Rule: **AI kabhi directly external app ko touch nahi karta.** Har action viaSocket flow ke through jaata hai — audit trail, retries, aur owner-level auth ek jagah.
+> Rule: **The AI never touches an external app directly.** Every action goes through a viaSocket flow — audit trail, retries, and owner-level auth in one place.
 
 ---
 
@@ -111,24 +111,24 @@ DRAFT ──confirm──▶ CONFIRMED ──link sent──▶ AWAITING_PAYMENT
 ```
 
 Guardrails:
-- Price **sirf catalog se**, AI khud price invent nahi karega.
-- Order confirm tabhi jab customer "haan/ok/confirm" bole.
-- Confidence low ho ya complaint ho → `handoff_to_owner`.
-- Udhaar reminders: max 1/din, raat 9 baje ke baad nahi.
+- Prices **only from the catalog**; the AI never invents a price.
+- Confirm an order only when the customer says "yes/ok/confirm".
+- Low confidence or a complaint → `handoff_to_owner`.
+- Credit reminders: max 1/day, never after 9 PM.
 
 ---
 
-## 6. App Analyzer (owner koi bhi app add kare)
+## 6. App Analyzer (the owner adds any app)
 
-Owner bolta hai: *"Shiprocket bhi jod do"* → analyzer viaSocket **plugin-validator** rubric chalata hai, dukaan context ke saath:
+The owner says: *"Connect Shiprocket too"* → the analyzer runs the viaSocket **plugin-validator** rubric with the shop's context:
 
 - **Verdict:** GO / CONDITIONAL / NO-GO
-- **Score /100:** Dukaan fit 20 · Real automation demand 20 · Technical fit (API/webhook) 15 · Available on viaSocket 15 · Better than manual/WhatsApp-native 10 · Data & trust risk 10 · Evidence 10
+- **Score /100:** Shop fit 20 · Real automation demand 20 · Technical fit (API/webhook) 15 · Available on viaSocket 15 · Better than manual/WhatsApp-native 10 · Data & trust risk 10 · Evidence 10
 - **Connector:** BUILD / PARTNER-BUILD / NOT REQUIRED / NO
-- **3 use cases** — strictly `Trigger → Action → Result`, dukaan-specific
+- **3 use cases** — strictly `Trigger → Action → Result`, shop-specific
 - **Biggest risk** + **Success / Kill condition**
 
-Sirf **GO** pe app connect hota hai. CONDITIONAL → owner se 1 sawaal. NO-GO → reason ke saath mana.
+An app is connected only on **GO**. CONDITIONAL → 1 question to the owner. NO-GO → declined with a reason.
 Prompt: [`APP_ANALYZER.md`](./APP_ANALYZER.md). Demo: `index.html` → "Add any app" section.
 
 ---
@@ -145,7 +145,7 @@ Prompt: [`APP_ANALYZER.md`](./APP_ANALYZER.md). Demo: `index.html` → "Add any 
     ├── server/
     │   ├── webhook.ts       # WhatsApp inbound
     │   ├── brain.ts         # LLM + tools
-    │   ├── scheduler.ts     # reminders, udhaar ladder, monthly cron
+    │   ├── scheduler.ts     # reminders, credit ladder, monthly cron
     │   ├── viasocket.ts     # calls to viaSocket flow webhooks
     │   └── analyzer.ts      # /api/analyze-app
     └── db/schema.sql
@@ -155,9 +155,9 @@ Prompt: [`APP_ANALYZER.md`](./APP_ANALYZER.md). Demo: `index.html` → "Add any 
 
 ## 8. Deploy on embarko.ai
 
-1. **Phase 1 (abhi):** `index.html` static page deploy karo — use case + analyzer demo.
-2. **Phase 2:** `server/` ko embarko pe service ki tarah deploy karo. Env vars:
-   `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `WHATSAPP_VERIFY_TOKEN`, `LLM_API_KEY`, `VIASOCKET_EMBED_TOKEN`, `VIASOCKET_FLOW_*` (har flow ka webhook URL), `DATABASE_URL`.
+1. **Phase 1 (now):** deploy the `index.html` static page — use cases + analyzer demo.
+2. **Phase 2:** deploy `server/` on embarko as a service. Env vars:
+   `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `WHATSAPP_VERIFY_TOKEN`, `LLM_API_KEY`, `VIASOCKET_EMBED_TOKEN`, `VIASOCKET_FLOW_*` (each flow's webhook URL), `DATABASE_URL`.
 3. WhatsApp webhook URL = `https://<your-app>.embarko.ai/webhook/whatsapp`.
 4. Razorpay webhook → viaSocket `payment_received` flow URL.
 
@@ -166,6 +166,6 @@ Prompt: [`APP_ANALYZER.md`](./APP_ANALYZER.md). Demo: `index.html` → "Add any 
 1. WhatsApp inbound → AI → reply (no actions) ✔ catalog-based pricing
 2. `save_order` + `create_payment_link` + `payment_received`
 3. Fulfilment reminders
-4. Udhaar ladder + escalation
+4. Credit ladder + escalation
 5. Monthly one-liner
 6. App Analyzer + `connect_new_app`

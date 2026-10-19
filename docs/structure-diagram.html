@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="hi-Latn">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dukaan AI Structure</title>
-<meta name="description" content="Dukaan ka AI Manager ka structure — system architecture, ek order ka safar, order state machine aur App Analyzer decision.">
+<meta name="description" content="Structure of Dukaan AI Manager — system architecture, the journey of one order, the order state machine and the App Analyzer decision.">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f7f6f2;--surface:#fff;--surface-2:#f0eee8;--text:#1c1b19;--muted:#6b6862;--line:#cfcbc1;
@@ -48,14 +48,14 @@ figcaption{color:var(--muted);font-size:14px;margin-top:12px}
 </head>
 <body>
 <div class="wrap">
-  <h1>Dukaan ka AI Manager — Structure</h1>
-  <p class="lead">Chaar diagram: (1) kaun kis se baat karta hai, (2) ek order ka poora safar, (3) order kin states se guzarta hai, (4) naya app kaise check hota hai. Rule ek hi hai — <b>AI sochta hai, viaSocket karta hai</b>; AI kabhi seedha kisi external app ko touch nahi karta.</p>
+  <h1>Dukaan AI Manager — Structure</h1>
+  <p class="lead">Four diagrams: (1) who talks to whom, (2) the full journey of one order, (3) the states an order goes through, (4) how a new app gets checked. There is one rule — <b>the AI thinks, viaSocket acts</b>; the AI never touches an external app directly.</p>
 
   <!-- 1. SYSTEM -->
   <h2><span class="num">1</span>System architecture</h2>
   <figure>
     <div class="scroll">
-    <svg viewBox="0 0 1100 470" role="img" aria-label="Customer aur owner WhatsApp se baat karte hain; WhatsApp webhook Dukaan backend ke AI Brain ko jaata hai; backend viaSocket flows trigger karta hai; viaSocket Google Sheets, Razorpay, WhatsApp templates aur naye GO apps pe action leta hai; Razorpay ka paid webhook viaSocket se wapas backend aata hai.">
+    <svg viewBox="0 0 1100 470" role="img" aria-label="Customer and owner talk over WhatsApp; the WhatsApp webhook goes to the AI Brain in the Dukaan backend; the backend triggers viaSocket flows; viaSocket acts on Google Sheets, Razorpay, WhatsApp templates and new GO apps; Razorpay's paid webhook comes back to the backend through viaSocket.">
       <defs>
         <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
         <marker id="a1A" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahA"/></marker>
@@ -65,7 +65,7 @@ figcaption{color:var(--muted);font-size:14px;margin-top:12px}
       <rect class="box" x="20" y="80" width="130" height="56" rx="10"/>
       <text class="t c" x="85" y="104">👤 Customer</text><text class="s c" x="85" y="122">order · pay</text>
       <rect class="box" x="20" y="320" width="130" height="56" rx="10"/>
-      <text class="t c" x="85" y="344">🧑‍💼 Owner</text><text class="s c" x="85" y="362">kuch type nahi karta</text>
+      <text class="t c" x="85" y="344">🧑‍💼 Owner</text><text class="s c" x="85" y="362">types nothing</text>
 
       <!-- whatsapp -->
       <rect class="box" x="190" y="170" width="140" height="120" rx="12"/>
@@ -83,12 +83,12 @@ figcaption{color:var(--muted);font-size:14px;margin-top:12px}
       <rect class="core" x="390" y="60" width="240" height="64" rx="10"/>
       <text class="t" x="406" y="86">🧠 AI Brain</text><text class="s" x="406" y="106">intent · entities · catalog price</text>
       <rect class="box" x="390" y="150" width="240" height="64" rx="10"/>
-      <text class="t" x="406" y="176">📋 State engine + DB</text><text class="s" x="406" y="196">orders · udhaar · connected apps</text>
+      <text class="t" x="406" y="176">📋 State engine + DB</text><text class="s" x="406" y="196">orders · credit · connected apps</text>
       <rect class="box" x="390" y="240" width="240" height="64" rx="10"/>
-      <text class="t" x="406" y="266">⏰ Scheduler</text><text class="s" x="406" y="286">reminder · daily udhaar scan · month cron</text>
+      <text class="t" x="406" y="266">⏰ Scheduler</text><text class="s" x="406" y="286">reminder · daily credit scan · month cron</text>
       <rect class="box" x="390" y="330" width="240" height="64" rx="10"/>
       <text class="t" x="406" y="356">🔍 App Analyzer</text><text class="s" x="406" y="376">viaSocket rubric → GO / NO-GO</text>
-      <text class="s" x="390" y="430">Analyzer ko owner ka “X app jod do” AI Brain se milta hai</text>
+      <text class="s" x="390" y="430">Owner’s “connect X app” reaches it via AI Brain</text>
 
       <line class="ar" x1="330" y1="200" x2="390" y2="96" marker-start="url(#a1)" marker-end="url(#a1)"/>
       <text class="lbl" x="296" y="128">webhook in</text><text class="lbl" x="296" y="142">reply out</text>
@@ -140,14 +140,14 @@ figcaption{color:var(--muted);font-size:14px;margin-top:12px}
       <text class="lbl" x="884" y="372">OAuth</text>
     </svg>
     </div>
-    <figcaption>Backend sirf decide karta hai; har external kaam (Sheet, payment, message, naya app) viaSocket flow se jaata hai. Orange dashed path = payment ka wapas aana: Razorpay → viaSocket → backend, bina owner ke.</figcaption>
+    <figcaption>The backend only decides; every external task (Sheet, payment, message, new app) goes through a viaSocket flow. Orange dashed path = the payment coming back: Razorpay → viaSocket → backend, without the owner.</figcaption>
   </figure>
 
   <!-- 2. SEQUENCE -->
-  <h2><span class="num">2</span>Ek order ka safar — “2 cake chahiye kal ke liye”</h2>
+  <h2><span class="num">2</span>The journey of one order — “Need 2 cakes for tomorrow”</h2>
   <figure>
     <div class="scroll">
-    <svg viewBox="0 0 1000 450" role="img" aria-label="Sequence: customer order bhejta hai, AI price batata aur confirm leta hai, viaSocket sheet mein row add karta hai, Razorpay link banata hai, customer pay karta hai, Razorpay webhook se order PAID hota hai aur customer ko confirmation jaata hai.">
+    <svg viewBox="0 0 1000 450" role="img" aria-label="Sequence: the customer sends an order, the AI quotes the price and gets a confirmation, viaSocket adds a row to the sheet and creates a Razorpay link, the customer pays, the Razorpay webhook marks the order PAID and a confirmation goes to the customer.">
       <defs>
         <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
         <marker id="a2A" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ahA"/></marker>
@@ -162,9 +162,9 @@ figcaption{color:var(--muted);font-size:14px;margin-top:12px}
       <line class="lane" x1="500" y1="50" x2="500" y2="440"/><line class="lane" x1="700" y1="50" x2="700" y2="440"/>
       <line class="lane" x1="900" y1="50" x2="900" y2="440"/>
 
-      <line class="ar" x1="100" y1="80" x2="298" y2="80" marker-end="url(#a2)"/><text class="lbl c" x="200" y="74">① “2 cake kal ke liye”</text>
-      <line class="ar dash" x1="300" y1="112" x2="102" y2="112" marker-end="url(#a2)"/><text class="lbl c" x="200" y="106">② ₹1,400 · kitne baje?</text>
-      <line class="ar" x1="100" y1="144" x2="298" y2="144" marker-end="url(#a2)"/><text class="lbl c" x="200" y="138">③ “6 baje, confirm”</text>
+      <line class="ar" x1="100" y1="80" x2="298" y2="80" marker-end="url(#a2)"/><text class="lbl c" x="200" y="74">① “2 cakes for tomorrow”</text>
+      <line class="ar dash" x1="300" y1="112" x2="102" y2="112" marker-end="url(#a2)"/><text class="lbl c" x="200" y="106">② ₹1,400 · what time?</text>
+      <line class="ar" x1="100" y1="144" x2="298" y2="144" marker-end="url(#a2)"/><text class="lbl c" x="200" y="138">③ “6 PM, confirm”</text>
       <line class="ar" x1="300" y1="178" x2="498" y2="178" marker-end="url(#a2)"/><text class="m c" x="400" y="172">④ save_order</text>
       <line class="ar" x1="500" y1="206" x2="698" y2="206" marker-end="url(#a2)"/><text class="lbl c" x="600" y="200">⑤ add row #341</text>
       <line class="ar" x1="300" y1="240" x2="498" y2="240" marker-end="url(#a2)"/><text class="m c" x="400" y="234">⑥ create_payment_link</text>
@@ -173,17 +173,17 @@ figcaption{color:var(--muted);font-size:14px;margin-top:12px}
       <line class="ar" x1="100" y1="330" x2="898" y2="330" marker-end="url(#a2)"/><text class="lbl c" x="560" y="324">⑨ customer pays (UPI)</text>
       <line class="arA" x1="900" y1="362" x2="502" y2="362" marker-end="url(#a2A)"/><text class="lblA c" x="700" y="356">⑩ webhook: payment_link.paid</text>
       <line class="arA" x1="500" y1="392" x2="698" y2="392" marker-end="url(#a2A)"/><text class="lblA c" x="600" y="386">⑪ row #341 = PAID</text>
-      <line class="arA dash" x1="500" y1="424" x2="102" y2="424" marker-end="url(#a2A)"/><text class="lblA c" x="300" y="418">⑫ “Payment mila ✅”</text>
+      <line class="arA dash" x1="500" y1="424" x2="102" y2="424" marker-end="url(#a2A)"/><text class="lblA c" x="300" y="418">⑫ “Payment received ✅”</text>
     </svg>
     </div>
-    <figcaption>①–③ sirf AI aur customer ki baat hai (price catalog se, confirm ke bina order nahi). ④ ke baad har kaam viaSocket karta hai. ⑩–⑫ (orange) owner ke bina hota hai — yahi “auto paid” hai.</figcaption>
+    <figcaption>①–③ is just the AI and the customer talking (price from the catalog, no order without a confirmation). From ④ on, viaSocket does every task. ⑩–⑫ (orange) happens without the owner — that is “auto paid”.</figcaption>
   </figure>
 
   <!-- 3. STATE MACHINE -->
   <h2><span class="num">3</span>Order lifecycle</h2>
   <figure>
     <div class="scroll">
-    <svg viewBox="0 0 1000 270" role="img" aria-label="Order states: DRAFT se CONFIRMED se AWAITING PAYMENT se PAID se FULFILLED. Due date nikal jaye to AWAITING PAYMENT se UDHAAR; UDHAAR se reminders ke baad PAID, ya day 7 pe ESCALATED.">
+    <svg viewBox="0 0 1000 270" role="img" aria-label="Order states: DRAFT to CONFIRMED to AWAITING PAYMENT to PAID to FULFILLED. If the due date passes, AWAITING PAYMENT goes to UDHAAR (credit due); from UDHAAR to PAID after reminders, or to ESCALATED on day 7.">
       <defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
       <marker id="a3A" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ahA"/></marker></defs>
       <rect class="box"  x="20"  y="50" width="150" height="50" rx="25"/><text class="t c" x="95"  y="80">DRAFT</text>
@@ -191,31 +191,31 @@ figcaption{color:var(--muted);font-size:14px;margin-top:12px}
       <rect class="box"  x="410" y="50" width="170" height="50" rx="25"/><text class="t c" x="495" y="80">AWAITING_PAYMENT</text>
       <rect class="core" x="625" y="50" width="150" height="50" rx="25"/><text class="t c" x="700" y="80">PAID</text>
       <rect class="box"  x="820" y="50" width="150" height="50" rx="25"/><text class="t c" x="895" y="80">FULFILLED</text>
-      <line class="ar" x1="170" y1="75" x2="213" y2="75" marker-end="url(#a3)"/><text class="lbl c" x="192" y="40">“haan”</text>
+      <line class="ar" x1="170" y1="75" x2="213" y2="75" marker-end="url(#a3)"/><text class="lbl c" x="192" y="40">“yes”</text>
       <line class="ar" x1="365" y1="75" x2="408" y2="75" marker-end="url(#a3)"/><text class="lbl c" x="387" y="40">link sent</text>
       <line class="ar" x1="580" y1="75" x2="623" y2="75" marker-end="url(#a3)"/><text class="lbl c" x="602" y="40">webhook</text>
       <line class="ar" x1="775" y1="75" x2="818" y2="75" marker-end="url(#a3)"/><text class="lbl c" x="797" y="40">pickup</text>
 
       <rect class="hot" x="410" y="180" width="170" height="50" rx="25"/><text class="t c" x="495" y="210">UDHAAR</text>
       <rect class="bad" x="820" y="180" width="150" height="50" rx="25"/><text class="t c" x="895" y="210">ESCALATED</text>
-      <line class="arA" x1="495" y1="100" x2="495" y2="178" marker-end="url(#a3A)"/><text class="lblA" x="503" y="144">due date nikla</text>
-      <line class="arA" x1="580" y1="195" x2="660" y2="102" marker-end="url(#a3A)"/><text class="lblA" x="630" y="160">reminder ke baad pay</text>
-      <line class="arA" x1="580" y1="215" x2="818" y2="215" marker-end="url(#a3A)"/><text class="lblA c" x="700" y="234">Day 7 → owner ko</text>
-      <text class="s" x="20" y="200">Udhaar ladder (max 1/din, 9 PM ke baad nahi):</text>
+      <line class="arA" x1="495" y1="100" x2="495" y2="178" marker-end="url(#a3A)"/><text class="lblA" x="503" y="144">due date passed</text>
+      <line class="arA" x1="580" y1="195" x2="660" y2="102" marker-end="url(#a3A)"/><text class="lblA" x="630" y="160">paid after reminder</text>
+      <line class="arA" x1="580" y1="215" x2="818" y2="215" marker-end="url(#a3A)"/><text class="lblA c" x="700" y="234">Day 7 → owner</text>
+      <text class="s" x="20" y="200">Credit ladder (max 1/day, none after 9 PM):</text>
       <text class="s" x="20" y="218">Day 1 polite · Day 3 + payment link · Day 7 escalate</text>
     </svg>
     </div>
-    <figcaption>Main row khushi wala path hai. Orange niche wala path udhaar hai — Scheduler roz scan karta hai aur ladder chalata hai; owner tak sirf Day 7 pe baat pahunchti hai.</figcaption>
+    <figcaption>The main row is the happy path. The orange path below is credit (UDHAAR) — the Scheduler scans daily and runs the ladder; it only reaches the owner on Day 7.</figcaption>
   </figure>
 
   <!-- 4. ANALYZER -->
-  <h2><span class="num">4</span>“Koi bhi app jodo” — App Analyzer</h2>
+  <h2><span class="num">4</span>“Connect any app” — App Analyzer</h2>
   <figure>
     <div class="scroll">
-    <svg viewBox="0 0 1000 280" role="img" aria-label="Owner app ka naam bhejta hai; analyzer duplicate check aur viaSocket rubric se score karta hai; 70 ya zyada GO hai aur connect_new_app chalta hai; 45 se 69 CONDITIONAL hai aur owner se ek sawaal poocha jaata hai phir dobara analyse; 45 se kam NO-GO hai aur reason ke saath mana.">
+    <svg viewBox="0 0 1000 280" role="img" aria-label="The owner sends an app name; the analyzer runs a duplicate check and scores it with the viaSocket rubric; 70 or more is GO and connect_new_app runs; 45 to 69 is CONDITIONAL, the owner is asked one question and it is re-analysed; below 45 is NO-GO and is declined with a reason.">
       <defs><marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs>
       <rect class="box" x="20" y="110" width="150" height="60" rx="10"/>
-      <text class="t c" x="95" y="136">🧑‍💼 Owner</text><text class="s c" x="95" y="154">“Shiprocket jod do”</text>
+      <text class="t c" x="95" y="136">🧑‍💼 Owner</text><text class="s c" x="95" y="154">“Connect Shiprocket”</text>
       <rect class="box" x="220" y="110" width="150" height="60" rx="10"/>
       <text class="t c" x="295" y="136">Duplicate check</text><text class="s c" x="295" y="154">already connected?</text>
       <rect class="core" x="420" y="90" width="200" height="100" rx="12"/>
@@ -231,20 +231,20 @@ figcaption{color:var(--muted);font-size:14px;margin-top:12px}
       <text class="s" x="706" y="62">OAuth → template flow live</text>
       <rect class="mid" x="690" y="112" width="290" height="56" rx="10"/>
       <text class="t" x="706" y="136">CONDITIONAL 45–69</text>
-      <text class="s" x="706" y="154">owner se 1 sawaal WhatsApp pe</text>
+      <text class="s" x="706" y="154">1 question to owner on WhatsApp</text>
       <rect class="bad" x="690" y="204" width="290" height="56" rx="10"/>
       <text class="t" x="706" y="228">NO-GO &lt; 45</text>
-      <text class="s" x="706" y="246">reason + jo app already kaam karta hai</text>
+      <text class="s" x="706" y="246">reason + the app that already covers it</text>
       <line class="ar" x1="620" y1="120" x2="688" y2="50" marker-end="url(#a4)"/>
       <line class="ar" x1="620" y1="132" x2="688" y2="132" marker-end="url(#a4)"/>
       <line class="ar dash" x1="688" y1="150" x2="622" y2="150" marker-end="url(#a4)"/>
       <text class="lbl" x="632" y="166">re-run</text>
       <line class="ar" x1="620" y1="182" x2="688" y2="230" marker-end="url(#a4)"/>
       <line class="ar dash" x1="295" y1="110" x2="295" y2="60" marker-end="url(#a4)"/>
-      <text class="lbl c" x="295" y="50">haan → “already connected”</text>
+      <text class="lbl c" x="295" y="50">yes → “already connected”</text>
     </svg>
     </div>
-    <figcaption>Sirf GO pe app judta hai. CONDITIONAL ek sawaal ke baad dobara score hota hai; NO-GO (jaise Khatabook — udhaar already built-in) reason ke saath mana.</figcaption>
+    <figcaption>An app is connected only on GO. CONDITIONAL is re-scored after one question; NO-GO (e.g. Khatabook — credit tracking is already built in) is declined with a reason.</figcaption>
   </figure>
 </div>
 </body>

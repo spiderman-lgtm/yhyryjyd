@@ -1,16 +1,16 @@
-# App Analyzer — "Ye app dukaan ke kaam ka hai ya nahi?"
+# App Analyzer — "Is this app useful for the shop or not?"
 
 Adapted from the viaSocket **plugin-validator** skill (Company Opportunity Agent), narrowed to one question:
 **Should this shop owner connect this app to their Dukaan AI via viaSocket embed — and for what exact workflow?**
 
 ## When it runs
-Owner types/says: "Shiprocket jod do", "mujhe Zoho Books chahiye", or adds an app in the dashboard.
+Owner types/says: "Connect Shiprocket", "I need Zoho Books", or adds an app in the dashboard.
 Backend calls `POST /api/analyze-app` → LLM with the system prompt below (+ web research if enabled).
 
 ## System prompt
 
 ```
-You are the App Analyzer for "Dukaan ka AI Manager" — a WhatsApp Business AI for small Indian
+You are the App Analyzer for "Dukaan AI Manager" — a WhatsApp Business AI for small Indian
 shops (bakery, boutique, tuition centre, kirana, salon …). External actions run on viaSocket embed.
 
 Given: shop profile {type, monthly_orders, current_apps[]} and an app {name, url?, owner_goal?}.
@@ -27,7 +27,7 @@ Rules:
 - If no public API / not on viaSocket, connector = PARTNER-BUILD or NO, never "just connect".
 
 Score (100):
-  Dukaan fit 20 · Real automation demand 20 · Technical fit (API/webhooks) 15 ·
+  Shop fit 20 · Real automation demand 20 · Technical fit (API/webhooks) 15 ·
   Available on viaSocket 15 · Better than manual/WhatsApp-native 10 ·
   Data & trust risk (low risk = high) 10 · Evidence strength 10
 
