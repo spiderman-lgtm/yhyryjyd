@@ -47,6 +47,20 @@ function dropOldDemo(d) {
   return fresh;
 }
 
+// Orders and chats from the number used to test the live deployment while building it.
+const BUILD_TEST_PHONES = ['919800000777'];
+function removeBuildTestData(d) {
+  d.migrations ||= {};
+  if (d.migrations.build_test_data_removed) return d;
+  const keep = (x) => !BUILD_TEST_PHONES.includes(x.phone);
+  d.orders = (d.orders || []).filter(keep);
+  d.messages = (d.messages || []).filter(keep);
+  d.customers = (d.customers || []).filter(keep);
+  for (const p of BUILD_TEST_PHONES) delete d.sessions?.[p];
+  d.migrations.build_test_data_removed = true;
+  return d;
+}
+
 let db = null;
 let file = config.dataFile;
 
@@ -54,7 +68,7 @@ export function load(customFile) {
   if (customFile) file = customFile;
   if (file === ':memory:') { db = seed(); return db; }
   try {
-    db = dropOldDemo(JSON.parse(fs.readFileSync(file, 'utf8')));
+    db = removeBuildTestData(dropOldDemo(JSON.parse(fs.readFileSync(file, 'utf8'))));
     save();
   } catch {
     db = seed();

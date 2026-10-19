@@ -165,5 +165,11 @@ test('a new shop starts empty and old demo data is cleared', async () => {
   assert.deepEqual(d.integrations, { apps: { x: 1 } });
   assert.equal(d.orders.length, 0);
   assert.equal(d.catalog.length, 0);
+  // Build-time test orders are removed even from a shop that was already set up.
+  fs.writeFileSync(f, JSON.stringify({ shop: { name: 'Ritu Cakes', setup_done: true }, catalog: [{ id: 'a' }], orders: [{ id: '341', phone: '919800000777' }, { id: '342', phone: '919811122233' }], messages: [], customers: [{ phone: '919800000777' }], sessions: {}, connected_apps: [], flow_log: [], reports: [], seq: { order: 342 } }));
+  const e = store.load(f);
+  assert.deepEqual(e.orders.map((o) => o.id), ['342']);
+  assert.equal(e.customers.length, 0);
+  assert.equal(e.catalog.length, 1);
   store.load(':memory:');
 });
