@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShikshaFlow Use Cases</title>
+<meta name="description" content="School & coaching institute automations powered by viaSocket: fee reminders, absent alerts, admission sync, result broadcast, and an app analyzer.">
+<style>
+  :root {
+    --bg: #f7f6f2; --surface: #ffffff; --surface-2: #f0eee8; --text: #1d1c1a; --muted: #6b675f;
+    --border: #e2dfd6; --accent: #2f6b4f; --accent-soft: #e3efe8; --warn: #9a6a12; --warn-soft: #f7ecd6;
+    --bad: #a23b2c; --bad-soft: #f6e1dd; --code: #f3f1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161614; --surface: #1f1f1c; --surface-2: #272724; --text: #ecebe6; --muted: #a29e94;
+      --border: #34332f; --accent: #6fbf95; --accent-soft: #1f3329; --warn: #e0b25a; --warn-soft: #3a3020;
+      --bad: #e48a7b; --bad-soft: #3b2420; --code: #252522;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161614; --surface: #1f1f1c; --surface-2: #272724; --text: #ecebe6; --muted: #a29e94;
+    --border: #34332f; --accent: #6fbf95; --accent-soft: #1f3329; --warn: #e0b25a; --warn-soft: #3a3020;
+    --bad: #e48a7b; --bad-soft: #3b2420; --code: #252522;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  header { padding: 56px 0 32px; }
+  .eyebrow { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.15; margin: 8px 0 12px; }
+  h2 { font-size: 24px; margin: 0 0 6px; }
+  h3 { font-size: 18px; margin: 0; }
+  p.lead { color: var(--muted); max-width: 680px; font-size: 18px; margin: 0; }
+  section { padding: 32px 0; border-top: 1px solid var(--border); }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+
+  .arch { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; align-items: stretch; }
+  .arch .node { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .arch .node b { display: block; margin-bottom: 4px; }
+  .arch .node span { color: var(--muted); font-size: 14px; }
+  .arch .node.hl { border-color: var(--accent); background: var(--accent-soft); }
+
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .card-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .tag { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+  .tag.ok { background: var(--accent-soft); color: var(--accent); }
+  .tag.warn { background: var(--warn-soft); color: var(--warn); }
+  .tag.bad { background: var(--bad-soft); color: var(--bad); }
+  .flow { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .flow li { display: grid; grid-template-columns: 74px 1fr; gap: 10px; font-size: 15px; }
+  .flow li .k { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding-top: 2px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 13px; border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; background: var(--surface-2); }
+  .msg { background: var(--accent-soft); border-radius: 10px 10px 10px 2px; padding: 10px 12px; font-size: 14px; }
+  details { font-size: 14px; }
+  summary { cursor: pointer; color: var(--muted); }
+  pre { background: var(--code); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow-x: auto; font-size: 13px; margin: 8px 0 0; }
+
+  form.analyzer { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: grid; gap: 14px; }
+  label { font-size: 14px; font-weight: 600; display: block; margin-bottom: 6px; }
+  input, textarea { width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  textarea { min-height: 84px; resize: vertical; }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 10px 16px; cursor: pointer; background: var(--accent); color: var(--bg); }
+  button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); font-weight: 500; }
+  .examples { font-size: 13px; color: var(--muted); }
+  .examples a { color: var(--accent); cursor: pointer; text-decoration: underline; margin-right: 8px; }
+  #result { margin-top: 16px; }
+  .checks { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: 14px; }
+  .checks li::before { content: attr(data-i); display: inline-block; width: 22px; font-weight: 700; }
+  .checks li.pass::before { color: var(--accent); }
+  .checks li.fail::before { color: var(--bad); }
+  .checks li.unk::before { color: var(--warn); }
+  .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .meta div { background: var(--surface-2); border-radius: 8px; padding: 10px; }
+  .meta small { display: block; color: var(--muted); font-size: 12px; }
+  .score { font-size: 22px; font-weight: 700; }
+  footer { padding: 32px 0 56px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--border); }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: .9em; }
+
+  @media (max-width: 760px) {
+    .arch, .grid, .row2 { grid-template-columns: 1fr; }
+    .meta { grid-template-columns: 1fr 1fr; }
+    header { padding-top: 36px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">School &amp; Coaching Institute SaaS · powered by viaSocket</div>
+  <h1>ShikshaFlow</h1>
+  <p class="lead">Staff use the app as usual. Fee reminders, absent alerts, admission sync and result messages go out to parents automatically through viaSocket flows.</p>
+</header>
+
+<section>
+  <h2>How it works</h2>
+  <p class="sub">The app owns the data. viaSocket owns the integrations. A new integration is a new flow, not new backend code.</p>
+  <div class="arch">
+    <div class="node"><b>1 · Action in the app</b><span>Teacher marks attendance, admin publishes a result, parent submits a form, scheduler finds a due fee</span></div>
+    <div class="node"><b>2 · Event</b><span><code>fee.due</code>, <code>attendance.absent</code>, <code>admission.submitted</code>, <code>result.published</code></span></div>
+    <div class="node hl"><b>3 · viaSocket flow</b><span>Webhook trigger → filter → actions, with retries and an idempotency key</span></div>
+    <div class="node"><b>4 · Parent / team</b><span>WhatsApp, SMS, email, payment link, Google Sheet, CRM lead</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>Use cases</h2>
+  <p class="sub">The four core flows, plus any app added and approved in the analyzer below.</p>
+  <div class="grid" id="cards"></div>
+</section>
+
+<section id="add-app">
+  <h2>Add any app</h2>
+  <p class="sub">Name the app and describe what should happen. The analyzer categorizes the app (viaSocket <em>app-category-identification</em>), checks whether the use case is genuine (viaSocket <em>plugin-validator</em> rules), and adds a use-case card if it passes.</p>
+
+  <form class="analyzer" id="analyzer" autocomplete="off">
+    <div class="row2">
+      <div>
+        <label for="app">App name</label>
+        <input id="app" required placeholder="e.g. Google Classroom, Tally, Zoom">
+      </div>
+      <div>
+        <label for="url">Website / API docs URL <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <input id="url" placeholder="https://...">
+      </div>
+    </div>
+    <div>
+      <label for="usecase">What should happen?</label>
+      <textarea id="usecase" required placeholder="e.g. When homework is posted in Google Classroom, send a WhatsApp message to the parents of that class"></textarea>
+    </div>
+    <div class="btns">
+      <button type="submit">Analyze app</button>
+      <button type="button" class="ghost" id="reset">Remove added use cases</button>
+    </div>
+    <div class="examples">Try:
+      <a data-ex="0">Google Classroom</a><a data-ex="1">Tally</a><a data-ex="2">Zoom</a><a data-ex="3">Unknown app</a><a data-ex="4">Spam case</a>
+    </div>
+  </form>
+  <div id="result" aria-live="polite"></div>
+</section>
+
+<footer>
+  ShikshaFlow · this page is a static demo. In production the analyzer calls <code>POST /api/analyze-app</code>, which runs Claude with the viaSocket skills loaded. See <code>STRUCTURE.md</code> for the full architecture.
+</footer>
+</div>
+
+<script>
+// ---------- Core use cases ----------
+const CORE = [
+  {
+    id: "f1", title: "Fee due → reminder + payment link", event: "fee.due",
+    trigger: "Daily 9 AM scheduler finds installments due in 3 days, due today, or overdue",
+    actions: ["Razorpay: create payment link", "WhatsApp: fee_reminder template with link", "SMS fallback (MSG91) if WhatsApp fails", "Save link back to the app"],
+    result: "Parent pays in one tap; Razorpay 'paid' webhook marks the fee paid and sends a receipt",
+    apps: ["Razorpay", "WhatsApp (Interakt)", "MSG91"],
+    msg: "Namaste Sharma ji, Aarav ki ₹4,500 fees 25 Oct tak due hai. Pay karein: rzp.io/l/ab12cd",
+    payload: { event: "fee.due", event_id: "evt_fee_9f2", data: { student: "Aarav Sharma", class: "8-B", parent_phone: "+9198XXXXXX01", amount: 4500, due_date: "2026-10-25", installment_id: "inst_q3_118" } }
+  },
+  {
+    id: "f2", title: "Marked absent → instant WhatsApp alert", event: "attendance.absent",
+    trigger: "Teacher saves attendance; one event per absent student",
+    actions: ["Filter: skip holidays and already-alerted students", "WhatsApp: absent_alert template", "Google Sheets: log for the monthly report"],
+    result: "Parent knows within 1–2 minutes that the child is not in class",
+    apps: ["WhatsApp (Interakt)", "Google Sheets"],
+    msg: "Aarav aaj (19 Oct) class mein absent hai. Koi sawaal ho to Bright Future Academy se sampark karein.",
+    payload: { event: "attendance.absent", event_id: "evt_att_77a", data: { student: "Aarav Sharma", batch: "JEE-2027-A", date: "2026-10-19", period: "1", parent_phone: "+9198XXXXXX01" } }
+  },
+  {
+    id: "f3", title: "Admission form → Google Sheet + CRM", event: "admission.submitted",
+    trigger: "Parent submits the public admission form",
+    actions: ["Google Sheets: add row to 'Admissions 2026-27'", "Zoho CRM: create or update lead (dedupe on phone)", "WhatsApp: thank-you to parent + alert to counsellor"],
+    result: "Every enquiry is in the sheet and the CRM, and a counsellor follows up the same day",
+    apps: ["Google Sheets", "Zoho CRM", "WhatsApp (Interakt)"],
+    msg: "Gupta ji, Riya ke admission form ke liye dhanyavaad. Hamari team jaldi call karegi.",
+    payload: { event: "admission.submitted", event_id: "evt_adm_31c", data: { student_name: "Riya Gupta", class: "11 (Science)", parent_name: "Neha Gupta", phone: "+9197XXXXXX22", email: "neha@example.com", source: "Website" } }
+  },
+  {
+    id: "f4", title: "Result published → bulk WhatsApp + email", event: "result.published",
+    trigger: "Admin clicks Publish on an exam",
+    actions: ["Loop over every student in the exam", "WhatsApp: result_published template with marks summary", "Gmail: email with the report-card PDF", "Throttle batches to stay inside WhatsApp limits"],
+    result: "Every parent gets the result on WhatsApp and email within minutes, with no manual sending",
+    apps: ["WhatsApp (Interakt)", "Gmail"],
+    msg: "Half-Yearly ka result aa gaya hai: Aarav – 87% (A). Report card: shiksha.app/r/7Hk2",
+    payload: { event: "result.published", event_id: "evt_res_5d0", data: { exam: "Half-Yearly 2026", class: "8-B", students: [{ name: "Aarav Sharma", percentage: 87, grade: "A", report_card_url: "https://.../7Hk2.pdf" }] } }
+  }
+];
+
+// ---------- Offline app catalog (pre-classified with viaSocket app-category-identification teams/categories) ----------
+const CATALOG = {
+  "whatsapp":         { name: "WhatsApp Business", team: "Ajit",   category: "Communication",           plugin: true },
+  "interakt":         { name: "Interakt",          team: "Ajit",   category: "Communication",           plugin: true },
+  "aisensy":          { name: "AiSensy",           team: "Ajit",   category: "Communication",           plugin: true },
+  "razorpay":         { name: "Razorpay",          team: "Ajit",   category: "Payment Processing",      plugin: true },
+  "cashfree":         { name: "Cashfree",          team: "Ajit",   category: "Payment Processing",      plugin: true },
+  "paytm":            { name: "Paytm Business",    team: "Ajit",   category: "Payment Processing",      plugin: true },
+  "msg91":            { name: "MSG91",             team: "Ajit",   category: "Phone and SMS",           plugin: true },
+  "twilio":           { name: "Twilio",            team: "Ajit",   category: "Phone and SMS",           plugin: true },
+  "zoom":             { name: "Zoom",              team: "Ajit",   category: "Webinars",                plugin: true },
+  "slack":            { name: "Slack",             team: "Ajit",   category: "Team Chat",               plugin: true },
+  "google sheets":    { name: "Google Sheets",     team: "Devesh", category: "Spreadsheets",            plugin: true },
+  "airtable":         { name: "Airtable",          team: "Devesh", category: "Databases",               plugin: true },
+  "google drive":     { name: "Google Drive",      team: "Devesh", category: "Content and Files",       plugin: true },
+  "zoho crm":         { name: "Zoho CRM",          team: "Mansi",  category: "CRM",                     plugin: true },
+  "leadsquared":      { name: "LeadSquared",       team: "Mansi",  category: "CRM",                     plugin: true },
+  "hubspot":          { name: "HubSpot",           team: "Mansi",  category: "CRM",                     plugin: true },
+  "google forms":     { name: "Google Forms",      team: "Mansi",  category: "Forms and Surveys",       plugin: true },
+  "typeform":         { name: "Typeform",          team: "Mansi",  category: "Forms and Surveys",       plugin: true },
+  "google calendar":  { name: "Google Calendar",   team: "Mansi",  category: "Calendars",               plugin: true },
+  "calendly":         { name: "Calendly",          team: "Mansi",  category: "Scheduling and Booking",  plugin: true },
+  "tally":            { name: "TallyPrime",        team: "Mansi",  category: "Accounting & Taxes",      plugin: false },
+  "zoho books":       { name: "Zoho Books",        team: "Mansi",  category: "Accounting & Taxes",      plugin: true },
+  "gmail":            { name: "Gmail",             team: "Rahul",  category: "Email",                   plugin: true },
+  "outlook":          { name: "Outlook",           team: "Rahul",  category: "Email",                   plugin: true },
+  "mailchimp":        { name: "Mailchimp",         team: "Rahul",  category: "Email Newsletters",       plugin: true },
+  "google classroom": { name: "Google Classroom",  team: "Rahul",  category: "Education",               plugin: true },
+  "moodle":           { name: "Moodle",            team: "Rahul",  category: "Education",               plugin: true },
+  "teachable":        { name: "Teachable",         team: "Rahul",  category: "Online Courses",          plugin: true },
+  "youtube":          { name: "YouTube",           team: "Rahul",  category: "Images, Design & Video",  plugin: true }
+};
+
+const SCHOOL_WORDS = ["fee","fees","attendance","absent","present","admission","enquiry","inquiry","exam","result","marks","report card",
+  "parent","student","class","batch","teacher","homework","assignment","timetable","lecture","holiday","transport","bus","library",
+  "salary","staff","certificate","receipt","invoice","payment","course","test","quiz","notice","circular","ptm","meeting","school","coaching"];
+const TRIGGER_WORDS = ["when","whenever","after","on ","if ","jab","hone par","every","daily","weekly","new "];
+const ACTION_WORDS = ["send","create","add","update","sync","notify","alert","post","email","whatsapp","sms","message","log","save","generate","remind"];
+const ABUSE_WORDS = ["scrape","scraping","spam","buy number","purchased list","loan","betting","casino","crypto","adult","hack","bypass","fake review","without consent"];
+
+const STORE_KEY = "shikshaflow.addedUseCases";
+function loadAdded() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch (e) { return []; } }
+function saveAdded(list) { try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch (e) {} }
+let added = loadAdded();
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+function cardHTML(u, isAdded) {
+  const tag = isAdded ? `<span class="tag ok">Added · ${esc(u.category)}</span>` : `<span class="tag">${esc(u.event)}</span>`;
+  return `<article class="card">
+    <div class="card-head"><h3>${esc(u.title)}</h3>${tag}</div>
+    <ul class="flow">
+      <li><span class="k">Trigger</span><span>${esc(u.trigger)}</span></li>
+      <li><span class="k">Actions</span><span>${u.actions.map(esc).join(" → ")}</span></li>
+      <li><span class="k">Result</span><span>${esc(u.result)}</span></li>
+    </ul>
+    <div class="chips">${u.apps.map(a => `<span class="chip">${esc(a)}</span>`).join("")}</div>
+    ${u.msg ? `<div class="msg">${esc(u.msg)}</div>` : ""}
+    ${u.payload ? `<details><summary>Webhook payload sent to viaSocket</summary><pre>${esc(JSON.stringify(u.payload, null, 2))}</pre></details>` : ""}
+  </article>`;
+}
+
+function renderCards() {
+  document.getElementById("cards").innerHTML =
+    CORE.map(u => cardHTML(u, false)).join("") + added.map(u => cardHTML(u, true)).join("");
+}
+
+function findApp(name, url) {
+  const n = name.trim().toLowerCase();
+  const u = (url || "").toLowerCase();
+  if (CATALOG[n]) return CATALOG[n];
+  for (const key of Object.keys(CATALOG)) {
+    if (n.includes(key) || key.includes(n) && n.length >= 4 || u.includes(key.replace(/\s+/g, ""))) return CATALOG[key];
+  }
+  return null;
+}
+
+const hasAny = (text, words) => words.filter(w => text.includes(w));
+
+function splitUseCase(text, appName) {
+  // Turn "When X, send Y" into trigger / action parts for the card.
+  const m = text.match(/^(.*?)(?:,|\bthen\b|\btoh\b)(.*)$/i);
+  const trigger = (m && m[1].trim().length > 6 ? m[1] : `Event in ${appName}`).replace(/^(when|whenever|jab)\s+/i, "");
+  const action = m && m[2].trim().length > 3 ? m[2].trim() : text;
+  return { trigger: cap(trigger.trim()), action: cap(action) };
+}
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+function analyze(appName, url, useCase) {
+  const text = " " + useCase.toLowerCase() + " ";
+  const app = findApp(appName, url);
+  const school = hasAny(text, SCHOOL_WORDS);
+  const trig = hasAny(text, TRIGGER_WORDS);
+  const act = hasAny(text, ACTION_WORDS);
+  const abuse = hasAny(text + " " + appName.toLowerCase(), ABUSE_WORDS);
+  const dup = CORE.concat(added).find(u =>
+    app && u.apps.some(a => a.toLowerCase().startsWith(app.name.toLowerCase())) &&
+    hasAny(text, [u.event.split(".")[0]]).length > 0);
+
+  const checks = [
+    { label: app ? `Verified app: ${app.name}` : "App not in the verified catalog — needs viaSocket skill research", state: app ? "pass" : "unk" },
+    { label: app ? (app.plugin ? "viaSocket plugin available" : "No ready plugin — connector verdict: PARTNER-BUILD / custom API") : "Plugin availability unknown", state: app ? (app.plugin ? "pass" : "unk") : "unk" },
+    { label: school.length ? `School/coaching related (${school.slice(0, 3).join(", ")})` : "Not clearly related to school/coaching operations", state: school.length ? "pass" : "fail" },
+    { label: trig.length && act.length ? "Clear trigger and action" : "Trigger or action is unclear", state: trig.length && act.length ? "pass" : "fail" },
+    { label: dup ? `Overlaps existing flow: ${dup.title}` : "Not a duplicate of an existing flow", state: dup ? "unk" : "pass" },
+    { label: abuse.length ? `Abuse/spam risk detected (${abuse.join(", ")})` : "No spam or abuse signals", state: abuse.length ? "fail" : "pass" }
+  ];
+
+  let score = 0;
+  score += app ? 25 : 5;
+  score += app && app.plugin ? 15 : (app ? 8 : 0);
+  score += Math.min(school.length, 3) * 10;
+  score += trig.length && act.length ? 20 : 0;
+  score -= dup ? 10 : 0;
+  score = Math.max(0, Math.min(100, score));
+
+  let verdict;
+  if (abuse.length || !school.length) verdict = "REJECTED";
+  else if (!app || !(trig.length && act.length) || dup) verdict = "NEEDS REVIEW";
+  else verdict = "GENUINE";
+  if (abuse.length) score = Math.min(score, 10);
+
+  const parts = splitUseCase(useCase.trim(), app ? app.name : appName);
+  const useCaseCard = {
+    id: "u" + Date.now(), title: `${app ? app.name : appName}: ${parts.trigger.slice(0, 60)}`,
+    event: "custom", category: app ? app.category : "Unclassified",
+    trigger: parts.trigger, actions: [parts.action], result: "Runs automatically through a viaSocket flow; logged in the Event Log",
+    apps: [app ? app.name : appName, ...(/whatsapp/i.test(useCase) ? ["WhatsApp (Interakt)"] : []), ...(/email|mail/i.test(useCase) ? ["Gmail"] : [])]
+  };
+
+  return { app, appName, url, verdict, score, checks, useCaseCard };
+}
+
+function verdictTag(v) {
+  return v === "GENUINE" ? `<span class="tag ok">✅ Genuine</span>` : v === "NEEDS REVIEW" ? `<span class="tag warn">🟡 Needs review</span>` : `<span class="tag bad">❌ Rejected</span>`;
+}
+
+function skillPrompt(r, useCase) {
+  return `Run viaSocket skills on this app request:
+1) app-category-identification → App, Team, Category, Reason, Source
+2) plugin-validator → connector verdict + Trigger → Action → Result use cases
+
+App: ${r.appName}
+URL: ${r.url || "(not given)"}
+Requested use case (School/Coaching SaaS): ${useCase}`;
+}
+
+function showResult(r, useCase) {
+  const icons = { pass: "✓", fail: "✕", unk: "?" };
+  const nextStep = r.verdict === "GENUINE"
+    ? `<p>Use case added to the list above with status <b>ready to build</b>. Next step: create the viaSocket flow and save its webhook URL in Integrations.</p>`
+    : r.verdict === "NEEDS REVIEW"
+      ? `<p>Sent to the admin queue. Run the viaSocket skills on it to confirm (prompt below), then approve.</p><pre>${esc(skillPrompt(r, useCase))}</pre>`
+      : `<p>Not added. ShikshaFlow only builds automations for school/coaching operations without spam or abuse risk. Rewrite the use case if this was a mistake.</p>`;
+  document.getElementById("result").innerHTML = `<article class="card">
+    <div class="card-head"><h3>Analysis: ${esc(r.app ? r.app.name : r.appName)}</h3>${verdictTag(r.verdict)}</div>
+    <div class="meta">
+      <div><small>Team</small>${esc(r.app ? r.app.team : "—")}</div>
+      <div><small>Category</small>${esc(r.app ? r.app.category : "Unverified")}</div>
+      <div><small>Plugin</small>${r.app ? (r.app.plugin ? "Available" : "Custom API") : "Unknown"}</div>
+      <div><small>Score</small><span class="score">${r.score}</span>/100</div>
+    </div>
+    <ul class="checks">${r.checks.map(c => `<li class="${c.state}" data-i="${icons[c.state]}">${esc(c.label)}</li>`).join("")}</ul>
+    ${nextStep}
+  </article>`;
+}
+
+const EXAMPLES = [
+  ["Google Classroom", "https://classroom.google.com", "When homework is posted in Google Classroom, send a WhatsApp message to the parents of that class"],
+  ["Tally", "https://tallysolutions.com", "When a fee payment is received, create a receipt voucher in Tally for accounting"],
+  ["Zoom", "https://zoom.us", "Whenever a new online lecture is scheduled for a batch, send the Zoom link to students and parents on WhatsApp"],
+  ["CampusBuddyX", "", "When a student is marked late twice in a week, notify the class teacher"],
+  ["LeadBlaster", "", "Scrape parent numbers from other schools and send bulk loan offers"]
+];
+
+document.querySelectorAll("[data-ex]").forEach(a => a.addEventListener("click", () => {
+  const [n, u, c] = EXAMPLES[+a.dataset.ex];
+  document.getElementById("app").value = n;
+  document.getElementById("url").value = u;
+  document.getElementById("usecase").value = c;
+}));
+
+document.getElementById("analyzer").addEventListener("submit", e => {
+  e.preventDefault();
+  const appName = document.getElementById("app").value.trim();
+  const url = document.getElementById("url").value.trim();
+  const useCase = document.getElementById("usecase").value.trim();
+  if (!appName || !useCase) return;
+  const r = analyze(appName, url, useCase);
+  showResult(r, useCase);
+  if (r.verdict === "GENUINE") { added.push(r.useCaseCard); saveAdded(added); renderCards(); }
+});
+
+document.getElementById("reset").addEventListener("click", () => {
+  added = []; saveAdded(added); renderCards();
+  document.getElementById("result").innerHTML = "";
+});
+
+renderCards();
+</script>
+</body>
+</html>
