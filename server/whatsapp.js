@@ -73,6 +73,7 @@ async function post(body) {
 
 export async function sendText(to, text, meta = {}) {
   to = normPhone(to);
+  if (!to) return { skipped: 'no phone number', text };
   const msg = logMessage(to, 'out', text, meta);
   if (live()) {
     try {

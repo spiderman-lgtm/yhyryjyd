@@ -90,36 +90,21 @@ route('POST', '/api/viasocket/payment-received', async (req, res, { body }) => {
   } catch (e) { return json(res, 404, { error: e.message }); }
 });
 
-// ---------- Demo payment page (used when create_payment_link runs in demo mode) ----------
-route('GET', '/pay/:id', (req, res, { params }) => {
-  const o = store.findOrder(params.id);
-  if (!o) return html(res, 404, '<h1>Order not found</h1>');
-  const paid = o.payment === 'PAID';
-  return html(res, 200, `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pay #${o.id}</title>
-<style>body{font:16px system-ui;background:#f7f6f2;color:#1c1b19;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px}.c{background:#fff;border-radius:16px;padding:24px;max-width:360px;width:100%;box-shadow:0 8px 24px rgba(0,0,0,.08)}button{width:100%;padding:14px;border:0;border-radius:10px;background:#0f7a5c;color:#fff;font-size:17px;font-weight:600;cursor:pointer}small{color:#6b6862}</style>
-<div class="c"><small>${store.get().shop.name} · demo payment</small><h2>Order #${o.id}</h2><p>${o.items.map((l) => `${l.qty} × ${l.name}`).join('<br>')}</p><h1>₹${o.total.toLocaleString('en-IN')}</h1>
-${paid ? '<p>✅ Paid</p>' : `<button id="b">Pay ₹${o.total.toLocaleString('en-IN')} (demo UPI)</button><p><small>In a real setup this is a Razorpay link (viaSocket create_payment_link).</small></p>`}</div>
-<script>const b=document.getElementById('b');if(b)b.onclick=async()=>{b.disabled=true;b.textContent='Processing…';const r=await fetch('/api/demo/pay/${o.id}',{method:'POST'});b.textContent=r.ok?'✅ Paid — check WhatsApp':'Failed';};</script>`);
-});
-route('POST', '/api/demo/pay/:id', async (req, res, { params }) => {
-  if (config.viasocket.flows.create_payment_link || integ.razorpayReady()) return json(res, 403, { error: 'demo payments disabled when live payment flow is configured' });
-  try { const r = await markPaid(params.id, { payment_id: `demo_${Date.now()}`, source: 'demo' }); return json(res, 200, { ok: true, order: publicOrder(r.order) }); } catch (e) { return json(res, 404, { error: e.message }); }
-});
-
 // ---------- Dashboard API ----------
 route('GET', '/api/status', (req, res) => json(res, 200, {
   modes: { ...modes(), whatsapp: waLive() ? 'live' : 'demo', ai: aiProvider(), sheets: integ.sheetsReady() ? 'live' : 'demo', razorpay: integ.razorpayReady() ? 'live' : 'demo' },
   viasocket_configured: vs.configured(),
   checklist: {
-    shop: Boolean(store.get().shop.setup_done),
+    shop: Boolean(store.get().shop.setup_done && store.get().catalog.length),
     whatsapp: waLive(),
     sheets: integ.sheetsReady(),
     razorpay: integ.razorpayReady(),
   },
+  test_phone: store.TEST_PHONE,
   shop: store.get().shop, now: clock.now().toISOString(), travelled_hours: clock.travelledHours(),
   admin_required: Boolean(config.adminToken), webhook_url: `${config.publicUrl}/webhook/whatsapp`,
   payment_callback_url: `${config.publicUrl}/api/viasocket/payment-received`,
-}));
+}), { admin: true });
 route('POST', '/api/simulate', async (req, res, { body }) => {
   if (!body.text || !body.phone) return json(res, 400, { error: 'phone and text required' });
   const before = store.get().messages.length;
@@ -157,7 +142,7 @@ route('GET', '/api/shop', (req, res) => json(res, 200, { shop: store.get().shop,
 route('PUT', '/api/shop', (req, res, { body }) => {
   const d = store.get();
   if (body.shop) {
-    const allowed = ['name', 'type', 'owner_phone', 'address', 'open_hours', 'policies'];
+    const allowed = ['name', 'type', 'owner_phone', 'address', 'open_hours', 'policies', 'upi_id'];
     for (const k of allowed) if (typeof body.shop[k] === 'string') d.shop[k] = body.shop[k].trim();
   }
   if (Array.isArray(body.catalog)) {
@@ -172,6 +157,7 @@ route('PUT', '/api/shop', (req, res, { body }) => {
   store.save();
   return json(res, 200, { shop: d.shop, catalog: d.catalog });
 }, { admin: true });
+route('POST', '/api/test-chat/clear', (req, res) => { store.clearTestData(); return json(res, 200, { ok: true }); }, { admin: true });
 route('GET', '/api/apps', (req, res) => json(res, 200, store.get().connected_apps), { admin: true });
 route('POST', '/api/analyze-app', async (req, res, { body }) => {
   try { return json(res, 200, await analyze({ app: body.app, category: body.category, goal: body.goal })); } catch (e) { return json(res, 400, { error: e.message }); }
@@ -187,12 +173,6 @@ route('POST', '/api/scheduler/run', async (req, res, { body }) => {
   else await scheduler.tick();
   return json(res, 200, { ok: true, now: clock.now().toISOString() });
 }, { admin: true });
-route('POST', '/api/demo/time-travel', async (req, res, { body }) => {
-  if (body.reset) clock.resetTravel(); else clock.travel(Number(body.hours) || 0);
-  await scheduler.tick();
-  return json(res, 200, { now: clock.now().toISOString(), travelled_hours: clock.travelledHours() });
-}, { admin: true });
-route('POST', '/api/demo/reset', (req, res) => { store.reset(); clock.resetTravel(); return json(res, 200, { ok: true }); }, { admin: true });
 
 // ---------- viaSocket: Razorpay "link paid" handler and AI tools (secret-header auth) ----------
 route('POST', '/api/viasocket/razorpay-paid', async (req, res, { body }) => {
@@ -278,9 +258,7 @@ route('GET', '/tasks/tick', async (req, res) => {
 
 // ---------- static ----------
 function serveStatic(req, res, pathname) {
-  // The product is the dashboard; the use-case page lives at /about.
   if (pathname === '/' || pathname === '/app') pathname = '/app.html';
-  if (pathname === '/about') pathname = '/index.html';
   const file = path.normalize(path.join(PUBLIC, pathname));
   if (!file.startsWith(PUBLIC)) return json(res, 403, { error: 'forbidden' });
   fs.readFile(file, (err, data) => {

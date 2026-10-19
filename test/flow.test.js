@@ -21,7 +21,7 @@ const say = async (from, text) => {
 // Pin the clock to a weekday 10:00 IST so tests don't depend on when they run.
 const pin = () => { clock.resetTravel(); const target = clock.localDate(2026, 10, 14, 10, 0); clock.travel((target - Date.now()) / 3_600_000); };
 
-beforeEach(() => { store.load(':memory:'); pin(); });
+beforeEach(() => { store.load(':memory:'); store.useDemoData(); pin(); });
 
 test('parses Hinglish items and times', () => {
   assert.deepEqual(parseItems('2 chocolate cake aur ek brownie'), [{ item_id: 'choc-cake-1kg', qty: 2 }, { item_id: 'brownie', qty: 1 }]);
@@ -36,11 +36,11 @@ test('order → confirm → payment link → paid', async () => {
   assert.match(await say(CUST, 'shaam 6 baje'), /₹1,400[\s\S]*confirm/);
   const r = await say(CUST, 'haan');
   assert.match(r, /Order #341 is confirmed/);
-  assert.match(r, /\/pay\/341/);
+  assert.match(r, /UPI ID sweetcrumbs@okaxis/);
   const o = store.findOrder('341');
-  assert.equal(stage(o), 'AWAITING_PAYMENT');
+  assert.equal(stage(o), 'CONFIRMED');
   assert.ok(store.get().flow_log.some((f) => f.flow === 'save_order'));
-  assert.ok(store.get().flow_log.some((f) => f.flow === 'create_payment_link'));
+  assert.ok(!store.get().flow_log.some((f) => f.flow === 'create_payment_link'), 'no fake payment link without a payment app');
 
   const server = createServer().listen(0);
   const port = server.address().port;
@@ -151,4 +151,19 @@ test('whatsapp webhook parsing and verification', async () => {
   server.close();
   assert.equal(await ok.text(), '42');
   assert.equal(bad.status, 403);
+});
+
+test('a new shop starts empty and old demo data is cleared', async () => {
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const path = await import('node:path');
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'dk-')), 'db.json');
+  fs.writeFileSync(f, JSON.stringify({ shop: { name: 'Sweet Crumbs Bakery', uid: 'dukaan-keep' }, integrations: { apps: { x: 1 } }, catalog: [{ id: 'a' }], orders: [{ id: '341' }], messages: [], customers: [], sessions: {}, connected_apps: [], flow_log: [], reports: [], seq: { order: 341 } }));
+  const d = store.load(f);
+  assert.equal(d.shop.name, '');
+  assert.equal(d.shop.uid, 'dukaan-keep');
+  assert.deepEqual(d.integrations, { apps: { x: 1 } });
+  assert.equal(d.orders.length, 0);
+  assert.equal(d.catalog.length, 0);
+  store.load(':memory:');
 });

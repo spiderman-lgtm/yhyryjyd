@@ -3,13 +3,13 @@
 An AI that sits on a shop's WhatsApp Business number and runs the shop — orders, payment links, automatic "paid" detection, reminders, overdue-payment recovery, and a one-line monthly summary.
 **The AI is the brain · viaSocket is the hands.**
 
-Live: https://dukaan-ai-manager.embarko.app (owner app, log in with `ADMIN_TOKEN`) · `/about` (what it does)
+Live: https://dukaan-ai-manager.embarko.app (log in with `ADMIN_TOKEN`)
 
 ## Run locally
 
 ```bash
 npm install
-cp .env.example .env   # optional — without it everything runs in demo mode
+cp .env.example .env   # optional — without it app connections are off
 npm start              # http://localhost:3000
 npm test
 ```
@@ -18,10 +18,10 @@ npm test
 
 | Part | Real when | Demo without it |
 | --- | --- | --- |
-| WhatsApp | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID` (+ `WHATSAPP_APP_SECRET` to verify webhooks) | dashboard simulator |
+| WhatsApp | owner connects it in Connections (or `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_ID`) | test chat in the app |
 | AI brain | viaSocket AI (`VIASOCKET_*` + a public `https://` URL), or `ANTHROPIC_API_KEY` | rule-based Hinglish parser |
-| Order sheet | owner connects **Google Sheets** in Apps tab and picks a sheet | local only |
-| Payment links + auto paid | owner connects **Razorpay** in Apps tab | `/pay/<id>` demo page |
+| Order sheet | owner connects **Google Sheets** in Connections and picks a sheet | local only |
+| Payment links + auto paid | owner connects **Razorpay** in Connections | customer is asked to pay the shop's UPI ID; owner marks paid |
 | Any other app | App Analyzer says GO → owner connects it → builds a flow in viaSocket's prebuilt UI | — |
 | Reminders / overdue payments / monthly report | Embarko schedule `embarko.json` → `GET /tasks/tick` (needs `CRON_SECRET`, set by Embarko) | in-process timer |
 

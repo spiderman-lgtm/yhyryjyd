@@ -8,7 +8,6 @@ import * as integrations from './integrations.js';
 const demo = {
   save_order: (p) => ({ row_id: `demo-row-${p.order_id}` }),
   update_order: () => ({ ok: true }),
-  create_payment_link: (p) => ({ id: `plink_demo_${p.order_id}`, url: `${config.publicUrl}/pay/${p.order_id}` }),
   send_reminder: () => ({ ok: true, delivered_by: 'dukaan-demo' }),
   escalate_to_owner: () => ({ ok: true, delivered_by: 'dukaan-demo' }),
   monthly_report: () => ({ ok: true, delivered_by: 'dukaan-demo' }),
@@ -19,9 +18,10 @@ const demo = {
 const native = {
   save_order: () => integrations.sheetsReady() && (async (p) => {
     const o = findOrder(p.order_id);
+    if (o.test) return { skipped: 'test order' };
     return integrations.sheetsAppend(o, p.status);
   }),
-  update_order: () => integrations.sheetsReady() && ((p) => integrations.sheetsUpdate(p.order_id, p.status)),
+  update_order: () => integrations.sheetsReady() && ((p) => (findOrder(p.order_id)?.test ? { skipped: 'test order' } : integrations.sheetsUpdate(p.order_id, p.status))),
   create_payment_link: () => integrations.razorpayReady() && ((p) => integrations.razorpayLink(findOrder(p.order_id))),
 };
 

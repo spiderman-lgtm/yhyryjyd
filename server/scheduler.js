@@ -5,7 +5,7 @@ import { config } from './config.js';
 import { get, save } from './store.js';
 import { triggerFlow } from './viasocket.js';
 import { sendTemplate, sendText } from './whatsapp.js';
-import { ensurePaymentLink, dueList, describeOrder } from './orders.js';
+import { ensurePaymentLink, paymentText, dueList, describeOrder } from './orders.js';
 import { now, fmt, rupees, inQuietHours, isLastDayOfMonth, monthKey, parts } from './time.js';
 
 const firstName = (o) => (o.customer_name || '').split(' ')[0] || 'there';
@@ -21,10 +21,10 @@ export async function fulfilmentReminders(at = now()) {
   const lead = config.scheduler.reminderLeadHours * 3_600_000;
   const shop = get().shop;
   for (const o of get().orders) {
-    if (o.status !== 'CONFIRMED' || o.reminders.fulfilment_sent_at) continue;
+    if (o.test || o.status !== 'CONFIRMED' || o.reminders.fulfilment_sent_at) continue;
     const t = new Date(o.fulfil_at);
     if (t - at > lead || t < at) continue;
-    const pay = o.payment === 'PAID' ? '' : o.payment_link?.url ? `\nPayment pending: ${o.payment_link.url}` : '';
+    const pay = o.payment === 'PAID' ? '' : `\n${paymentText(o)}`;
     const text = `Hi ${firstName(o)} 👋 Your order #${o.id} (${o.items.map((l) => `${l.qty} × ${l.name}`).join(', ')}) is being prepared for ${fmt(o.fulfil_at)}.\n📍 ${o.mode === 'delivery' ? o.address : `${shop.name}, ${shop.address}`}${pay}\nReply here if you need to change the time.`;
     await remind(o, 'pickup_reminder', text, [firstName(o), o.id, fmt(o.fulfil_at)]);
     o.reminders.fulfilment_sent_at = at.toISOString();
@@ -63,9 +63,9 @@ export async function udhaarLadder(at = now()) {
     } else {
       const w = await ensurePaymentLink(order.id);
       const text = step === d1
-        ? `Hi ${firstName(order)} 🙏 ${rupees(order.total)} is still due for order #${order.id}. Whenever convenient, you can pay here: ${w.payment_link.url}`
-        : `Hi ${firstName(order)}, a gentle reminder — ${rupees(order.total)} for order #${order.id} has been pending for ${o.days} days. It would really help if you could pay today 🙂 ${w.payment_link.url}`;
-      await remind(order, step === d1 ? 'reminder_polite' : 'reminder_firm', text, [firstName(order), order.id, order.total, w.payment_link.url]);
+        ? `Hi ${firstName(order)} 🙏 ${rupees(order.total)} is still due for order #${order.id}. ${paymentText(w)}`
+        : `Hi ${firstName(order)}, a gentle reminder — ${rupees(order.total)} for order #${order.id} has been pending for ${o.days} days. It would really help if you could pay today 🙂 ${paymentText(w)}`;
+      await remind(order, step === d1 ? 'reminder_polite' : 'reminder_firm', text, [firstName(order), order.id, order.total, w.payment_link?.url || paymentText(w)]);
       r.udhaar.push({ day: step, sent_at: at.toISOString() });
     }
     lastByPhone[order.phone] = at.toISOString();
@@ -77,8 +77,8 @@ export async function udhaarLadder(at = now()) {
 export function monthStats(at = now()) {
   const key = monthKey(at);
   const inMonth = (iso) => iso && monthKey(new Date(iso)) === key;
-  const orders = get().orders.filter((o) => o.status !== 'CANCELLED' && inMonth(o.created_at));
-  const collected = get().orders.filter((o) => o.payment === 'PAID' && inMonth(o.paid_at)).reduce((s, o) => s + o.total, 0);
+  const orders = get().orders.filter((o) => !o.test && o.status !== 'CANCELLED' && inMonth(o.created_at));
+  const collected = get().orders.filter((o) => !o.test && o.payment === 'PAID' && inMonth(o.paid_at)).reduce((s, o) => s + o.total, 0);
   const due = dueList(at);
   const top = {};
   for (const o of orders) for (const l of o.items) top[l.name] = (top[l.name] || 0) + l.qty;

@@ -4,7 +4,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from './config.js';
 import { get, save, normPhone } from './store.js';
-import { matchCatalog, createOrder, ensurePaymentLink, ordersFor, describeOrder, cancelOrder, publicOrder } from './orders.js';
+import { matchCatalog, createOrder, ensurePaymentLink, paymentText, ordersFor, describeOrder, cancelOrder, publicOrder } from './orders.js';
 import { sendText } from './whatsapp.js';
 import { rulesReply } from './rules.js';
 import { isoLocal, rupees } from './time.js';
@@ -39,7 +39,7 @@ const TOOLS = [
   },
   {
     name: 'send_payment_link',
-    description: 'Create (or reuse) the payment link for an order. Include the returned URL in your reply.',
+    description: 'Get how the customer should pay for an order (payment link, shop UPI ID, or pay at pickup). Put how_to_pay in your reply.',
     input_schema: { type: 'object', properties: { order_id: { type: 'string' } }, required: ['order_id'], additionalProperties: false },
   },
   {
@@ -70,7 +70,8 @@ ${catalog.map((c) => `- ${c.id}: ${c.name} — ${c.price}/${c.unit}, needs ${c.l
 How to behave:
 - LANGUAGE: every reply is entirely in simple English — every sentence, including greetings and closing questions — even when the customer writes in Hindi or Hinglish. Understand their Hinglish; never write it back.
 - FORMAT: this is WhatsApp. Short plain-text messages, one friendly emoji at most. No markdown tables, no headings, no **double asterisks**; use *single asterisks* for bold and simple lines or • bullets for lists.
-- To take an order: work out items, quantity, day+time and pickup/delivery (ask for address if delivery). Quote the total from the catalog, then ask to confirm. Only after an explicit yes call create_order, then send_payment_link, and reply with order number, total, time and the link.
+- To take an order: work out items, quantity, day+time and pickup/delivery (ask for address if delivery). Quote the total from the catalog, then ask to confirm. Only after an explicit yes call create_order, then send_payment_link, and reply with order number, total, time and how to pay (how_to_pay).
+- If the catalog is empty, tell the customer the shop will reply shortly and call handoff_to_owner.
 - Customers may write Hinglish: "kal" = tomorrow, "parso" = day after tomorrow, "shaam 6" = 6 pm, all in the shop timezone. Respect lead times and opening hours.
 - Never invent items, prices, discounts or delivery promises. If asked for something outside the catalog or policies, say you'll check with the owner and call handoff_to_owner.
 - Complaints, refunds, angry customers → apologise briefly and call handoff_to_owner.
@@ -93,12 +94,12 @@ export async function runTool(name, input, ctx) {
         const mine = ordersFor(ctx.phone).find((o) => o.id === String(input.order_id).replace(/^#/, ''));
         if (!mine) return { error: 'order not found for this customer' };
         const o = await ensurePaymentLink(mine.id);
-        return o.payment === 'PAID' ? { already_paid: true } : { url: o.payment_link.url, amount: o.total };
+        return o.payment === 'PAID' ? { already_paid: true } : { amount: o.total, url: o.payment_link?.url || null, how_to_pay: paymentText(o) };
       }
       case 'get_order_status':
         return ordersFor(ctx.phone).slice(0, 5).map((o) => {
           const p = publicOrder(o);
-          return { order_id: o.id, summary: describeOrder(o), stage: p.stage, payment_link: o.payment === 'PAID' ? null : o.payment_link?.url || null };
+          return { order_id: o.id, summary: describeOrder(o), stage: p.stage, how_to_pay: paymentText(o) };
         });
       case 'cancel_order': {
         const mine = ordersFor(ctx.phone).find((o) => o.id === String(input.order_id).replace(/^#/, ''));
@@ -194,7 +195,7 @@ const VS_TOOLS = [
     address: ['string', 'Delivery address; empty for pickup'],
     notes: ['string', 'Message on cake, flavour changes; empty if none'],
   }, ['items', 'fulfil_at', 'mode']],
-  ['send_payment_link', 'Create or reuse the payment link of one of this customer\'s orders. Put the returned url in your reply.', { order_id: ['string', 'Order number, e.g. 341'] }, ['order_id']],
+  ['send_payment_link', 'Get how this customer should pay for one of their orders (a payment link, the shop UPI ID, or pay at pickup). Put how_to_pay in your reply.', { order_id: ['string', 'Order number, e.g. 341'] }, ['order_id']],
   ['get_order_status', "List this customer's recent orders with payment and pickup status.", {}, []],
   ['cancel_order', 'Cancel an unpaid, not-yet-fulfilled order of this customer. Writes the order.', { order_id: ['string', 'Order number'], reason: ['string', 'Why'] }, ['order_id', 'reason']],
   ['handoff_to_owner', 'Alert the shop owner: complaints, refunds, requests outside the catalog, anything unsure.', { reason: ['string', 'What the owner should know'] }, ['reason']],

@@ -3,286 +3,248 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dukaan Dashboard</title>
-<meta name="description" content="Dukaan AI Manager — owner dashboard: WhatsApp chats, orders, dues, apps and setup.">
+<title>Dukaan AI Manager</title>
+<meta name="description" content="Your shop's WhatsApp assistant: orders, payments and reminders.">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f7f6f2;--surface:#fff;--surface-2:#f0eee8;--text:#1c1b19;--muted:#6b6862;--line:#e3e0d8;
-  --brand:#0f7a5c;--brand-soft:#e3f4ee;--on-brand:#fff;--accent:#d9771c;--accent-soft:#fdf0e2;
-  --go:#138a5e;--go-soft:#e2f5ec;--cond:#a86c12;--cond-soft:#fbf1dc;--no:#c0392b;--no-soft:#fbe6e3;
+:root{--bg:#f6f6f3;--surface:#fff;--surface-2:#f0efea;--text:#1c1b19;--muted:#6b6862;--line:#e4e2db;
+  --brand:#0f7a5c;--brand-soft:#e3f4ee;--on-brand:#fff;--warn:#a86c12;--warn-soft:#fbf1dc;--bad:#c0392b;--bad-soft:#fbe6e3;
   --chat-bg:#ece5dd;--bubble-in:#fff;--bubble-out:#d9fdd3}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#121412;--surface:#1b1e1c;--surface-2:#232725;--text:#ecebe7;--muted:#a3a19b;--line:#2e3330;
-  --brand:#3dd39f;--brand-soft:#173a2e;--on-brand:#0b1a14;--accent:#f0a24f;--accent-soft:#3a2a17;--go:#4fd49b;--go-soft:#16352a;--cond:#e8b04f;--cond-soft:#3a2f17;--no:#ef7a6c;--no-soft:#3d1d1a;
-  --chat-bg:#0b141a;--bubble-in:#202c33;--bubble-out:#005c4b}}
+  --brand:#3dd39f;--brand-soft:#173a2e;--on-brand:#0b1a14;--warn:#e8b04f;--warn-soft:#3a2f17;--bad:#ef7a6c;--bad-soft:#3d1d1a;--chat-bg:#0b141a;--bubble-in:#202c33;--bubble-out:#005c4b}}
 :root[data-theme="dark"]{--bg:#121412;--surface:#1b1e1c;--surface-2:#232725;--text:#ecebe7;--muted:#a3a19b;--line:#2e3330;
-  --brand:#3dd39f;--brand-soft:#173a2e;--on-brand:#0b1a14;--accent:#f0a24f;--accent-soft:#3a2a17;--go:#4fd49b;--go-soft:#16352a;--cond:#e8b04f;--cond-soft:#3a2f17;--no:#ef7a6c;--no-soft:#3d1d1a;
-  --chat-bg:#0b141a;--bubble-in:#202c33;--bubble-out:#005c4b}
+  --brand:#3dd39f;--brand-soft:#173a2e;--on-brand:#0b1a14;--warn:#e8b04f;--warn-soft:#3a2f17;--bad:#ef7a6c;--bad-soft:#3d1d1a;--chat-bg:#0b141a;--bubble-in:#202c33;--bubble-out:#005c4b}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,sans-serif}
+a{color:var(--brand)}
 header{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
-.bar{max-width:1240px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:16px;height:56px}
-.logo{font-weight:800;display:flex;gap:8px;align-items:center;white-space:nowrap}
-.logo i{font-style:normal;width:28px;height:28px;border-radius:8px;background:var(--brand);color:var(--on-brand);display:grid;place-items:center}
-nav{display:flex;gap:4px;overflow-x:auto;flex:1}
-nav button{border:0;background:none;padding:8px 12px;border-radius:8px;color:var(--muted);font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+.bar{max-width:1120px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:14px;height:56px}
+.logo{font-weight:800;display:flex;gap:8px;align-items:center;white-space:nowrap;max-width:40%;overflow:hidden;text-overflow:ellipsis}
+.logo i{font-style:normal;flex:none;width:28px;height:28px;border-radius:8px;background:var(--brand);color:var(--on-brand);display:grid;place-items:center}
+nav{display:flex;gap:2px;overflow-x:auto;flex:1;scrollbar-width:none}
+nav button{border:0;background:none;padding:8px 11px;border-radius:8px;color:var(--muted);font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
 nav button[aria-selected="true"]{background:var(--brand-soft);color:var(--brand)}
-main{max-width:1240px;margin:0 auto;padding:20px 16px 60px}
+main{max-width:1120px;margin:0 auto;padding:22px 16px 60px}
 section{display:none}section.on{display:block}
 h2{margin:0 0 4px;font-size:22px;letter-spacing:-.01em}
+h3{margin:0 0 4px;font-size:16px}
 .sub{color:var(--muted);margin:0 0 18px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
-.grid{display:grid;gap:16px}
-.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
-@media(max-width:900px){.g2,.g3{grid-template-columns:1fr}.g4{grid-template-columns:1fr 1fr}}
-button.b,.b{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:9px;padding:7px 12px;font-weight:600;font-size:13.5px}
+.grid{display:grid;gap:14px}.g2{grid-template-columns:1fr 1fr}.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:860px){.g2{grid-template-columns:1fr}.g4{grid-template-columns:1fr 1fr}}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.b{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:9px;padding:7px 12px;font-weight:600;font-size:13.5px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .b.p{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
 .b.s{padding:4px 9px;font-size:12.5px}
 .b:disabled{opacity:.5;cursor:default}
 input,select,textarea{width:100%;font:inherit;padding:9px 11px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--text)}
 label{display:block;font-size:12.5px;font-weight:600;margin:10px 0 5px;color:var(--muted)}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.kpi{font-size:26px;font-weight:800;letter-spacing:-.02em}
 .muted{color:var(--muted)}.small{font-size:12.5px}
-.chip{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
-.st-PAID,.st-FULFILLED,.v-GO{background:var(--go-soft);color:var(--go)}
-.st-AWAITING_PAYMENT,.st-CONFIRMED{background:var(--brand-soft);color:var(--brand)}
-.st-UDHAAR,.v-CONDITIONAL{background:var(--cond-soft);color:var(--cond)}
-.st-ESCALATED,.v-NO-GO{background:var(--no-soft);color:var(--no)}
-.st-CANCELLED{text-decoration:line-through}
-table{width:100%;border-collapse:collapse;font-size:13.5px}
-th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.kpi{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.chip{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.ok{background:var(--brand-soft);color:var(--brand)}.warn{background:var(--warn-soft);color:var(--warn)}.bad{background:var(--bad-soft);color:var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
 .tw{overflow-x:auto}
-/* chat */
-.phone{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column}
-.ph{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--brand);color:var(--on-brand)}
-.ph b{display:block}.ph small{opacity:.85}
-.ph select{width:auto;background:rgba(255,255,255,.18);color:inherit;border:0;padding:4px 8px;margin-left:auto}
-.ph select option{color:#000}
-.chat{background:var(--chat-bg);height:430px;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:5px}
-.msg{max-width:84%;min-width:80px;padding:6px 9px 16px;border-radius:9px;white-space:pre-wrap;word-break:break-word;position:relative;font-size:14px;box-shadow:0 1px .5px rgba(0,0,0,.12)}
-.msg.in{align-self:flex-end;background:var(--bubble-out)}
-.msg.out{align-self:flex-start;background:var(--bubble-in)}
-.owner .msg.in{align-self:flex-end}
-.msg time{position:absolute;right:7px;bottom:2px;font-size:10px;color:var(--muted)}
-.msg .tag{font-size:10px;font-weight:700;color:var(--accent);display:block}
-.msg a{color:var(--brand)}
-.compose{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line)}
-.compose input{flex:1}
-.quick{display:flex;gap:6px;flex-wrap:wrap;padding:0 8px 8px}
-.quick button{font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}
-.log{font-family:ui-monospace,Menlo,monospace;font-size:12px;max-height:260px;overflow:auto}
-.log div{padding:5px 0;border-bottom:1px dashed var(--line)}
-.ok{color:var(--go)}.err{color:var(--no)}
-.bars{display:grid;gap:5px;margin:10px 0}
-.br{display:grid;grid-template-columns:150px 1fr 44px;gap:8px;align-items:center;font-size:12.5px}
-.tr{height:7px;background:var(--surface-2);border-radius:9px;overflow:hidden}.tr i{display:block;height:100%;background:var(--brand)}
-.uc{border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-top:8px;font-size:13.5px}
-.callout{border-left:3px solid var(--accent);background:var(--accent-soft);padding:9px 11px;border-radius:8px;margin-top:10px;font-size:13.5px}
-.empty{color:var(--muted);text-align:center;padding:30px}
-.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 14px;border-radius:9px;font-size:13.5px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
-.toast.on{opacity:1}
-code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:5px;word-break:break-all}
-.login{position:fixed;inset:0;z-index:30;background:var(--bg);display:grid;place-items:center;padding:16px}
-.login .card{max-width:380px;width:100%}
-.steps{display:grid;gap:8px;margin-top:10px}
+.empty{color:var(--muted);text-align:center;padding:28px 12px}
+.steps{display:grid;gap:8px;margin-top:12px}
 .step{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
 .step .ic{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--surface-2);color:var(--muted)}
-.step.done .ic{background:var(--go-soft);color:var(--go)}
-.step.done b{color:var(--muted)}
-.cat-row{display:grid;grid-template-columns:2fr 2fr 90px 80px 32px;gap:6px;margin-bottom:6px}
+.step.done .ic{background:var(--brand-soft);color:var(--brand)}
+.step.done b{color:var(--muted);font-weight:600}
+/* chats */
+.chats{display:grid;grid-template-columns:280px 1fr;gap:14px;align-items:start}
+@media(max-width:760px){.chats{grid-template-columns:1fr}}
+.clist{display:flex;flex-direction:column;max-height:560px;overflow:auto;padding:6px}
+.citem{border:0;background:none;text-align:left;font:inherit;color:inherit;padding:10px;border-radius:10px;cursor:pointer;display:grid;gap:2px}
+.citem[aria-selected="true"]{background:var(--brand-soft)}
+.citem b{font-size:14px}.citem span{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phone{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.chat{background:var(--chat-bg);height:470px;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:5px}
+.msg{max-width:84%;min-width:80px;padding:6px 9px 16px;border-radius:9px;white-space:pre-wrap;word-break:break-word;position:relative;font-size:14px;box-shadow:0 1px .5px rgba(0,0,0,.12)}
+.msg.in{align-self:flex-start;background:var(--bubble-in)}
+.msg.out{align-self:flex-end;background:var(--bubble-out)}
+.msg time{position:absolute;right:7px;bottom:2px;font-size:10px;color:var(--muted)}
+.msg .tag{font-size:10px;font-weight:700;color:var(--warn);display:block}
+.compose{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line)}
+.compose input{flex:1}
+.cat-row{display:grid;grid-template-columns:2fr 2fr 100px 90px 34px;gap:6px;margin-bottom:6px}
 @media(max-width:700px){.cat-row{grid-template-columns:1fr 1fr}}
+.callout{border-left:3px solid var(--warn);background:var(--warn-soft);padding:10px 12px;border-radius:8px;font-size:14px;margin-top:10px}
+.callout.good{border-color:var(--brand);background:var(--brand-soft)}
+.callout.no{border-color:var(--bad);background:var(--bad-soft)}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 14px;border-radius:9px;font-size:13.5px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:40}
+.toast.on{opacity:1}
+code{font-size:12.5px;background:var(--surface-2);padding:2px 6px;border-radius:5px;word-break:break-all}
+.login{position:fixed;inset:0;z-index:30;background:var(--bg);display:grid;place-items:center;padding:16px}
+.login .card{max-width:380px;width:100%}
+.appicon{width:28px;height:28px;border-radius:6px;object-fit:contain}
 </style>
 </head>
 <body>
 <header><div class="bar">
-  <div class="logo"><i>₹</i><span id="shopName">Dukaan</span></div>
+  <div class="logo"><i>₹</i><span id="shopName">Dukaan AI Manager</span></div>
   <nav role="tablist" id="tabs">
-    <button data-t="live" aria-selected="true">💬 Chats</button>
-    <button data-t="orders">📦 Orders</button>
-    <button data-t="udhaar">📒 Accounts</button>
-    <button data-t="apps">🔌 Apps</button>
-    <button data-t="shop">🧁 Shop</button>
-    <button data-t="setup">⚙️ Setup</button>
+    <button data-t="home" aria-selected="true">Home</button>
+    <button data-t="chats">Chats</button>
+    <button data-t="orders">Orders</button>
+    <button data-t="dues">Payments due</button>
+    <button data-t="shop">Menu &amp; shop</button>
+    <button data-t="connections">Connections</button>
   </nav>
-  <button class="b s" id="theme" aria-label="Theme">◐</button>
+  <button class="b s" id="theme" aria-label="Switch light/dark">◐</button>
 </div></header>
 
 <main>
-<!-- LIVE -->
-<section id="live" class="on">
-  <div class="card" id="checklist" style="margin-bottom:18px" hidden>
-    <div class="row" style="justify-content:space-between"><div><b style="font-size:17px">🚀 Get your shop live</b><div class="small muted" id="checkSub"></div></div><span class="chip" id="checkCount"></span></div>
+<!-- HOME -->
+<section id="home" class="on">
+  <div class="card" id="checklist" style="margin-bottom:16px" hidden>
+    <div class="row between"><h3>Finish setting up</h3><span class="chip warn" id="checkCount"></span></div>
     <div class="steps" id="steps"></div>
   </div>
-  <h2>WhatsApp chats</h2>
-  <p class="sub">Left: the customer side — read real customer chats, or pick a "Test" customer and try it yourself. Right: your (owner) WhatsApp.</p>
-  <div class="grid g2">
-    <div class="phone">
-      <div class="ph"><div>👤</div><div><b id="custTitle">Customer</b><small id="custSub"></small></div>
-        <select id="custSel" aria-label="Customer"></select></div>
-      <div class="chat" id="custChat"></div>
-      <div class="quick" id="custQuick"></div>
-      <form class="compose" id="custForm"><input id="custInput" placeholder="Type as the customer…" autocomplete="off"><button class="b p">Send</button></form>
-    </div>
-    <div class="phone owner">
-      <div class="ph"><div>🧑‍💼</div><div><b>Owner</b><small id="ownerSub"></small></div></div>
-      <div class="chat" id="ownerChat"></div>
-      <div class="quick" id="ownerQuick"></div>
-      <form class="compose" id="ownerForm"><input id="ownerInput" placeholder="Owner command: report, due, 341 done…" autocomplete="off"><button class="b p">Send</button></form>
-    </div>
+  <div class="grid g4" id="kpis"></div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card"><div class="row between"><h3>Today</h3><button class="b s" data-go="orders">All orders</button></div><div id="todayList"></div></div>
+    <div class="card"><div class="row between"><h3>Owed to you</h3><button class="b s" data-go="dues">See all</button></div><div id="dueMini"></div></div>
   </div>
-  <div class="card" style="margin-top:16px">
-    <div class="row" style="justify-content:space-between">
-      <div><b>⏰ Time machine</b> <span class="muted small">— move time forward to see reminders and the overdue-payment ladder. Clock: <span id="clock"></span></span></div>
-      <div class="row">
-        <button class="b s" data-travel="2">+2 hours</button>
-        <button class="b s" data-travel="20">+20 hours</button>
-        <button class="b s" data-travel="24">+1 day</button>
-        <button class="b s" data-travel="72">+3 days</button>
-        <button class="b s" id="forceReport">📊 Send monthly report</button>
-        <button class="b s" data-travel="reset">Reset clock</button>
-      </div>
+  <p class="small muted" style="margin-top:16px">From your own WhatsApp number you can also send: <code>report</code> · <code>today</code> · <code>due</code> · <code>1042 paid</code> · <code>1042 done</code></p>
+</section>
+
+<!-- CHATS -->
+<section id="chats">
+  <h2>Chats</h2>
+  <p class="sub">The assistant replies to customers on WhatsApp. Use the test chat to try it yourself.</p>
+  <div class="chats">
+    <div class="card clist" id="clist"></div>
+    <div class="phone">
+      <div class="ph"><div><b id="chatTitle">Test chat</b><div class="small muted" id="chatSub"></div></div><button class="b s" id="clearTest">Delete test chat</button></div>
+      <div class="chat" id="chat"></div>
+      <form class="compose" id="compose"><input id="msgInput" placeholder="Type as a customer, e.g. 2 chocolate cakes tomorrow 6 pm" autocomplete="off"><button class="b p">Send</button></form>
     </div>
   </div>
 </section>
 
 <!-- ORDERS -->
 <section id="orders">
-  <h2>Orders</h2>
-  <p class="sub">Orders the AI has taken — every action runs through viaSocket.</p>
-  <div class="card tw"><table><thead><tr><th>#</th><th>Customer</th><th>Items</th><th>Total</th><th>When</th><th>Stage</th><th></th></tr></thead><tbody id="orderRows"></tbody></table></div>
+  <div class="row between"><div><h2>Orders</h2><p class="sub">Every order the assistant has taken.</p></div>
+    <select id="orderFilter" style="width:auto"><option value="all">All orders</option><option value="unpaid">Not paid</option><option value="open">Not handed over</option><option value="done">Completed</option></select></div>
+  <div class="card tw"><table><thead><tr><th>#</th><th>Customer</th><th>Items</th><th>Total</th><th>When</th><th>Status</th><th></th></tr></thead><tbody id="orderRows"></tbody></table></div>
 </section>
 
-<!-- UDHAAR / HISAAB -->
-<section id="udhaar">
-  <h2>Accounts</h2>
-  <p class="sub" id="monthLine"></p>
-  <div class="grid g4" id="kpis"></div>
-  <div class="card tw" style="margin-top:16px"><b>📒 Overdue payments</b>
-    <p class="muted small">Day 1 polite reminder → Day 3 reminder with link → Day 7 escalated to you. No reminders 9 PM–9 AM, at most one a day.</p>
-    <table><thead><tr><th>Customer</th><th>Amount</th><th>Days</th><th>Reminders</th><th>Stage</th><th></th></tr></thead><tbody id="dueRows"></tbody></table></div>
-</section>
-
-<!-- APPS -->
-<section id="apps">
-  <h2>Apps</h2>
-  <p class="sub">Your own accounts connect through viaSocket — this app never sees your passwords or tokens.</p>
-  <div id="vsMissing" class="callout" hidden>viaSocket is not set up (VIASOCKET_ORG_ID / PROJECT_ID / EMBED_SECRET). Until then, Sheets and payments run in demo mode.</div>
-  <div class="grid g2" id="coreApps">
-    <div class="card" id="sheetsCard">
-      <div class="row" style="justify-content:space-between"><div class="row"><img id="sheetsIcon" alt="" width="28" height="28"><div><b>Google Sheets</b><div class="small muted">Every order in your Sheet, status updated live</div></div></div><span class="chip" id="sheetsState">—</span></div>
-      <div class="row" style="margin-top:12px"><button type="button" class="b p" id="sheetsConnect"><img id="sheetsBtnIcon" alt="" width="16" height="16" style="vertical-align:-3px"> Connect Google Sheets</button></div>
-      <div id="sheetsSetup" hidden>
-        <label for="ssSearch">Spreadsheet <span class="muted">(type to search)</span></label>
-        <input id="ssSearch" placeholder="Type a name…" autocomplete="off">
-        <select id="ssPick" size="4" style="margin-top:6px"></select>
-        <label for="tabPick">Sheet (tab) — an empty tab, or one that already has the Dukaan columns</label>
-        <select id="tabPick" disabled><option value="">Choose a spreadsheet first</option></select>
-        <div class="row" style="margin-top:10px"><button type="button" class="b p" id="sheetSave" disabled>Send orders to this sheet</button><span class="muted small">or</span><button type="button" class="b" id="sheetCreate">✨ Create a new order sheet</button></div>
-      </div>
-      <p class="small" id="sheetsInfo"></p>
-    </div>
-    <div class="card" id="rzpCard">
-      <div class="row" style="justify-content:space-between"><div class="row"><img id="rzpIcon" alt="" width="28" height="28"><div><b>Razorpay</b><div class="small muted">Real payment links; orders marked PAID as soon as money arrives</div></div></div><span class="chip" id="rzpState">—</span></div>
-      <div class="row" style="margin-top:12px"><button type="button" class="b p" id="rzpConnect"><img id="rzpBtnIcon" alt="" width="16" height="16" style="vertical-align:-3px"> Connect Razorpay</button></div>
-      <div id="rzpSetup" hidden>
-        <label>Payment link type</label>
-        <div class="row"><label class="row small" style="margin:0;color:var(--text)"><input type="radio" name="linkType" value="standard" style="width:auto"> Standard — UPI, cards, netbanking</label>
-        <label class="row small" style="margin:0;color:var(--text)"><input type="radio" name="linkType" value="upi" style="width:auto"> UPI only</label></div>
-        <p class="small muted" id="rzpSub"></p>
-      </div>
-    </div>
-  </div>
-
-  <h2 style="margin-top:28px">Add a new app — checked first, then connected</h2>
-  <p class="sub">Scored with the viaSocket plugin-validator rubric; only GO apps get connected. <span id="analyzerMode"></span></p>
-  <div class="grid g2">
-    <form class="card" id="anForm">
-      <label for="anApp">App name</label><input id="anApp" placeholder="Shiprocket, Zoho Books, Instagram…" required>
-      <label for="anCat">Category</label>
-      <select id="anCat"><option value="auto">Auto-detect</option><option>payments</option><option>shipping</option><option>accounting</option><option>calendar</option><option>social</option><option>sheets</option><option>ecommerce</option><option>email</option><option>ledger</option><option>aggregator</option><option>other</option></select>
-      <label for="anGoal">What should it do?</label><textarea id="anGoal" rows="2" placeholder="e.g. book a courier as soon as a delivery order is paid"></textarea>
-      <div class="row" style="margin-top:12px"><button class="b p">🔍 Analyse</button></div>
-      <label>Connected</label><div id="connected" class="row"></div>
-    </form>
-    <div id="anOut"><div class="card empty">The result will appear here.</div></div>
-  </div>
-  <div class="card" id="embedCard" style="margin-top:16px" hidden>
-    <div class="row" style="justify-content:space-between"><b id="embedTitle">Build a flow</b><button type="button" class="b s" id="embedClose">Close</button></div>
-    <div id="vsEmbed" style="height:640px;margin-top:10px"></div>
-  </div>
+<!-- DUES -->
+<section id="dues">
+  <h2>Payments due</h2>
+  <p class="sub">Customers get a polite reminder after 1 day, a second one after 3 days, and you're told after 7 days. No reminders between 9 PM and 9 AM.</p>
+  <div class="card tw"><table><thead><tr><th>Customer</th><th>Amount</th><th>Overdue</th><th>Reminders</th><th></th></tr></thead><tbody id="dueRows"></tbody></table></div>
 </section>
 
 <!-- SHOP -->
 <section id="shop">
-  <h2>Shop & catalog</h2>
-  <p class="sub">The AI only ever quotes these prices. Aliases = other names customers use (comma-separated).</p>
+  <h2>Menu &amp; shop</h2>
+  <p class="sub">The assistant only quotes what is on this menu.</p>
   <form class="grid g2" id="shopForm">
     <div class="card">
-      <label>Shop name</label><input name="name">
-      <label>Type</label><select name="type"><option value="bakery">Bakery</option><option value="boutique">Boutique</option><option value="tuition">Tuition</option><option value="salon">Salon</option><option value="kirana">Kirana</option></select>
-      <label>Owner WhatsApp (with country code)</label><input name="owner_phone" inputmode="tel">
-      <label>Address</label><input name="address">
-      <label>Timing</label><input name="open_hours">
-      <label>Policies (the AI follows these)</label><textarea name="policies" rows="3"></textarea>
+      <h3>Shop details</h3>
+      <label for="f_name">Shop name</label><input id="f_name" name="name" required>
+      <label for="f_type">Type of shop</label><select id="f_type" name="type"><option value="bakery">Bakery / cake shop</option><option value="boutique">Boutique / tailor</option><option value="tuition">Tuition centre</option><option value="salon">Salon / parlour</option><option value="kirana">Kirana / general store</option></select>
+      <label for="f_owner">Your WhatsApp number (with country code, e.g. 9198xxxxxxxx)</label><input id="f_owner" name="owner_phone" inputmode="tel" placeholder="9198xxxxxxxx">
+      <label for="f_address">Address</label><input id="f_address" name="address">
+      <label for="f_hours">Opening hours</label><input id="f_hours" name="open_hours" placeholder="11 AM – 8 PM">
+      <label for="f_upi">UPI ID for payments</label><input id="f_upi" name="upi_id" placeholder="yourshop@okaxis">
+      <p class="small muted" style="margin:4px 0 0">Used when Razorpay is not connected.</p>
+      <label for="f_pol">Rules the assistant should follow</label><textarea id="f_pol" name="policies" rows="3" placeholder="e.g. Custom cakes need 24 hours notice. Delivery within 5 km for ₹50."></textarea>
     </div>
     <div class="card">
-      <div class="row" style="justify-content:space-between"><b>Catalog</b><button type="button" class="b s" id="addItem">+ Item</button></div>
-      <div class="cat-row muted small" style="margin-top:8px"><span>Name</span><span>Aliases</span><span>₹ Price</span><span>Lead hrs</span><span></span></div>
+      <div class="row between"><h3>Menu</h3><button type="button" class="b s" id="addItem">+ Add item</button></div>
+      <div class="cat-row muted small" style="margin-top:10px"><span>Item</span><span>Other names customers use</span><span>Price ₹</span><span>Notice (hrs)</span><span></span></div>
       <div id="catRows"></div>
-      <div class="row" style="margin-top:12px"><button class="b p">💾 Save</button></div>
+      <p class="small muted" id="catEmpty">No items yet — add what you sell.</p>
+      <div class="row" style="margin-top:14px"><button class="b p">Save</button></div>
     </div>
   </form>
 </section>
 
-<!-- SETUP -->
-<section id="setup">
-  <h2>Setup</h2>
-  <p class="sub">Anything not configured runs in demo mode — the app still works end to end.</p>
-  <div class="card" id="waCard" style="margin-bottom:16px">
-    <div class="row" style="justify-content:space-between"><div><b>📱 Your WhatsApp Business number</b><div class="small muted">Via the Meta WhatsApp Cloud API. Connect it once — the AI will answer your customers.</div></div><span class="chip" id="waState">—</span></div>
-    <div id="waConnected" hidden><p id="waInfo" style="margin:10px 0"></p>
-      <div class="row"><input id="waTestTo" placeholder="Send a test message to (91…)" style="max-width:280px" inputmode="tel"><button type="button" class="b" id="waTest">Send test message</button><button type="button" class="b s" id="waDisconnect">Disconnect</button></div></div>
-    <details id="waHow" style="margin-top:12px"><summary class="small" style="cursor:pointer;font-weight:600">How to connect your number (5 min)</summary>
-      <ol class="small" style="padding-left:18px;margin:8px 0">
-        <li><a href="https://developers.facebook.com/apps" target="_blank" rel="noopener">developers.facebook.com</a> → <b>Create app</b> → type <b>Business</b> → add <b>WhatsApp</b>.</li>
-        <li>WhatsApp → <b>API Setup</b>: add and verify your business number, then copy its <b>Phone number ID</b>.</li>
-        <li><b>Access token</b>: Business Settings → System users → generate a token (permission: <code>whatsapp_business_messaging</code>, <code>whatsapp_business_management</code>). The temporary token expires in 24 hours — use a permanent one.</li>
-        <li>App settings → Basic → copy the <b>App secret</b> (used to verify the webhook).</li>
-        <li>WhatsApp → <b>Configuration → Webhook</b>: copy the Callback URL and Verify token below, then subscribe to the <b>messages</b> field.</li>
+<!-- CONNECTIONS -->
+<section id="connections">
+  <h2>Connections</h2>
+  <p class="sub">Your accounts connect through viaSocket — this app never sees your passwords.</p>
+  <div id="vsMissing" class="callout" style="margin-bottom:14px" hidden>App connections are not configured on the server yet (VIASOCKET_ORG_ID, VIASOCKET_PROJECT_ID, VIASOCKET_EMBED_SECRET).</div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="row between"><div class="row"><span style="font-size:24px">📱</span><div><h3>WhatsApp Business</h3><div class="small muted">So the assistant can reply to your customers</div></div></div><span class="chip" id="waState">—</span></div>
+    <div id="waConnected" hidden>
+      <p id="waInfo" style="margin:12px 0 8px"></p>
+      <div class="row"><input id="waTestTo" placeholder="Number for a test message (91…)" style="max-width:260px" inputmode="tel"><button type="button" class="b" id="waTest">Send test message</button><button type="button" class="b s" id="waDisconnect">Disconnect</button></div>
+    </div>
+    <div id="waSetup">
+      <ol class="small" style="padding-left:18px;margin:12px 0 4px;line-height:1.7">
+        <li>Open <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener">developers.facebook.com</a> → <b>Create app</b> → <b>Business</b> → add <b>WhatsApp</b>.</li>
+        <li>In WhatsApp → <b>API Setup</b>, add and verify your business number and copy its <b>Phone number ID</b>.</li>
+        <li>Create a <b>permanent access token</b>: Business Settings → System users → Generate token (permissions <code>whatsapp_business_messaging</code>, <code>whatsapp_business_management</code>).</li>
+        <li>Copy the <b>App secret</b> from App settings → Basic.</li>
+        <li>In WhatsApp → <b>Configuration → Webhook</b>, paste the two values below and subscribe to <b>messages</b>.</li>
       </ol>
-      <label>Callback URL</label><code id="waHook"></code>
-      <label>Verify token</label><code id="waVerify"></code>
-    </details>
-    <form id="waForm" class="grid g3" style="margin-top:10px;align-items:end">
-      <div><label for="waPhoneId">Phone number ID</label><input id="waPhoneId" required autocomplete="off"></div>
-      <div><label for="waToken">Access token</label><input id="waToken" type="password" required autocomplete="off"></div>
-      <div><label for="waSecret">App secret</label><input id="waSecret" type="password" autocomplete="off" placeholder="recommended"></div>
-      <div><button class="b p">Connect number</button></div>
-    </form>
-  </div>
-  <div class="grid g2">
-    <div class="card"><b>Status</b><div id="modes" style="margin-top:8px"></div></div>
-    <div class="card"><b>URLs</b>
-      <label>WhatsApp webhook (Meta → Configuration)</label><code id="whUrl"></code>
-      <label>viaSocket payment callback (last step of the payment_received flow)</label><code id="cbUrl"></code>
-      <div class="row" style="margin-top:14px"><button class="b s" id="runSched">Run scheduler now</button><button class="b s" id="resetDemo">Reset demo data</button></div>
+      <div class="grid g2" style="gap:6px 14px">
+        <div><label>Callback URL</label><code id="waHook"></code></div>
+        <div><label>Verify token</label><code id="waVerify"></code></div>
+      </div>
+      <form id="waForm" class="grid g2" style="margin-top:6px;align-items:end">
+        <div><label for="waPhoneId">Phone number ID</label><input id="waPhoneId" required autocomplete="off"></div>
+        <div><label for="waToken">Access token</label><input id="waToken" type="password" required autocomplete="off"></div>
+        <div><label for="waSecret">App secret</label><input id="waSecret" type="password" autocomplete="off"></div>
+        <div><button class="b p">Connect WhatsApp</button></div>
+      </form>
     </div>
   </div>
-  <div class="card" style="margin-top:16px"><b>viaSocket flow log</b><div class="log" id="flowLog"></div></div>
+
+  <div class="grid g2">
+    <div class="card">
+      <div class="row between"><div class="row"><img class="appicon" id="sheetsIcon" alt=""><div><h3>Google Sheets</h3><div class="small muted">Every order written to your sheet</div></div></div><span class="chip" id="sheetsState">—</span></div>
+      <div class="row" style="margin-top:12px"><button type="button" class="b p" id="sheetsConnect"><img id="sheetsBtnIcon" alt="" width="16" height="16"><span>Connect Google Sheets</span></button></div>
+      <div id="sheetsSetup" hidden>
+        <label for="ssSearch">Spreadsheet</label>
+        <input id="ssSearch" placeholder="Search your spreadsheets…" autocomplete="off">
+        <select id="ssPick" size="4" style="margin-top:6px"></select>
+        <label for="tabPick">Tab (empty, or one used by this app before)</label>
+        <select id="tabPick" disabled><option value="">Choose a spreadsheet first</option></select>
+        <div class="row" style="margin-top:10px"><button type="button" class="b p" id="sheetSave" disabled>Use this sheet</button><span class="muted small">or</span><button type="button" class="b" id="sheetCreate">Create a new order sheet</button></div>
+      </div>
+      <p class="small" id="sheetsInfo" style="margin-bottom:0"></p>
+    </div>
+    <div class="card">
+      <div class="row between"><div class="row"><img class="appicon" id="rzpIcon" alt=""><div><h3>Razorpay</h3><div class="small muted">Payment links; orders marked paid automatically</div></div></div><span class="chip" id="rzpState">—</span></div>
+      <div class="row" style="margin-top:12px"><button type="button" class="b p" id="rzpConnect"><img id="rzpBtnIcon" alt="" width="16" height="16"><span>Connect Razorpay</span></button></div>
+      <div id="rzpSetup" hidden>
+        <label>Payment link type</label>
+        <label class="row small" style="margin:4px 0;color:var(--text);font-weight:500"><input type="radio" name="linkType" value="standard" style="width:auto"> All methods — UPI, cards, netbanking</label>
+        <label class="row small" style="margin:4px 0;color:var(--text);font-weight:500"><input type="radio" name="linkType" value="upi" style="width:auto"> UPI only</label>
+        <p class="small muted" id="rzpSub" style="margin-bottom:0"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h3>Other apps</h3>
+    <p class="small muted" style="margin-top:0">Want a courier, accounting or booking app? We check it's worth it for your shop before you connect.</p>
+    <form class="row" id="appForm"><input id="appName" placeholder="App name, e.g. Shiprocket" style="flex:1;min-width:180px" required><input id="appGoal" placeholder="What should it do? (optional)" style="flex:2;min-width:200px"><button class="b p">Check</button></form>
+    <div id="appOut"></div>
+    <div class="row" id="otherApps" style="margin-top:12px"></div>
+    <div id="embedWrap" hidden style="margin-top:12px"><div class="row between"><b id="embedTitle"></b><button type="button" class="b s" id="embedClose">Close</button></div><div id="vsEmbed" style="height:620px;margin-top:8px"></div></div>
+  </div>
 </section>
 </main>
+
 <div class="toast" id="toast"></div>
 <div class="login" id="login" hidden>
   <form class="card" id="loginForm">
-    <div class="logo" style="margin-bottom:10px"><i>₹</i>Dukaan AI Manager</div>
-    <p class="muted small" style="margin-top:0">Owner login. You received this token during setup (ADMIN_TOKEN).</p>
-    <label for="loginToken">Admin token</label><input id="loginToken" type="password" autocomplete="current-password" required>
-    <p class="err small" id="loginErr"></p>
-    <button class="b p" style="width:100%">Login</button>
-    <p class="small muted" style="margin-bottom:0"><a href="/about">What does this app do?</a></p>
+    <div class="logo" style="margin-bottom:12px;max-width:none"><i>₹</i>Dukaan AI Manager</div>
+    <label for="loginToken">Owner password</label><input id="loginToken" type="password" autocomplete="current-password" required>
+    <p class="small" id="loginErr" style="color:var(--bad);min-height:1em"></p>
+    <button class="b p" style="width:100%;justify-content:center">Log in</button>
   </form>
 </div>
 
@@ -293,119 +255,149 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const linkify=s=>esc(s).replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
 const rs=n=>'₹'+Number(n||0).toLocaleString('en-IN');
 const when=iso=>new Date(iso).toLocaleString('en-IN',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
-function showLogin(msg=''){$('#login').hidden=false;$('#loginErr').textContent=msg;setTimeout(()=>$('#loginToken').focus(),50);}
-const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),2200);};
+const timeOnly=iso=>new Date(iso).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'});
+const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),2400);};
 
+// ---------- auth ----------
 let token='';try{token=localStorage.getItem('dk-admin')||'';}catch(e){}
+function showLogin(msg=''){$('#login').hidden=false;$('#loginErr').textContent=msg;setTimeout(()=>$('#loginToken').focus(),50);}
 async function api(path,opt={}){
-  const r=await fetch(path,{...opt,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...(opt.headers||{})},body:opt.body&&JSON.stringify(opt.body)});
+  const r=await fetch(path,{...opt,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:opt.body&&JSON.stringify(opt.body)});
   if(r.status===401){showLogin();throw new Error('login required');}
   const j=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(j.error||r.statusText);
   return j;
 }
+$('#loginForm').onsubmit=async e=>{
+  e.preventDefault();token=$('#loginToken').value.trim();
+  const probe=await fetch('/api/orders',{headers:{Authorization:'Bearer '+token}});
+  if(probe.status===401)return showLogin('Wrong password');
+  if(probe.status===503)return showLogin('The server has no ADMIN_TOKEN set');
+  try{localStorage.setItem('dk-admin',token);}catch(err){}
+  $('#login').hidden=true;boot();
+};
 
-// theme
+// ---------- theme ----------
 const root=document.documentElement;
 try{const t=localStorage.getItem('dk-theme');if(t)root.dataset.theme=t;}catch(e){}
 $('#theme').onclick=()=>{const d=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;root.dataset.theme=d?'light':'dark';try{localStorage.setItem('dk-theme',root.dataset.theme);}catch(e){}};
 
-// tabs
+// ---------- tabs ----------
 const loaders={};
-function show(t){$$('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.t===t)));$$('main>section').forEach(s=>s.classList.toggle('on',s.id===t));try{history.replaceState(null,'','#'+t);}catch(e){}loaders[t]?.();}
+function show(t){$$('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.t===t)));$$('main>section').forEach(s=>s.classList.toggle('on',s.id===t));try{history.replaceState(null,'','#'+t);}catch(e){}loaders[t]?.().catch?.(e=>{if(e.message!=='login required')toast(e.message);});}
 $$('#tabs button').forEach(b=>b.onclick=()=>show(b.dataset.t));
+document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g){e.preventDefault();show(g.dataset.go);}});
 
 let status={};
-async function loadStatus(){
-  status=await api('/api/status');
-  $('#shopName').textContent=status.shop.name;
-  $('#ownerSub').textContent='+'+status.shop.owner_phone;
-  $('#clock').textContent=when(status.now)+(status.travelled_hours?` (+${status.travelled_hours}h)`:'');
-  $('#analyzerMode').textContent=status.modes.ai==='rules'&&!status.viasocket_configured?'Demo: catalog/heuristic score.':'Live research (AI + web search).';
-}
+async function loadStatus(){status=await api('/api/status');$('#shopName').textContent=status.shop.name||'Dukaan AI Manager';document.title=(status.shop.name?status.shop.name+' · ':'')+'Dukaan AI Manager';}
 
-// ---------- LIVE ----------
-const CUSTOMERS=[{phone:'919811111111',name:'Priya Sharma'},{phone:'919822222222',name:'Rahul Verma'},{phone:'919833333333',name:'Neha Gupta'}];
-CUSTOMERS.forEach(c=>$('#custSel').insertAdjacentHTML('beforeend',`<option value="${c.phone}">${c.name}</option>`));
-const cust=()=>{const v=$('#custSel').value;const t=CUSTOMERS.find(c=>c.phone===v);if(t)return t;const o=$('#custSel').selectedOptions[0];return {phone:v,name:o?o.textContent:'+'+v,real:true};};
-$('#custSel').onchange=()=>{renderCust();pollChats();};
-function renderCust(){const c=cust();$('#custTitle').textContent=c.name.replace(/^🧪 /,'');$('#custSub').textContent='+'+c.phone+(c.real?' · real customer':' · test');
-  $('#custInput').disabled=!!c.real;$('button',$('#custForm')).disabled=!!c.real;$('#custQuick').hidden=!!c.real;
-  $('#custInput').placeholder=c.real?'Real customer — the AI is replying; you are only viewing':'Type as the customer…';}
-renderCust();
-const quick=(el,list,form,input)=>list.forEach(q=>{const b=document.createElement('button');b.type='button';b.textContent=q;b.onclick=()=>{$(input).value=q;$(form).requestSubmit();};$(el).appendChild(b);});
-quick('#custQuick',['hi','2 chocolate cakes tomorrow 6 pm','yes','where is my order?','I have paid','cancel'],'#custForm','#custInput');
-quick('#ownerQuick',['today','report','due','341 done','341 paid','connect Shiprocket','yes','connect Khatabook'],'#ownerForm','#ownerInput');
+const STAGE={CONFIRMED:['Confirmed',''],AWAITING_PAYMENT:['Payment pending','warn'],PAID:['Paid','ok'],FULFILLED:['Completed','ok'],UDHAAR:['Payment overdue','warn'],ESCALATED:['Overdue 7+ days','bad'],CANCELLED:['Cancelled','']};
+const stageChip=s=>{const [t,c]=STAGE[s]||[s,''];return `<span class="chip ${c}">${t}</span>`;};
 
-function bubbles(list,ownerView){
-  if(!list.length)return '<div class="empty">No messages yet.</div>';
-  return list.map(m=>{
-    const tag=m.kind&&!['reply','owner_reply'].includes(m.kind)?`<span class="tag">${esc(m.kind.replace(/_/g,' '))}${m.template?' · template':''}</span>`:'';
-    return `<div class="msg ${m.direction}">${tag}${linkify(m.text)}<time>${new Date(m.at).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}</time></div>`;
-  }).join('');
+// ---------- HOME ----------
+function renderChecklist(){
+  const c=status.checklist||{};
+  const steps=[['shop','Add your shop details and menu','shop','Open'],['whatsapp','Connect your WhatsApp Business number','connections','Connect'],['sheets','Connect Google Sheets (optional)','connections','Connect'],['razorpay','Connect Razorpay (optional)','connections','Connect']];
+  const done=steps.filter(s=>c[s[0]]).length;
+  $('#checklist').hidden=!!(c.shop&&c.whatsapp);
+  $('#checkCount').textContent=`${done} of ${steps.length} done`;
+  $('#steps').innerHTML=steps.map(([k,t,tab,btn],i)=>`<div class="step ${c[k]?'done':''}"><span class="ic">${c[k]?'✓':i+1}</span><b>${t}</b>${c[k]?'<span class="small muted">Done</span>':`<button class="b s p" data-go="${tab}">${btn}</button>`}</div>`).join('');
 }
-const lastSig={};
-async function paint(el,phone){
-  const list=await api('/api/messages?phone='+phone);
-  const sig=list.length+':'+(list.at(-1)?.id||'');
-  if(lastSig[el]===sig)return;lastSig[el]=sig;
-  const box=$(el);box.innerHTML=bubbles(list);box.scrollTop=box.scrollHeight;
+loaders.home=async()=>{
+  await loadStatus();renderChecklist();
+  const [s,orders]=await Promise.all([api('/api/summary'),api('/api/orders')]);
+  const real=orders.filter(o=>!o.test);
+  const today=new Date().toDateString();
+  const todays=real.filter(o=>o.status!=='CANCELLED'&&new Date(o.fulfil_at).toDateString()===today).sort((a,b)=>a.fulfil_at.localeCompare(b.fulfil_at));
+  $('#kpis').innerHTML=[['Orders this month',s.orders],['Collected this month',rs(s.collected)],['Owed to you',rs(s.due_amount)],['Orders for today',todays.length]].map(([k,v])=>`<div class="card"><div class="small muted">${k}</div><div class="kpi">${v}</div></div>`).join('');
+  $('#todayList').innerHTML=todays.length?todays.map(o=>`<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${timeOnly(o.fulfil_at)}</b> · #${o.id} ${esc(o.customer_name||'')}<div class="small muted">${o.items.map(l=>`${l.qty} × ${esc(l.name)}`).join(', ')}</div></div>${stageChip(o.stage)}</div>`).join(''):'<p class="empty">No orders for today.</p>';
+  $('#dueMini').innerHTML=s.due.length?s.due.slice(0,5).map(o=>`<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${esc(o.customer_name||'+'+o.phone)}</b><div class="small muted">#${o.id} · ${o.days} day${o.days===1?'':'s'} overdue</div></div><b>${rs(o.total)}</b></div>`).join(''):'<p class="empty">Nobody owes you money 🎉</p>';
+};
+
+// ---------- CHATS ----------
+let current='';
+const TEST=()=>status.test_phone;
+async function loadConvs(){
+  const convs=(await api('/api/conversations')).filter(c=>c.phone!==status.shop.owner_phone&&c.phone!==TEST());
+  if(!current)current=convs[0]?.phone||TEST();
+  $('#clist').innerHTML=`<button class="citem" data-p="${TEST()}" aria-selected="${current===TEST()}"><b>🧪 Test chat</b><span>Try the assistant yourself</span></button>`+
+    (convs.length?convs.map(c=>`<button class="citem" data-p="${c.phone}" aria-selected="${current===c.phone}"><b>${esc(c.name||'+'+c.phone)}</b><span>${esc(c.last)}</span></button>`).join(''):'<p class="small muted" style="padding:10px">Customer chats will appear here once WhatsApp is connected.</p>');
 }
-async function pollChats(){if(!$('#live').classList.contains('on'))return;await Promise.all([paint('#custChat',cust().phone),paint('#ownerChat',status.shop?.owner_phone||'')]).catch(()=>{});}
-async function send(phone,name,input,btnForm){
-  const t=$(input).value.trim();if(!t)return;$(input).value='';
-  const btn=$('button',$(btnForm));btn.disabled=true;
-  try{await api('/api/simulate',{method:'POST',body:{phone,name,text:t}});}catch(e){toast(e.message);}finally{btn.disabled=false;}
-  await pollChats();
+$('#clist').onclick=e=>{const b=e.target.closest('[data-p]');if(!b)return;current=b.dataset.p;lastSig='';loadConvs();paint();};
+let lastSig='';
+async function paint(){
+  const isTest=current===TEST();
+  $('#chatTitle').textContent=isTest?'Test chat':($(`[data-p="${current}"] b`)?.textContent||'+'+current);
+  $('#chatSub').textContent=isTest?'Messages here are not real orders':'+'+current+' · the assistant is replying';
+  $('#compose').hidden=!isTest;$('#clearTest').hidden=!isTest;
+  const list=await api('/api/messages?phone='+current);
+  const sig=current+list.length+(list.at(-1)?.id||'');if(sig===lastSig)return;lastSig=sig;
+  $('#chat').innerHTML=list.length?list.map(m=>{
+    const tag=['pickup_reminder','reminder_polite','reminder_firm'].includes(m.kind)?`<span class="tag">Automatic reminder</span>`:m.kind==='paid'?'<span class="tag">Payment confirmation</span>':'';
+    // Customer messages on the left, the shop's replies on the right.
+    return `<div class="msg ${m.direction==='in'?'in':'out'}">${tag}${linkify(m.text)}<time>${timeOnly(m.at)}</time></div>`;}).join(''):`<p class="empty">${isTest?'Say hi, or try “2 chocolate cakes tomorrow 6 pm”.':'No messages yet.'}</p>`;
+  const c=$('#chat');c.scrollTop=c.scrollHeight;
 }
-$('#custForm').onsubmit=e=>{e.preventDefault();send(cust().phone,cust().name,'#custInput','#custForm');};
-$('#ownerForm').onsubmit=e=>{e.preventDefault();send(status.shop.owner_phone,'Owner','#ownerInput','#ownerForm');};
-$$('[data-travel]').forEach(b=>b.onclick=async()=>{
-  const v=b.dataset.travel;
-  await api('/api/demo/time-travel',{method:'POST',body:v==='reset'?{reset:true}:{hours:+v}});
-  await loadStatus();await pollChats();toast(v==='reset'?'Clock reset':`+${v}h — scheduler ran`);
-});
-$('#forceReport').onclick=async()=>{await api('/api/scheduler/run',{method:'POST',body:{force_report:true}});await pollChats();toast('Monthly report sent to the owner');};
-loaders.live=()=>{loadCustomers();pollChats();};
-setInterval(pollChats,2500);
+$('#compose').onsubmit=async e=>{e.preventDefault();const t=$('#msgInput').value.trim();if(!t)return;$('#msgInput').value='';const b=$('button',$('#compose'));b.disabled=true;
+  try{await api('/api/simulate',{method:'POST',body:{phone:TEST(),name:'Test customer',text:t}});}catch(err){toast(err.message);}finally{b.disabled=false;$('#msgInput').focus();}paint();};
+$('#clearTest').onclick=async()=>{if(!confirm('Delete the test chat and its test orders?'))return;await api('/api/test-chat/clear',{method:'POST',body:{}});lastSig='';paint();toast('Test chat deleted');};
+loaders.chats=async()=>{await loadConvs();await paint();};
+setInterval(()=>{if($('#chats').classList.contains('on')&&token)paint().catch(()=>{});},3000);
 
 // ---------- ORDERS ----------
 loaders.orders=async()=>{
-  const list=await api('/api/orders');
+  const f=$('#orderFilter').value;
+  const list=(await api('/api/orders')).filter(o=>!o.test).filter(o=>f==='all'||(f==='unpaid'&&o.payment!=='PAID'&&o.status!=='CANCELLED')||(f==='open'&&o.status==='CONFIRMED')||(f==='done'&&o.status==='FULFILLED'));
   $('#orderRows').innerHTML=list.length?list.map(o=>`<tr>
-    <td><b>#${o.id}</b></td><td>${esc(o.customer_name||'')}<div class="muted small">+${o.phone}</div></td>
-    <td>${o.items.map(l=>`${l.qty} × ${esc(l.name)}`).join('<br>')}${o.notes?`<div class="muted small">${esc(o.notes)}</div>`:''}</td>
-    <td>${rs(o.total)}</td><td>${when(o.fulfil_at)}<div class="muted small">${o.mode}${o.address?': '+esc(o.address):''}</div></td>
-    <td><span class="chip st-${o.stage}">${o.stage.replace('_',' ')}</span></td>
-    <td class="row">${o.payment!=='PAID'&&o.status!=='CANCELLED'?`<button class="b s" data-act="paid" data-id="${o.id}">Got cash</button>`:''}
+    <td><b>${o.id}</b></td><td>${esc(o.customer_name||'')}<div class="small muted">+${o.phone}</div></td>
+    <td>${o.items.map(l=>`${l.qty} × ${esc(l.name)}`).join('<br>')}${o.notes?`<div class="small muted">${esc(o.notes)}</div>`:''}</td>
+    <td>${rs(o.total)}</td><td>${when(o.fulfil_at)}<div class="small muted">${o.mode==='delivery'?'Delivery'+(o.address?': '+esc(o.address):''):'Pickup'}</div></td>
+    <td>${stageChip(o.stage)}</td>
+    <td><div class="row">${o.payment!=='PAID'&&o.status!=='CANCELLED'?`<button class="b s" data-act="paid" data-id="${o.id}">Mark paid</button>`:''}
       ${o.status==='CONFIRMED'?`<button class="b s" data-act="fulfilled" data-id="${o.id}">Handed over</button>`:''}
-      ${o.payment!=='PAID'&&o.status==='CONFIRMED'?`<button class="b s" data-act="cancel" data-id="${o.id}">Cancel</button>`:''}
-      ${o.payment_link?.url&&o.payment!=='PAID'?`<a class="b s" href="${esc(o.payment_link.url)}" target="_blank" rel="noopener">Link</a>`:''}</td></tr>`).join(''):'<tr><td colspan="7" class="empty">No orders yet — place one as a test customer from the Chats tab.</td></tr>';
+      ${o.payment!=='PAID'&&o.status==='CONFIRMED'?`<button class="b s" data-act="cancel" data-id="${o.id}">Cancel</button>`:''}</div></td></tr>`).join(''):`<tr><td colspan="7" class="empty">${f==='all'?'No orders yet. They appear here as customers order on WhatsApp.':'Nothing here.'}</td></tr>`;
 };
-$('#orderRows').onclick=async e=>{const b=e.target.closest('[data-act]');if(!b)return;b.disabled=true;
-  try{await api(`/api/orders/${b.dataset.id}/${b.dataset.act}`,{method:'POST',body:{}});toast('Done');}catch(err){toast(err.message);}loaders.orders();};
+$('#orderFilter').onchange=()=>loaders.orders();
+$('#orderRows').onclick=async e=>{const b=e.target.closest('[data-act]');if(!b)return;
+  if(b.dataset.act==='cancel'&&!confirm(`Cancel order #${b.dataset.id}?`))return;b.disabled=true;
+  try{await api(`/api/orders/${b.dataset.id}/${b.dataset.act}`,{method:'POST',body:{}});toast('Updated');}catch(err){toast(err.message);}loaders.orders();};
 
-// ---------- HISAAB ----------
-loaders.udhaar=async()=>{
+// ---------- DUES ----------
+loaders.dues=async()=>{
   const s=await api('/api/summary');
-  $('#monthLine').textContent=s.line;
-  $('#kpis').innerHTML=[['Orders',s.orders],['Collected',rs(s.collected)],['People owing',s.due_count],['Due amount',rs(s.due_amount)]]
-    .map(([k,v])=>`<div class="card"><div class="muted small">${k} · ${s.month}</div><div class="kpi">${v}</div></div>`).join('');
-  $('#dueRows').innerHTML=s.due.length?s.due.map(o=>{const days=Math.floor((Date.now()-new Date(o.due_at))/864e5);return `<tr>
-    <td>${esc(o.customer_name||'')}<div class="muted small">+${o.phone} · #${o.id}</div></td><td>${rs(o.total)}</td><td>${Math.max(0,days)}</td>
-    <td>${o.reminders.udhaar.map(u=>`Day ${u.day}`).join(', ')||'—'}${o.reminders.escalated_at?' · ⚠️ owner':''}</td>
-    <td><span class="chip st-${o.stage}">${o.stage}</span></td>
-    <td><button class="b s" data-paid="${o.id}">Got cash</button></td></tr>`;}).join(''):'<tr><td colspan="6" class="empty">Nobody owes you money 🎉</td></tr>';
+  $('#dueRows').innerHTML=s.due.length?s.due.map(o=>`<tr>
+    <td><b>${esc(o.customer_name||'')}</b><div class="small muted">+${o.phone} · order ${o.id}</div></td><td><b>${rs(o.total)}</b></td>
+    <td>${o.days} day${o.days===1?'':'s'}</td>
+    <td>${o.reminders.udhaar.length?`${o.reminders.udhaar.length} sent`:'None yet'}${o.reminders.escalated_at?' · <span class="chip bad">You were alerted</span>':''}</td>
+    <td><button class="b s" data-paid="${o.id}">Mark paid</button></td></tr>`).join(''):'<tr><td colspan="5" class="empty">Nobody owes you money 🎉</td></tr>';
 };
-$('#dueRows').onclick=async e=>{const b=e.target.closest('[data-paid]');if(!b)return;await api(`/api/orders/${b.dataset.paid}/paid`,{method:'POST',body:{}});toast('Paid ✅');loaders.udhaar();};
+$('#dueRows').onclick=async e=>{const b=e.target.closest('[data-paid]');if(!b)return;b.disabled=true;await api(`/api/orders/${b.dataset.paid}/paid`,{method:'POST',body:{}}).catch(err=>toast(err.message));toast('Marked paid');loaders.dues();};
 
-// ---------- APPS ----------
-const DIM={fit:['Dukaan fit',20],demand:['Real demand',20],technical:['API / webhooks',15],viasocket:['On viaSocket',15],better_than_manual:['Better than manual',10],risk:['Low risk',10],evidence:['Evidence',10]};
-let lastResult=null, vsToken='', integ=null, pendingService=null, embed=null;
-// The Connect popup must open from the click itself, so the token is fetched before any click.
+// ---------- SHOP ----------
+function catRow(c={}){return `<div class="cat-row"><input placeholder="Chocolate Cake (1 kg)" value="${esc(c.name||'')}" data-k="name" aria-label="Item"><input placeholder="choco cake, cake" value="${esc((c.aliases||[]).join(', '))}" data-k="aliases" aria-label="Other names"><input type="number" min="1" value="${c.price||''}" data-k="price" aria-label="Price"><input type="number" min="0" value="${c.lead_time_hours??0}" data-k="lead_time_hours" aria-label="Notice hours"><button type="button" class="b s" data-del aria-label="Remove">✕</button></div>`;}
+const syncCatEmpty=()=>{$('#catEmpty').hidden=$$('#catRows .cat-row').length>0;};
+loaders.shop=async()=>{
+  const {shop,catalog}=await api('/api/shop');
+  for(const el of $$('#shopForm [name]'))el.value=shop[el.name]??'';
+  if(!shop.type)$('#f_type').value='bakery';
+  $('#catRows').innerHTML=catalog.map(catRow).join('');syncCatEmpty();
+};
+$('#addItem').onclick=()=>{$('#catRows').insertAdjacentHTML('beforeend',catRow());syncCatEmpty();$$('#catRows .cat-row').at(-1).querySelector('input').focus();};
+$('#catRows').onclick=e=>{if(e.target.matches('[data-del]')){e.target.closest('.cat-row').remove();syncCatEmpty();}};
+$('#shopForm').onsubmit=async e=>{
+  e.preventDefault();
+  const shop=Object.fromEntries($$('#shopForm [name]').map(el=>[el.name,el.value]));
+  const catalog=$$('#catRows .cat-row').map(r=>Object.fromEntries($$('[data-k]',r).map(el=>[el.dataset.k,el.value]))).filter(c=>c.name.trim());
+  if(catalog.some(c=>!(Number(c.price)>0)))return toast('Every menu item needs a price');
+  try{await api('/api/shop',{method:'PUT',body:{shop,catalog}});toast('Saved ✅');await loadStatus();loaders.shop();}catch(err){toast(err.message);}
+};
+
+// ---------- CONNECTIONS ----------
+let integ=null,vsToken='',pendingService=null,embed=null;
 async function loadVsToken(){if(!integ?.configured)return;try{vsToken=(await api('/api/viasocket/token')).token;}catch(e){vsToken='';}}
-function openConnect(service, opts={}){
-  if(!vsToken||typeof window.openViasocketConnection!=='function'){toast('viaSocket has not loaded yet — refresh the page');return;}
+// The popup must open from the click itself, so the token is fetched beforehand.
+function openConnect(service,opts={}){
+  if(!vsToken||typeof window.openViasocketConnection!=='function')return toast('Still loading — try again in a moment');
   pendingService=service;
   window.openViasocketConnection(vsToken,service.service_id,{skipActionSelection:!!opts.filteredActions,...opts});
 }
@@ -413,40 +405,39 @@ window.addEventListener('message',async e=>{
   const t=e.data?.type;
   if(t==='viasocket_connection_success'){
     const svc=pendingService||{};
-    const serviceId=e.data.serviceId||svc.service_id, authId=e.data.data?.id;
-    try{integ=await api('/api/viasocket/connected',{method:'POST',body:{serviceId,authId,name:svc.name,icon:svc.iconurl||svc.icon}});toast(`${svc.name||'App'} connected ✅`);renderInteg();loadApps();
-      if(svc.generic)showFlowBuilder(svc);}catch(err){toast(err.message);}
-  }else if(t==='viasocket_connection_error'){toast(e.data.error?.message||'Connect fail hua');}
+    try{integ=await api('/api/viasocket/connected',{method:'POST',body:{serviceId:e.data.serviceId||svc.service_id,authId:e.data.data?.id,name:svc.name,icon:svc.iconurl||svc.icon}});
+      toast(`${svc.name||'App'} connected ✅`);await loadStatus();renderInteg();loadOtherApps();if(svc.generic)showFlowBuilder(svc);}catch(err){toast(err.message);}
+  }else if(t==='viasocket_connection_error')toast(e.data.error?.message||'Could not connect');
 });
 const appOf=id=>integ?.apps.find(a=>a.service_id===id);
-function stateChip(el,a,ready){const c=$(el);
-  if(!integ?.configured){c.textContent='demo';c.className='chip v-CONDITIONAL';return;}
-  if(!a){c.textContent='not connected';c.className='chip';return;}
-  if(a.expired){c.textContent='reconnect';c.className='chip v-NO-GO';return;}
-  c.textContent=ready?'live':'setup pending';c.className='chip '+(ready?'v-GO':'v-CONDITIONAL');}
+function setState(el,a,ready){const c=$(el);
+  if(!integ?.configured){c.textContent='Not available';c.className='chip';return;}
+  if(!a){c.textContent='Not connected';c.className='chip';return;}
+  if(a.expired){c.textContent='Reconnect needed';c.className='chip bad';return;}
+  c.textContent=ready?'Connected':'Finish setup';c.className='chip '+(ready?'ok':'warn');}
 function renderInteg(){
-  if(!integ)return;
   $('#vsMissing').hidden=!!integ.configured;
   for(const [k,card] of [['sheets','sheets'],['razorpay','rzp']]){
     const svc=integ[k];$(`#${card}Icon`).src=svc.icon;$(`#${card}BtnIcon`).src=svc.icon;
-    const a=appOf(svc.service_id);stateChip(`#${card}State`,a,svc.ready);
-    const btn=$(`#${card}Connect`);btn.disabled=!integ.configured;
-    btn.lastChild.textContent=a?(a.expired?` Reconnect ${svc.name}`:` Reconnect ${svc.name}`):` Connect ${svc.name}`;
+    const a=appOf(svc.service_id);setState(`#${card}State`,a,svc.ready);
+    const btn=$(`#${card}Connect`);btn.disabled=!integ.configured;btn.hidden=!!(a&&!a.expired&&svc.ready);
+    $('span',btn).textContent=a?.expired?`Reconnect ${svc.name}`:`Connect ${svc.name}`;
   }
   const sh=appOf(integ.sheets.service_id);
-  $('#sheetsSetup').hidden=!sh||sh.expired;
-  $('#sheetsInfo').innerHTML=sh?.sheet?`Orders go to: <a href="${esc(sh.sheet.url)}" target="_blank" rel="noopener">${esc(sh.sheet.spreadsheet_label||'Spreadsheet')} › ${esc(sh.sheet.sheet_label||'')}</a>`:(sh?'Now choose a spreadsheet and tab.':'');
+  $('#sheetsSetup').hidden=!sh||sh.expired||integ.sheets.ready;
+  $('#sheetsInfo').innerHTML=sh?.sheet?`Orders go to <a href="${esc(sh.sheet.url)}" target="_blank" rel="noopener">${esc(sh.sheet.spreadsheet_label||'your spreadsheet')} › ${esc(sh.sheet.sheet_label||'')}</a> · <a href="#" id="sheetChange">change</a>`:'';
+  $('#sheetChange')?.addEventListener('click',e=>{e.preventDefault();$('#sheetsSetup').hidden=false;loadSpreadsheets();});
   const rz=appOf(integ.razorpay.service_id);
   $('#rzpSetup').hidden=!rz||rz.expired;
   if(rz){$$('input[name=linkType]').forEach(r=>r.checked=r.value===rz.link_type);
-    $('#rzpSub').textContent=rz.paid_subscription?`"Payment link paid" event is on (since ${new Date(rz.paid_subscription.created_at).toLocaleDateString('en-IN')}).`:'Paid event not subscribed yet — it happens automatically once the app runs on its public HTTPS URL.';}
+    $('#rzpSub').textContent=rz.paid_subscription?'Orders are marked paid automatically when a link is paid.':'Automatic “paid” updates turn on once the app is live on its web address.';}
 }
 $('#sheetsConnect').onclick=()=>{const a=appOf(integ.sheets.service_id);openConnect(integ.sheets,a?.expired?{authId:a.auth_id}:{filteredActions:integ.sheetsFilteredActions});};
 $('#rzpConnect').onclick=()=>{const a=appOf(integ.razorpay.service_id);openConnect(integ.razorpay,a?.expired?{authId:a.auth_id}:{filteredActions:integ.razorpay.filteredActions});};
 let ssTimer=null;
 async function loadSpreadsheets(search=''){
   try{const opts=await api('/api/viasocket/sheets/options',{method:'POST',body:{field:'spreadsheet',search}});
-    $('#ssPick').innerHTML=opts.map(o=>`<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('')||'<option disabled>Nothing found</option>';}catch(e){toast(e.message);}
+    $('#ssPick').innerHTML=opts.map(o=>`<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('')||'<option disabled>No spreadsheets found</option>';}catch(e){toast(e.message);}
 }
 $('#ssSearch').oninput=()=>{clearTimeout(ssTimer);ssTimer=setTimeout(()=>loadSpreadsheets($('#ssSearch').value.trim()),350);};
 $('#ssPick').onchange=async()=>{
@@ -454,155 +445,72 @@ $('#ssPick').onchange=async()=>{
   try{const tabs=await api('/api/viasocket/sheets/options',{method:'POST',body:{field:'sheet',spreadsheet_id:$('#ssPick').value}});
     $('#tabPick').innerHTML=tabs.map(o=>`<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('');$('#tabPick').disabled=false;$('#sheetSave').disabled=!tabs.length;}catch(e){toast(e.message);}
 };
-$('#sheetSave').onclick=async()=>{const ss=$('#ssPick'),tab=$('#tabPick');
-  try{integ=await api('/api/viasocket/sheets/choose',{method:'POST',body:{spreadsheet_id:ss.value,spreadsheet_label:ss.selectedOptions[0]?.text,sheet_id:tab.value,sheet_label:tab.selectedOptions[0]?.text}});renderInteg();toast('Order sheet saved ✅');}catch(e){toast(e.message);}};
+$('#sheetSave').onclick=async()=>{const ss=$('#ssPick'),tab=$('#tabPick');$('#sheetSave').disabled=true;
+  try{integ=await api('/api/viasocket/sheets/choose',{method:'POST',body:{spreadsheet_id:ss.value,spreadsheet_label:ss.selectedOptions[0]?.text,sheet_id:tab.value,sheet_label:tab.selectedOptions[0]?.text}});await loadStatus();renderInteg();toast('Order sheet saved ✅');}catch(e){toast(e.message);}finally{$('#sheetSave').disabled=false;}};
 $('#sheetCreate').onclick=async()=>{const b=$('#sheetCreate');b.disabled=true;
-  try{integ=await api('/api/viasocket/sheets/create',{method:'POST',body:{title:`${status.shop.name} — Orders`}});renderInteg();toast('New sheet created ✅');}catch(e){toast(e.message);}finally{b.disabled=false;}};
+  try{integ=await api('/api/viasocket/sheets/create',{method:'POST',body:{title:`${status.shop.name||'Shop'} — Orders`}});await loadStatus();renderInteg();toast('New sheet created ✅');}catch(e){toast(e.message);}finally{b.disabled=false;}};
 $$('input[name=linkType]').forEach(r=>r.onchange=async()=>{try{integ=await api('/api/viasocket/razorpay/settings',{method:'POST',body:{link_type:r.value}});renderInteg();toast('Saved');}catch(e){toast(e.message);}});
 
-async function loadApps(){
-  const [apps,i]=await Promise.all([api('/api/apps'),api('/api/integrations')]);integ=i;renderInteg();
-  $('#connected').innerHTML=apps.map(a=>`<span class="chip ${a.pending_connect?'v-CONDITIONAL':'v-GO'}">${a.icon?`<img src="${esc(a.icon)}" alt="" width="12" height="12" style="vertical-align:-1px"> `:''}${a.pending_connect?'⏳':'✓'} ${esc(a.name)}</span>`).join(' ');
-  await loadVsToken();
-  if(integ.configured&&appOf(integ.sheets.service_id)&&!$('#ssPick').options.length)loadSpreadsheets();
-}
-loaders.apps=loadApps;
-
-function loadScript(src){return new Promise((ok,bad)=>{if(document.querySelector(`script[src="${src}"]`))return ok();const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.appendChild(s);});}
-async function showFlowBuilder(svc){
-  if(!vsToken)return toast('Could not get a viaSocket token');
-  $('#embedCard').hidden=false;$('#embedTitle').innerHTML=`<img src="${esc(svc.iconurl||svc.icon||'')}" alt="" width="18" height="18" style="vertical-align:-3px"> ${esc(svc.name)} — choose what it should do`;
-  await loadScript('https://embed.viasocket.com/prod-embedcomponent.js');
-  embed?.destroy?.();$('#vsEmbed').innerHTML='';
-  embed=window.viaSocket.mount({embedToken:vsToken,parent:'#vsEmbed',config:{showEnabled:false,pageheading:'Automation',hideadvancedflowbutton:false},open:{serviceId:svc.service_id}});
-  embed.on('flow',f=>api('/api/viasocket/flow',{method:'POST',body:{service_id:svc.service_id,flow:{id:f.id,title:f.title,status:f.status,action:f.action,webhookurl:f.webhookurl}}}).then(()=>{if(f.action==='published')toast('Flow live ✅');loadApps();}).catch(()=>{}));
-  $('#embedCard').scrollIntoView({behavior:'smooth'});
-}
-$('#embedClose').onclick=()=>{embed?.destroy?.();embed=null;$('#embedCard').hidden=true;};
-
-async function findInCatalog(name){
-  const box=$('#catalogPick');if(!box)return;
-  box.innerHTML='<span class="muted small">Searching the viaSocket catalog…</span>';
-  try{
-    const list=await api('/api/viasocket/apps/search?q='+encodeURIComponent(name));
-    if(!list.length){box.innerHTML='<span class="small">This app is not on viaSocket.</span>';return;}
-    box.innerHTML='<div class="small muted" style="margin:6px 0">Which app? Click to connect your account:</div>'+list.slice(0,5).map((a,i)=>`<button type="button" class="b" data-i="${i}" style="margin:0 6px 6px 0"><img src="${esc(a.iconurl)}" alt="" width="16" height="16" style="vertical-align:-3px"> Connect ${esc(a.name)}</button>`).join('');
-    box.onclick=ev=>{const b=ev.target.closest('[data-i]');if(!b)return;const a=list[+b.dataset.i];
-      api('/api/apps/connect',{method:'POST',body:{result:lastResult}}).catch(()=>{});
-      openConnect({...a,generic:true});};
-  }catch(e){box.innerHTML=`<span class="err small">${esc(e.message)}</span>`;}
-}
-
-$('#anForm').onsubmit=async e=>{
-  e.preventDefault();$('#anOut').innerHTML='<div class="card empty">Analysing with the viaSocket rubric…</div>';
-  try{
-    const r=await api('/api/analyze-app',{method:'POST',body:{app:$('#anApp').value,category:$('#anCat').value,goal:$('#anGoal').value}});
-    lastResult=r;
-    if(r.already_connected){$('#anOut').innerHTML=`<div class="card">✅ ${esc(r.app)} is already connected.</div>`;return;}
-    const canConnect=integ?.configured;
-    const next=r.verdict==='GO'?`<div class="callout" style="border-color:var(--go);background:var(--go-soft)">✅ This is a genuine use case.${canConnect?'<div id="catalogPick"></div>':'<div class="row" style="margin-top:8px"><button class="b p" id="connectBtn">➕ Approve (demo)</button></div>'}</div>`
-      :r.verdict==='CONDITIONAL'?`<div class="callout">🤔 First tell us: <b>${esc(r.ask_owner||'What will you use this app for every day?')}</b><br><span class="small muted">Add your answer under "What should it do?" and analyse again.</span></div>`
-      :`<div class="callout" style="border-color:var(--no);background:var(--no-soft)">⛔ Not connecting this for now. ${esc(r.biggest_risk)}</div>`;
-    $('#anOut').innerHTML=`<div class="card">
-      <div class="row" style="justify-content:space-between"><div><span class="muted small">VERDICT · ${esc(r.app)}</span><br><span class="chip v-${r.verdict}" style="font-size:16px;padding:4px 12px">${r.verdict}</span></div><div class="kpi">${r.score}<span class="muted" style="font-size:14px">/100</span></div></div>
-      <p class="small muted">Connector: <b>${r.connector}</b> · Confidence: <b>${r.confidence}</b> · Source: ${r.source}</p>
-      <p style="margin:6px 0"><b>Opportunity:</b> ${esc(r.biggest_opportunity)}</p><p style="margin:0"><b>Risk:</b> ${esc(r.biggest_risk)}</p>
-      <div class="bars">${Object.entries(DIM).map(([k,[l,m]])=>`<div class="br"><span>${l}</span><div class="tr"><i style="width:${(r.breakdown[k]||0)/m*100}%"></i></div><span class="muted">${r.breakdown[k]||0}/${m}</span></div>`).join('')}</div>
-      ${(r.notes||[]).length?`<p class="small muted">${r.notes.map(esc).join(' · ')}</p>`:''}
-      ${(r.use_cases||[]).map((u,i)=>`<div class="uc"><b>${i+1}. ${esc(u.name)}</b> <span class="chip">${u.status}</span><div class="small">${esc(u.trigger)} → ${esc(u.action)} → ${esc(u.result)}</div></div>`).join('')}
-      <p class="small"><b>Success:</b> ${esc(r.success)}<br><b>Kill:</b> ${esc(r.kill)}</p>
-      ${(r.unknowns||[]).length?`<p class="small muted">UNKNOWN: ${r.unknowns.map(esc).join('; ')}</p>`:''}
-      ${next}</div>`;
-    if(r.verdict==='GO'&&canConnect)findInCatalog(r.app);
-    $('#connectBtn')?.addEventListener('click',async()=>{const c=await api('/api/apps/connect',{method:'POST',body:{result:lastResult}}).catch(e=>({error:e.message}));toast(c.error||`${lastResult.app} approved ✅`);loadApps();});
-  }catch(err){$('#anOut').innerHTML=`<div class="card err">${esc(err.message)}</div>`;}
-};
-
-// ---------- SHOP ----------
-function catRow(c={}){return `<div class="cat-row"><input placeholder="Chocolate Cake" value="${esc(c.name||'')}" data-k="name"><input placeholder="choco cake, cake" value="${esc((c.aliases||[]).join(', '))}" data-k="aliases"><input type="number" min="1" value="${c.price||''}" data-k="price"><input type="number" min="0" value="${c.lead_time_hours??0}" data-k="lead_time_hours"><button type="button" class="b s" data-del>✕</button></div>`;}
-loaders.shop=async()=>{
-  const {shop,catalog}=await api('/api/shop');
-  for(const [k,v] of Object.entries(shop)){const el=$(`#shopForm [name="${k}"]`);if(el)el.value=v;}
-  $('#catRows').innerHTML=catalog.map(catRow).join('');
-};
-$('#addItem').onclick=()=>$('#catRows').insertAdjacentHTML('beforeend',catRow());
-$('#catRows').onclick=e=>{if(e.target.matches('[data-del]'))e.target.closest('.cat-row').remove();};
-$('#shopForm').onsubmit=async e=>{
-  e.preventDefault();
-  const shop=Object.fromEntries($$('#shopForm [name]').map(el=>[el.name,el.value]));
-  const catalog=$$('#catRows .cat-row').map(r=>Object.fromEntries($$('[data-k]',r).map(el=>[el.dataset.k,el.value])));
-  try{await api('/api/shop',{method:'PUT',body:{shop,catalog}});toast('Saved ✅');loadStatus();loaders.shop();}catch(err){toast(err.message);}
-};
-
-// ---------- SETUP ----------
-loaders.setup=async()=>{
-  loadWa().catch(e=>toast(e.message));
-  await loadStatus();
-  const m=status.modes;
-  const line=(k,v,hint)=>`<div class="row" style="justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--line)"><span>${k}</span><span class="chip ${['live','claude','viasocket'].includes(v)?'v-GO':'v-CONDITIONAL'}" title="${esc(hint)}">${v}</span></div>`;
-  $('#modes').innerHTML=line('WhatsApp',m.whatsapp,'WHATSAPP_TOKEN + WHATSAPP_PHONE_ID')+line('AI brain',m.ai,'viasocket = viaSocket AI · claude = ANTHROPIC_API_KEY · rules = no AI')+line('Google Sheets',m.sheets,'Apps tab')+line('Razorpay',m.razorpay,'Apps tab')+
-    Object.entries(m.viasocket).map(([k,v])=>line('viaSocket · '+k,v,'VIASOCKET_FLOW_'+k.toUpperCase())).join('');
-  $('#whUrl').textContent=status.webhook_url;$('#cbUrl').textContent=status.payment_callback_url;
-  const log=await api('/api/flows');
-  $('#flowLog').innerHTML=log.length?log.map(f=>`<div><span class="${f.ok?'ok':'err'}">${f.ok?'✓':'✗'}</span> ${new Date(f.at).toLocaleTimeString('en-IN')} <b>${f.flow}</b> [${f.mode}] ${esc(JSON.stringify(f.payload).slice(0,140))}${f.error?` <span class="err">${esc(f.error)}</span>`:''}</div>`).join(''):'<div class="muted">No flows have run yet.</div>';
-};
-$('#runSched').onclick=async()=>{await api('/api/scheduler/run',{method:'POST',body:{}});toast('Scheduler chala');loaders.setup();};
-$('#resetDemo').onclick=async()=>{if(!confirm('Reset all demo data?'))return;await api('/api/demo/reset',{method:'POST',body:{}});toast('Reset');for(const k in lastSig)delete lastSig[k];await loadStatus();loaders.setup();};
-
-// ---------- CHECKLIST ----------
-function renderChecklist(){
-  const c=status.checklist||{};
-  const steps=[
-    ['shop','Fill in your shop details and menu (prices)','The AI only quotes these prices','shop','Open Shop'],
-    ['whatsapp','Connect your WhatsApp Business number','Without it, real customer messages can\'t reach you','setup','Connect number'],
-    ['sheets','Connect Google Sheets','Every order is written to your sheet automatically','apps','Connect'],
-    ['razorpay','Connect Razorpay','Real payment links; orders marked PAID when money arrives','apps','Connect'],
-  ];
-  const done=steps.filter(s=>c[s[0]]).length;
-  $('#checklist').hidden=done===steps.length;
-  $('#checkCount').textContent=`${done}/${steps.length}`;$('#checkCount').className='chip '+(done===steps.length?'v-GO':'v-CONDITIONAL');
-  $('#checkSub').textContent=done?'Just a few steps left.':'The app is running on demo data. Finish these 4 steps and your customers\' real orders will start coming in.';
-  $('#steps').innerHTML=steps.map(([k,t,d,tab,btn],i)=>`<div class="step ${c[k]?'done':''}"><span class="ic">${c[k]?'✓':i+1}</span><div><b>${t}</b><div class="small muted">${d}</div></div>${c[k]?'<span class="small muted">Done</span>':`<button class="b s p" data-go="${tab}">${btn}</button>`}</div>`).join('');
-}
-$('#steps').onclick=e=>{const b=e.target.closest('[data-go]');if(b)show(b.dataset.go);};
-
-// ---------- WHATSAPP SETUP ----------
+// WhatsApp
 async function loadWa(){
   const w=await api('/api/whatsapp');
-  $('#waState').textContent=w.connected?'connected':'not connected';$('#waState').className='chip '+(w.connected?'v-GO':'v-CONDITIONAL');
-  $('#waConnected').hidden=!w.connected;$('#waForm').hidden=w.connected;$('#waHow').open=!w.connected;
-  if(w.display)$('#waInfo').innerHTML=`✅ <b>${esc(w.display.name||'')}</b> · ${esc(w.display.phone||'')}${w.display.quality?` · quality ${esc(w.display.quality)}`:''}${w.has_app_secret?'':' <span class="small err">· No app secret — webhooks are not being verified</span>'}`;
-  else if(w.connected)$('#waInfo').textContent='✅ Connected via env vars';
+  $('#waState').textContent=w.connected?'Connected':'Not connected';$('#waState').className='chip '+(w.connected?'ok':'warn');
+  $('#waConnected').hidden=!w.connected;$('#waSetup').hidden=w.connected;
+  $('#waInfo').innerHTML=w.display?`✅ <b>${esc(w.display.name||'')}</b> · ${esc(w.display.phone||'')}${w.has_app_secret?'':' <span class="small" style="color:var(--bad)">· add the App secret so incoming messages are verified</span>'}`:'✅ Connected';
   $('#waHook').textContent=w.webhook_url;$('#waVerify').textContent=w.verify_token;
   if(!$('#waTestTo').value)$('#waTestTo').value=status.shop?.owner_phone||'';
 }
 $('#waForm').onsubmit=async e=>{e.preventDefault();const b=$('button',$('#waForm'));b.disabled=true;
   try{const r=await api('/api/whatsapp',{method:'POST',body:{phone_id:$('#waPhoneId').value,token:$('#waToken').value,app_secret:$('#waSecret').value}});
-    toast(`Connected: ${r.display?.phone||''} ✅`);$('#waToken').value='';$('#waSecret').value='';await loadStatus();renderChecklist();loadWa();}catch(err){toast(err.message);}finally{b.disabled=false;}};
+    toast(`WhatsApp connected: ${r.display?.phone||''} ✅`);$('#waToken').value='';$('#waSecret').value='';await loadStatus();loadWa();}catch(err){toast(err.message);}finally{b.disabled=false;}};
 $('#waTest').onclick=async()=>{try{await api('/api/whatsapp/test',{method:'POST',body:{to:$('#waTestTo').value}});toast('Test message sent — check WhatsApp ✅');}catch(e){toast(e.message);}};
-$('#waDisconnect').onclick=async()=>{if(!confirm('Disconnect the WhatsApp number? Customer messages will stop coming in.'))return;await api('/api/whatsapp/disconnect',{method:'POST',body:{}});await loadStatus();renderChecklist();loadWa();};
+$('#waDisconnect').onclick=async()=>{if(!confirm('Disconnect WhatsApp? Customers will stop getting replies.'))return;await api('/api/whatsapp/disconnect',{method:'POST',body:{}});await loadStatus();loadWa();};
 
-// ---------- REAL CUSTOMERS in the chat picker ----------
-async function loadCustomers(){
-  try{
-    const convs=(await api('/api/conversations')).filter(c=>c.phone!==status.shop.owner_phone&&!CUSTOMERS.some(t=>t.phone===c.phone));
-    const sel=$('#custSel'),cur=sel.value;
-    sel.innerHTML=(convs.length?`<optgroup label="Real customers">${convs.map(c=>`<option value="${c.phone}">${esc(c.name||'+'+c.phone)}</option>`).join('')}</optgroup>`:'')+
-      `<optgroup label="Test (try it yourself)">${CUSTOMERS.map(c=>`<option value="${c.phone}">🧪 ${esc(c.name)}</option>`).join('')}</optgroup>`;
-    if([...sel.options].some(o=>o.value===cur))sel.value=cur;
-    renderCust();
-  }catch(e){}
+// Other apps
+async function loadOtherApps(){
+  const core=[integ?.sheets.service_id,integ?.razorpay.service_id];
+  const others=(integ?.apps||[]).filter(a=>!core.includes(a.service_id));
+  $('#otherApps').innerHTML=others.map(a=>`<button type="button" class="b" data-app="${esc(a.service_id)}">${a.icon?`<img src="${esc(a.icon)}" alt="" width="16" height="16">`:''}${esc(a.name)}${a.expired?' · reconnect':''}</button>`).join('');
 }
-
-$('#loginForm').onsubmit=async e=>{
-  e.preventDefault();token=$('#loginToken').value.trim();
-  const r=await fetch('/api/orders',{headers:{Authorization:'Bearer '+token}});
-  if(r.status===401)return showLogin('Wrong token');
-  if(r.status===503)return showLogin('ADMIN_TOKEN is not set on the server');
-  try{localStorage.setItem('dk-admin',token);}catch(err){}
-  $('#login').hidden=true;boot();
+$('#otherApps').onclick=e=>{const b=e.target.closest('[data-app]');if(!b)return;const a=appOf(b.dataset.app);if(a.expired)openConnect({...a,generic:true},{authId:a.auth_id});else showFlowBuilder(a);};
+function loadScript(src){return new Promise((ok,bad)=>{if(document.querySelector(`script[src="${src}"]`))return ok();const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.appendChild(s);});}
+async function showFlowBuilder(svc){
+  if(!vsToken)return toast('Still loading — try again in a moment');
+  $('#embedWrap').hidden=false;$('#embedTitle').textContent=`${svc.name}: choose what it should do`;
+  await loadScript('https://embed.viasocket.com/prod-embedcomponent.js');
+  embed?.destroy?.();$('#vsEmbed').innerHTML='';
+  embed=window.viaSocket.mount({embedToken:vsToken,parent:'#vsEmbed',config:{showEnabled:false,pageheading:'Automation'},open:{serviceId:svc.service_id}});
+  embed.on('flow',f=>api('/api/viasocket/flow',{method:'POST',body:{service_id:svc.service_id,flow:{id:f.id,title:f.title,status:f.status,action:f.action,webhookurl:f.webhookurl}}}).then(()=>{if(f.action==='published')toast('Automation is on ✅');}).catch(()=>{}));
+  $('#embedWrap').scrollIntoView({behavior:'smooth'});
+}
+$('#embedClose').onclick=()=>{embed?.destroy?.();embed=null;$('#embedWrap').hidden=true;};
+$('#appForm').onsubmit=async e=>{
+  e.preventDefault();const out=$('#appOut');out.innerHTML='<p class="small muted">Checking…</p>';
+  try{
+    const r=await api('/api/analyze-app',{method:'POST',body:{app:$('#appName').value,goal:$('#appGoal').value}});
+    if(r.already_connected){out.innerHTML=`<div class="callout good">${esc(r.app)} is already connected.</div>`;return;}
+    if(r.verdict==='GO'){
+      out.innerHTML=`<div class="callout good"><b>Recommended.</b> ${esc(r.biggest_opportunity)}<div id="pick" style="margin-top:8px"></div></div>`;
+      if(!integ?.configured){$('#pick').innerHTML='<span class="small muted">App connections are not configured on the server.</span>';return;}
+      const list=await api('/api/viasocket/apps/search?q='+encodeURIComponent(r.app));
+      if(!list.length){$('#pick').innerHTML='<span class="small">This app can’t be connected yet.</span>';return;}
+      $('#pick').innerHTML=list.slice(0,3).map((a,i)=>`<button type="button" class="b" data-i="${i}" style="margin:0 6px 6px 0"><img src="${esc(a.iconurl)}" alt="" width="16" height="16">Connect ${esc(a.name)}</button>`).join('');
+      $('#pick').onclick=ev=>{const b=ev.target.closest('[data-i]');if(!b)return;api('/api/apps/connect',{method:'POST',body:{result:r}}).catch(()=>{});openConnect({...list[+b.dataset.i],generic:true});};
+    }else if(r.verdict==='CONDITIONAL'){
+      out.innerHTML=`<div class="callout"><b>Maybe.</b> ${esc(r.ask_owner||'What will you use it for every day?')}<div class="small muted" style="margin-top:4px">Write your answer in “What should it do?” and check again.</div></div>`;
+    }else{
+      out.innerHTML=`<div class="callout no"><b>Not recommended.</b> ${esc(r.biggest_risk)}</div>`;
+    }
+  }catch(err){out.innerHTML=`<div class="callout no">${esc(err.message)}</div>`;}
 };
-function boot(){loadStatus().then(()=>{renderChecklist();loadCustomers();const t=location.hash.slice(1);show(loaders[t]?t:'live');}).catch(e=>{if(e.message!=='login required')toast(e.message);});}
+loaders.connections=async()=>{
+  const [i]=await Promise.all([api('/api/integrations'),loadStatus()]);integ=i;renderInteg();loadOtherApps();
+  await Promise.all([loadWa(),loadVsToken()]);
+  if(integ.configured&&appOf(integ.sheets.service_id)&&!integ.sheets.ready&&!$('#ssPick').options.length)loadSpreadsheets();
+};
+
+// ---------- start ----------
+function boot(){loadStatus().then(()=>{const t=location.hash.slice(1);show(loaders[t]?t:'home');}).catch(e=>{if(e.message!=='login required')toast(e.message);});}
 boot();
 })();
 </script>

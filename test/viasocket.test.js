@@ -31,6 +31,7 @@ function stub(routes) {
 
 beforeEach(() => {
   store.load(':memory:');
+  store.useDemoData();
   clock.resetTravel();
   clock.travel((clock.localDate(2026, 10, 14, 10, 0) - Date.now()) / 3_600_000);
 });

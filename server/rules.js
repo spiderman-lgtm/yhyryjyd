@@ -1,7 +1,7 @@
 // Rule-based brain. Understands English and Hinglish input, replies in English. Used when
 // no AI is configured (demo) and as a fallback if the AI call fails, so customers never get silence.
 import { get, save, normPhone } from './store.js';
-import { matchCatalog, createOrder, ensurePaymentLink, ordersFor, describeOrder, cancelOrder, stage } from './orders.js';
+import { matchCatalog, createOrder, ensurePaymentLink, paymentText, ordersFor, describeOrder, cancelOrder, stage } from './orders.js';
 import { now, addDaysLocal, parts, localDate, fmt, rupees } from './time.js';
 
 const NUM = { ek: 1, one: 1, do: 2, two: 2, teen: 3, three: 3, char: 4, chaar: 4, four: 4, paanch: 5, panch: 5, five: 5, chhe: 6, che: 6, six: 6, saat: 7, aath: 8, nau: 9, das: 10, dus: 10 };
@@ -57,7 +57,7 @@ export function parseWhen(text, from = now()) {
   return { day, hour, min, explicitDay, date: hour != null ? addDaysLocal(day, hour, min, from) : null };
 }
 
-const menu = () => get().catalog.map((c) => `• ${c.name} — ${rupees(c.price)}`).join('\n');
+const menu = () => get().catalog.map((c) => `• ${c.name} — ${rupees(c.price)}`).join('\n') || '(The menu is being updated — the shop will reply to you shortly.)';
 
 function session(phone) {
   const d = get();
@@ -91,7 +91,7 @@ export async function rulesReply(phone, text, name = '') {
     try {
       const o = await createOrder({ phone, name, items: p.items, fulfil_at: p.fulfil_at, mode: p.mode, address: p.address });
       const withLink = await ensurePaymentLink(o.id);
-      return `Order #${o.id} is confirmed! ✅\n${describeOrder(o)}\n\nPayment link 👇\n${withLink.payment_link.url}\nUPI and cards both work.`;
+      return `Order #${o.id} is confirmed! ✅\n${describeOrder(withLink)}\n\n${paymentText(withLink)}`;
     } catch (e) {
       return `Sorry, we couldn't save the order (${e.message}). The owner has been told 🙏`;
     }
@@ -115,7 +115,9 @@ export async function rulesReply(phone, text, name = '') {
     const o = ordersFor(phone).find((x) => x.status !== 'CANCELLED' && x.payment !== 'PAID');
     if (!o) return 'All your orders are paid ✅ Thank you!';
     const w = await ensurePaymentLink(o.id);
-    return `We haven't received the payment for order #${o.id} yet. It updates automatically within a few minutes — if you haven't paid, you can use this link:\n${w.payment_link.url}`;
+    return w.payment_link?.url
+      ? `We haven't received the payment for order #${o.id} yet. It updates automatically within a few minutes — if you haven't paid, you can use this link:\n${w.payment_link.url}`
+      : `Thank you! The shop will confirm order #${o.id} as soon as they see the payment 🙏`;
   }
 
   if (s.awaitingAddress && s.draft) {

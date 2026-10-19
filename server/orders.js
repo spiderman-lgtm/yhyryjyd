@@ -1,8 +1,8 @@
 // Order lifecycle. Two stored fields — `status` (fulfilment) and `payment` — and one
 // derived `stage()` that matches the state diagram:
 // CONFIRMED → AWAITING_PAYMENT → PAID → FULFILLED, with UDHAAR / ESCALATED off the side.
-import { get, save, nextOrderId, findOrder, upsertCustomer, normPhone } from './store.js';
-import { triggerFlow } from './viasocket.js';
+import { get, save, nextOrderId, findOrder, upsertCustomer, normPhone, TEST_PHONE } from './store.js';
+import { triggerFlow, isLive } from './viasocket.js';
 import { sendText } from './whatsapp.js';
 import { now, fmt, rupees } from './time.js';
 
@@ -60,6 +60,7 @@ export async function createOrder({ phone, name, items, fulfil_at, mode = 'picku
     notes,
     status: 'CONFIRMED',
     payment: 'PENDING',
+    test: customer.phone === TEST_PHONE,
     reminders: { udhaar: [] },
     created_at: now().toISOString(),
   };
@@ -76,11 +77,22 @@ export async function createOrder({ phone, name, items, fulfil_at, mode = 'picku
   return order;
 }
 
+/** How the customer should pay: a real link, the shop's UPI ID, or at pickup/delivery. */
+export function paymentText(o) {
+  if (o.payment === 'PAID') return '';
+  if (o.payment_link?.url) return `Pay here: ${o.payment_link.url}`;
+  const upi = get().shop.upi_id;
+  if (upi) return `Please pay ${rupees(o.total)} to UPI ID ${upi} (note: Order #${o.id}). We'll confirm once it arrives.`;
+  return `You can pay ${rupees(o.total)} at ${o.mode === 'delivery' ? 'delivery' : 'pickup'}.`;
+}
+
+/** Creates a payment link when a payment app is connected; otherwise leaves the order as is. */
 export async function ensurePaymentLink(orderId) {
   const o = findOrder(orderId);
   if (!o) throw new Error('order not found');
   if (o.payment === 'PAID') return o;
   if (o.payment_link?.url) return o;
+  if (!isLive('create_payment_link')) return o;
   const r = await triggerFlow('create_payment_link', {
     order_id: o.id, amount: o.total, amount_paise: o.total * 100, currency: 'INR',
     phone: o.phone, customer_name: o.customer_name,
@@ -155,7 +167,7 @@ export function describeOrder(o) {
 
 export function dueList(at = now()) {
   return get().orders
-    .filter((o) => o.status !== 'CANCELLED' && o.payment !== 'PAID' && new Date(o.due_at) < at)
+    .filter((o) => !o.test && o.status !== 'CANCELLED' && o.payment !== 'PAID' && new Date(o.due_at) < at)
     .map((o) => ({ ...o, days: Math.floor((at - new Date(o.due_at)) / 86_400_000) }))
     .sort((a, b) => b.days - a.days);
 }

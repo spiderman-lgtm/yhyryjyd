@@ -4,36 +4,48 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { config } from './config.js';
 
+// A new shop starts empty: the owner fills in details and menu in the app.
 const seed = () => ({
-  shop: {
-    name: 'Sweet Crumbs Bakery',
-    type: 'bakery',
-    owner_phone: '919000000001',
-    currency: 'INR',
-    address: 'MG Road',
-    open_hours: '11 AM – 8 PM',
-    policies: 'Custom cakes need 24 hours notice. Delivery within 5 km for ₹50.',
-  },
-  catalog: [
+  shop: { name: '', type: 'bakery', owner_phone: '', currency: 'INR', address: '', open_hours: '', policies: '', upi_id: '' },
+  catalog: [],
+  customers: [],
+  orders: [],
+  messages: [],
+  sessions: {},
+  connected_apps: [],
+  flow_log: [],
+  reports: [],
+  seq: { order: 1000 },
+});
+
+// Sample shop used by the tests.
+export function useDemoData() {
+  const d = get();
+  Object.assign(d.shop, {
+    name: 'Sweet Crumbs Bakery', type: 'bakery', owner_phone: '919000000001', address: 'MG Road',
+    open_hours: '11 AM – 8 PM', policies: 'Custom cakes need 24 hours notice. Delivery within 5 km for ₹50.', upi_id: 'sweetcrumbs@okaxis',
+  });
+  d.catalog = [
     { id: 'choc-cake-1kg', name: 'Chocolate Cake (1 kg)', aliases: ['chocolate cake', 'choco cake', 'cake'], price: 700, unit: 'piece', lead_time_hours: 12 },
     { id: 'pineapple-cake-1kg', name: 'Pineapple Cake (1 kg)', aliases: ['pineapple cake', 'pineapple'], price: 600, unit: 'piece', lead_time_hours: 12 },
     { id: 'red-velvet-1kg', name: 'Red Velvet Cake (1 kg)', aliases: ['red velvet'], price: 900, unit: 'piece', lead_time_hours: 24 },
     { id: 'cupcake-box-6', name: 'Cupcakes (box of 6)', aliases: ['cupcake', 'cupcakes'], price: 300, unit: 'box', lead_time_hours: 4 },
     { id: 'brownie', name: 'Walnut Brownie', aliases: ['brownie', 'brownies'], price: 80, unit: 'piece', lead_time_hours: 0 },
-  ],
-  customers: [],
-  orders: [],
-  messages: [],
-  sessions: {},
-  connected_apps: [
-    { name: 'WhatsApp Business', verdict: 'GO', score: 100, added_at: new Date().toISOString() },
-    { name: 'Google Sheets', verdict: 'GO', score: 90, added_at: new Date().toISOString() },
-    { name: 'Razorpay', verdict: 'GO', score: 89, added_at: new Date().toISOString() },
-  ],
-  flow_log: [],
-  reports: [],
-  seq: { order: 340 },
-});
+  ];
+  d.seq.order = 340;
+  save();
+  return d;
+}
+
+// Data written by the old built-in demo (sample bakery, test orders) is cleared once,
+// keeping the shop's identity and its real connections.
+function dropOldDemo(d) {
+  if (d.shop?.setup_done || d.shop?.name !== 'Sweet Crumbs Bakery') return d;
+  const fresh = seed();
+  if (d.shop.uid) fresh.shop.uid = d.shop.uid;
+  if (d.integrations) fresh.integrations = d.integrations;
+  return fresh;
+}
 
 let db = null;
 let file = config.dataFile;
@@ -42,10 +54,8 @@ export function load(customFile) {
   if (customFile) file = customFile;
   if (file === ':memory:') { db = seed(); return db; }
   try {
-    db = JSON.parse(fs.readFileSync(file, 'utf8'));
-    if (db.shop?.policies === 'Custom cake ke liye 24 ghante pehle order. Delivery 5 km tak ₹50.') {
-      db.shop.policies = 'Custom cakes need 24 hours notice. Delivery within 5 km for ₹50.';
-    }
+    db = dropOldDemo(JSON.parse(fs.readFileSync(file, 'utf8')));
+    save();
   } catch {
     db = seed();
     save();
@@ -68,18 +78,22 @@ export function flush() {
 }
 
 export const get = () => db || load();
-// Demo reset keeps the shop's identity and its real app connections.
-export const reset = () => {
-  const keep = { uid: db?.shop?.uid, integrations: db?.integrations };
-  db = seed();
-  if (keep.uid) db.shop.uid = keep.uid;
-  if (keep.integrations) db.integrations = keep.integrations;
-  save();
-  return db;
-};
+export const reset = () => { db = seed(); save(); return db; };
 
 // ---------- helpers ----------
 export const normPhone = (p) => String(p || '').replace(/\D/g, '');
+
+// The dashboard's "Try it yourself" chat. Its orders never count, sync or get reminders.
+export const TEST_PHONE = '910000000000';
+
+export function clearTestData() {
+  const d = get();
+  d.orders = d.orders.filter((o) => o.phone !== TEST_PHONE);
+  d.messages = d.messages.filter((m) => m.phone !== TEST_PHONE);
+  d.customers = d.customers.filter((c) => c.phone !== TEST_PHONE);
+  delete d.sessions[TEST_PHONE];
+  save();
+}
 
 export function upsertCustomer(phone, name) {
   const d = get();
