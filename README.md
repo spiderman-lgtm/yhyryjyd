@@ -5,4 +5,5 @@ WhatsApp Business mein baitha AI jo poori dukaan chalata hai — orders, payment
 
 - `index.html` — use-case page + live WhatsApp demos + **Add any app** analyzer (static, embarko.ai pe direct deploy)
 - `docs/ARCHITECTURE.md` — full structure: features, components, data model, viaSocket flows, AI tools, deploy steps
+- `docs/structure-diagram.html` — 4 diagrams: system architecture, ek order ka safar, order lifecycle, App Analyzer
 - `docs/APP_ANALYZER.md` — viaSocket plugin-validator rubric adapted for shops (prompt + JSON contract)
