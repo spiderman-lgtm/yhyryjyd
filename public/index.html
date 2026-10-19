@@ -298,10 +298,6 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 .auto-tab.active{color:var(--accent);border-bottom-color:var(--accent);background:none}
 .auto-tab-panel{padding:16px 20px}
 /* Filter bar */
-.auto-filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
-.auto-filter-btn{display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;background:none;font-size:12px;font-weight:600;color:var(--fg-2);cursor:pointer;transition:all .15s;white-space:nowrap}
-.auto-filter-btn:hover{background:var(--hover);border-color:var(--accent);color:var(--accent)}
-.auto-filter-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
 /* Automation list */
 .auto-cards-grid{display:flex;flex-direction:column;gap:12px}
 .auto-app-group{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--sh);transition:box-shadow .15s}
@@ -848,31 +844,6 @@ select.input{appearance:none;cursor:pointer;background-image:url("data:image/svg
 
       <!-- ── TAB: Automations ── -->
       <div id="auto-tab-automations" class="auto-tab-panel active">
-        <!-- App Filter Bar -->
-        <div class="auto-filter-bar">
-          <button class="auto-filter-btn active" data-cat="all" onclick="autoFilter('all',this)">All</button>
-          <button class="auto-filter-btn" data-cat="whatsapp" onclick="autoFilter('whatsapp',this)">
-            <span style="color:#25D366">💬</span> WhatsApp
-          </button>
-          <button class="auto-filter-btn" data-cat="gmail" onclick="autoFilter('gmail',this)">
-            <span style="color:#EA4335">📧</span> Gmail
-          </button>
-          <button class="auto-filter-btn" data-cat="slack" onclick="autoFilter('slack',this)">
-            <span style="color:#4A154B">💼</span> Slack
-          </button>
-          <button class="auto-filter-btn" data-cat="sheets" onclick="autoFilter('sheets',this)">
-            <span style="color:#0F9D58">📊</span> Sheets
-          </button>
-          <button class="auto-filter-btn" data-cat="calendar" onclick="autoFilter('calendar',this)">
-            <span style="color:#1967D2">📅</span> Calendar
-          </button>
-          <button class="auto-filter-btn" data-cat="linkedin" onclick="autoFilter('linkedin',this)">
-            <span style="color:#0077B5">🔗</span> LinkedIn
-          </button>
-          <button class="auto-filter-btn" data-cat="naukri" onclick="autoFilter('naukri',this)">
-            <span style="color:#FF7555">📋</span> Naukri
-          </button>
-        </div>
         <!-- Automation Cards Grid -->
         <div class="auto-cards-grid" id="auto-cards-grid">
           <div class="auto-loading-state">
@@ -2305,7 +2276,6 @@ async function vsInit() {
 
 let _autoTemplates = [];
 let _autoCfg = {};
-let _autoCatFilter = 'all';
 
 const APP_COLOR = {
   whatsapp:'#25D366', gmail:'#EA4335', slack:'#4A154B',
@@ -2334,13 +2304,6 @@ async function initAutomations() {
   }
 }
 
-function autoFilter(cat, btn) {
-  _autoCatFilter = cat;
-  document.querySelectorAll('.auto-filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderAutomationCards();
-}
-
 function autoSwitchTab(tab, btn) {
   document.querySelectorAll('.auto-tab').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.auto-tab-panel').forEach(p => p.style.display = 'none');
@@ -2354,9 +2317,7 @@ function renderAutomationCards() {
   if (!grid) return;
   // Only show automations whose triggers actually fire in this app
   const LIVE_TRIGGERS = new Set(['job.new', 'job.saved', 'job.applied']);
-  const visible = _autoTemplates.filter(t =>
-    LIVE_TRIGGERS.has(t.trigger) && (_autoCatFilter === 'all' || t.category === _autoCatFilter)
-  );
+  const visible = _autoTemplates.filter(t => LIVE_TRIGGERS.has(t.trigger));
 
   const SUPPORTED = new Set(['whatsapp','gmail','slack','sheets']);
   const APP_INFO = {
