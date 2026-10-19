@@ -2222,7 +2222,7 @@ function postJobEvent(type, jobId) {
   const job = allJobs.find(j => j.id === jobId) || getSaved().find(j => j.id === jobId) || null;
   fetch('/api/events', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ type, jobId, job }),
+    body: JSON.stringify({ type, jobId, job, saved: getSaved().map(j => ({ title: j.title, company: j.company_name || j.company, location: j.candidate_required_location, url: j.url })) }),
   })
     .then(r => r.json())
     .then(() => showToast('⚡ Automation triggered!', 'success'))

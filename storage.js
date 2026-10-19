@@ -8,6 +8,7 @@ const path = require('path');
 function createStorage({ dataDir, databaseUrl }) {
   const pool = databaseUrl ? new (require('pg').Pool)({ connectionString: databaseUrl, max: 3 }) : null;
   const timers = {};
+  const dirty = new Map();
   const chains = {};
   const pending = new Map();
   let ready = !pool;
@@ -36,15 +37,25 @@ function createStorage({ dataDir, databaseUrl }) {
     return chains[name];
   }
 
+  function writeNow(name, obj) {
+    dirty.delete(name);
+    clearTimeout(timers[name]);
+    if (pool) return writeDb(name, obj);
+    try { writeFile(name, obj); } catch (e) { console.error(`[storage] save ${name} failed:`, e.message); }
+  }
+
   function save(name, obj) {
     if (!ready) { pending.set(name, obj); return; }
+    dirty.set(name, obj);
     clearTimeout(timers[name]);
-    timers[name] = setTimeout(() => {
-      if (pool) writeDb(name, obj);
-      else {
-        try { writeFile(name, obj); } catch (e) { console.error(`[storage] save ${name} failed:`, e.message); }
-      }
-    }, 200);
+    timers[name] = setTimeout(() => writeNow(name, obj), 200);
+  }
+
+  // Writes everything still waiting on its debounce timer; call before the process exits.
+  async function flush() {
+    await Promise.all([...dirty].map(([name, obj]) => writeNow(name, obj)));
+    await Promise.all(Object.values(chains));
+    if (pool) await pool.end().catch(() => {});
   }
 
   // Loads every store from Postgres into the given objects (mutated in place).
@@ -64,7 +75,7 @@ function createStorage({ dataDir, databaseUrl }) {
     pending.clear();
   }
 
-  return { load, save, hydrate, kind: pool ? 'postgres' : 'files' };
+  return { load, save, flush, hydrate, kind: pool ? 'postgres' : 'files' };
 }
 
 module.exports = { createStorage };

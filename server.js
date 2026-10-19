@@ -863,7 +863,7 @@ async function deliver(a, eventType, job, extra = {}) {
   return status;
 }
 
-function fanOut(eventType, job, onlyUid) {
+function fanOut(eventType, job, onlyUid, extra) {
   const uids = onlyUid ? [onlyUid] : Object.keys(store.users);
   const sends = [];
   for (const uid of uids) {
@@ -871,7 +871,7 @@ function fanOut(eventType, job, onlyUid) {
       if (matches(a, eventType, job)) sends.push(deliver(a, eventType, job));
     }
     // Also deliver to directly-connected apps (WhatsApp, Gmail, Sheets, Slack)
-    sends.push(deliverToApps(uid, eventType, job).catch(e => console.warn('[vs-app] fanOut error:', e.message)));
+    sends.push(deliverToApps(uid, eventType, job, extra).catch(e => console.warn('[vs-app] fanOut error:', e.message)));
   }
   return Promise.all(sends);
 }
@@ -986,13 +986,22 @@ app.get('/api/sources', (req, res) => {
   res.json({ dataSource: dataSource(), configured: live.configured, boards: live.status() });
 });
 
+// Saved jobs live in the browser; the client sends a summary so the email can list them.
+function cleanSavedList(list) {
+  if (!Array.isArray(list)) return [];
+  const str = (v, n) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
+  return list.slice(0, 50).map(j => ({
+    title: str(j?.title, 150), company: str(j?.company, 100), location: str(j?.location, 80), url: str(j?.url, 500),
+  })).filter(j => j.title && /^https?:\/\//.test(j.url));
+}
+
 app.post('/api/events', (req, res) => {
-  const { type, jobId, job: inlineJob } = req.body || {};
+  const { type, jobId, job: inlineJob, saved } = req.body || {};
   if (!['job.saved', 'job.applied'].includes(type)) return res.status(400).json({ error: 'Unknown event' });
   // Accept either a jobId (lookup in feed) or an inline job object (from client localStorage)
   const job = findJob(jobId) || (inlineJob?.id ? inlineJob : null);
   if (!job) return res.status(404).json({ error: 'Unknown job' });
-  fanOut(type, job, req.uid);
+  fanOut(type, job, req.uid, { saved: cleanSavedList(saved) });
   res.status(202).json({ ok: true });
 });
 
@@ -1007,6 +1016,11 @@ setImmediate(() => storage.hydrate({
   console.log(`[env] VIASOCKET_EMBED_SECRET: ${process.env.VIASOCKET_EMBED_SECRET ? 'SET' : 'NOT SET'}`);
   console.log(`[env] ADZUNA: ${process.env.ADZUNA_APP_ID && process.env.ADZUNA_APP_KEY ? 'SET' : 'NOT SET'}`);
 })).catch(e => { console.error('[storage] could not load data:', e.message); process.exit(1); }));
+
+// Railway sends SIGTERM on every redeploy; save pending writes before exiting.
+for (const sig of ['SIGTERM', 'SIGINT']) {
+  process.once(sig, () => storage.flush().finally(() => process.exit(0)));
+}
 
 // ─── viaSocket Direct App Connections ─────────────────────────────────────────
 // Each user can connect WhatsApp / Gmail / Google Sheets / Slack directly.
@@ -1083,7 +1097,10 @@ const APP_META = {
 };
 
 // Build viaSocket inputData per app + template
-function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping) {
+const JOB_TYPE_LABEL = { full_time: 'Full-time', part_time: 'Part-time', contract: 'Contract', internship: 'Internship' };
+
+function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping, extra = {}) {
+  const posted = job.publication_date ? new Date(job.publication_date) : null;
   const jp = {
     // job objects from feed use company_name; test jobs use company — handle both
     title: job.title || 'Unknown Role',
@@ -1092,6 +1109,10 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping) {
     salary: job.salary || 'Not disclosed', url: job.url || '',
     category: job.category || 'Tech', event: eventType,
     date: new Date().toLocaleDateString('en-IN'),
+    type: JOB_TYPE_LABEL[job.job_type] || 'Not specified',
+    skills: (job.tags || []).join(', ') || 'Not listed',
+    posted: posted && !isNaN(posted) ? posted.toLocaleDateString('en-IN') : 'Not specified',
+    about: String(job.description || '').replace(/\s+/g, ' ').trim().slice(0, 500),
   };
   const cfg = conn.config || {};
   const m = mapping || {};
@@ -1112,15 +1133,22 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping) {
     gmail_applied:  `Application record: ${jp.title} at ${jp.company}`,
   };
   // Plain text, no emojis, one link — keeps Gmail's spam filter happy
-  const details = `Role: ${jp.title}\nCompany: ${jp.company}\nLocation: ${jp.location}\nSalary: ${jp.salary}\nCategory: ${jp.category}`;
+  const details = [
+    `Role: ${jp.title}`, `Company: ${jp.company}`, `Location: ${jp.location}`, `Salary: ${jp.salary}`,
+    `Job type: ${jp.type}`, `Category: ${jp.category}`, `Skills: ${jp.skills}`, `Posted on: ${jp.posted}`,
+  ].join('\n') + (jp.about ? `\n\nAbout the role:\n${jp.about}` : '');
+  const saved = extra.saved || [];
+  const savedList = saved.length
+    ? `\n\nAll your saved jobs (${saved.length}):\n` + saved.map((j, i) => `${i + 1}. ${j.title} at ${j.company}${j.location ? ` (${j.location})` : ''}\n   ${j.url}`).join('\n')
+    : '';
   const gmailBody = {
     gmail_new_job:  `Hi,\n\nA new job matching your profile was posted.\n\n${details}\n\nJob posting: ${jp.url}\n\nYou are receiving this because you turned on the "New matching job" automation in HireRadar.`,
-    gmail_saved:    `Hi,\n\nYou saved this job in HireRadar.\n\n${details}\nSaved on: ${jp.date}\n\nJob posting: ${jp.url}\n\nYou are receiving this because you turned on the "Job saved" automation in HireRadar.`,
-    gmail_applied:  `Hi,\n\nHere is a record of the job you applied to.\n\n${details}\nApplied on: ${jp.date}\n\nJob posting: ${jp.url}\n\nNext step: follow up with the company if you have not heard back in 7 days.\n\nYou are receiving this because you turned on the "Job applied" automation in HireRadar.`,
+    gmail_saved:    `Hi,\n\nYou saved this job in HireRadar on ${jp.date}.\n\n${details}\n\nJob posting: ${jp.url}${savedList}\n\nYou are receiving this because you turned on the "Job saved" automation in HireRadar.`,
+    gmail_applied:  `Hi,\n\nHere is a record of the job you applied to on ${jp.date}.\n\n${details}\n\nJob posting: ${jp.url}\n\nNext step: follow up with the company if you have not heard back in 7 days.\n\nYou are receiving this because you turned on the "Job applied" automation in HireRadar.`,
   };
   const slackText = {
     slack_new_job:  `🔔 *New job match!*\n*${jp.title}* @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary}\n<${jp.url}|Apply Now>`,
-    slack_saved:    `🔖 *Job Saved!*\n*${jp.title}* @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary}\n<${jp.url}|View Job>`,
+    slack_saved:    `🔖 *Job Saved!*\n*${jp.title}* @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary} · ${jp.type}\n🛠 ${jp.skills}\n<${jp.url}|View Job>${saved.length ? ` · ${saved.length} saved in total` : ''}`,
     slack_applied:  `✅ *Applied!*\n*${jp.title}* @ *${jp.company}*\n📍 ${jp.location} · 💰 ${jp.salary}\n🗂 ${jp.category} · 📅 ${jp.date}\n<${jp.url}|View Job> · _Follow up after 7 days_`,
   };
 
@@ -1143,7 +1171,7 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping) {
     case 'sheets': {
       // Column order from user mapping or default
       const colOrder = (m.colMap || 'title,company,location,salary,status,url,date').split(',').map(s => s.trim());
-      const fieldMap = { title: jp.title, company: jp.company, location: jp.location, salary: jp.salary, status: eventType, url: jp.url, date: jp.date, category: jp.category };
+      const fieldMap = { title: jp.title, company: jp.company, location: jp.location, salary: jp.salary, status: eventType, url: jp.url, date: jp.date, category: jp.category, type: jp.type, skills: jp.skills, posted: jp.posted };
       const row = colOrder.map(f => fieldMap[f] ?? '');
       return {
         action_version_id: conn.action_version_id,
@@ -1166,7 +1194,7 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping) {
 }
 
 // Deliver event to all connected apps for a user
-async function deliverToApps(uid, eventType, job) {
+async function deliverToApps(uid, eventType, job, extra = {}) {
   if (!SECRET) { console.warn('[vs-app] VIASOCKET_EMBED_SECRET not set — skipping delivery'); return; }
   const conns = userConns(uid);
   const autoCfg = userAutoCfg(uid);
@@ -1211,7 +1239,7 @@ async function deliverToApps(uid, eventType, job) {
     }
 
     const mapping = { to: userEmail, phone: '', channel: 'general', ...cfg?.mapping };
-    const payload = buildVsInputData(tmpl.app, conn, eventType, job, tmpl.id, mapping);
+    const payload = buildVsInputData(tmpl.app, conn, eventType, job, tmpl.id, mapping, extra);
     console.log(`[vs-app] ${tmpl.id}: sending to ${VS_RUN}/${conn.script_id}`);
     console.log(`[vs-app] ${tmpl.id}: payload keys=${Object.keys(payload.inputData || {}).join(',')}`);
     sends.push(
