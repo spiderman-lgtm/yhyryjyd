@@ -93,7 +93,8 @@ app.post('/auth/login', async (req, res) => {
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
   const key = email.toLowerCase().trim();
   const user = usersStore[key];
-  if (!user) return res.status(401).json({ error: 'Invalid email or password' });
+  // signup already reveals whether an email is registered, so saying so here leaks nothing new
+  if (!user) return res.status(404).json({ error: 'No account found for this email. Please sign up.', code: 'no_account' });
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return res.status(401).json({ error: 'Invalid email or password' });
   const secure = req.secure ? '; Secure' : '';

@@ -74,6 +74,14 @@ async function doLogin() {
   try {
     const r = await fetch('/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, password }) });
     const d = await r.json();
+    if (d.code === 'no_account') {
+      switchTab('signup');
+      document.getElementById('s-email').value = email;
+      document.getElementById('s-pass').value = password;
+      document.getElementById('s-err').textContent = 'No account found for this email. Add your name and click Create Account.';
+      document.getElementById('s-name').focus();
+      return;
+    }
     if (!r.ok) { err.textContent = d.error || 'Login failed'; return; }
     window.location.href = '/';
   } catch(e) { err.textContent = 'Network error'; }
