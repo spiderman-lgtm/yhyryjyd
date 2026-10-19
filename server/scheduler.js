@@ -70,6 +70,7 @@ export async function udhaarLadder(at = now()) {
     }
     lastByPhone[order.phone] = at.toISOString();
     save();
+    await triggerFlow('update_order', { order_id: order.id, status: r.escalated_at ? 'ESCALATED' : 'UDHAAR' });
   }
 }
 

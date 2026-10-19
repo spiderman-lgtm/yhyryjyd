@@ -1,13 +1,28 @@
 // All runtime config comes from env vars. Anything missing switches that part into
 // demo mode, so the app runs end-to-end on embarko.ai before real keys are added.
+import fs from 'node:fs';
+import path from 'node:path';
+
+// Local development reads .env (never uploaded, never committed); hosts set real env vars.
+// Skipped under `node --test` so tests never reach real services.
+if (!process.env.NODE_TEST_CONTEXT) try {
+  for (const line of fs.readFileSync('.env', 'utf8').split('\n')) {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2].replace(/^(['"])(.*)\1$/, '$2');
+  }
+} catch { /* no .env */ }
+
 const env = process.env;
 
 const flow = (name) => env[`VIASOCKET_FLOW_${name.toUpperCase()}`] || '';
 
 export const config = {
   port: Number(env.PORT || 3000),
-  publicUrl: (env.PUBLIC_URL || `http://localhost:${env.PORT || 3000}`).replace(/\/$/, ''),
-  dataFile: env.DATA_FILE || 'data/db.json',
+  // Embarko sets APP_NAME and serves the app at https://<APP_NAME>.embarko.app
+  onEmbarko: Boolean(env.APP_NAME),
+  publicUrl: (env.PUBLIC_URL || (env.APP_NAME ? `https://${env.APP_NAME}.embarko.app` : `http://localhost:${env.PORT || 3000}`)).replace(/\/$/, ''),
+  // DATA_DIR survives redeploys on Embarko; everything else on disk is wiped.
+  dataFile: env.DATA_FILE || path.join(env.DATA_DIR || 'data', 'db.json'),
   adminToken: env.ADMIN_TOKEN || '',
   timezone: env.SHOP_TIMEZONE || 'Asia/Kolkata',
 
@@ -48,7 +63,6 @@ export const config = {
 
 export const modes = () => ({
   whatsapp: config.whatsapp.token && config.whatsapp.phoneId ? 'live' : 'demo',
-  ai: config.claude.apiKey ? 'claude' : 'rules',
   viasocket: Object.fromEntries(
     Object.entries(config.viasocket.flows).map(([k, v]) => [k, v ? 'live' : 'demo']),
   ),

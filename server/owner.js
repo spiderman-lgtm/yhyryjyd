@@ -32,7 +32,10 @@ export async function ownerReply(t) {
     const r = s.pendingConnect;
     delete s.pendingConnect; save();
     const c = await connectApp(r);
-    return c.ok ? `✅ ${r.app} connect ho gaya. viaSocket flow on hai.${c.auth_url ? `\nLogin/authorize: ${c.auth_url}` : ''}` : `❌ Connect fail: ${c.error}`;
+    if (!c.ok) return `❌ Connect fail: ${c.error}`;
+    return c.pending_connect
+      ? `✅ ${r.app} approve ho gaya. Apna ${r.app} account jodne ke liye dashboard kholiye aur Connect dabaiye:\n${c.auth_url}`
+      : `✅ ${r.app} connect ho gaya. viaSocket flow on hai.${c.auth_url ? `\nLogin/authorize: ${c.auth_url}` : ''}`;
   }
 
   let m;

@@ -90,6 +90,7 @@ export async function ensurePaymentLink(orderId) {
   if (!r.ok || !r.result?.url) throw new Error('payment link nahi ban paaya');
   o.payment_link = { id: r.result.id || '', url: r.result.url, sent_at: now().toISOString() };
   save();
+  await triggerFlow('update_order', { order_id: o.id, status: stage(o), payment_link: o.payment_link.url });
   return o;
 }
 

@@ -3,6 +3,8 @@
 import { get, save } from './store.js';
 import { triggerFlow } from './viasocket.js';
 import { now } from './time.js';
+import * as vs from './vs.js';
+import { config } from './config.js';
 
 export async function connectApp(result, { force = false } = {}) {
   if (!result?.app) return { ok: false, error: 'app missing' };
@@ -15,12 +17,15 @@ export async function connectApp(result, { force = false } = {}) {
     use_cases: (result.use_cases || []).map((u) => ({ trigger: u.trigger, action: u.action, result: u.result })),
   });
   if (!flow.ok) return { ok: false, error: flow.error };
+  // With viaSocket set up, the owner finishes the connection in the browser (Connect popup);
+  // the entry stays pending until integrations.connected() sees the auth_id.
+  const pending = vs.configured();
   d.connected_apps.push({
     name: result.app, verdict: result.verdict, score: result.score, forced: force && result.verdict !== 'GO',
-    use_cases: result.use_cases, added_at: now().toISOString(), viasocket: flow.result || {},
+    use_cases: result.use_cases, added_at: now().toISOString(), pending_connect: pending,
   });
   save();
-  return { ok: true, auth_url: flow.result?.auth_url || '' };
+  return { ok: true, pending_connect: pending, auth_url: pending ? `${config.publicUrl}/app#apps` : flow.result?.auth_url || '' };
 }
 
 export function disconnectApp(name) {

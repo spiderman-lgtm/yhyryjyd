@@ -65,7 +65,15 @@ export function flush() {
 }
 
 export const get = () => db || load();
-export const reset = () => { db = seed(); save(); return db; };
+// Demo reset keeps the shop's identity and its real app connections.
+export const reset = () => {
+  const keep = { uid: db?.shop?.uid, integrations: db?.integrations };
+  db = seed();
+  if (keep.uid) db.shop.uid = keep.uid;
+  if (keep.integrations) db.integrations = keep.integrations;
+  save();
+  return db;
+};
 
 // ---------- helpers ----------
 export const normPhone = (p) => String(p || '').replace(/\D/g, '');

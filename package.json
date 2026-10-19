@@ -7,9 +7,12 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "check:viasocket": "curl -fsSL https://flow.viasocket.com/viasocket-check.mjs -o /tmp/viasocket-check.mjs && node /tmp/viasocket-check.mjs server public"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0"
   }

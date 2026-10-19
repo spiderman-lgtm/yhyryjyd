@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url';
 import { config, modes } from './config.js';
 import * as store from './store.js';
 import { parseWebhook } from './whatsapp.js';
-import { handleCustomer } from './brain.js';
+import { handleCustomer, aiProvider, runToolFromAi, aiToolSecret } from './brain.js';
+import * as integ from './integrations.js';
+import * as vs from './vs.js';
 import { handleOwner } from './owner.js';
 import { markPaid, markFulfilled, cancelOrder, ensurePaymentLink, publicOrder, dueList } from './orders.js';
 import { analyze } from './analyzer.js';
@@ -79,8 +81,7 @@ route('POST', '/webhook/whatsapp', async (req, res, { body }) => {
 
 // ---------- viaSocket callbacks ----------
 route('POST', '/api/viasocket/payment-received', async (req, res, { body }) => {
-  const secret = config.viasocket.callbackSecret;
-  if (secret && !safeEq(req.headers['x-dukaan-secret'] || '', secret)) return json(res, 401, { error: 'bad secret' });
+  if (!safeEq(req.headers['x-dukaan-secret'] || '', integ.callbackSecret())) return json(res, 401, { error: 'bad secret' });
   const orderId = body.order_id || body.notes?.order_id || body.reference_id;
   if (!orderId) return json(res, 400, { error: 'order_id required' });
   try {
@@ -101,13 +102,14 @@ ${paid ? '<p>✅ Paid</p>' : `<button id="b">Pay ₹${o.total.toLocaleString('en
 <script>const b=document.getElementById('b');if(b)b.onclick=async()=>{b.disabled=true;b.textContent='Processing…';const r=await fetch('/api/demo/pay/${o.id}',{method:'POST'});b.textContent=r.ok?'✅ Paid — WhatsApp check karein':'Failed';};</script>`);
 });
 route('POST', '/api/demo/pay/:id', async (req, res, { params }) => {
-  if (config.viasocket.flows.create_payment_link) return json(res, 403, { error: 'demo payments disabled when live payment flow is configured' });
+  if (config.viasocket.flows.create_payment_link || integ.razorpayReady()) return json(res, 403, { error: 'demo payments disabled when live payment flow is configured' });
   try { const r = await markPaid(params.id, { payment_id: `demo_${Date.now()}`, source: 'demo' }); return json(res, 200, { ok: true, order: publicOrder(r.order) }); } catch (e) { return json(res, 404, { error: e.message }); }
 });
 
 // ---------- Dashboard API ----------
 route('GET', '/api/status', (req, res) => json(res, 200, {
-  modes: modes(), shop: store.get().shop, now: clock.now().toISOString(), travelled_hours: clock.travelledHours(),
+  modes: { ...modes(), ai: aiProvider(), sheets: integ.sheetsReady() ? 'live' : 'demo', razorpay: integ.razorpayReady() ? 'live' : 'demo' },
+  viasocket_configured: vs.configured(), shop: store.get().shop, now: clock.now().toISOString(), travelled_hours: clock.travelledHours(),
   admin_required: Boolean(config.adminToken), webhook_url: `${config.publicUrl}/webhook/whatsapp`,
   payment_callback_url: `${config.publicUrl}/api/viasocket/payment-received`,
 }));
@@ -184,6 +186,72 @@ route('POST', '/api/demo/time-travel', async (req, res, { body }) => {
 }, { admin: true });
 route('POST', '/api/demo/reset', (req, res) => { store.reset(); clock.resetTravel(); return json(res, 200, { ok: true }); }, { admin: true });
 
+// ---------- viaSocket: Razorpay "link paid" handler and AI tools (secret-header auth) ----------
+route('POST', '/api/viasocket/razorpay-paid', async (req, res, { body }) => {
+  if (!safeEq(req.headers['x-dukaan-secret'] || '', integ.callbackSecret())) return json(res, 401, { error: 'bad secret' });
+  const d = store.get();
+  d.integrations.last_razorpay_events = [{ at: new Date().toISOString(), event: body.event }, ...(d.integrations.last_razorpay_events || [])].slice(0, 5);
+  store.save();
+  const hit = integ.orderFromRazorpayEvent(body.event);
+  if (!hit) return json(res, 200, { ok: true, ignored: 'no order of this shop in event' });
+  try {
+    const r = await markPaid(hit.order_id, { amount: hit.amount_paise != null ? Number(hit.amount_paise) / 100 : undefined, payment_id: hit.payment_id, source: 'razorpay' });
+    return json(res, 200, { ok: true, order_id: hit.order_id, partial: !!r.partial, already: !!r.already });
+  } catch (e) { return json(res, 404, { error: e.message }); }
+});
+route('POST', '/api/ai-tools/:phone/:tool', async (req, res, { params, body }) => {
+  if (!safeEq((req.headers.authorization || '').replace(/^Bearer\s+/i, ''), aiToolSecret())) return json(res, 401, { error: 'bad tool secret' });
+  return json(res, 200, await runToolFromAi(params.phone, params.tool, body || {}));
+});
+
+// ---------- viaSocket: owner's connections (dashboard) ----------
+const needVs = (res) => { if (!vs.configured()) { json(res, 409, { error: 'VIASOCKET_ORG_ID / VIASOCKET_PROJECT_ID / VIASOCKET_EMBED_SECRET set nahi hain' }); return true; } return false; };
+route('GET', '/api/viasocket/token', (req, res) => {
+  if (needVs(res)) return;
+  return json(res, 200, { token: vs.embedToken(integ.shopUid()) });
+}, { admin: true });
+route('GET', '/api/integrations', async (req, res) => {
+  if (vs.configured()) await integ.refreshConnections().catch(() => {});
+  return json(res, 200, integ.publicState());
+}, { admin: true });
+route('POST', '/api/viasocket/connected', async (req, res, { body }) => {
+  if (needVs(res)) return;
+  try { await integ.connected({ serviceId: body.serviceId, authId: body.authId, name: body.name, icon: body.icon }); return json(res, 200, integ.publicState()); } catch (e) { return json(res, 400, { error: e.message }); }
+}, { admin: true });
+route('GET', '/api/viasocket/apps/search', async (req, res, { query }) => {
+  try { return json(res, 200, (await vs.searchApps(query.get('q') || '')).slice(0, 8)); } catch (e) { return json(res, 502, { error: e.message }); }
+}, { admin: true });
+route('POST', '/api/viasocket/sheets/options', async (req, res, { body }) => {
+  try { return json(res, 200, await integ.sheetsOptions(body.field, body)); } catch (e) { return json(res, 400, { error: e.message }); }
+}, { admin: true });
+route('POST', '/api/viasocket/sheets/choose', async (req, res, { body }) => {
+  try { await integ.chooseSheet(body); return json(res, 200, integ.publicState()); } catch (e) { return json(res, 400, { error: e.message }); }
+}, { admin: true });
+route('POST', '/api/viasocket/sheets/create', async (req, res, { body }) => {
+  try { await integ.createOrderSheet(body.title); return json(res, 200, integ.publicState()); } catch (e) { return json(res, 400, { error: e.message }); }
+}, { admin: true });
+route('POST', '/api/viasocket/razorpay/settings', async (req, res, { body }) => {
+  try {
+    if (body.link_type) integ.setLinkType(body.link_type);
+    if (body.resubscribe) await integ.subscribeRazorpayPaid();
+    return json(res, 200, integ.publicState());
+  } catch (e) { return json(res, 400, { error: e.message }); }
+}, { admin: true });
+route('POST', '/api/viasocket/flow', (req, res, { body }) => {
+  if (body?.service_id && body?.flow?.id) integ.recordFlow(body.service_id, body.flow);
+  return json(res, 200, { ok: true });
+}, { admin: true });
+
+// ---------- Embarko schedule: reminders, udhaar ladder, monthly report ----------
+route('GET', '/tasks/tick', async (req, res) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || !safeEq(req.headers.authorization || '', `Bearer ${secret}`)) return json(res, 401, { error: 'unauthorized' });
+  const before = store.get().messages.length;
+  await scheduler.tick();
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  return res.end(`tick ok — ${store.get().messages.length - before} messages sent`);
+});
+
 // ---------- static ----------
 function serveStatic(req, res, pathname) {
   if (pathname === '/') pathname = '/index.html';
@@ -206,6 +274,7 @@ export function createServer() {
         if (r.method !== req.method) continue;
         const m = url.pathname.match(r.re);
         if (!m) continue;
+        if (r.admin && config.onEmbarko && !config.adminToken) return json(res, 503, { error: 'ADMIN_TOKEN env var set karo — tab tak dashboard band hai' });
         if (r.admin && !adminOk(req)) return json(res, 401, { error: 'admin token required' });
         const params = Object.fromEntries(r.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
         const body = ['POST', 'PUT'].includes(req.method) ? await readBody(req) : {};
@@ -222,11 +291,12 @@ export function createServer() {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   store.load();
-  scheduler.start();
+  // On Embarko the scheduler runs from embarko.json (GET /tasks/tick); elsewhere, in-process.
+  if (!process.env.CRON_SECRET) scheduler.start();
   const server = createServer();
-  server.listen(config.port, () => {
+  server.listen(config.port, '0.0.0.0', () => {
     const m = modes();
-    console.log(`Dukaan AI Manager on :${config.port} — WhatsApp ${m.whatsapp}, AI ${m.ai}`);
+    console.log(`Dukaan AI Manager on :${config.port} — WhatsApp ${m.whatsapp}, AI ${aiProvider()}`);
     console.log(`Dashboard: ${config.publicUrl}/app   Webhook: ${config.publicUrl}/webhook/whatsapp`);
   });
   const shutdown = () => { store.flush(); process.exit(0); };

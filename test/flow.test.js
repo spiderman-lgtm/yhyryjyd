@@ -8,6 +8,7 @@ import { stage } from '../server/orders.js';
 import * as sch from '../server/scheduler.js';
 import { heuristic } from '../server/analyzer.js';
 import { parseWebhook } from '../server/whatsapp.js';
+import { callbackSecret } from '../server/integrations.js';
 
 const CUST = '919811111111';
 const OWNER = '919000000001';
@@ -43,9 +44,13 @@ test('order → confirm → payment link → paid', async () => {
   const server = createServer().listen(0);
   const port = server.address().port;
   const res = await fetch(`http://localhost:${port}/api/viasocket/payment-received`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: '341', amount: 1400, payment_id: 'pay_1' }),
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-dukaan-secret': callbackSecret() }, body: JSON.stringify({ order_id: '341', amount: 1400, payment_id: 'pay_1' }),
+  });
+  const forged = await fetch(`http://localhost:${port}/api/viasocket/payment-received`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: '341' }),
   });
   server.close();
+  assert.equal(forged.status, 401);
   assert.equal(res.status, 200);
   assert.equal(stage(o), 'PAID');
   assert.match(store.get().messages.at(-1).text, /Payment mil gaya ✅/);

@@ -155,7 +155,36 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
 
 <!-- APPS -->
 <section id="apps">
-  <h2>Apps — add karne se pehle check</h2>
+  <h2>Apps</h2>
+  <p class="sub">Aapke apne accounts viaSocket se judte hain — password ya token kabhi is app ke paas nahi aata.</p>
+  <div id="vsMissing" class="callout" hidden>viaSocket set nahi hai (VIASOCKET_ORG_ID / PROJECT_ID / EMBED_SECRET). Tab tak Sheets aur payments demo mode mein chalte hain.</div>
+  <div class="grid g2" id="coreApps">
+    <div class="card" id="sheetsCard">
+      <div class="row" style="justify-content:space-between"><div class="row"><img id="sheetsIcon" alt="" width="28" height="28"><div><b>Google Sheets</b><div class="small muted">Har order aapki Sheet mein, stage live update</div></div></div><span class="chip" id="sheetsState">—</span></div>
+      <div class="row" style="margin-top:12px"><button type="button" class="b p" id="sheetsConnect"><img id="sheetsBtnIcon" alt="" width="16" height="16" style="vertical-align:-3px"> Connect Google Sheets</button></div>
+      <div id="sheetsSetup" hidden>
+        <label for="ssSearch">Spreadsheet <span class="muted">(search kariye)</span></label>
+        <input id="ssSearch" placeholder="Naam likhiye…" autocomplete="off">
+        <select id="ssPick" size="4" style="margin-top:6px"></select>
+        <label for="tabPick">Sheet (tab) — khaali tab, ya pehle se Dukaan ke columns wala</label>
+        <select id="tabPick" disabled><option value="">Pehle spreadsheet chuniye</option></select>
+        <div class="row" style="margin-top:10px"><button type="button" class="b p" id="sheetSave" disabled>Is sheet mein orders bhejo</button><span class="muted small">ya</span><button type="button" class="b" id="sheetCreate">✨ Nayi order sheet banao</button></div>
+      </div>
+      <p class="small" id="sheetsInfo"></p>
+    </div>
+    <div class="card" id="rzpCard">
+      <div class="row" style="justify-content:space-between"><div class="row"><img id="rzpIcon" alt="" width="28" height="28"><div><b>Razorpay</b><div class="small muted">Asli payment link + paid hote hi order PAID</div></div></div><span class="chip" id="rzpState">—</span></div>
+      <div class="row" style="margin-top:12px"><button type="button" class="b p" id="rzpConnect"><img id="rzpBtnIcon" alt="" width="16" height="16" style="vertical-align:-3px"> Connect Razorpay</button></div>
+      <div id="rzpSetup" hidden>
+        <label>Payment link type</label>
+        <div class="row"><label class="row small" style="margin:0;color:var(--text)"><input type="radio" name="linkType" value="standard" style="width:auto"> Standard — UPI, card, netbanking sab</label>
+        <label class="row small" style="margin:0;color:var(--text)"><input type="radio" name="linkType" value="upi" style="width:auto"> Sirf UPI</label></div>
+        <p class="small muted" id="rzpSub"></p>
+      </div>
+    </div>
+  </div>
+
+  <h2 style="margin-top:28px">Naya app — pehle check, phir connect</h2>
   <p class="sub">viaSocket plugin-validator rubric: GO pe hi connect. <span id="analyzerMode"></span></p>
   <div class="grid g2">
     <form class="card" id="anForm">
@@ -167,6 +196,10 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
       <label>Connected</label><div id="connected" class="row"></div>
     </form>
     <div id="anOut"><div class="card empty">Result yahan aayega.</div></div>
+  </div>
+  <div class="card" id="embedCard" style="margin-top:16px" hidden>
+    <div class="row" style="justify-content:space-between"><b id="embedTitle">Flow banao</b><button type="button" class="b s" id="embedClose">Band karo</button></div>
+    <div id="vsEmbed" style="height:640px;margin-top:10px"></div>
   </div>
 </section>
 
@@ -243,7 +276,7 @@ async function loadStatus(){
   $('#shopName').textContent=status.shop.name;
   $('#ownerSub').textContent='+'+status.shop.owner_phone;
   $('#clock').textContent=when(status.now)+(status.travelled_hours?` (+${status.travelled_hours}h)`:'');
-  $('#analyzerMode').textContent=status.modes.ai==='claude'?'Live research (Claude + web search).':'Demo: catalog/heuristic score — ANTHROPIC_API_KEY lagao live research ke liye.';
+  $('#analyzerMode').textContent=status.modes.ai==='rules'&&!status.viasocket_configured?'Demo: catalog/heuristic score.':'Live research (AI + web search).';
 }
 
 // ---------- LIVE ----------
@@ -321,17 +354,107 @@ $('#dueRows').onclick=async e=>{const b=e.target.closest('[data-paid]');if(!b)re
 
 // ---------- APPS ----------
 const DIM={fit:['Dukaan fit',20],demand:['Real demand',20],technical:['API / webhooks',15],viasocket:['On viaSocket',15],better_than_manual:['Better than manual',10],risk:['Low risk',10],evidence:['Evidence',10]};
-let lastResult=null;
-async function loadApps(){const apps=await api('/api/apps');$('#connected').innerHTML=apps.map(a=>`<span class="chip v-GO">✓ ${esc(a.name)}</span>`).join(' ');}
+let lastResult=null, vsToken='', integ=null, pendingService=null, embed=null;
+// The Connect popup must open from the click itself, so the token is fetched before any click.
+async function loadVsToken(){if(!integ?.configured)return;try{vsToken=(await api('/api/viasocket/token')).token;}catch(e){vsToken='';}}
+function openConnect(service, opts={}){
+  if(!vsToken||typeof window.openViasocketConnection!=='function'){toast('viaSocket abhi load nahi hua — page refresh kariye');return;}
+  pendingService=service;
+  window.openViasocketConnection(vsToken,service.service_id,{skipActionSelection:!!opts.filteredActions,...opts});
+}
+window.addEventListener('message',async e=>{
+  const t=e.data?.type;
+  if(t==='viasocket_connection_success'){
+    const svc=pendingService||{};
+    const serviceId=e.data.serviceId||svc.service_id, authId=e.data.data?.id;
+    try{integ=await api('/api/viasocket/connected',{method:'POST',body:{serviceId,authId,name:svc.name,icon:svc.iconurl||svc.icon}});toast(`${svc.name||'App'} connected ✅`);renderInteg();loadApps();
+      if(svc.generic)showFlowBuilder(svc);}catch(err){toast(err.message);}
+  }else if(t==='viasocket_connection_error'){toast(e.data.error?.message||'Connect fail hua');}
+});
+const appOf=id=>integ?.apps.find(a=>a.service_id===id);
+function stateChip(el,a,ready){const c=$(el);
+  if(!integ?.configured){c.textContent='demo';c.className='chip v-CONDITIONAL';return;}
+  if(!a){c.textContent='not connected';c.className='chip';return;}
+  if(a.expired){c.textContent='reconnect';c.className='chip v-NO-GO';return;}
+  c.textContent=ready?'live':'setup baaki';c.className='chip '+(ready?'v-GO':'v-CONDITIONAL');}
+function renderInteg(){
+  if(!integ)return;
+  $('#vsMissing').hidden=!!integ.configured;
+  for(const [k,card] of [['sheets','sheets'],['razorpay','rzp']]){
+    const svc=integ[k];$(`#${card}Icon`).src=svc.icon;$(`#${card}BtnIcon`).src=svc.icon;
+    const a=appOf(svc.service_id);stateChip(`#${card}State`,a,svc.ready);
+    const btn=$(`#${card}Connect`);btn.disabled=!integ.configured;
+    btn.lastChild.textContent=a?(a.expired?` Reconnect ${svc.name}`:` ${svc.name} dobara jodo`):` Connect ${svc.name}`;
+  }
+  const sh=appOf(integ.sheets.service_id);
+  $('#sheetsSetup').hidden=!sh||sh.expired;
+  $('#sheetsInfo').innerHTML=sh?.sheet?`Orders ja rahe hain: <a href="${esc(sh.sheet.url)}" target="_blank" rel="noopener">${esc(sh.sheet.spreadsheet_label||'Spreadsheet')} › ${esc(sh.sheet.sheet_label||'')}</a>`:(sh?'Ab spreadsheet aur tab chuniye.':'');
+  const rz=appOf(integ.razorpay.service_id);
+  $('#rzpSetup').hidden=!rz||rz.expired;
+  if(rz){$$('input[name=linkType]').forEach(r=>r.checked=r.value===rz.link_type);
+    $('#rzpSub').textContent=rz.paid_subscription?`"Payment link paid" event on hai (since ${new Date(rz.paid_subscription.created_at).toLocaleDateString('en-IN')}).`:'Paid event abhi subscribe nahi hua — app ke public HTTPS URL pe deploy hone ke baad automatically hoga.';}
+}
+$('#sheetsConnect').onclick=()=>{const a=appOf(integ.sheets.service_id);openConnect(integ.sheets,a?.expired?{authId:a.auth_id}:{filteredActions:integ.sheetsFilteredActions});};
+$('#rzpConnect').onclick=()=>{const a=appOf(integ.razorpay.service_id);openConnect(integ.razorpay,a?.expired?{authId:a.auth_id}:{filteredActions:integ.razorpay.filteredActions});};
+let ssTimer=null;
+async function loadSpreadsheets(search=''){
+  try{const opts=await api('/api/viasocket/sheets/options',{method:'POST',body:{field:'spreadsheet',search}});
+    $('#ssPick').innerHTML=opts.map(o=>`<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('')||'<option disabled>Kuch nahi mila</option>';}catch(e){toast(e.message);}
+}
+$('#ssSearch').oninput=()=>{clearTimeout(ssTimer);ssTimer=setTimeout(()=>loadSpreadsheets($('#ssSearch').value.trim()),350);};
+$('#ssPick').onchange=async()=>{
+  $('#tabPick').disabled=true;$('#sheetSave').disabled=true;$('#tabPick').innerHTML='<option>Loading…</option>';
+  try{const tabs=await api('/api/viasocket/sheets/options',{method:'POST',body:{field:'sheet',spreadsheet_id:$('#ssPick').value}});
+    $('#tabPick').innerHTML=tabs.map(o=>`<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('');$('#tabPick').disabled=false;$('#sheetSave').disabled=!tabs.length;}catch(e){toast(e.message);}
+};
+$('#sheetSave').onclick=async()=>{const ss=$('#ssPick'),tab=$('#tabPick');
+  try{integ=await api('/api/viasocket/sheets/choose',{method:'POST',body:{spreadsheet_id:ss.value,spreadsheet_label:ss.selectedOptions[0]?.text,sheet_id:tab.value,sheet_label:tab.selectedOptions[0]?.text}});renderInteg();toast('Order sheet set ✅');}catch(e){toast(e.message);}};
+$('#sheetCreate').onclick=async()=>{const b=$('#sheetCreate');b.disabled=true;
+  try{integ=await api('/api/viasocket/sheets/create',{method:'POST',body:{title:`${status.shop.name} — Orders`}});renderInteg();toast('Nayi sheet ban gayi ✅');}catch(e){toast(e.message);}finally{b.disabled=false;}};
+$$('input[name=linkType]').forEach(r=>r.onchange=async()=>{try{integ=await api('/api/viasocket/razorpay/settings',{method:'POST',body:{link_type:r.value}});renderInteg();toast('Saved');}catch(e){toast(e.message);}});
+
+async function loadApps(){
+  const [apps,i]=await Promise.all([api('/api/apps'),api('/api/integrations')]);integ=i;renderInteg();
+  $('#connected').innerHTML=apps.map(a=>`<span class="chip ${a.pending_connect?'v-CONDITIONAL':'v-GO'}">${a.icon?`<img src="${esc(a.icon)}" alt="" width="12" height="12" style="vertical-align:-1px"> `:''}${a.pending_connect?'⏳':'✓'} ${esc(a.name)}</span>`).join(' ');
+  await loadVsToken();
+  if(integ.configured&&appOf(integ.sheets.service_id)&&!$('#ssPick').options.length)loadSpreadsheets();
+}
 loaders.apps=loadApps;
+
+function loadScript(src){return new Promise((ok,bad)=>{if(document.querySelector(`script[src="${src}"]`))return ok();const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.appendChild(s);});}
+async function showFlowBuilder(svc){
+  if(!vsToken)return toast('viaSocket token nahi mila');
+  $('#embedCard').hidden=false;$('#embedTitle').innerHTML=`<img src="${esc(svc.iconurl||svc.icon||'')}" alt="" width="18" height="18" style="vertical-align:-3px"> ${esc(svc.name)} — kya karwana hai, chuniye`;
+  await loadScript('https://embed.viasocket.com/prod-embedcomponent.js');
+  embed?.destroy?.();$('#vsEmbed').innerHTML='';
+  embed=window.viaSocket.mount({embedToken:vsToken,parent:'#vsEmbed',config:{showEnabled:false,pageheading:'Automation',hideadvancedflowbutton:false},open:{serviceId:svc.service_id}});
+  embed.on('flow',f=>api('/api/viasocket/flow',{method:'POST',body:{service_id:svc.service_id,flow:{id:f.id,title:f.title,status:f.status,action:f.action,webhookurl:f.webhookurl}}}).then(()=>{if(f.action==='published')toast('Flow live ✅');loadApps();}).catch(()=>{}));
+  $('#embedCard').scrollIntoView({behavior:'smooth'});
+}
+$('#embedClose').onclick=()=>{embed?.destroy?.();embed=null;$('#embedCard').hidden=true;};
+
+async function findInCatalog(name){
+  const box=$('#catalogPick');if(!box)return;
+  box.innerHTML='<span class="muted small">viaSocket catalog mein dhoondh raha hoon…</span>';
+  try{
+    const list=await api('/api/viasocket/apps/search?q='+encodeURIComponent(name));
+    if(!list.length){box.innerHTML='<span class="small">viaSocket pe ye app nahi mila.</span>';return;}
+    box.innerHTML='<div class="small muted" style="margin:6px 0">Kaunsa app? Apna account jodne ke liye click kariye:</div>'+list.slice(0,5).map((a,i)=>`<button type="button" class="b" data-i="${i}" style="margin:0 6px 6px 0"><img src="${esc(a.iconurl)}" alt="" width="16" height="16" style="vertical-align:-3px"> Connect ${esc(a.name)}</button>`).join('');
+    box.onclick=ev=>{const b=ev.target.closest('[data-i]');if(!b)return;const a=list[+b.dataset.i];
+      api('/api/apps/connect',{method:'POST',body:{result:lastResult}}).catch(()=>{});
+      openConnect({...a,generic:true});};
+  }catch(e){box.innerHTML=`<span class="err small">${esc(e.message)}</span>`;}
+}
+
 $('#anForm').onsubmit=async e=>{
   e.preventDefault();$('#anOut').innerHTML='<div class="card empty">viaSocket rubric se analyse ho raha hai…</div>';
   try{
     const r=await api('/api/analyze-app',{method:'POST',body:{app:$('#anApp').value,category:$('#anCat').value,goal:$('#anGoal').value}});
     lastResult=r;
     if(r.already_connected){$('#anOut').innerHTML=`<div class="card">✅ ${esc(r.app)} already connected hai.</div>`;return;}
-    const next=r.verdict==='GO'?`<div class="callout" style="border-color:var(--go);background:var(--go-soft)">✅ Use case genuine hai.<div class="row" style="margin-top:8px"><button class="b p" id="connectBtn">➕ Connect via viaSocket</button></div></div>`
-      :r.verdict==='CONDITIONAL'?`<div class="callout">🤔 Pehle ye bataiye: <b>${esc(r.ask_owner||'Ye app roz kis kaam mein aayega?')}</b><br><span class="small muted">Jawab "Kya karwana hai" mein likh ke dobara analyse karo.</span><div class="row" style="margin-top:8px"><button class="b s" id="forceBtn">Phir bhi connect (owner override)</button></div></div>`
+    const canConnect=integ?.configured;
+    const next=r.verdict==='GO'?`<div class="callout" style="border-color:var(--go);background:var(--go-soft)">✅ Use case genuine hai.${canConnect?'<div id="catalogPick"></div>':'<div class="row" style="margin-top:8px"><button class="b p" id="connectBtn">➕ Approve (demo)</button></div>'}</div>`
+      :r.verdict==='CONDITIONAL'?`<div class="callout">🤔 Pehle ye bataiye: <b>${esc(r.ask_owner||'Ye app roz kis kaam mein aayega?')}</b><br><span class="small muted">Jawab "Kya karwana hai" mein likh ke dobara analyse karo.</span></div>`
       :`<div class="callout" style="border-color:var(--no);background:var(--no-soft)">⛔ Abhi connect nahi karenge. ${esc(r.biggest_risk)}</div>`;
     $('#anOut').innerHTML=`<div class="card">
       <div class="row" style="justify-content:space-between"><div><span class="muted small">VERDICT · ${esc(r.app)}</span><br><span class="chip v-${r.verdict}" style="font-size:16px;padding:4px 12px">${r.verdict}</span></div><div class="kpi">${r.score}<span class="muted" style="font-size:14px">/100</span></div></div>
@@ -343,9 +466,8 @@ $('#anForm').onsubmit=async e=>{
       <p class="small"><b>Success:</b> ${esc(r.success)}<br><b>Kill:</b> ${esc(r.kill)}</p>
       ${(r.unknowns||[]).length?`<p class="small muted">UNKNOWN: ${r.unknowns.map(esc).join('; ')}</p>`:''}
       ${next}</div>`;
-    const connect=async force=>{const c=await api('/api/apps/connect',{method:'POST',body:{result:lastResult,force}}).catch(e=>({error:e.message}));toast(c.error||`${lastResult.app} connected ✅`);loadApps();};
-    $('#connectBtn')?.addEventListener('click',()=>connect(false));
-    $('#forceBtn')?.addEventListener('click',()=>connect(true));
+    if(r.verdict==='GO'&&canConnect)findInCatalog(r.app);
+    $('#connectBtn')?.addEventListener('click',async()=>{const c=await api('/api/apps/connect',{method:'POST',body:{result:lastResult}}).catch(e=>({error:e.message}));toast(c.error||`${lastResult.app} approved ✅`);loadApps();});
   }catch(err){$('#anOut').innerHTML=`<div class="card err">${esc(err.message)}</div>`;}
 };
 
@@ -369,8 +491,8 @@ $('#shopForm').onsubmit=async e=>{
 loaders.setup=async()=>{
   await loadStatus();
   const m=status.modes;
-  const line=(k,v,hint)=>`<div class="row" style="justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--line)"><span>${k}</span><span class="chip ${v==='live'||v==='claude'?'v-GO':'v-CONDITIONAL'}" title="${esc(hint)}">${v}</span></div>`;
-  $('#modes').innerHTML=line('WhatsApp',m.whatsapp,'WHATSAPP_TOKEN + WHATSAPP_PHONE_ID')+line('AI brain',m.ai,'ANTHROPIC_API_KEY')+
+  const line=(k,v,hint)=>`<div class="row" style="justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--line)"><span>${k}</span><span class="chip ${['live','claude','viasocket'].includes(v)?'v-GO':'v-CONDITIONAL'}" title="${esc(hint)}">${v}</span></div>`;
+  $('#modes').innerHTML=line('WhatsApp',m.whatsapp,'WHATSAPP_TOKEN + WHATSAPP_PHONE_ID')+line('AI brain',m.ai,'viasocket = viaSocket AI · claude = ANTHROPIC_API_KEY · rules = no AI')+line('Google Sheets',m.sheets,'Apps tab')+line('Razorpay',m.razorpay,'Apps tab')+
     Object.entries(m.viasocket).map(([k,v])=>line('viaSocket · '+k,v,'VIASOCKET_FLOW_'+k.toUpperCase())).join('');
   $('#whUrl').textContent=status.webhook_url;$('#cbUrl').textContent=status.payment_callback_url;
   const log=await api('/api/flows');
@@ -382,5 +504,6 @@ $('#resetDemo').onclick=async()=>{if(!confirm('Saara demo data reset karein?'))r
 loadStatus().then(()=>{const t=location.hash.slice(1);show(loaders[t]?t:'live');}).catch(e=>toast(e.message));
 })();
 </script>
+<script id="viasocket-connect-script" src="https://flow.viasocket.com/connect.js"></script>
 </body>
 </html>
