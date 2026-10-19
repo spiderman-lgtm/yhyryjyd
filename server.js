@@ -1193,6 +1193,11 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping, extra
   }
 }
 
+// Address typed in Configure → the connected Gmail account → the HireRadar login email.
+function gmailRecipient(mapping, conn, userEmail) {
+  return String(mapping?.to || '').trim() || conn?.account_email || userEmail || '';
+}
+
 // Deliver event to all connected apps for a user
 async function deliverToApps(uid, eventType, job, extra = {}) {
   if (!SECRET) { console.warn('[vs-app] VIASOCKET_EMBED_SECRET not set — skipping delivery'); return; }
@@ -1238,7 +1243,8 @@ async function deliverToApps(uid, eventType, job, extra = {}) {
       }
     }
 
-    const mapping = { to: userEmail, phone: '', channel: 'general', ...cfg?.mapping };
+    const mapping = { phone: '', channel: 'general', ...cfg?.mapping };
+    mapping.to = gmailRecipient(cfg?.mapping, conn, userEmail);
     const payload = buildVsInputData(tmpl.app, conn, eventType, job, tmpl.id, mapping, extra);
     console.log(`[vs-app] ${tmpl.id}: sending to ${VS_RUN}/${conn.script_id}`);
     console.log(`[vs-app] ${tmpl.id}: payload keys=${Object.keys(payload.inputData || {}).join(',')}`);
@@ -1279,6 +1285,15 @@ app.get('/api/vs/find-app', async (req, res) => {
 });
 
 // Connect an app: user sends auth_id from popup, server enables + stores
+// viaSocket doesn't document which field holds the connected account, so look for any email-shaped value.
+function findEmail(obj, depth = 0) {
+  if (obj == null || depth > 5) return null;
+  if (typeof obj === 'string') return obj.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/)?.[0]?.toLowerCase() || null;
+  if (typeof obj !== 'object') return null;
+  for (const v of Object.values(obj)) { const e = findEmail(v, depth + 1); if (e) return e; }
+  return null;
+}
+
 app.post('/api/vs/connect', async (req, res) => {
   if (!SECRET) return res.status(500).json({ error: 'VIASOCKET_EMBED_SECRET not set' });
   const { app_label, auth_id } = req.body || {};
@@ -1313,9 +1328,13 @@ app.post('/api/vs/connect', async (req, res) => {
     const doc = await vsAppDoc(service_id).catch(() => null);
     const action_version_id = extractActionVerId(doc, APP_META[app_label].actionKw);
 
+    // Popup payload describes the user's own connection; elsewhere in enData an email could be someone else's.
+    const account_email = findEmail(req.body.account) || findEmail(enData?.data?.auth ?? enData?.auth);
+    console.log(`[vs-app] ${app_label} connected; account email ${account_email ? 'found' : 'not found'} (enable keys: ${Object.keys(enData?.data || enData || {}).join(',')}; popup keys: ${Object.keys(req.body.account || {}).join(',')})`);
+
     const conns = userConns(req.uid);
     conns[app_label] = {
-      app_label, service_id, auth_id, script_id,
+      app_label, service_id, auth_id, script_id, account_email,
       action_version_id: action_version_id || null,
       config: {},
       enabled: true,
@@ -1325,16 +1344,13 @@ app.post('/api/vs/connect', async (req, res) => {
 
     // Auto-fill defaults on connect so user doesn't need to configure manually
     const autoCfg = userAutoCfg(req.uid);
-    if (app_label === 'gmail') {
+    if (app_label === 'gmail' && account_email) {
+      // Earlier versions pre-filled "to" with the login email; let the connected Gmail take over instead.
       const userEmail = Object.values(usersStore).find(u => u.uid === req.uid)?.email;
-      if (userEmail) {
-        for (const t of AUTO_TEMPLATES.filter(t => t.app === 'gmail')) {
-          if (!autoCfg[t.id]) autoCfg[t.id] = {};
-          if (!autoCfg[t.id].mapping) autoCfg[t.id].mapping = {};
-          if (!autoCfg[t.id].mapping.to) autoCfg[t.id].mapping.to = userEmail;
-        }
-        saveAutoCfg();
+      for (const t of AUTO_TEMPLATES.filter(t => t.app === 'gmail')) {
+        if (autoCfg[t.id]?.mapping?.to && autoCfg[t.id].mapping.to === userEmail) delete autoCfg[t.id].mapping.to;
       }
+      saveAutoCfg();
     }
     if (app_label === 'slack') {
       for (const t of AUTO_TEMPLATES.filter(t => t.app === 'slack')) {
@@ -1345,7 +1361,7 @@ app.post('/api/vs/connect', async (req, res) => {
       saveAutoCfg();
     }
 
-    res.json({ ok: true, has_action: Boolean(action_version_id) });
+    res.json({ ok: true, has_action: Boolean(action_version_id), account_email });
   } catch (e) {
     res.status(502).json({ error: e.message });
   }
@@ -1442,7 +1458,9 @@ app.get('/api/debug/test-email', async (req, res) => {
   }
 
   const testJob = { id: 999, title: 'Test Role', company_name: 'Test Co', company: 'Test Co', candidate_required_location: 'India', salary: '10 LPA', url: 'https://example.com', category: 'Tech' };
-  const mapping = cfg?.mapping || {};
+  const userEmail = Object.values(usersStore).find(u => u.uid === uid)?.email || '';
+  const mapping = { ...cfg?.mapping, to: gmailRecipient(cfg?.mapping, conn, userEmail) };
+  log.push(`connected gmail account: ${conn.account_email || 'unknown'}`);
   const payload = buildVsInputData('gmail', conn, 'job.applied', testJob, 'gmail_applied', mapping);
   log.push(`payload keys: ${Object.keys(payload.inputData || {}).join(', ')}`);
   log.push(`to: ${payload.inputData?.to || 'EMPTY'}`);

@@ -2419,15 +2419,15 @@ function buildCfgPanel(t, mapping, app) {
 
   if (app === 'gmail') {
     const preview = mappingPreview([
-      ['To',      'your email',    mapping.to || '(connected Gmail)'],
+      ['To',      mapping.to ? 'your email' : 'connected Gmail', mapping.to || _vsConns.gmail?.account_email || '(connected Gmail)'],
       ['Subject', 'job.title + company', '🔔 New Match: SDE @ Razorpay'],
       ['Body',    'job details',   'Title, Company, Location, Salary, URL'],
     ]);
     return `${preview}
     <div class="auto-cfg-row">
       <div class="auto-cfg-label">Send To (email)</div>
-      <input class="auto-cfg-input" id="cfg-${t.id}-to" placeholder="you@gmail.com" value="${v('to')}">
-      <div class="auto-cfg-hint">Leave blank to use your connected Gmail address</div>
+      <input class="auto-cfg-input" id="cfg-${t.id}-to" placeholder="${esc(_vsConns.gmail?.account_email || 'you@gmail.com')}" value="${v('to')}">
+      <div class="auto-cfg-hint">Leave blank to send to your connected Gmail${_vsConns.gmail?.account_email ? ' (' + esc(_vsConns.gmail.account_email) + ')' : ''}</div>
     </div>
     <div class="auto-cfg-row">
       <div class="auto-cfg-label">Subject override</div>
@@ -2842,13 +2842,13 @@ window.addEventListener('message', async (e) => {
     const r = await fetch('/api/vs/connect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ app_label: appLabel, service_id: serviceId, auth_id: authId }),
+      body: JSON.stringify({ app_label: appLabel, service_id: serviceId, auth_id: authId, account: JSON.stringify(e.data.data || {}).length < 8000 ? e.data.data : {} }),
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Connect failed');
 
     // Update local connection state
-    _vsConns[appLabel] = { connected: true, has_action: d.has_action, config: {}, enabled: true };
+    _vsConns[appLabel] = { connected: true, has_action: d.has_action, config: {}, enabled: true, account_email: d.account_email || null };
 
     // ── Job-card quick connect path ──
     if (jobId) {
