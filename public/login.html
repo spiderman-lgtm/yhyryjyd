@@ -59,6 +59,8 @@ input:focus{border-color:var(--accent)}
 </div>
 
 <script>
+fetch('/api/auth/me').then(r => { if (r.ok) window.location.replace('/'); }).catch(() => {});
+
 function switchTab(t) {
   document.getElementById('panel-login').style.display = t === 'login' ? '' : 'none';
   document.getElementById('panel-signup').style.display = t === 'signup' ? '' : 'none';

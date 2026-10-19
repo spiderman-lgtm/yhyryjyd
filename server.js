@@ -65,10 +65,54 @@ function saveUsers() { storage.save('users', usersStore); }
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
 
 // Auth: protect / → serve login page if not logged in
-app.get('/', (req, res, next) => {
+
+// Second cookie carries the signed email so a logged-in browser can rebuild its account
+// if the users store is ever lost (e.g. a redeploy without persistent storage).
+const SESS_COOKIE = 'hr_sess';
+
+function cookieAttrs(req) {
+  return `Path=/; HttpOnly; SameSite=Lax; Max-Age=315360000${req.secure ? '; Secure' : ''}`;
+}
+
+function setLoginCookies(req, res, user) {
+  const payload = Buffer.from(JSON.stringify({ uid: user.uid, email: user.email, name: user.name })).toString('base64url');
+  res.setHeader('Set-Cookie', [
+    `${UID_COOKIE}=${user.uid}.${signUid(user.uid)}; ${cookieAttrs(req)}`,
+    `${SESS_COOKIE}=${payload}.${signUid('sess:' + payload)}; ${cookieAttrs(req)}`,
+  ]);
+}
+
+function readSession(req) {
+  const raw = (req.headers.cookie || '').split(';').map(s => s.trim()).find(s => s.startsWith(SESS_COOKIE + '='));
+  if (!raw) return null;
+  const [payload, sig] = raw.slice(SESS_COOKIE.length + 1).split('.');
+  if (!payload || !sig) return null;
+  const expected = signUid('sess:' + payload);
+  if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  try { return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')); } catch { return null; }
+}
+
+function currentUser(req) {
   const uid = readUid(req);
-  const email = uid && Object.values(usersStore).find(u => u.uid === uid)?.email;
-  if (!email) return res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  if (!uid) return null;
+  const user = Object.values(usersStore).find(u => u.uid === uid);
+  if (user) return user;
+  const sess = readSession(req);
+  if (!sess || sess.uid !== uid || !sess.email) return null;
+  const key = String(sess.email).toLowerCase();
+  if (usersStore[key]) return null; // email was re-registered by someone else meanwhile
+  usersStore[key] = {
+    uid, email: key, name: sess.name || key.split('@')[0], role: key === ADMIN_EMAIL ? 'admin' : 'user',
+    createdAt: new Date().toISOString(), passwordHash: null, restoredAt: new Date().toISOString(),
+  };
+  saveUsers();
+  console.log('[auth] restored an account from its session cookie');
+  return usersStore[key];
+}
+
+app.get('/', (req, res, next) => {
+  const user = currentUser(req);
+  if (!user) return res.sendFile(path.join(__dirname, 'public', 'login.html'));
   next();
 });
 
@@ -77,13 +121,20 @@ app.post('/auth/signup', async (req, res) => {
   const { email, password, name } = req.body || {};
   if (!email || !password || password.length < 6) return res.status(400).json({ error: 'Email and password (min 6 chars) required' });
   const key = email.toLowerCase().trim();
-  if (usersStore[key]) return res.status(409).json({ error: 'Email already registered' });
+  const existing = usersStore[key];
+  // A restored account has no password yet; only the browser that owns it may set one.
+  if (existing && !(existing.passwordHash === null && readUid(req) === existing.uid)) {
+    return res.status(409).json({ error: 'Email already registered' });
+  }
   const passwordHash = await bcrypt.hash(password, 10);
-  const uid = 'hr_' + crypto.randomUUID();
-  usersStore[key] = { uid, email: key, name: name || key.split('@')[0], role: key === ADMIN_EMAIL ? 'admin' : 'user', createdAt: new Date().toISOString(), passwordHash };
+  if (existing) {
+    existing.passwordHash = passwordHash;
+    if (name) existing.name = name;
+  } else {
+    usersStore[key] = { uid: 'hr_' + crypto.randomUUID(), email: key, name: name || key.split('@')[0], role: key === ADMIN_EMAIL ? 'admin' : 'user', createdAt: new Date().toISOString(), passwordHash };
+  }
   saveUsers();
-  const secure = req.secure ? '; Secure' : '';
-  res.setHeader('Set-Cookie', `${UID_COOKIE}=${uid}.${signUid(uid)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=315360000${secure}`);
+  setLoginCookies(req, res, usersStore[key]);
   res.json({ ok: true, name: usersStore[key].name, role: usersStore[key].role });
 });
 
@@ -95,32 +146,30 @@ app.post('/auth/login', async (req, res) => {
   const user = usersStore[key];
   // signup already reveals whether an email is registered, so saying so here leaks nothing new
   if (!user) return res.status(404).json({ error: 'No account found for this email. Please sign up.', code: 'no_account' });
+  if (!user.passwordHash) return res.status(409).json({ error: 'Your password was lost in a server reset. Open HireRadar in the browser you last used and set a new one from Sign Up.' });
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return res.status(401).json({ error: 'Invalid email or password' });
-  const secure = req.secure ? '; Secure' : '';
-  res.setHeader('Set-Cookie', `${UID_COOKIE}=${user.uid}.${signUid(user.uid)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=315360000${secure}`);
+  setLoginCookies(req, res, user);
   res.json({ ok: true, name: user.name, role: user.role });
 });
 
 // Logout
 app.post('/auth/logout', (req, res) => {
-  res.setHeader('Set-Cookie', `${UID_COOKIE}=; Path=/; HttpOnly; Max-Age=0`);
+  res.setHeader('Set-Cookie', [`${UID_COOKIE}=; Path=/; HttpOnly; Max-Age=0`, `${SESS_COOKIE}=; Path=/; HttpOnly; Max-Age=0`]);
   res.json({ ok: true });
 });
 
 // Current user info
 app.get('/api/auth/me', (req, res) => {
-  const uid = readUid(req);
-  if (!uid) return res.status(401).json({ error: 'Not logged in' });
-  const user = Object.values(usersStore).find(u => u.uid === uid);
+  const user = currentUser(req);
   if (!user) return res.status(401).json({ error: 'Not logged in' });
-  res.json({ name: user.name, email: user.email, role: user.role });
+  if (!readSession(req)) setLoginCookies(req, res, user); // upgrade browsers logged in before hr_sess existed
+  res.json({ name: user.name, email: user.email, role: user.role, needsPassword: !user.passwordHash });
 });
 
 // Admin: list users
 app.get('/api/admin/users', (req, res) => {
-  const uid = readUid(req);
-  const user = uid && Object.values(usersStore).find(u => u.uid === uid);
+  const user = currentUser(req);
   if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
   const list = Object.values(usersStore).map(u => ({
     name: u.name, email: u.email, role: u.role, createdAt: u.createdAt,
