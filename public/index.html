@@ -2173,7 +2173,7 @@ async function vsTestAppFromWidget(appLabel, btn) {
   if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
   let text = 'Test';
   try {
-    const r = await fetch('/api/vs/connections/' + appLabel + '/test', { method:'POST' });
+    const r = await fetch('/api/vs/connections/' + appLabel + '/test', { method:'POST', headers: { 'Content-Type': 'application/json' }, body: testPayload('job.saved') });
     const d = await r.json();
     text = !r.ok ? (d.error || 'Error') : d.ok ? '✓ Sent' : 'Fail';
   } catch(e) { text = 'Error'; }
@@ -2210,12 +2210,26 @@ async function testAutomation(id, btn) {
   if (btn) { btn.textContent = text; setTimeout(loadAutomations, 2500); }
 }
 
+// The user's saved jobs as the server's email templates expect them.
+function savedSummary() {
+  const ap = getApplied();
+  return getSaved().map(j => ({ title: j.title, company: j.company_name || j.company, location: j.candidate_required_location, url: j.url, salary: j.salary, status: ap[j.id] ? 'applied' : '' }));
+}
+
+// Payload for test sends: the most recent applied job for "applied" automations, else the latest saved job.
+function testPayload(trigger) {
+  const saved = getSaved();
+  const applied = Object.values(getApplied()).sort((a, b) => String(b.appliedAt).localeCompare(String(a.appliedAt)));
+  const job = (trigger === 'job.applied' && applied[0]) || saved[saved.length - 1] || null;
+  return JSON.stringify({ job, saved: savedSummary() });
+}
+
 function postJobEvent(type, jobId) {
   // Always tell the server: automation settings may not be loaded in this tab yet, and the server knows which are on.
   const job = allJobs.find(j => j.id === jobId) || getSaved().find(j => j.id === jobId) || null;
   fetch('/api/events', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ type, jobId, job, saved: (() => { const ap = getApplied(); return getSaved().map(j => ({ title: j.title, company: j.company_name || j.company, location: j.candidate_required_location, url: j.url, salary: j.salary, status: ap[j.id] ? 'applied' : '' })); })() }),
+    body: JSON.stringify({ type, jobId, job, saved: savedSummary() }),
   })
     .then(r => r.json())
     .then(d => { if (d.automations > 0) showToast('⚡ Automation triggered!', 'success'); })
@@ -2559,7 +2573,8 @@ async function autoTestRun(id, btn) {
   btn.disabled = true;
   btn.textContent = '⏳';
   try {
-    const r = await fetch(`/api/auto-test/${id}`, { method: 'POST' });
+    const trig = _autoTemplates.find(t => t.id === id)?.trigger;
+    const r = await fetch(`/api/auto-test/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: testPayload(trig) });
     const d = await r.json();
     if (!r.ok) { showToast('Test failed: ' + (d.error || r.status), 'error'); }
     else { showToast('✅ Test sent! Check your app now.', 'success'); }
@@ -2593,7 +2608,7 @@ async function autoTestFire(id) {
   if (!tmpl) return;
   showToast('Sending test delivery…', 'info');
   try {
-    const r = await fetch('/api/auto-test/' + id, { method: 'POST' });
+    const r = await fetch('/api/auto-test/' + id, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: testPayload(tmpl.trigger) });
     const d = await r.json();
     if (d.ok) showToast('✅ Test sent! Check your ' + tmpl.appLabel, 'success');
     else showToast('Test failed: ' + (d.error || 'unknown error'), 'error');
@@ -2949,7 +2964,7 @@ async function vsTestApp(appLabel, jobId) {
   const msgEl = document.getElementById(`qcm-${appLabel}-${jobId}`);
   if (msgEl) { msgEl.className = 'qc-msg'; msgEl.textContent = 'Sending test…'; }
   try {
-    const r = await fetch('/api/vs/connections/' + appLabel + '/test', { method: 'POST' });
+    const r = await fetch('/api/vs/connections/' + appLabel + '/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: testPayload('job.saved') });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Test failed');
     if (msgEl) { msgEl.className = 'qc-msg ok'; msgEl.textContent = d.ok ? '✅ Test sent! Check your ' + appLabel + '.' : 'Status: ' + d.status; }

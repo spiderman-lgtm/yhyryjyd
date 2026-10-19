@@ -1215,6 +1215,13 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping, extra
   }
 }
 
+// Defaults every delivery path uses, so tests send exactly what real events send.
+function resolveMapping(uid, tmplId, conn) {
+  const saved = userAutoCfg(uid)[tmplId]?.mapping || {};
+  const userEmail = Object.values(usersStore).find(u => u.uid === uid)?.email || '';
+  return { phone: '', channel: 'general', ...saved, to: gmailRecipient(saved, conn, userEmail) };
+}
+
 // Address typed in Configure → the connected Gmail account → the HireRadar login email.
 function gmailRecipient(mapping, conn, userEmail) {
   return String(mapping?.to || '').trim() || conn?.account_email || userEmail || '';
@@ -1225,7 +1232,6 @@ async function deliverToApps(uid, eventType, job, extra = {}) {
   if (!SECRET) { console.warn('[vs-app] VIASOCKET_EMBED_SECRET not set — skipping delivery'); return; }
   const conns = userConns(uid);
   const autoCfg = userAutoCfg(uid);
-  const userEmail = Object.values(usersStore).find(u => u.uid === uid)?.email || '';
 
   // Debug: log all template checks
   const matching = AUTO_TEMPLATES.filter(t => t.trigger === eventType);
@@ -1265,8 +1271,7 @@ async function deliverToApps(uid, eventType, job, extra = {}) {
       }
     }
 
-    const mapping = { phone: '', channel: 'general', ...cfg?.mapping };
-    mapping.to = gmailRecipient(cfg?.mapping, conn, userEmail);
+    const mapping = resolveMapping(uid, tmpl.id, conn);
     const payload = buildVsInputData(tmpl.app, conn, eventType, job, tmpl.id, mapping, extra);
     console.log(`[vs-app] ${tmpl.id}: sending to ${VS_RUN}/${conn.script_id}`);
     console.log(`[vs-app] ${tmpl.id}: payload keys=${Object.keys(payload.inputData || {}).join(',')}`);
@@ -1532,9 +1537,11 @@ app.post('/api/vs/connections/:app/test', async (req, res) => {
   if (!conn) return res.status(404).json({ error: 'Not connected' });
   if (!conn.script_id) return res.status(400).json({ error: 'Not fully set up' });
   if (!conn.action_version_id) return res.status(400).json({ error: 'action_version_id not found — check viaSocket docs' });
-  const job = getJobs()[0] || { title: 'Test Job', company_name: 'Test Co', candidate_required_location: 'Bangalore', salary: '₹15L', url: 'https://example.com', category: 'Backend', publication_date: new Date().toISOString() };
+  const job = cleanInlineJob(req.body?.job) || getJobs()[0];
+  if (!job) return res.status(400).json({ error: 'No job to send yet' });
+  const tmplId = AUTO_TEMPLATES.find(t => t.app === req.params.app && t.trigger === 'job.new')?.id;
   try {
-    const payload = buildVsInputData(req.params.app, conn, 'job.new', job);
+    const payload = buildVsInputData(req.params.app, conn, 'job.new', job, tmplId, resolveMapping(req.uid, tmplId, conn), { saved: cleanSavedList(req.body?.saved) });
     const r = await fetch(`${VS_RUN}/${conn.script_id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1920,14 +1927,13 @@ app.post('/api/auto-test/:id', async (req, res) => {
   const conns = userConns(req.uid);
   const conn = conns[tmpl.app];
   if (!conn?.script_id || !conn?.action_version_id) return res.status(400).json({ error: 'App not connected' });
-  const testJob = {
-    title: 'Senior Software Engineer (Test)', company: 'Acme Corp', location: 'Bangalore',
-    salary: '₹20-30 LPA', url: 'https://example.com/job/test', category: 'Engineering',
-    id: 'test-' + Date.now(),
-  };
+  // Use the user's own saved job so the test shows real data; fall back to the newest feed job.
+  const testJob = cleanInlineJob(req.body?.job) || getJobs()[0];
+  if (!testJob) return res.status(400).json({ error: 'Save a job first, then test' });
   try {
-    const mapping = userAutoCfg(req.uid)[id]?.mapping || {};
-    const payload = buildVsInputData(tmpl.app, conn, tmpl.trigger, testJob, tmpl.id, mapping);
+    const mapping = resolveMapping(req.uid, tmpl.id, conn);
+    const payload = buildVsInputData(tmpl.app, conn, tmpl.trigger, testJob, tmpl.id, mapping, { saved: cleanSavedList(req.body?.saved) });
+    if (tmpl.app === 'gmail' && !payload.inputData.to) return res.status(400).json({ error: 'No email address to send to' });
     const r = await fetch(`${VS_RUN}/${conn.script_id}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload), signal: AbortSignal.timeout(12000),
