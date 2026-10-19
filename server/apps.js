@@ -8,7 +8,7 @@ import { config } from './config.js';
 
 export async function connectApp(result, { force = false } = {}) {
   if (!result?.app) return { ok: false, error: 'app missing' };
-  if (result.verdict !== 'GO' && !force) return { ok: false, error: `verdict ${result.verdict} — sirf GO connect hota hai` };
+  if (result.verdict !== 'GO' && !force) return { ok: false, error: `verdict ${result.verdict} — only GO apps can be connected` };
   const d = get();
   if (d.connected_apps.some((a) => a.name.toLowerCase() === result.app.toLowerCase())) return { ok: true, already: true };
   const flow = await triggerFlow('connect_new_app', {

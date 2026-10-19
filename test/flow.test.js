@@ -9,6 +9,7 @@ import * as sch from '../server/scheduler.js';
 import { heuristic } from '../server/analyzer.js';
 import { parseWebhook } from '../server/whatsapp.js';
 import { callbackSecret } from '../server/integrations.js';
+import { creds } from '../server/whatsapp.js';
 
 const CUST = '919811111111';
 const OWNER = '919000000001';
@@ -31,10 +32,10 @@ test('parses Hinglish items and times', () => {
 });
 
 test('order → confirm → payment link → paid', async () => {
-  assert.match(await say(CUST, '2 chocolate cake chahiye kal'), /kitne baje/);
-  assert.match(await say(CUST, 'shaam 6 baje'), /₹1,400[\s\S]*Confirm/);
+  assert.match(await say(CUST, '2 chocolate cake chahiye kal'), /what time/);
+  assert.match(await say(CUST, 'shaam 6 baje'), /₹1,400[\s\S]*confirm/);
   const r = await say(CUST, 'haan');
-  assert.match(r, /Order #341 confirm/);
+  assert.match(r, /Order #341 is confirmed/);
   assert.match(r, /\/pay\/341/);
   const o = store.findOrder('341');
   assert.equal(stage(o), 'AWAITING_PAYMENT');
@@ -53,7 +54,7 @@ test('order → confirm → payment link → paid', async () => {
   assert.equal(forged.status, 401);
   assert.equal(res.status, 200);
   assert.equal(stage(o), 'PAID');
-  assert.match(store.get().messages.at(-1).text, /Payment mil gaya ✅/);
+  assert.match(store.get().messages.at(-1).text, /Payment received ✅/);
 });
 
 test('partial payment does not mark paid', async () => {
@@ -65,7 +66,7 @@ test('partial payment does not mark paid', async () => {
 });
 
 test('lead time is enforced', async () => {
-  assert.match(await say(CUST, '1 red velvet aaj 2 baje'), /24 ghante/);
+  assert.match(await say(CUST, '1 red velvet aaj 2 baje'), /24 hours/);
 });
 
 test('pickup reminder fires once, 2h before', async () => {
@@ -80,18 +81,18 @@ test('pickup reminder fires once, 2h before', async () => {
 test('udhaar ladder: polite → firm → escalate, one per day, never at night', async () => {
   await say(CUST, '1 brownie aaj 12 baje'); await say(CUST, 'haan');
   await say(OWNER, '341 done');
-  const kinds = () => store.get().messages.filter((m) => /udhaar|escalation/.test(m.kind || '')).map((m) => m.kind);
+  const kinds = () => store.get().messages.filter((m) => /reminder_|escalation/.test(m.kind || '')).map((m) => m.kind);
   clock.travel(26); await sch.tick(); // +1 day, noon
-  assert.deepEqual(kinds(), ['udhaar_polite']);
+  assert.deepEqual(kinds(), ['reminder_polite']);
   await sch.tick();
-  assert.deepEqual(kinds(), ['udhaar_polite']);
+  assert.deepEqual(kinds(), ['reminder_polite']);
   clock.travel(48); await sch.tick(); // day 3
-  assert.deepEqual(kinds(), ['udhaar_polite', 'udhaar_firm']);
+  assert.deepEqual(kinds(), ['reminder_polite', 'reminder_firm']);
   clock.travel(96 + 10); // day 7, 10 PM → quiet hours
   await sch.tick();
   assert.equal(kinds().length, 2);
   clock.travel(12); await sch.tick(); // next morning
-  assert.deepEqual(kinds(), ['udhaar_polite', 'udhaar_firm', 'escalation']);
+  assert.deepEqual(kinds(), ['reminder_polite', 'reminder_firm', 'escalation']);
   assert.equal(stage(store.findOrder('341')), 'ESCALATED');
   assert.equal(store.get().messages.filter((m) => m.kind === 'escalation')[0].phone, OWNER);
 });
@@ -99,17 +100,18 @@ test('udhaar ladder: polite → firm → escalate, one per day, never at night',
 test('paused customer gets no udhaar reminders', async () => {
   await say(CUST, '1 brownie aaj 12 baje'); await say(CUST, 'haan');
   await say(OWNER, '341 done');
-  assert.match(await say(OWNER, 'pause 9811111111'), /band/);
+  assert.match(await say(OWNER, 'pause 9811111111'), /paused/);
   clock.travel(26); await sch.tick();
-  assert.equal(store.get().messages.filter((m) => /udhaar/.test(m.kind || '')).length, 0);
+  assert.equal(store.get().messages.filter((m) => /reminder_/.test(m.kind || '')).length, 0);
 });
 
-test('owner commands: aaj, paid, hisaab, due', async () => {
+test('owner commands in English and Hinglish: today, paid, report, due', async () => {
   await say(CUST, '2 cupcakes aaj 5 baje'); await say(CUST, 'haan');
+  assert.match(await say(OWNER, 'today'), /#341/);
   assert.match(await say(OWNER, 'aaj'), /#341/);
-  assert.match(await say(OWNER, '341 paid'), /paid mark/);
-  assert.match(await say(OWNER, 'hisaab'), /1 order, ₹600 collect hua, 0 log/);
-  assert.match(await say(OWNER, 'due'), /Koi udhaar nahi/);
+  assert.match(await say(OWNER, '341 paid'), /marked paid/);
+  assert.match(await say(OWNER, 'report'), /1 order, ₹600 collected, 0 people/);
+  assert.match(await say(OWNER, 'due'), /Nobody owes/);
   assert.match(await say(OWNER, 'kuch bhi'), /Owner commands/);
 });
 
@@ -120,7 +122,7 @@ test('monthly report goes once on the last day after 9 PM', async () => {
   await sch.tick(); await sch.tick();
   const reports = store.get().messages.filter((m) => m.kind === 'monthly_report');
   assert.equal(reports.length, 1);
-  assert.match(reports[0].text, /Is mahine 1 order, ₹0 collect hua, 1 log abhi bhi due hain/);
+  assert.match(reports[0].text, /This month: 1 order, ₹0 collected, 1 person still owes/);
 });
 
 test('app analyzer: GO, duplicate NO-GO, fit penalty', () => {
@@ -133,10 +135,10 @@ test('app analyzer: GO, duplicate NO-GO, fit penalty', () => {
 });
 
 test('owner connects a GO app over WhatsApp, refuses NO-GO', async () => {
-  assert.match(await say(OWNER, 'Shiprocket jod do'), /GO \(\d+\/100\)[\s\S]*Connect karun/);
-  assert.match(await say(OWNER, 'haan'), /connect ho gaya/);
+  assert.match(await say(OWNER, 'connect Shiprocket'), /GO \(\d+\/100\)[\s\S]*Connect it/);
+  assert.match(await say(OWNER, 'yes'), /connected/);
   assert.ok(store.get().connected_apps.some((a) => a.name === 'Shiprocket'));
-  assert.match(await say(OWNER, 'khatabook jod do'), /NO-GO[\s\S]*connect nahi/);
+  assert.match(await say(OWNER, 'khatabook jod do'), /NO-GO[\s\S]*Not connecting/);
 });
 
 test('whatsapp webhook parsing and verification', async () => {
@@ -144,7 +146,7 @@ test('whatsapp webhook parsing and verification', async () => {
   assert.deepEqual(msgs, [{ from: '91999', name: 'Amit', text: 'hi', id: 'x' }]);
   const server = createServer().listen(0);
   const port = server.address().port;
-  const ok = await fetch(`http://localhost:${port}/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=dukaan-verify&hub.challenge=42`);
+  const ok = await fetch(`http://localhost:${port}/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=${creds().verifyToken}&hub.challenge=42`);
   const bad = await fetch(`http://localhost:${port}/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=nope&hub.challenge=42`);
   server.close();
   assert.equal(await ok.text(), '42');

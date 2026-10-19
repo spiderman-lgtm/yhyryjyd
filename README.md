@@ -1,16 +1,16 @@
-# Dukaan ka AI Manager
+# Dukaan AI Manager
 
-WhatsApp Business mein baitha AI jo poori dukaan chalata hai — orders, payment links, auto "paid", reminders, udhaar recovery, aur mahine ka one-line hisaab.
-**AI = dimaag · viaSocket = haath.**
+An AI that sits on a shop's WhatsApp Business number and runs the shop — orders, payment links, automatic "paid" detection, reminders, overdue-payment recovery, and a one-line monthly summary.
+**The AI is the brain · viaSocket is the hands.**
 
-Live: https://dukaan-ai-manager.embarko.app (landing) · `/app` (owner dashboard, `ADMIN_TOKEN` se)
+Live: https://dukaan-ai-manager.embarko.app (owner app, log in with `ADMIN_TOKEN`) · `/about` (what it does)
 
 ## Run locally
 
 ```bash
 npm install
 cp .env.example .env   # optional — without it everything runs in demo mode
-npm start              # http://localhost:3000/app
+npm start              # http://localhost:3000
 npm test
 ```
 
@@ -23,7 +23,7 @@ npm test
 | Order sheet | owner connects **Google Sheets** in Apps tab and picks a sheet | local only |
 | Payment links + auto paid | owner connects **Razorpay** in Apps tab | `/pay/<id>` demo page |
 | Any other app | App Analyzer says GO → owner connects it → builds a flow in viaSocket's prebuilt UI | — |
-| Reminders / udhaar / monthly report | Embarko schedule `embarko.json` → `GET /tasks/tick` (needs `CRON_SECRET`, set by Embarko) | in-process timer |
+| Reminders / overdue payments / monthly report | Embarko schedule `embarko.json` → `GET /tasks/tick` (needs `CRON_SECRET`, set by Embarko) | in-process timer |
 
 viaSocket needs `VIASOCKET_ORG_ID`, `VIASOCKET_PROJECT_ID`, `VIASOCKET_EMBED_SECRET` (server-side only).
 The shop is one viaSocket end user (`shop.uid`, created once and kept in the data file); its connections,

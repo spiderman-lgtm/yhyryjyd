@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { config, modes } from './config.js';
 import * as store from './store.js';
-import { parseWebhook } from './whatsapp.js';
+import { parseWebhook, creds as waCreds, live as waLive, saveCreds as waSave, clearCreds as waClear, sendTest as waTest } from './whatsapp.js';
 import { handleCustomer, aiProvider, runToolFromAi, aiToolSecret } from './brain.js';
 import * as integ from './integrations.js';
 import * as vs from './vs.js';
@@ -42,7 +42,7 @@ function adminOk(req) {
 
 // Meta signs webhook bodies with the app secret; verify when the secret is configured.
 function whatsappSignatureOk(req) {
-  const secret = process.env.WHATSAPP_APP_SECRET;
+  const secret = waCreds().appSecret;
   if (!secret) return true;
   const sig = req.headers['x-hub-signature-256'] || '';
   const expected = `sha256=${crypto.createHmac('sha256', secret).update(req.rawBody || '').digest('hex')}`;
@@ -66,7 +66,7 @@ const route = (method, pattern, handler, { admin = false } = {}) => {
 
 // ---------- WhatsApp ----------
 route('GET', '/webhook/whatsapp', (req, res, { query }) => {
-  if (query.get('hub.mode') === 'subscribe' && query.get('hub.verify_token') === config.whatsapp.verifyToken) {
+  if (query.get('hub.mode') === 'subscribe' && query.get('hub.verify_token') === waCreds().verifyToken) {
     res.writeHead(200, { 'Content-Type': 'text/plain' }); return res.end(query.get('hub.challenge') || '');
   }
   return json(res, 403, { error: 'verify token mismatch' });
@@ -98,8 +98,8 @@ route('GET', '/pay/:id', (req, res, { params }) => {
   return html(res, 200, `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pay #${o.id}</title>
 <style>body{font:16px system-ui;background:#f7f6f2;color:#1c1b19;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px}.c{background:#fff;border-radius:16px;padding:24px;max-width:360px;width:100%;box-shadow:0 8px 24px rgba(0,0,0,.08)}button{width:100%;padding:14px;border:0;border-radius:10px;background:#0f7a5c;color:#fff;font-size:17px;font-weight:600;cursor:pointer}small{color:#6b6862}</style>
 <div class="c"><small>${store.get().shop.name} · demo payment</small><h2>Order #${o.id}</h2><p>${o.items.map((l) => `${l.qty} × ${l.name}`).join('<br>')}</p><h1>₹${o.total.toLocaleString('en-IN')}</h1>
-${paid ? '<p>✅ Paid</p>' : `<button id="b">Pay ₹${o.total.toLocaleString('en-IN')} (demo UPI)</button><p><small>Real setup mein ye Razorpay link hota hai (viaSocket create_payment_link flow).</small></p>`}</div>
-<script>const b=document.getElementById('b');if(b)b.onclick=async()=>{b.disabled=true;b.textContent='Processing…';const r=await fetch('/api/demo/pay/${o.id}',{method:'POST'});b.textContent=r.ok?'✅ Paid — WhatsApp check karein':'Failed';};</script>`);
+${paid ? '<p>✅ Paid</p>' : `<button id="b">Pay ₹${o.total.toLocaleString('en-IN')} (demo UPI)</button><p><small>In a real setup this is a Razorpay link (viaSocket create_payment_link).</small></p>`}</div>
+<script>const b=document.getElementById('b');if(b)b.onclick=async()=>{b.disabled=true;b.textContent='Processing…';const r=await fetch('/api/demo/pay/${o.id}',{method:'POST'});b.textContent=r.ok?'✅ Paid — check WhatsApp':'Failed';};</script>`);
 });
 route('POST', '/api/demo/pay/:id', async (req, res, { params }) => {
   if (config.viasocket.flows.create_payment_link || integ.razorpayReady()) return json(res, 403, { error: 'demo payments disabled when live payment flow is configured' });
@@ -108,8 +108,15 @@ route('POST', '/api/demo/pay/:id', async (req, res, { params }) => {
 
 // ---------- Dashboard API ----------
 route('GET', '/api/status', (req, res) => json(res, 200, {
-  modes: { ...modes(), ai: aiProvider(), sheets: integ.sheetsReady() ? 'live' : 'demo', razorpay: integ.razorpayReady() ? 'live' : 'demo' },
-  viasocket_configured: vs.configured(), shop: store.get().shop, now: clock.now().toISOString(), travelled_hours: clock.travelledHours(),
+  modes: { ...modes(), whatsapp: waLive() ? 'live' : 'demo', ai: aiProvider(), sheets: integ.sheetsReady() ? 'live' : 'demo', razorpay: integ.razorpayReady() ? 'live' : 'demo' },
+  viasocket_configured: vs.configured(),
+  checklist: {
+    shop: Boolean(store.get().shop.setup_done),
+    whatsapp: waLive(),
+    sheets: integ.sheetsReady(),
+    razorpay: integ.razorpayReady(),
+  },
+  shop: store.get().shop, now: clock.now().toISOString(), travelled_hours: clock.travelledHours(),
   admin_required: Boolean(config.adminToken), webhook_url: `${config.publicUrl}/webhook/whatsapp`,
   payment_callback_url: `${config.publicUrl}/api/viasocket/payment-received`,
 }));
@@ -161,6 +168,7 @@ route('PUT', '/api/shop', (req, res, { body }) => {
       price: Math.round(Number(c.price)), unit: c.unit || 'piece', lead_time_hours: Math.max(0, Number(c.lead_time_hours) || 0),
     }));
   }
+  d.shop.setup_done = true;
   store.save();
   return json(res, 200, { shop: d.shop, catalog: d.catalog });
 }, { admin: true });
@@ -205,7 +213,7 @@ route('POST', '/api/ai-tools/:phone/:tool', async (req, res, { params, body }) =
 });
 
 // ---------- viaSocket: owner's connections (dashboard) ----------
-const needVs = (res) => { if (!vs.configured()) { json(res, 409, { error: 'VIASOCKET_ORG_ID / VIASOCKET_PROJECT_ID / VIASOCKET_EMBED_SECRET set nahi hain' }); return true; } return false; };
+const needVs = (res) => { if (!vs.configured()) { json(res, 409, { error: 'VIASOCKET_ORG_ID / VIASOCKET_PROJECT_ID / VIASOCKET_EMBED_SECRET are not set' }); return true; } return false; };
 route('GET', '/api/viasocket/token', (req, res) => {
   if (needVs(res)) return;
   return json(res, 200, { token: vs.embedToken(integ.shopUid()) });
@@ -242,7 +250,23 @@ route('POST', '/api/viasocket/flow', (req, res, { body }) => {
   return json(res, 200, { ok: true });
 }, { admin: true });
 
-// ---------- Embarko schedule: reminders, udhaar ladder, monthly report ----------
+// ---------- WhatsApp number (owner pastes Meta credentials) ----------
+route('GET', '/api/whatsapp', (req, res) => {
+  const c = waCreds();
+  return json(res, 200, {
+    connected: waLive(), display: c.display, phone_id: c.phoneId || '', has_app_secret: Boolean(c.appSecret),
+    verify_token: c.verifyToken, webhook_url: `${config.publicUrl}/webhook/whatsapp`,
+  });
+}, { admin: true });
+route('POST', '/api/whatsapp', async (req, res, { body }) => {
+  try { return json(res, 200, { ok: true, display: await waSave(body) }); } catch (e) { return json(res, 400, { error: e.message }); }
+}, { admin: true });
+route('POST', '/api/whatsapp/test', async (req, res, { body }) => {
+  try { await waTest(body.to || store.get().shop.owner_phone); return json(res, 200, { ok: true }); } catch (e) { return json(res, 400, { error: e.message }); }
+}, { admin: true });
+route('POST', '/api/whatsapp/disconnect', (req, res) => { waClear(); return json(res, 200, { ok: true }); }, { admin: true });
+
+// ---------- Embarko schedule: reminders, overdue-payment ladder, monthly report ----------
 route('GET', '/tasks/tick', async (req, res) => {
   const secret = process.env.CRON_SECRET;
   if (!secret || !safeEq(req.headers.authorization || '', `Bearer ${secret}`)) return json(res, 401, { error: 'unauthorized' });
@@ -254,8 +278,9 @@ route('GET', '/tasks/tick', async (req, res) => {
 
 // ---------- static ----------
 function serveStatic(req, res, pathname) {
-  if (pathname === '/') pathname = '/index.html';
-  if (pathname === '/app') pathname = '/app.html';
+  // The product is the dashboard; the use-case page lives at /about.
+  if (pathname === '/' || pathname === '/app') pathname = '/app.html';
+  if (pathname === '/about') pathname = '/index.html';
   const file = path.normalize(path.join(PUBLIC, pathname));
   if (!file.startsWith(PUBLIC)) return json(res, 403, { error: 'forbidden' });
   fs.readFile(file, (err, data) => {
@@ -274,7 +299,7 @@ export function createServer() {
         if (r.method !== req.method) continue;
         const m = url.pathname.match(r.re);
         if (!m) continue;
-        if (r.admin && config.onEmbarko && !config.adminToken) return json(res, 503, { error: 'ADMIN_TOKEN env var set karo — tab tak dashboard band hai' });
+        if (r.admin && config.onEmbarko && !config.adminToken) return json(res, 503, { error: 'Set the ADMIN_TOKEN env var — the dashboard stays locked until then' });
         if (r.admin && !adminOk(req)) return json(res, 401, { error: 'admin token required' });
         const params = Object.fromEntries(r.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
         const body = ['POST', 'PUT'].includes(req.method) ? await readBody(req) : {};
@@ -297,7 +322,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   server.listen(config.port, '0.0.0.0', () => {
     const m = modes();
     console.log(`Dukaan AI Manager on :${config.port} — WhatsApp ${m.whatsapp}, AI ${aiProvider()}`);
-    console.log(`Dashboard: ${config.publicUrl}/app   Webhook: ${config.publicUrl}/webhook/whatsapp`);
+    console.log(`Dashboard: ${config.publicUrl}/   Webhook: ${config.publicUrl}/webhook/whatsapp`);
   });
   const shutdown = () => { store.flush(); process.exit(0); };
   process.on('SIGTERM', shutdown);

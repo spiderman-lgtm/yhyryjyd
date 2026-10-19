@@ -1,4 +1,4 @@
-// Time-driven work: pickup/delivery reminders, the udhaar ladder and the monthly
+// Time-driven work: pickup/delivery reminders, the overdue-payment ladder and the monthly
 // one-liner. Each send is recorded on the order so a tick is safe to run any number
 // of times.
 import { config } from './config.js';
@@ -8,7 +8,7 @@ import { sendTemplate, sendText } from './whatsapp.js';
 import { ensurePaymentLink, dueList, describeOrder } from './orders.js';
 import { now, fmt, rupees, inQuietHours, isLastDayOfMonth, monthKey, parts } from './time.js';
 
-const firstName = (o) => (o.customer_name || '').split(' ')[0] || 'ji';
+const firstName = (o) => (o.customer_name || '').split(' ')[0] || 'there';
 
 async function remind(o, kind, text, templateParams) {
   const flow = await triggerFlow('send_reminder', { kind, order_id: o.id, phone: o.phone, customer_name: o.customer_name, text, amount: o.total, link: o.payment_link?.url || '' });
@@ -25,7 +25,7 @@ export async function fulfilmentReminders(at = now()) {
     const t = new Date(o.fulfil_at);
     if (t - at > lead || t < at) continue;
     const pay = o.payment === 'PAID' ? '' : o.payment_link?.url ? `\nPayment pending: ${o.payment_link.url}` : '';
-    const text = `Hi ${firstName(o)} 👋 Aapka order #${o.id} (${o.items.map((l) => `${l.qty} × ${l.name}`).join(', ')}) ${fmt(o.fulfil_at)} ke liye ready ho raha hai.\n📍 ${o.mode === 'delivery' ? o.address : `${shop.name}, ${shop.address}`}${pay}\nTime change karna ho to bata dijiye.`;
+    const text = `Hi ${firstName(o)} 👋 Your order #${o.id} (${o.items.map((l) => `${l.qty} × ${l.name}`).join(', ')}) is being prepared for ${fmt(o.fulfil_at)}.\n📍 ${o.mode === 'delivery' ? o.address : `${shop.name}, ${shop.address}`}${pay}\nReply here if you need to change the time.`;
     await remind(o, 'pickup_reminder', text, [firstName(o), o.id, fmt(o.fulfil_at)]);
     o.reminders.fulfilment_sent_at = at.toISOString();
     save();
@@ -56,16 +56,16 @@ export async function udhaarLadder(at = now()) {
     if (step == null) continue;
 
     if (step === d3) {
-      const text = `📒 Udhaar alert: ${order.customer_name || order.phone} (${order.phone}) — ${rupees(order.total)}, ${o.days} din se due (order #${order.id}). ${sent.size} reminder ja chuke.\nReply "${order.id} paid" agar cash mila, ya "pause ${order.phone}" reminders rokne ke liye.`;
+      const text = `📒 Overdue payment: ${order.customer_name || order.phone} (${order.phone}) — ${rupees(order.total)}, due for ${o.days} days (order #${order.id}). ${sent.size} reminders already sent.\nReply "${order.id} paid" if you got cash, or "pause ${order.phone}" to stop reminders.`;
       const flow = await triggerFlow('escalate_to_owner', { order_id: order.id, phone: order.phone, amount: order.total, days: o.days, text });
       if (flow.mode === 'demo' || !flow.ok) await sendText(get().shop.owner_phone, text, { kind: 'escalation', order_id: order.id });
       r.escalated_at = at.toISOString();
     } else {
       const w = await ensurePaymentLink(order.id);
       const text = step === d1
-        ? `Namaste ${firstName(order)} ji 🙏 Order #${order.id} ka ${rupees(order.total)} baaki hai. Jab convenient ho, is link se kar dijiye: ${w.payment_link.url}`
-        : `${firstName(order)} ji, ek chhota sa reminder — order #${order.id} ka ${rupees(order.total)} ${o.days} din se pending hai. Aaj ho sake to bahut madad hogi 🙂 ${w.payment_link.url}`;
-      await remind(order, step === d1 ? 'udhaar_polite' : 'udhaar_firm', text, [firstName(order), order.id, order.total, w.payment_link.url]);
+        ? `Hi ${firstName(order)} 🙏 ${rupees(order.total)} is still due for order #${order.id}. Whenever convenient, you can pay here: ${w.payment_link.url}`
+        : `Hi ${firstName(order)}, a gentle reminder — ${rupees(order.total)} for order #${order.id} has been pending for ${o.days} days. It would really help if you could pay today 🙂 ${w.payment_link.url}`;
+      await remind(order, step === d1 ? 'reminder_polite' : 'reminder_firm', text, [firstName(order), order.id, order.total, w.payment_link.url]);
       r.udhaar.push({ day: step, sent_at: at.toISOString() });
     }
     lastByPhone[order.phone] = at.toISOString();
@@ -87,7 +87,7 @@ export function monthStats(at = now()) {
 }
 
 export function monthLine(s) {
-  return `Is mahine ${s.orders} order, ${rupees(s.collected)} collect hua, ${s.due_count} log abhi bhi due hain${s.due_count ? ` (${rupees(s.due_amount)})` : ''}.`;
+  return `This month: ${s.orders} order${s.orders === 1 ? '' : 's'}, ${rupees(s.collected)} collected, ${s.due_count} ${s.due_count === 1 ? 'person' : 'people'} still owe${s.due_count === 1 ? 's' : ''}${s.due_count ? ` (${rupees(s.due_amount)})` : ''}.`;
 }
 
 export async function monthlyReport(at = now(), force = false) {
@@ -96,7 +96,7 @@ export async function monthlyReport(at = now(), force = false) {
   const key = monthKey(at);
   if (!force && get().reports.some((r) => r.month === key)) return null;
   const s = monthStats(at);
-  const text = `📊 ${monthLine(s)}${s.best ? `\nSabse zyada bika: ${s.best[0]} (${s.best[1]}).` : ''}${s.due.length ? `\nDue: ${s.due.slice(0, 5).map((o) => `${o.customer_name || o.phone} ${rupees(o.total)}`).join(', ')}` : ''}`;
+  const text = `📊 ${monthLine(s)}${s.best ? `\nBest seller: ${s.best[0]} (${s.best[1]}).` : ''}${s.due.length ? `\nDue: ${s.due.slice(0, 5).map((o) => `${o.customer_name || o.phone} ${rupees(o.total)}`).join(', ')}` : ''}`;
   const flow = await triggerFlow('monthly_report', { month: key, text, ...s, due: s.due.map((o) => ({ order_id: o.id, phone: o.phone, amount: o.total, days: o.days })) });
   if (flow.mode === 'demo' || !flow.ok) await sendText(get().shop.owner_phone, text, { kind: 'monthly_report' });
   get().reports.push({ month: key, text, at: at.toISOString() });

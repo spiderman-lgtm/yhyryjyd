@@ -1,5 +1,5 @@
 // Shop-local time helpers. `offsetMs` lets the demo dashboard "time travel" so the
-// reminder and udhaar ladders can be shown without waiting days.
+// reminder and overdue-payment ladders can be shown without waiting days.
 import { config } from './config.js';
 
 let offsetMs = 0;

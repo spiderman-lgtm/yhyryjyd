@@ -38,13 +38,13 @@ export async function createOrder({ phone, name, items, fulfil_at, mode = 'picku
   if (!Array.isArray(items) || !items.length) throw new Error('items required');
   const lines = items.map((it) => {
     const match = (it.item_id && get().catalog.find((c) => c.id === it.item_id)) || matchCatalog(it.item || it.name)[0];
-    if (!match) throw new Error(`"${it.item || it.item_id}" catalog mein nahi hai`);
+    if (!match) throw new Error(`"${it.item || it.item_id}" is not in the catalog`);
     const qty = Math.max(1, Math.round(Number(it.qty) || 1));
     return { item_id: match.id, name: match.name, qty, price: match.price, amount: match.price * qty };
   });
   const when = fulfil_at ? new Date(fulfil_at) : null;
   if (!when || Number.isNaN(when.getTime())) throw new Error('fulfil_at (pickup/delivery time) required');
-  if (when < now()) throw new Error('fulfil_at past mein hai');
+  if (when < now()) throw new Error('fulfil_at is in the past');
 
   const customer = upsertCustomer(phone, name);
   const order = {
@@ -87,7 +87,7 @@ export async function ensurePaymentLink(orderId) {
     description: `Order #${o.id} — ${get().shop.name}`,
     callback_url: '/api/viasocket/payment-received',
   });
-  if (!r.ok || !r.result?.url) throw new Error('payment link nahi ban paaya');
+  if (!r.ok || !r.result?.url) throw new Error('could not create the payment link');
   o.payment_link = { id: r.result.id || '', url: r.result.url, sent_at: now().toISOString() };
   save();
   await triggerFlow('update_order', { order_id: o.id, status: stage(o), payment_link: o.payment_link.url });
@@ -110,7 +110,7 @@ export async function markPaid(orderId, { amount, payment_id = '', source = 'via
   save();
   await triggerFlow('update_order', { order_id: o.id, status: stage(o), paid_at: o.paid_at, payment_id });
   const when = o.status === 'FULFILLED' ? '' : `\n${o.mode === 'delivery' ? 'Delivery' : 'Pickup'}: ${fmt(o.fulfil_at)} 🎂`;
-  await sendText(o.phone, `Payment mil gaya ✅ ${rupees(o.total)} — Order #${o.id}. Thank you!${when}`, { order_id: o.id, kind: 'paid' });
+  await sendText(o.phone, `Payment received ✅ ${rupees(o.total)} — Order #${o.id}. Thank you!${when}`, { order_id: o.id, kind: 'paid' });
   return { order: o };
 }
 
@@ -120,7 +120,7 @@ export async function markFulfilled(orderId) {
   if (o.status === 'CANCELLED') throw new Error('cancelled order');
   o.status = 'FULFILLED';
   o.fulfilled_at = now().toISOString();
-  // Goods left without payment → udhaar clock starts now.
+  // Goods left without payment → the overdue clock starts now.
   if (o.payment !== 'PAID' && new Date(o.due_at) > now()) o.due_at = o.fulfilled_at;
   save();
   await triggerFlow('update_order', { order_id: o.id, status: stage(o) });
@@ -130,8 +130,8 @@ export async function markFulfilled(orderId) {
 export async function cancelOrder(orderId, reason = '') {
   const o = findOrder(orderId);
   if (!o) throw new Error('order not found');
-  if (o.payment === 'PAID') throw new Error('paid order cancel nahi hota — owner se baat karein');
-  if (o.status === 'FULFILLED') throw new Error('order already de diya gaya hai');
+  if (o.payment === 'PAID') throw new Error('a paid order cannot be cancelled — please talk to the owner');
+  if (o.status === 'FULFILLED') throw new Error('the order has already been handed over');
   o.status = 'CANCELLED';
   o.cancel_reason = reason;
   save();
@@ -147,7 +147,7 @@ export function ordersFor(phone) {
 export function describeOrder(o) {
   const items = o.items.map((l) => `${l.qty} × ${l.name}`).join(', ');
   const st = {
-    CONFIRMED: 'confirmed', AWAITING_PAYMENT: 'payment pending', PAID: 'paid ✅', FULFILLED: 'de diya ✅',
+    CONFIRMED: 'confirmed', AWAITING_PAYMENT: 'payment pending', PAID: 'paid ✅', FULFILLED: 'handed over ✅',
     UDHAAR: 'payment due', ESCALATED: 'payment due', CANCELLED: 'cancelled',
   }[stage(o)];
   return `#${o.id}: ${items} — ${rupees(o.total)} · ${o.mode === 'delivery' ? 'delivery' : 'pickup'} ${fmt(o.fulfil_at)} · ${st}`;

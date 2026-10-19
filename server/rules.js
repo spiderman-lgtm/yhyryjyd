@@ -1,5 +1,5 @@
-// Rule-based Hinglish brain. Used when ANTHROPIC_API_KEY is not set (demo) and as a
-// fallback if the Claude call fails, so customers never get silence.
+// Rule-based brain. Understands English and Hinglish input, replies in English. Used when
+// no AI is configured (demo) and as a fallback if the AI call fails, so customers never get silence.
 import { get, save, normPhone } from './store.js';
 import { matchCatalog, createOrder, ensurePaymentLink, ordersFor, describeOrder, cancelOrder, stage } from './orders.js';
 import { now, addDaysLocal, parts, localDate, fmt, rupees } from './time.js';
@@ -91,38 +91,38 @@ export async function rulesReply(phone, text, name = '') {
     try {
       const o = await createOrder({ phone, name, items: p.items, fulfil_at: p.fulfil_at, mode: p.mode, address: p.address });
       const withLink = await ensurePaymentLink(o.id);
-      return `Order #${o.id} confirm ho gaya! ✅\n${describeOrder(o)}\n\nPayment link 👇\n${withLink.payment_link.url}\nUPI / card — sab chalega.`;
+      return `Order #${o.id} is confirmed! ✅\n${describeOrder(o)}\n\nPayment link 👇\n${withLink.payment_link.url}\nUPI and cards both work.`;
     } catch (e) {
-      return `Maaf kijiye, order save nahi ho paaya (${e.message}). Owner ko bata diya hai 🙏`;
+      return `Sorry, we couldn't save the order (${e.message}). The owner has been told 🙏`;
     }
   }
-  if (s.pending && NO.test(low)) { delete s.pending; save(); return 'Theek hai, order cancel kar diya. Kuch aur chahiye to bataiye 🙂'; }
+  if (s.pending && NO.test(low)) { delete s.pending; save(); return 'Okay, order cancelled. Let us know if you need anything else 🙂'; }
 
   if (/\b(menu|rate|price|kitne ka|kya kya|list)\b/.test(low) && !parseItems(t).length) {
-    return `${shop.name} menu 🍰\n${menu()}\n\nOrder ke liye likhiye, jaise: "2 chocolate cake kal 6 baje"`;
+    return `${shop.name} menu 🍰\n${menu()}\n\nTo order, write for example: "2 chocolate cake tomorrow 6 pm"`;
   }
   if (/\b(status|mera order|kab tak|kahan|ready)\b/.test(low)) {
     const o = ordersFor(phone).find((x) => x.status !== 'CANCELLED');
-    return o ? describeOrder(o) : 'Aapka koi order abhi nahi mila. Order karna ho to item aur time bataiye 🙂';
+    return o ? describeOrder(o) : 'We couldn\'t find an order for you. To order, tell us the item and the time 🙂';
   }
   if (/\b(cancel|nahi chahiye)\b/.test(low)) {
     const o = ordersFor(phone).find((x) => !['CANCELLED', 'FULFILLED'].includes(x.status) && x.payment !== 'PAID');
-    if (!o) return 'Cancel karne layak koi unpaid order nahi mila. Paid order ke liye owner aapse baat karenge 🙏';
+    if (!o) return 'There is no unpaid order to cancel. For a paid order, the owner will get in touch with you 🙏';
     await cancelOrder(o.id, 'customer request');
-    return `Order #${o.id} cancel kar diya ✅`;
+    return `Order #${o.id} cancelled ✅`;
   }
   if (/(pay|payment|paise).*(kar diya|kiya|done|ho gaya)|paid/.test(low)) {
     const o = ordersFor(phone).find((x) => x.status !== 'CANCELLED' && x.payment !== 'PAID');
-    if (!o) return 'Aapke saare orders paid hain ✅ Thank you!';
+    if (!o) return 'All your orders are paid ✅ Thank you!';
     const w = await ensurePaymentLink(o.id);
-    return `Order #${o.id} ka payment abhi tak nahi dikha. Thodi der mein auto-update ho jaata hai — agar nahi hua ho to is link se kar dijiye:\n${w.payment_link.url}`;
+    return `We haven't received the payment for order #${o.id} yet. It updates automatically within a few minutes — if you haven't paid, you can use this link:\n${w.payment_link.url}`;
   }
 
   if (s.awaitingAddress && s.draft) {
     delete s.awaitingAddress;
     s.draft.address = t;
     s.pending = s.draft; delete s.draft; save();
-    return `${summary(s.pending)}\n📍 ${t}\n\nConfirm karein? (haan / nahi)`;
+    return `${summary(s.pending)}\n📍 ${t}\n\nShall I confirm? (yes / no)`;
   }
 
   // Build up a pending order across messages.
@@ -141,28 +141,28 @@ export async function rulesReply(phone, text, name = '') {
 
   if (!items.length && !when && !s.draft) {
     if (/^(hi|hello|hey|namaste|namaskar|hii+|helo)\b/.test(low)) {
-      return `Namaste${name ? ` ${name}` : ''}! 🙏 ${shop.name} mein swagat hai.\n${menu()}\n\nKya chahiye aur kab? Jaise: "2 chocolate cake kal 6 baje"`;
+      return `Hello${name ? ` ${name}` : ''}! 🙏 Welcome to ${shop.name}.\n${menu()}\n\nWhat would you like, and when? For example: "2 chocolate cake tomorrow 6 pm"`;
     }
-    return 'Maaf kijiye, samajh nahi paaya 🙏 Order ke liye item aur time likhiye (jaise "1 red velvet parso 5 baje"), ya "menu" likhiye.';
+    return 'Sorry, I didn\'t get that 🙏 To order, send the item and the time (e.g. "1 red velvet day after tomorrow 5 pm"), or type "menu".';
   }
   s.draft = p; save();
 
-  if (!p.items.length) return `Kya order karna hai? 🙂\n${menu()}`;
+  if (!p.items.length) return `What would you like to order? 🙂\n${menu()}`;
   if (!p.fulfil_at) {
     const lead = Math.max(...p.items.map((it) => get().catalog.find((c) => c.id === it.item_id)?.lead_time_hours || 0));
-    return `${p.items.map((it) => `${it.qty} × ${get().catalog.find((c) => c.id === it.item_id).name}`).join(', ')} 👍\nKis din aur kitne baje chahiye? (${shop.open_hours}${lead ? `, ${lead} ghante pehle order` : ''})`;
+    return `${p.items.map((it) => `${it.qty} × ${get().catalog.find((c) => c.id === it.item_id).name}`).join(', ')} 👍\nWhich day and what time? (${shop.open_hours}${lead ? `, order ${lead} hours ahead` : ''})`;
   }
   const lead = Math.max(...p.items.map((it) => get().catalog.find((c) => c.id === it.item_id)?.lead_time_hours || 0));
   if (new Date(p.fulfil_at) - now() < lead * 3_600_000) {
     delete p.fulfil_at; save();
-    return `Ye item banne mein ${lead} ghante lagte hain 🙏 Thoda baad ka time bataiye?`;
+    return `This item takes ${lead} hours to prepare 🙏 Could you pick a later time?`;
   }
   if (p.mode === 'delivery' && !p.address) {
     s.awaitingAddress = true; save();
-    return 'Delivery ka poora address bhej dijiye 📍';
+    return 'Please send your full delivery address 📍';
   }
   s.pending = p; delete s.draft; save();
-  return `${summary(p)}\n\nConfirm karein? (haan / nahi)`;
+  return `${summary(p)}\n\nShall I confirm? (yes / no)`;
 }
 
 export { stage };

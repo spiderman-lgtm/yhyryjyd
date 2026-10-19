@@ -126,7 +126,7 @@ export function recordFlow(serviceId, flow) {
 // ---------- Google Sheets ----------
 const sheetsConn = () => {
   const c = conn(SHEETS.service_id);
-  if (!c?.script_id) throw new Error('Google Sheets connect nahi hai');
+  if (!c?.script_id) throw new Error('Google Sheets is not connected');
   return c;
 };
 
@@ -143,7 +143,7 @@ export async function sheetsOptions(field, { spreadsheet_id, search } = {}) {
 /** Check the chosen tab: empty (we create headers) or already has our headers. */
 export async function chooseSheet({ spreadsheet_id, spreadsheet_label = '', sheet_id, sheet_label = '' }) {
   const c = sheetsConn();
-  if (!spreadsheet_id || sheet_id == null || sheet_id === '') throw new Error('spreadsheet aur sheet dono chuniye');
+  if (!spreadsheet_id || sheet_id == null || sheet_id === '') throw new Error('choose both a spreadsheet and a sheet');
   const head = await vs.runAction(c.script_id, SHEETS.actions.getRange.action_version_id, { spreadsheet_Id: spreadsheet_id, grid_Id: String(sheet_id), range: 'A1:Z1' })
     .catch(() => []);
   const first = Array.isArray(head) ? head[0] : null;
@@ -153,7 +153,7 @@ export async function chooseSheet({ spreadsheet_id, spreadsheet_label = '', shee
   } else {
     const headers = Object.keys(first).filter((k) => k !== 'Row Number');
     const missing = COLUMNS.filter((h) => !headers.some((x) => x.toLowerCase() === h.toLowerCase()));
-    if (missing.length) throw new Error(`Is tab mein pehle se data hai par Dukaan ke columns nahi (${missing.slice(0, 3).join(', ')}…). Khaali tab chuniye ya "Nayi sheet banao".`);
+    if (missing.length) throw new Error(`This tab already has data but not the Dukaan columns (${missing.slice(0, 3).join(', ')}…). Pick an empty tab or use "Create a new order sheet".`);
     columns = Object.fromEntries(LIVE_COLUMNS.map((k) => [k, letter(headers.findIndex((x) => x.toLowerCase() === k.toLowerCase()))]));
   }
   c.sheet = { spreadsheet_id, spreadsheet_label, sheet_id: String(sheet_id), sheet_label, columns, url: `https://docs.google.com/spreadsheets/d/${spreadsheet_id}/edit` };
@@ -165,9 +165,9 @@ export async function createOrderSheet(title) {
   const c = sheetsConn();
   const r = await vs.runAction(c.script_id, SHEETS.actions.createSpreadsheet.action_version_id, { spreadsheet_title: title || `${get().shop.name} — Orders` });
   const spreadsheet_id = r.spreadsheetId || r.data?.spreadsheetId;
-  if (!spreadsheet_id) throw new Error('spreadsheet nahi bani');
+  if (!spreadsheet_id) throw new Error('the spreadsheet was not created');
   const tabs = await sheetsOptions('sheet', { spreadsheet_id });
-  if (!tabs.length) throw new Error('sheet tab nahi mila');
+  if (!tabs.length) throw new Error('no sheet tab found');
   return chooseSheet({ spreadsheet_id, spreadsheet_label: title || `${get().shop.name} — Orders`, sheet_id: tabs[0].value, sheet_label: tabs[0].label });
 }
 
@@ -223,12 +223,12 @@ export async function sheetsUpdate(orderId, stage) {
 // ---------- Razorpay ----------
 const rzpConn = () => {
   const c = conn(RAZORPAY.service_id);
-  if (!c?.script_id) throw new Error('Razorpay connect nahi hai');
+  if (!c?.script_id) throw new Error('Razorpay is not connected');
   return c;
 };
 
 export function setLinkType(type) {
-  if (!['standard', 'upi'].includes(type)) throw new Error('link type: standard ya upi');
+  if (!['standard', 'upi'].includes(type)) throw new Error('link type must be standard or upi');
   rzpConn().link_type = type;
   save();
 }
@@ -242,21 +242,21 @@ export async function razorpayLink(order) {
     description: `Order #${order.id} — ${get().shop.name}`.slice(0, 2048),
     reference_id: `${shopUid().slice(-8)}-${order.id}`, // unique per shop + order
     expiry_mode: 'days',
-    expire_by_days: 30, // outlives the udhaar ladder (day 7) with room to spare
+    expire_by_days: 30, // outlives the overdue reminder ladder (day 7) with room to spare
     add_customer: true,
     customer: { name: order.customer_name || 'Customer', contact: `+${order.phone}` },
     accept_partial: false, // a part payment is recorded, but the order stays due
     notes: { order_id: order.id, shop: shopUid() },
   });
   const url = r?.short_url || r?.data?.short_url;
-  if (!url) throw new Error('Razorpay link nahi bana');
+  if (!url) throw new Error('Razorpay did not return a link');
   return { id: r.id || r.data?.id || '', url };
 }
 
 /** "Any Payment Link Gets Paid" → handler on viaSocket calls our callback (Template B). */
 export async function subscribeRazorpayPaid() {
   const c = rzpConn();
-  if (!/^https:\/\//.test(config.publicUrl)) throw new Error('PUBLIC_URL https hona chahiye (deploy ke baad)');
+  if (!/^https:\/\//.test(config.publicUrl)) throw new Error('PUBLIC_URL must be https (after deploying)');
   const url = `${config.publicUrl}/api/viasocket/razorpay-paid`;
   const code = `
   const event = context.req.body

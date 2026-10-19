@@ -12,7 +12,7 @@ const seed = () => ({
     currency: 'INR',
     address: 'MG Road',
     open_hours: '11 AM – 8 PM',
-    policies: 'Custom cake ke liye 24 ghante pehle order. Delivery 5 km tak ₹50.',
+    policies: 'Custom cakes need 24 hours notice. Delivery within 5 km for ₹50.',
   },
   catalog: [
     { id: 'choc-cake-1kg', name: 'Chocolate Cake (1 kg)', aliases: ['chocolate cake', 'choco cake', 'cake'], price: 700, unit: 'piece', lead_time_hours: 12 },
@@ -43,6 +43,9 @@ export function load(customFile) {
   if (file === ':memory:') { db = seed(); return db; }
   try {
     db = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (db.shop?.policies === 'Custom cake ke liye 24 ghante pehle order. Delivery 5 km tak ₹50.') {
+      db.shop.policies = 'Custom cakes need 24 hours notice. Delivery within 5 km for ₹50.';
+    }
   } catch {
     db = seed();
     save();

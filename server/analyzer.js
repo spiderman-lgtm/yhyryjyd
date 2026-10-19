@@ -17,115 +17,115 @@ const uc = (name, trigger, action, result, status = 'PLAUSIBLE') => ({ name, tri
 const KNOWN = {
   shiprocket: { category: 'shipping', fitFor: ['boutique', 'kirana', 'bakery'], connector: 'NOT REQUIRED', confidence: 'MEDIUM',
     b: { fit: 16, demand: 16, technical: 13, viasocket: 11, better_than_manual: 9, risk: 7, evidence: 6 },
-    opp: 'Delivery orders ka courier khud book ho aur tracking customer ko WhatsApp pe jaaye.',
-    risk: 'Sirf delivery-heavy dukaan ke kaam ka — pickup-only dukaan ke liye bekaar.',
-    uc: [uc('Auto courier booking', 'Order PAID + mode = delivery', 'Shiprocket order + AWB create', 'Owner courier site pe nahi jaata'),
-      uc('Tracking on WhatsApp', 'Shipment shipped / out for delivery', 'Tracking link WhatsApp pe', '"Parcel kahan hai?" band'),
-      uc('RTO alert', 'Shipment RTO / failed', 'Owner alert + address confirm', 'Return cost kam')],
-    success: 'Pehle 20 delivery orders bina owner ke book hon.', kill: 'Mahine mein < 10 delivery orders.' },
+    opp: 'Delivery orders get a courier booked automatically and the customer gets tracking on WhatsApp.',
+    risk: 'Only useful for delivery-heavy shops — no use for pickup-only shops.',
+    uc: [uc('Auto courier booking', 'Order PAID + mode = delivery', 'Create Shiprocket order + AWB', 'Owner never opens the courier site'),
+      uc('Tracking on WhatsApp', 'Shipment shipped / out for delivery', 'Tracking link on WhatsApp', 'No more "where is my parcel?"'),
+      uc('RTO alert', 'Shipment RTO / failed', 'Alert owner + confirm address', 'Lower return costs')],
+    success: 'First 20 delivery orders booked without the owner.', kill: 'Fewer than 10 delivery orders a month.' },
   razorpay: { category: 'payments', connector: 'NOT REQUIRED', confidence: 'HIGH',
     b: { fit: 19, demand: 19, technical: 14, viasocket: 13, better_than_manual: 9, risk: 7, evidence: 8 },
-    opp: 'Payment link + auto PAID — core flow.', risk: 'Gateway fees owner ko samjhaani padengi.',
-    uc: [uc('Payment link', 'Order confirmed', 'Payment link → WhatsApp', '1-tap pay', 'PROVEN'),
-      uc('Auto PAID', 'payment_link.paid webhook', 'Order = PAID + thank-you', 'Zero hisaab', 'PROVEN'),
-      uc('Udhaar link', 'Udhaar Day 3', 'Link reminder ke saath', 'Fast vasooli')],
-    success: '90% orders link se pay hon.', kill: '—' },
+    opp: 'Payment link + automatic PAID — the core flow.', risk: 'The owner has to accept gateway fees.',
+    uc: [uc('Payment link', 'Order confirmed', 'Payment link → WhatsApp', 'One-tap payment', 'PROVEN'),
+      uc('Auto PAID', 'payment_link.paid webhook', 'Order = PAID + thank-you', 'No manual bookkeeping', 'PROVEN'),
+      uc('Reminder link', 'Overdue day 3', 'Link sent with the reminder', 'Faster collection')],
+    success: '90% of orders paid via link.', kill: '—' },
   cashfree: { category: 'payments', dupOf: 'Razorpay', connector: 'NOT REQUIRED', confidence: 'MEDIUM',
     b: { fit: 16, demand: 14, technical: 13, viasocket: 11, better_than_manual: 8, risk: 7, evidence: 6 },
-    opp: 'Razorpay ki jagah payment link + auto PAID.', risk: 'Razorpay already ho to duplicate — do jagah hisaab.',
-    uc: [uc('Payment link', 'Order confirmed', 'Cashfree link → WhatsApp', '1-tap pay'),
+    opp: 'Payment links + automatic PAID instead of Razorpay.', risk: 'Duplicate if Razorpay is already connected — two places to reconcile.',
+    uc: [uc('Payment link', 'Order confirmed', 'Cashfree link → WhatsApp', 'One-tap payment'),
       uc('Auto PAID', 'Payment success webhook', 'Order = PAID', 'No checking'),
-      uc('Udhaar link', 'Udhaar Day 3', 'Fresh link', 'Fast vasooli')],
-    success: 'Razorpay replace ho.', kill: 'Dono gateway active.' },
+      uc('Reminder link', 'Overdue day 3', 'Fresh link', 'Faster collection')],
+    success: 'It replaces Razorpay.', kill: 'Both gateways active.' },
   'google calendar': { category: 'calendar', fitFor: ['tuition', 'salon', 'boutique'], connector: 'NOT REQUIRED', confidence: 'MEDIUM',
     b: { fit: 15, demand: 15, technical: 14, viasocket: 13, better_than_manual: 8, risk: 8, evidence: 6 },
-    opp: 'Appointment/class slots WhatsApp se calendar mein — double booking khatam.', risk: 'Order-based dukaan ke liye zaroorat kam.',
-    uc: [uc('Slot booking', '"Kal 4 baje haircut"', 'Free slot check → event', 'No double booking'),
-      uc('Class reminder', 'Event − 1h', 'WhatsApp reminder', 'Attendance up'),
-      uc('Reschedule', '"Time badal do"', 'Event update', 'Owner free')],
-    success: '2 hafte mein 30+ bookings.', kill: 'Owner calendar dekhta hi nahi.' },
+    opp: 'Appointment/class slots go from WhatsApp straight into the calendar — no double booking.', risk: 'Little need for order-based shops.',
+    uc: [uc('Slot booking', '"Haircut tomorrow 4 pm"', 'Check free slot → create event', 'No double booking'),
+      uc('Class reminder', 'Event − 1h', 'WhatsApp reminder', 'Better attendance'),
+      uc('Reschedule', '"Change my time"', 'Update event', 'Owner stays free')],
+    success: '30+ bookings in 2 weeks.', kill: 'Owner never looks at the calendar.' },
   'zoho books': { category: 'accounting', connector: 'NOT REQUIRED', confidence: 'MEDIUM',
     b: { fit: 12, demand: 11, technical: 13, viasocket: 11, better_than_manual: 6, risk: 6, evidence: 5 },
-    opp: 'Har PAID order pe GST invoice khud bane.', risk: 'Chhoti dukaan GST invoice maangti hi nahi — Sheet kaafi hai.',
-    ask: 'Kya customers GST invoice maangte hain, ya CA ko monthly data chahiye?',
-    uc: [uc('Auto invoice', 'Order PAID', 'Invoice → PDF WhatsApp', 'GST-ready'),
-      uc('Payment record', 'Payment received', 'Invoice paid mark', 'Books match'),
-      uc('CA export', 'Month end', 'Summary CA ko', 'Filing easy')],
-    success: 'Owner confirm kare GST invoice chahiye.', kill: '< 5 invoice requests/month.' },
+    opp: 'A GST invoice created automatically for every PAID order.', risk: 'Small shops rarely get asked for GST invoices — the Sheet may be enough.',
+    ask: 'Do customers ask for GST invoices, or does your accountant need monthly data?',
+    uc: [uc('Auto invoice', 'Order PAID', 'Invoice → PDF on WhatsApp', 'GST-ready'),
+      uc('Payment record', 'Payment received', 'Mark invoice paid', 'Books match'),
+      uc('Accountant export', 'Month end', 'Summary to accountant', 'Easy filing')],
+    success: 'Owner confirms GST invoices are needed.', kill: 'Fewer than 5 invoice requests a month.' },
   tally: { category: 'accounting', connector: 'PARTNER-BUILD', confidence: 'LOW',
     b: { fit: 12, demand: 10, technical: 5, viasocket: 5, better_than_manual: 6, risk: 6, evidence: 4 },
-    opp: 'Tally wali dukaan ki sales entries auto ho jaayein.', risk: 'Tally mostly local/desktop — cloud sync route UNKNOWN.',
-    ask: 'Tally kis computer pe chalta hai aur CA usse data kaise leta hai?',
-    uc: [uc('Sales voucher', 'Order PAID', 'Voucher via bridge', 'CA ka kaam kam'),
-      uc('Month export', 'Month end', 'Import file', 'Manual entry khatam'),
-      uc('Stock sync', 'Order fulfilled', 'Stock reduce', 'Inventory sahi')],
-    success: 'Sync route verify + CA haan bole.', kill: 'Local-only setup.' },
-  khatabook: { category: 'ledger', dupOf: 'built-in udhaar', connector: 'NO', confidence: 'MEDIUM',
+    opp: 'Sales entries flow into Tally automatically for shops that use it.', risk: 'Tally is mostly local/desktop — cloud sync route UNKNOWN.',
+    ask: 'Which computer runs Tally, and how does your accountant get data from it?',
+    uc: [uc('Sales voucher', 'Order PAID', 'Voucher via a bridge', 'Less work for the accountant'),
+      uc('Month export', 'Month end', 'Import file', 'No manual entry'),
+      uc('Stock sync', 'Order fulfilled', 'Reduce stock', 'Accurate inventory')],
+    success: 'Sync route verified and the accountant agrees.', kill: 'Local-only setup.' },
+  khatabook: { category: 'ledger', dupOf: 'built-in credit tracking', connector: 'NO', confidence: 'MEDIUM',
     b: { fit: 8, demand: 6, technical: 3, viasocket: 3, better_than_manual: 2, risk: 5, evidence: 4 },
-    opp: 'Koi nahi — udhaar tracking + reminders already built-in hain.', risk: 'Duplicate ledger; public API UNKNOWN.',
-    uc: [uc('(Duplicate) Udhaar entry', 'Order unpaid', 'Khata entry', 'Already built-in'),
-      uc('(Duplicate) Reminder', 'Due date', 'SMS', 'WhatsApp reminder already'),
-      uc('One-time import', 'Setup', 'Purana udhaar import', 'Connector ki zaroorat nahi')],
-    success: '—', kill: 'Built-in udhaar ladder cover karta hai.' },
+    opp: 'None — credit tracking and reminders are already built in.', risk: 'Duplicate ledger; public API UNKNOWN.',
+    uc: [uc('(Duplicate) Credit entry', 'Order unpaid', 'Ledger entry', 'Already built in'),
+      uc('(Duplicate) Reminder', 'Due date', 'SMS', 'WhatsApp reminders already run'),
+      uc('One-time import', 'Setup', 'Import old dues', 'No connector needed')],
+    success: '—', kill: 'The built-in reminder ladder already covers it.' },
   instagram: { category: 'social', fitFor: ['boutique', 'bakery', 'salon'], connector: 'NOT REQUIRED', confidence: 'LOW',
     b: { fit: 13, demand: 13, technical: 10, viasocket: 9, better_than_manual: 7, risk: 6, evidence: 5 },
-    opp: 'Instagram DM orders bhi usi AI pipeline mein.', risk: 'DM API sirf Business account + Meta approval pe.',
-    ask: 'Instagram DM pe hafte mein kitne order aate hain?',
-    uc: [uc('DM → order', 'DM "ye available hai?"', 'Same AI order flow', 'Ek pipeline'),
-      uc('Post → broadcast', 'Naya post', 'Opt-in customers ko update', 'Repeat orders'),
-      uc('Comment → lead', '"Price?" comment', 'DM/WhatsApp link', 'Lead miss nahi')],
-    success: '10+ DM orders/week.', kill: 'Business account nahi / < 5 DMs/week.' },
+    opp: 'Instagram DM orders go through the same AI pipeline.', risk: 'The DM API needs a Business account and Meta approval.',
+    ask: 'How many orders a week come in through Instagram DMs?',
+    uc: [uc('DM → order', 'DM "is this available?"', 'Same AI order flow', 'One pipeline'),
+      uc('Post → broadcast', 'New post', 'Update opted-in customers', 'Repeat orders'),
+      uc('Comment → lead', '"Price?" comment', 'DM/WhatsApp link', 'No missed leads')],
+    success: '10+ DM orders a week.', kill: 'No Business account / fewer than 5 DMs a week.' },
   shopify: { category: 'ecommerce', connector: 'NOT REQUIRED', confidence: 'MEDIUM',
     b: { fit: 10, demand: 11, technical: 14, viasocket: 13, better_than_manual: 6, risk: 7, evidence: 5 },
-    opp: 'Website orders bhi WhatsApp confirm + reminder pipeline mein.', risk: 'Zyada tar WhatsApp dukaan ki website hi nahi hoti.',
-    ask: 'Shopify website live hai? Mahine mein kitne order?',
-    uc: [uc('Web order → WhatsApp', 'New Shopify order', 'Sheet + WhatsApp confirm', 'Ek jagah orders', 'PROVEN'),
-      uc('Order status', '"Mera order?"', 'Shopify status reply', 'Support zero'),
+    opp: 'Website orders also get WhatsApp confirmation and reminders.', risk: 'Most WhatsApp-first shops have no website.',
+    ask: 'Is your Shopify site live? How many orders a month?',
+    uc: [uc('Web order → WhatsApp', 'New Shopify order', 'Sheet + WhatsApp confirmation', 'All orders in one place', 'PROVEN'),
+      uc('Order status', '"Where is my order?"', 'Reply with Shopify status', 'Zero support work'),
       uc('Abandoned cart', 'Checkout abandoned', 'WhatsApp nudge (opt-in)', 'Recovered sales')],
-    success: '20+ web orders/month.', kill: 'Website nahi.' },
+    success: '20+ web orders a month.', kill: 'No website.' },
   gmail: { category: 'email', connector: 'NOT REQUIRED', confidence: 'MEDIUM',
     b: { fit: 6, demand: 6, technical: 14, viasocket: 13, better_than_manual: 3, risk: 6, evidence: 5 },
-    opp: 'CA/supplier ko monthly report email.', risk: 'Customers WhatsApp pe hain, email pe nahi.',
-    uc: [uc('CA report', 'Month end', 'Email summary', 'Thoda time'), uc('Supplier order', 'Low stock', 'Email', 'Rare'), uc('Invoice email', 'PAID', 'Email', 'WhatsApp already')],
-    success: 'Specific recipient (CA) chahiye.', kill: 'Koi recipient nahi.' },
+    opp: 'Monthly report email to the accountant or supplier.', risk: 'Customers are on WhatsApp, not email.',
+    uc: [uc('Accountant report', 'Month end', 'Email summary', 'Saves a little time'), uc('Supplier order', 'Low stock', 'Email', 'Rare'), uc('Invoice email', 'PAID', 'Email', 'WhatsApp already does this')],
+    success: 'A specific recipient (accountant) is needed.', kill: 'No recipient.' },
   swiggy: { category: 'aggregator', connector: 'NO', confidence: 'LOW',
     b: { fit: 8, demand: 9, technical: 2, viasocket: 2, better_than_manual: 3, risk: 4, evidence: 3 },
-    opp: 'Aggregator orders ek jagah — par small-shop partner API UNKNOWN/restricted.', risk: 'Open API nahi → connector possible nahi.',
-    uc: [uc('Order mirror', 'Aggregator order', 'Sheet row', 'API nahi'), uc('Monthly merge', 'Month end', 'Report', 'Manual CSV'), uc('Rating alert', 'New rating', 'Owner alert', 'API nahi')],
-    success: '—', kill: 'Public API nahi.' },
+    opp: 'Aggregator orders in one place — but a partner API for small shops is UNKNOWN/restricted.', risk: 'No open API → no connector possible.',
+    uc: [uc('Order mirror', 'Aggregator order', 'Sheet row', 'No API'), uc('Monthly merge', 'Month end', 'Report', 'Manual CSV'), uc('Rating alert', 'New rating', 'Owner alert', 'No API')],
+    success: '—', kill: 'No public API.' },
   'google business profile': { category: 'social', connector: 'NOT REQUIRED', confidence: 'LOW',
     b: { fit: 13, demand: 12, technical: 11, viasocket: 9, better_than_manual: 8, risk: 8, evidence: 5 },
-    opp: 'Happy customer se review maangna — fulfilled ke baad khud.', risk: 'API access approval; viaSocket availability verify karo.',
-    ask: 'Dukaan Google Maps pe listed hai?',
-    uc: [uc('Review request', 'Order FULFILLED', 'WhatsApp review link', 'Rating up'), uc('Bad review alert', '≤ 3★ review', 'Owner alert', 'Jaldi response'), uc('Hours update', 'Holiday', 'Profile hours', 'Galat time pe koi nahi aata')],
-    success: '30 din mein 15+ reviews.', kill: 'Listing nahi.' },
+    opp: 'Ask happy customers for a review automatically after the order is handed over.', risk: 'API access needs approval; check viaSocket availability.',
+    ask: 'Is your shop listed on Google Maps?',
+    uc: [uc('Review request', 'Order FULFILLED', 'WhatsApp review link', 'Higher rating'), uc('Bad review alert', '≤ 3★ review', 'Owner alert', 'Faster response'), uc('Hours update', 'Holiday', 'Update profile hours', 'Nobody turns up at the wrong time')],
+    success: '15+ reviews in 30 days.', kill: 'No listing.' },
 };
 KNOWN.zomato = KNOWN.swiggy;
-KNOWN.vyapar = { ...KNOWN.khatabook, dupOf: 'built-in udhaar + Sheet' };
+KNOWN.vyapar = { ...KNOWN.khatabook, dupOf: 'built-in credit tracking + Sheet' };
 
 const CAT = {
-  payments: { b: { fit: 16, demand: 14, technical: 11, viasocket: 9, better_than_manual: 7, risk: 6, evidence: 3 }, opp: 'Payment collect + auto PAID.', risk: 'Doosra gateway already ho to duplicate.', dup: 'razorpay',
-    uc: [uc('Payment link', 'Order confirmed', 'Link → WhatsApp', '1-tap pay'), uc('Auto PAID', 'Payment webhook', 'Order = PAID', 'Zero hisaab'), uc('Udhaar link', 'Udhaar reminder', 'Link attach', 'Fast vasooli')] },
-  shipping: { b: { fit: 14, demand: 14, technical: 10, viasocket: 8, better_than_manual: 8, risk: 6, evidence: 3 }, opp: 'Delivery orders ka courier auto-book.', risk: 'Pickup-only dukaan ke liye bekaar.',
-    uc: [uc('Auto booking', 'PAID + delivery', 'Courier order', 'Owner free'), uc('Tracking', 'Status change', 'WhatsApp tracking', 'No "kahan hai?"'), uc('Failed delivery', 'RTO', 'Owner alert', 'Cost bachat')] },
-  accounting: { b: { fit: 11, demand: 10, technical: 10, viasocket: 8, better_than_manual: 6, risk: 6, evidence: 3 }, opp: 'Invoice/books auto.', risk: 'Chhoti dukaan ke liye Sheet kaafi ho sakti hai.', ask: 'GST invoice ya CA ko data chahiye?',
-    uc: [uc('Auto invoice', 'Order PAID', 'Invoice create', 'GST-ready'), uc('Payment sync', 'Payment', 'Invoice paid', 'Books match'), uc('CA export', 'Month end', 'Summary', 'Filing easy')] },
-  calendar: { b: { fit: 14, demand: 13, technical: 11, viasocket: 9, better_than_manual: 8, risk: 7, evidence: 3 }, opp: 'Appointments WhatsApp se calendar mein.', risk: 'Order-based dukaan ke liye kam kaam ka.',
-    uc: [uc('Slot booking', '"Kal 4 baje"', 'Event create', 'No double booking'), uc('Reminder', 'Event − 1h', 'WhatsApp reminder', 'Show-up up'), uc('Reschedule', '"Time badlo"', 'Event update', 'Owner free')] },
-  social: { b: { fit: 12, demand: 11, technical: 8, viasocket: 7, better_than_manual: 6, risk: 6, evidence: 3 }, opp: 'Doosre channel ke leads bhi same AI mein.', risk: 'API access/approval UNKNOWN.', ask: 'Is channel se hafte mein kitne order/leads aate hain?',
-    uc: [uc('DM → order', 'New DM', 'AI order flow', 'Ek pipeline'), uc('Post → broadcast', 'New post', 'Opt-in update', 'Repeat sales'), uc('Lead capture', 'Inquiry', 'WhatsApp link', 'No lead miss')] },
-  sheets: { b: { fit: 13, demand: 12, technical: 12, viasocket: 10, better_than_manual: 6, risk: 7, evidence: 3 }, opp: 'Order/catalog data ka alag store.', risk: 'Google Sheets already ho to duplicate.', dup: 'google sheets',
-    uc: [uc('Order row', 'Order confirmed', 'Row add', 'Record'), uc('Catalog sync', 'Price change', 'Catalog update', 'Sahi price'), uc('Report', 'Month end', 'Aggregate', 'Hisaab')] },
-  ecommerce: { b: { fit: 10, demand: 10, technical: 12, viasocket: 10, better_than_manual: 6, risk: 7, evidence: 3 }, opp: 'Website orders bhi WhatsApp pipeline mein.', risk: 'Website active hai ya nahi — UNKNOWN.', ask: 'Website pe mahine mein kitne order?',
-    uc: [uc('Web → WhatsApp', 'New web order', 'Sheet + confirm', 'Ek jagah'), uc('Status', '"Mera order?"', 'Status reply', 'Support zero'), uc('Cart nudge', 'Abandoned', 'WhatsApp nudge', 'Recovered sales')] },
-  email: { b: { fit: 6, demand: 6, technical: 12, viasocket: 10, better_than_manual: 3, risk: 6, evidence: 3 }, opp: 'CA/supplier ko report.', risk: 'Customer email pe nahi hai.',
-    uc: [uc('CA report', 'Month end', 'Email summary', 'Thoda time'), uc('Supplier', 'Low stock', 'Email', 'Rare'), uc('Invoice', 'PAID', 'Email', 'WhatsApp already')] },
-  ledger: { b: { fit: 8, demand: 6, technical: 4, viasocket: 3, better_than_manual: 2, risk: 5, evidence: 3 }, opp: 'Udhaar already built-in hai.', risk: 'Duplicate ledger.', dup: 'built-in',
-    uc: [uc('(Dup) Khata entry', 'Unpaid', 'Entry', 'Already built-in'), uc('(Dup) Reminder', 'Due', 'SMS', 'WhatsApp already'), uc('Import', 'Setup', 'Old data import', 'One-time')] },
-  aggregator: { b: { fit: 8, demand: 8, technical: 3, viasocket: 2, better_than_manual: 3, risk: 4, evidence: 3 }, opp: 'Aggregator orders ek jagah.', risk: 'Partner API usually restricted — UNKNOWN.',
-    uc: [uc('Order mirror', 'Aggregator order', 'Sheet row', 'API nahi'), uc('Monthly merge', 'Month end', 'Report', 'Manual CSV'), uc('Rating alert', 'New rating', 'Owner alert', 'API nahi')] },
-  other: { b: { fit: 8, demand: 7, technical: 7, viasocket: 6, better_than_manual: 4, risk: 6, evidence: 2 }, opp: 'Abhi clear nahi — owner ka goal chahiye.', risk: 'Real use case prove nahi hua.', ask: 'Ye app roz ke kis kaam mein aata hai — aur kya manual karna padta hai?',
-    uc: [uc('Goal-based flow', "Owner ka trigger", 'App action', 'Owner ke jawab ke baad define')] },
+  payments: { b: { fit: 16, demand: 14, technical: 11, viasocket: 9, better_than_manual: 7, risk: 6, evidence: 3 }, opp: 'Collect payments + automatic PAID.', risk: 'Duplicate if another gateway is already connected.', dup: 'razorpay',
+    uc: [uc('Payment link', 'Order confirmed', 'Link → WhatsApp', 'One-tap payment'), uc('Auto PAID', 'Payment webhook', 'Order = PAID', 'No manual bookkeeping'), uc('Reminder link', 'Payment reminder', 'Attach link', 'Faster collection')] },
+  shipping: { b: { fit: 14, demand: 14, technical: 10, viasocket: 8, better_than_manual: 8, risk: 6, evidence: 3 }, opp: 'Courier booked automatically for delivery orders.', risk: 'No use for pickup-only shops.',
+    uc: [uc('Auto booking', 'PAID + delivery', 'Courier order', 'Owner stays free'), uc('Tracking', 'Status change', 'WhatsApp tracking', 'No "where is it?"'), uc('Failed delivery', 'RTO', 'Owner alert', 'Saves cost')] },
+  accounting: { b: { fit: 11, demand: 10, technical: 10, viasocket: 8, better_than_manual: 6, risk: 6, evidence: 3 }, opp: 'Invoices/books done automatically.', risk: 'For a small shop the Sheet may be enough.', ask: 'Do you need GST invoices, or data for your accountant?',
+    uc: [uc('Auto invoice', 'Order PAID', 'Create invoice', 'GST-ready'), uc('Payment sync', 'Payment', 'Invoice paid', 'Books match'), uc('Accountant export', 'Month end', 'Summary', 'Easy filing')] },
+  calendar: { b: { fit: 14, demand: 13, technical: 11, viasocket: 9, better_than_manual: 8, risk: 7, evidence: 3 }, opp: 'Appointments go from WhatsApp into the calendar.', risk: 'Not much use for order-based shops.',
+    uc: [uc('Slot booking', '"Tomorrow 4 pm"', 'Create event', 'No double booking'), uc('Reminder', 'Event − 1h', 'WhatsApp reminder', 'More show-ups'), uc('Reschedule', '"Change the time"', 'Update event', 'Owner stays free')] },
+  social: { b: { fit: 12, demand: 11, technical: 8, viasocket: 7, better_than_manual: 6, risk: 6, evidence: 3 }, opp: 'Leads from another channel go into the same AI.', risk: 'API access/approval UNKNOWN.', ask: 'How many orders or leads a week come from this channel?',
+    uc: [uc('DM → order', 'New DM', 'AI order flow', 'One pipeline'), uc('Post → broadcast', 'New post', 'Opt-in update', 'Repeat sales'), uc('Lead capture', 'Inquiry', 'WhatsApp link', 'No missed leads')] },
+  sheets: { b: { fit: 13, demand: 12, technical: 12, viasocket: 10, better_than_manual: 6, risk: 7, evidence: 3 }, opp: 'A separate store for order/catalog data.', risk: 'Duplicate if Google Sheets is already connected.', dup: 'google sheets',
+    uc: [uc('Order row', 'Order confirmed', 'Add row', 'Record kept'), uc('Catalog sync', 'Price change', 'Update catalog', 'Correct prices'), uc('Report', 'Month end', 'Aggregate', 'Monthly accounts')] },
+  ecommerce: { b: { fit: 10, demand: 10, technical: 12, viasocket: 10, better_than_manual: 6, risk: 7, evidence: 3 }, opp: 'Website orders join the WhatsApp pipeline.', risk: 'Whether the website is active is UNKNOWN.', ask: 'How many orders a month come from the website?',
+    uc: [uc('Web → WhatsApp', 'New web order', 'Sheet + confirmation', 'One place'), uc('Status', '"Where is my order?"', 'Status reply', 'Zero support work'), uc('Cart nudge', 'Abandoned', 'WhatsApp nudge', 'Recovered sales')] },
+  email: { b: { fit: 6, demand: 6, technical: 12, viasocket: 10, better_than_manual: 3, risk: 6, evidence: 3 }, opp: 'Reports to the accountant or supplier.', risk: 'Customers are not on email.',
+    uc: [uc('Accountant report', 'Month end', 'Email summary', 'Saves a little time'), uc('Supplier', 'Low stock', 'Email', 'Rare'), uc('Invoice', 'PAID', 'Email', 'WhatsApp already does this')] },
+  ledger: { b: { fit: 8, demand: 6, technical: 4, viasocket: 3, better_than_manual: 2, risk: 5, evidence: 3 }, opp: 'Credit tracking is already built in.', risk: 'Duplicate ledger.', dup: 'built-in',
+    uc: [uc('(Dup) Ledger entry', 'Unpaid', 'Entry', 'Already built in'), uc('(Dup) Reminder', 'Due', 'SMS', 'WhatsApp already does this'), uc('Import', 'Setup', 'Import old data', 'One-time')] },
+  aggregator: { b: { fit: 8, demand: 8, technical: 3, viasocket: 2, better_than_manual: 3, risk: 4, evidence: 3 }, opp: 'Aggregator orders in one place.', risk: 'Partner APIs are usually restricted — UNKNOWN.',
+    uc: [uc('Order mirror', 'Aggregator order', 'Sheet row', 'No API'), uc('Monthly merge', 'Month end', 'Report', 'Manual CSV'), uc('Rating alert', 'New rating', 'Owner alert', 'No API')] },
+  other: { b: { fit: 8, demand: 7, technical: 7, viasocket: 6, better_than_manual: 4, risk: 6, evidence: 2 }, opp: 'Not clear yet — need the owner\'s goal.', risk: 'No real use case proven yet.', ask: 'What daily task is this app for — and what do you do by hand today?',
+    uc: [uc('Goal-based flow', "Owner's trigger", 'App action', 'Defined after the owner answers')] },
 };
 const KW = [['payments', /pay|upi|gateway|razor|cashfree|phonepe|paytm|stripe|instamojo/i], ['shipping', /ship|courier|deliver|porter|dunzo|delhivery|logistic|parcel/i],
   ['ledger', /khata|udhaar|okcredit|vyapar/i], ['accounting', /books|tally|invoice|gst|account|billing/i], ['calendar', /calend|appoint|slot|schedule|calendly/i],
@@ -142,17 +142,17 @@ export function heuristic({ app, category = 'auto', goal = '' }, shop = get().sh
   const notes = [];
   if (base.fitFor) {
     if (base.fitFor.includes(shop.type)) b.fit = Math.min(20, b.fit + 2);
-    else { b.fit = Math.max(0, b.fit - 6); b.demand = Math.max(0, b.demand - 5); notes.push(`${shop.type} ke liye fit kam hai.`); }
+    else { b.fit = Math.max(0, b.fit - 6); b.demand = Math.max(0, b.demand - 5); notes.push(`Weak fit for a ${shop.type}.`); }
   }
   const conns = connected.map(norm);
   const dup = (k && k.dupOf) || base.dup;
   if (dup && (norm(dup).startsWith('built-in') || conns.includes(norm(dup)))) {
     b.demand = Math.max(0, b.demand - 8); b.better_than_manual = Math.max(0, b.better_than_manual - 4);
-    notes.push(`Duplicate: ${dup} already ye kaam karta hai.`);
+    notes.push(`Duplicate: ${dup} already does this.`);
   }
   if (goal && goal.trim().length > 8 && /(jab|hote hi|aate hi|automatic|khud|har|when|after|order|payment|reminder|book|send|bhej)/i.test(goal)) {
     b.evidence = Math.min(10, b.evidence + 3); b.demand = Math.min(20, b.demand + 2);
-    notes.push('Owner ne concrete trigger bataya.');
+    notes.push('Owner described a concrete trigger.');
   }
   const score = Object.values(b).reduce((a, c) => a + c, 0);
   return {
@@ -162,9 +162,9 @@ export function heuristic({ app, category = 'auto', goal = '' }, shop = get().sh
     confidence: k ? k.confidence : 'LOW',
     biggest_opportunity: base.opp, biggest_risk: base.risk,
     use_cases: base.uc, ask_owner: base.ask || '',
-    success: k?.success || 'Pehle 2 hafte mein 10+ runs bina owner ke.',
-    kill: k?.kill || 'Koi concrete trigger nahi / 2 hafte mein < 5 runs.',
-    unknowns: k ? [] : ['API / webhooks verify nahi hue', 'viaSocket listing verify nahi hui'],
+    success: k?.success || '10+ runs without the owner in the first 2 weeks.',
+    kill: k?.kill || 'No concrete trigger / fewer than 5 runs in 2 weeks.',
+    unknowns: k ? [] : ['API / webhooks not verified', 'viaSocket listing not verified'],
     notes,
   };
 }
@@ -198,12 +198,12 @@ const SCHEMA = {
   },
 };
 
-const RUBRIC = `You are the App Analyzer for "Dukaan ka AI Manager" — a WhatsApp Business AI for small Indian shops. External actions run on viaSocket embed.
+const RUBRIC = `You are the App Analyzer for "Dukaan AI Manager" — a WhatsApp Business AI for small Indian shops. External actions run on viaSocket embed.
 Your job is NOT to find reasons to connect. Protect the owner from clutter: decide whether the app solves a REAL, recurring problem for THIS shop that its current stack does not already solve.
 Rules: every use case is Trigger → Action → Result, specific to this shop (max 3). Mark anything unverified as UNKNOWN and list it in unknowns. Never invent API capabilities. Do not score up for popularity, size or "has an API". If an already-connected app or a built-in feature covers the need, score demand and better_than_manual low (duplicate). If there is no public API or it is not on viaSocket, connector is PARTNER-BUILD or NO.
 Score caps: fit 20, demand 20, technical (API/webhooks) 15, viasocket (available via viaSocket) 15, better_than_manual 10, risk (low data/trust risk = high score) 10, evidence 10.
-Built-in features (never duplicates worth connecting): WhatsApp order taking, payment links via Razorpay, auto-paid detection, pickup reminders, udhaar reminder ladder, monthly report.
-Write text fields in short Hinglish. ask_owner: one question if the case is borderline, else empty.`;
+Built-in features (never duplicates worth connecting): WhatsApp order taking, payment links via Razorpay, auto-paid detection, pickup reminders, overdue-payment reminder ladder, monthly report.
+Write text fields in short, plain English. ask_owner: one question if the case is borderline, else empty.`;
 
 function finish(out, app, extra = {}) {
   const breakdown = Object.fromEntries(Object.entries(DIMENSIONS).map(([k, max]) => [k, Math.max(0, Math.min(max, Math.round(out.breakdown?.[k] ?? 0)))]));
@@ -232,7 +232,7 @@ Owner's goal: ${goal || '(not given)'}`;
     return finish(out, app, { source: 'viasocket-ai' });
   } catch (e) {
     console.error('[analyzer] viaSocket AI failed, using heuristic:', e.message);
-    return { ...fallback, notes: [...fallback.notes, 'Live analysis fail hua — heuristic score.'] };
+    return { ...fallback, notes: [...fallback.notes, 'Live analysis failed — heuristic score.'] };
   }
 }
 
@@ -276,6 +276,6 @@ Owner's goal: ${goal || '(not given)'}`;
     return { ...out, app: out.app || app, breakdown, score, verdict: verdictOf(score), use_cases: (out.use_cases || []).slice(0, 3), source: 'claude', research, notes: [] };
   } catch (e) {
     console.error('[analyzer] Claude failed, using heuristic:', e.message);
-    return { ...fallback, notes: [...fallback.notes, 'Live research fail hua — heuristic score.'] };
+    return { ...fallback, notes: [...fallback.notes, 'Live research failed — heuristic score.'] };
   }
 }
