@@ -1053,7 +1053,13 @@ function saveConnStore() { storage.save('connections', connStore); }
 
 function userConns(uid) {
   if (!connStore.users[uid]) connStore.users[uid] = {};
-  return connStore.users[uid];
+  const conns = connStore.users[uid];
+  // Older connections stored ids guessed from the docs; the pinned ones are authoritative.
+  for (const [app, c] of Object.entries(conns)) {
+    const pinned = APP_META[app]?.action_version_id;
+    if (pinned && c.action_version_id !== pinned) c.action_version_id = pinned;
+  }
+  return conns;
 }
 
 const VS_API = 'https://flow-api.viasocket.com';
@@ -1113,12 +1119,26 @@ function extractActionVerId(doc, keywords) {
 const APP_META = {
   // service_ids from viaSocket skill docs
   whatsapp: { label: 'WhatsApp',      icon: '💬', color: '#25D366', service_id: 'row3icnwu2su', q: 'whatsapp',      actionKw: ['send message','send text','send template'] },
-  gmail:    { label: 'Gmail',         icon: '📧', color: '#EA4335', service_id: 'rowo0bqrhj5g', q: 'gmail',          actionKw: ['send email','send mail','compose'] },
-  sheets:   { label: 'Google Sheets', icon: '📊', color: '#0F9D58', service_id: null,            q: 'google sheets',  actionKw: ['add row','append row','insert row'] },
-  slack:    { label: 'Slack',         icon: '💼', color: '#4A154B', service_id: null,            q: 'slack',          actionKw: ['send message','post message','post to channel'] },
+  // action_version_ids below are the "Send Email" / "Add Multiple Rows" / "Send Message" actions in viaSocket's docs
+  gmail:    { label: 'Gmail',         icon: '📧', color: '#EA4335', service_id: 'rowo0bqrhj5g', action_version_id: 'rowwj0sfmhub', q: 'gmail',          actionKw: ['send email','send mail','compose'] },
+  sheets:   { label: 'Google Sheets', icon: '📊', color: '#0F9D58', service_id: 'rowqm5xi2',    action_version_id: 'rowdd8u5lg1k', q: 'google sheets',  actionKw: ['add multiple rows'] },
+  slack:    { label: 'Slack',         icon: '💼', color: '#4A154B', service_id: 'rowbu58rc',    action_version_id: 'rowj2u3wc8h5', q: 'slack',          actionKw: ['send message'] },
 };
 
 // Build viaSocket inputData per app + template
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Plain-text email → simple HTML: paragraphs, line breaks, bold "Label:" prefixes, clickable links.
+function textToEmailHtml(text) {
+  const line = l => escapeHtml(l)
+    .replace(/^([A-Z][A-Za-z ]{1,24}):(?=\s|$)/, '<b>$1:</b>')
+    .replace(/https?:\/\/[^\s<]+/g, u => `<a href="${u}">${u.length > 70 ? u.slice(0, 67) + '...' : u}</a>`);
+  const paras = String(text).split(/\n{2,}/).map(p => `<p style="margin:0 0 14px">${p.split('\n').map(line).join('<br>')}</p>`);
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#1f2937">${paras.join('')}</div>`;
+}
+
 const JOB_TYPE_LABEL = { full_time: 'Full-time', part_time: 'Part-time', contract: 'Contract', internship: 'Internship' };
 
 function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping, extra = {}) {
@@ -1169,9 +1189,9 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping, extra
     gmail_applied:  `Hi,\n\nHere is a record of the job you applied to on ${jp.date}.\n\n${details}\n\nJob posting: ${jp.url}\n\nNext step: follow up with the company if you have not heard back in 7 days.\n\nYou are receiving this because you turned on the "Job applied" automation in HireRadar.`,
   };
   const slackText = {
-    slack_new_job:  `🔔 *New job match!*\n*${jp.title}* @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary}\n<${jp.url}|Apply Now>`,
-    slack_saved:    `🔖 *Job Saved!*\n*${jp.title}* @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary} · ${jp.type}\n🛠 ${jp.skills}\n<${jp.url}|View Job>${saved.length ? ` · ${saved.length} saved in total` : ''}`,
-    slack_applied:  `✅ *Applied!*\n*${jp.title}* @ *${jp.company}*\n📍 ${jp.location} · 💰 ${jp.salary}\n🗂 ${jp.category} · 📅 ${jp.date}\n<${jp.url}|View Job> · _Follow up after 7 days_`,
+    slack_new_job:  `🔔 *New job match!*\n*${jp.title}* at ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary} · ${jp.type}\n🛠 ${jp.skills}\nApply: ${jp.url}`,
+    slack_saved:    `🔖 *Job saved*\n*${jp.title}* at ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary} · ${jp.type}\n🛠 ${jp.skills}\nJob link: ${jp.url}${saved.length ? `\n_${saved.length} jobs saved in total_` : ''}`,
+    slack_applied:  `✅ *Applied*\n*${jp.title}* at *${jp.company}*\n📍 ${jp.location} · 💰 ${jp.salary} · ${jp.type}\n📅 Applied on ${jp.date}\nJob link: ${jp.url}\n_Follow up after 7 days_`,
   };
 
   switch (appLabel) {
@@ -1187,28 +1207,31 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping, extra
       inputData: {
         to: m.to || cfg.to || '',
         subject: m.subject || gmailSubj[tmplId] || `HireRadar: ${jp.title} @ ${jp.company}`,
-        body: gmailBody[tmplId] || `Job: ${jp.title} at ${jp.company}\nSalary: ${jp.salary}\nApply: ${jp.url}`,
+        fromName: 'HireRadar',
+        // viaSocket's Gmail "Send Email" action reads the body from messageBody (HTML); other keys are dropped
+        messageBody: textToEmailHtml(gmailBody[tmplId] || `Job: ${jp.title} at ${jp.company}\nSalary: ${jp.salary}\nApply: ${jp.url}`),
       },
     };
     case 'sheets': {
-      // Column order from user mapping or default
-      const colOrder = (m.colMap || 'title,company,location,salary,status,url,date').split(',').map(s => s.trim());
-      const fieldMap = { title: jp.title, company: jp.company, location: jp.location, salary: jp.salary, status: eventType, url: jp.url, date: jp.date, category: jp.category, type: jp.type, skills: jp.skills, posted: jp.posted };
-      const row = colOrder.map(f => fieldMap[f] ?? '');
+      // "Add Multiple Rows" with JSON rows: headers are created from the keys if the sheet has none
+      const ref = String(m.sheetUrl || cfg.spreadsheet_id || '');
+      const spreadsheetId = ref.match(/\/d\/([A-Za-z0-9_-]+)/)?.[1] || ref.trim();
+      const sheetId = ref.match(/[#&?]gid=(\d+)/)?.[1] || '0';
+      const HEADERS = { title: 'Role', company: 'Company', location: 'Location', salary: 'Salary', status: 'Status', url: 'Job link', date: 'Date', category: 'Category', type: 'Job type', skills: 'Skills', posted: 'Posted on' };
+      const colOrder = (m.colMap || 'title,company,location,salary,status,url,date').split(',').map(s => s.trim()).filter(Boolean);
+      const fieldMap = { title: jp.title, company: jp.company, location: jp.location, salary: jp.salary, status: eventType === 'job.applied' ? 'Applied' : eventType === 'job.saved' ? 'Saved' : 'New', url: jp.url, date: jp.date, category: jp.category, type: jp.type, skills: jp.skills, posted: jp.posted };
+      const row = Object.fromEntries(colOrder.map(f => [HEADERS[f] || f, fieldMap[f] ?? '']));
       return {
         action_version_id: conn.action_version_id,
-        inputData: {
-          spreadsheet_id: m.sheetUrl || cfg.spreadsheet_id || '',
-          range: `${m.sheetName || 'Sheet1'}!A:${String.fromCharCode(64 + row.length)}`,
-          values: [row],
-        },
+        inputData: { spreadSheet_Id: spreadsheetId, sheet_id: sheetId, use_json_rows: true, rows_json: JSON.stringify([row]) },
       };
     }
     case 'slack': return {
       action_version_id: conn.action_version_id,
       inputData: {
-        channel: m.channel || cfg.channel || 'general',
-        text: slackText[tmplId] || `*Job Alert:* ${jp.title} @ *${jp.company}*\n📍 ${jp.location}  💰 ${jp.salary}\n🔗 ${jp.url}`,
+        destination: { messageto: 'channel', channel_id: String(m.channel || cfg.channel || 'general').split(',').map(c => c.trim().replace(/^#/, '')).filter(Boolean) },
+        markdown_content: slackText[tmplId] || `*Job Alert:* ${jp.title} at *${jp.company}*\n${jp.location} · ${jp.salary}\n${jp.url}`,
+        bot_details: { bot_name: 'HireRadar' },
       },
     };
     default: return { action_version_id: conn.action_version_id, inputData: { ...jp, tmplId } };
@@ -1352,8 +1375,8 @@ app.post('/api/vs/connect', async (req, res) => {
     if (!script_id) return res.status(502).json({ error: 'No script_id from viaSocket' });
 
     // Try to get action_version_id from documentation
-    const doc = await vsAppDoc(service_id).catch(() => null);
-    const action_version_id = extractActionVerId(doc, APP_META[app_label].actionKw);
+    const action_version_id = APP_META[app_label].action_version_id
+      || extractActionVerId(await vsAppDoc(service_id).catch(() => null), APP_META[app_label].actionKw);
 
     // Popup payload describes the user's own connection; elsewhere in enData an email could be someone else's.
     const account_email = findEmail(req.body.account) || findEmail(enData?.data?.auth ?? enData?.auth);
