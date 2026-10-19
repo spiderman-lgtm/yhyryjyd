@@ -50,14 +50,18 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// Railway sets RAILWAY_VOLUME_MOUNT_PATH when a volume is attached; without one, data is lost on every deploy.
+const DATA_DIR = process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
+console.log(`[storage] DATA_DIR=${DATA_DIR}${process.env.RAILWAY_VOLUME_MOUNT_PATH ? ' (Railway volume)' : process.env.DATA_DIR ? '' : ' (ephemeral — attach a volume to persist)'}`);
+
 // ─── User auth store ────────────────────────────────────────────────────────────
-const USERS_FILE = path.join(__dirname, 'data', 'users.json');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
 let usersStore = {};
 try { usersStore = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); } catch {}
 
 function saveUsers() {
   try {
-    fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
+    fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(USERS_FILE + '.tmp', JSON.stringify(usersStore, null, 2));
     fs.renameSync(USERS_FILE + '.tmp', USERS_FILE);
   } catch (e) { console.error('[users] save failed:', e.message); }
@@ -697,8 +701,6 @@ app.get('/api/resume/profile', (req, res) => {
 // Webhook URLs identify viaSocket scripts, so they stay server-side: never
 // returned to the browser and never logged.
 
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
-
 // ─── User setup profile (onboarding: resume prefs + chosen platforms) ──────────
 const PROFILE_FILE = path.join(DATA_DIR, 'profiles.json');
 let profileStore = {};
@@ -1085,14 +1087,16 @@ function buildVsInputData(appLabel, conn, eventType, job, tmplId, mapping) {
     naukri_wa:    `📋 *Naukri Job Alert*\n📌 ${jp.title} @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary}\nVia Naukri · ${jp.url}`,
   };
   const gmailSubj = {
-    gmail_new_job:  `🔔 New Match: ${jp.title} @ ${jp.company} (${jp.salary})`,
-    gmail_saved:    `🔖 Saved: ${jp.title} @ ${jp.company}`,
-    gmail_applied:  `✅ Applied — ${jp.title} @ ${jp.company}`,
+    gmail_new_job:  `New job match: ${jp.title} at ${jp.company}`,
+    gmail_saved:    `Job saved: ${jp.title} at ${jp.company}`,
+    gmail_applied:  `Application record: ${jp.title} at ${jp.company}`,
   };
+  // Plain text, no emojis, one link — keeps Gmail's spam filter happy
+  const details = `Role: ${jp.title}\nCompany: ${jp.company}\nLocation: ${jp.location}\nSalary: ${jp.salary}\nCategory: ${jp.category}`;
   const gmailBody = {
-    gmail_new_job:  `Hi,\n\nA new job matching your profile just dropped:\n\n📌 ${jp.title}\n🏢 ${jp.company}\n📍 ${jp.location}\n💰 ${jp.salary}\n\n👉 Apply here: ${jp.url}\n\n— HireRadar`,
-    gmail_saved:    `Hi,\n\nYou bookmarked a job on HireRadar:\n\n📌 ${jp.title}\n🏢 ${jp.company}\n📍 ${jp.location}\n💰 ${jp.salary}\n\n👉 Apply here: ${jp.url}\n\n— HireRadar`,
-    gmail_applied:  `Hi,\n\nYou applied to a job on HireRadar. Here are the details:\n\n📌 Role: ${jp.title}\n🏢 Company: ${jp.company}\n📍 Location: ${jp.location}\n💰 Salary: ${jp.salary}\n🗂 Category: ${jp.category}\n📅 Applied on: ${jp.date}\n\n👉 Job link: ${jp.url}\n\n💡 Tip: Follow up in 7 days if you don't hear back.\n\n— HireRadar`,
+    gmail_new_job:  `Hi,\n\nA new job matching your profile was posted.\n\n${details}\n\nJob posting: ${jp.url}\n\nYou are receiving this because you turned on the "New matching job" automation in HireRadar.`,
+    gmail_saved:    `Hi,\n\nYou saved this job in HireRadar.\n\n${details}\nSaved on: ${jp.date}\n\nJob posting: ${jp.url}\n\nYou are receiving this because you turned on the "Job saved" automation in HireRadar.`,
+    gmail_applied:  `Hi,\n\nHere is a record of the job you applied to.\n\n${details}\nApplied on: ${jp.date}\n\nJob posting: ${jp.url}\n\nNext step: follow up with the company if you have not heard back in 7 days.\n\nYou are receiving this because you turned on the "Job applied" automation in HireRadar.`,
   };
   const slackText = {
     slack_new_job:  `🔔 *New job match!*\n*${jp.title}* @ ${jp.company}\n📍 ${jp.location} · 💰 ${jp.salary}\n<${jp.url}|Apply Now>`,
@@ -1337,7 +1341,7 @@ app.get('/api/debug/state', (req, res) => {
       would_fire: Boolean(autoCfg[t.id]?.enabled && conns[t.app]?.enabled && conns[t.app]?.script_id && conns[t.app]?.action_version_id),
     };
   }
-  res.json({ connections: connSummary, automations: autoSummary });
+  res.json({ storage: { persistent: Boolean(process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.DATA_DIR) }, connections: connSummary, automations: autoSummary });
 });
 
 // Debug: test email delivery and return result in browser
