@@ -82,6 +82,13 @@ th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--mu
 code{font-size:12.5px;background:var(--surface-2);padding:2px 6px;border-radius:5px;word-break:break-all}
 .login{position:fixed;inset:0;z-index:30;background:var(--bg);display:grid;place-items:center;padding:16px}
 .login .card{max-width:380px;width:100%}
+.line{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.line:last-child{border-bottom:0}
+tr.order{cursor:pointer}tr.order:hover td{background:var(--surface-2)}
+tr.detail td{background:var(--surface-2);padding:12px 14px}
+.tl{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:13.5px}
+.tl li{display:grid;grid-template-columns:150px 1fr;gap:10px}
+.tl time{color:var(--muted)}
 .appicon{width:28px;height:28px;border-radius:6px;object-fit:contain}
 </style>
 </head>
@@ -106,10 +113,12 @@ code{font-size:12.5px;background:var(--surface-2);padding:2px 6px;border-radius:
     <div class="row between"><h3>Finish setting up</h3><span class="chip warn" id="checkCount"></span></div>
     <div class="steps" id="steps"></div>
   </div>
+  <div class="callout" id="testNote" style="margin:0 0 14px" hidden></div>
   <div class="grid g4" id="kpis"></div>
-  <div class="grid g2" style="margin-top:16px">
-    <div class="card"><div class="row between"><h3>Today</h3><button class="b s" data-go="orders">All orders</button></div><div id="todayList"></div></div>
-    <div class="card"><div class="row between"><h3>Owed to you</h3><button class="b s" data-go="dues">See all</button></div><div id="dueMini"></div></div>
+  <div class="card" id="attention" style="margin-top:14px" hidden><h3>Needs your attention</h3><div id="attnList"></div></div>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card"><div class="row between"><h3>Today's orders</h3><button class="b s" data-go="orders">All orders</button></div><div id="todayList"></div></div>
+    <div class="card"><div class="row between"><h3>Recent payments</h3><button class="b s" data-go="dues">Payments due</button></div><div id="payList"></div></div>
   </div>
   <p class="small muted" style="margin-top:16px">From your own WhatsApp number you can also send: <code>report</code> · <code>today</code> · <code>due</code> · <code>1042 paid</code> · <code>1042 done</code></p>
 </section>
@@ -131,7 +140,7 @@ code{font-size:12.5px;background:var(--surface-2);padding:2px 6px;border-radius:
 <!-- ORDERS -->
 <section id="orders">
   <div class="row between"><div><h2>Orders</h2><p class="sub">Every order the assistant has taken.</p></div>
-    <select id="orderFilter" style="width:auto"><option value="all">All orders</option><option value="unpaid">Not paid</option><option value="open">Not handed over</option><option value="done">Completed</option></select></div>
+    <select id="orderFilter" style="width:auto"><option value="all">All orders</option><option value="unpaid">Not paid</option><option value="open">Not handed over</option><option value="done">Paid &amp; handed over</option></select></div>
   <div class="card tw"><table><thead><tr><th>#</th><th>Customer</th><th>Items</th><th>Total</th><th>When</th><th>Status</th><th></th></tr></thead><tbody id="orderRows"></tbody></table></div>
 </section>
 
@@ -292,8 +301,27 @@ document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g
 let status={};
 async function loadStatus(){status=await api('/api/status');$('#shopName').textContent=status.shop.name||'Dukaan AI Manager';document.title=(status.shop.name?status.shop.name+' · ':'')+'Dukaan AI Manager';}
 
-const STAGE={CONFIRMED:['Confirmed',''],AWAITING_PAYMENT:['Payment pending','warn'],PAID:['Paid','ok'],FULFILLED:['Completed','ok'],UDHAAR:['Payment overdue','warn'],ESCALATED:['Overdue 7+ days','bad'],CANCELLED:['Cancelled','']};
-const stageChip=s=>{const [t,c]=STAGE[s]||[s,''];return `<span class="chip ${c}">${t}</span>`;};
+const testChip=o=>o.test?' <span class="chip">Test</span>':'';
+// Two separate facts per order: money and handover.
+function payChip(o){
+  if(o.status==='CANCELLED')return '<span class="chip">Cancelled</span>';
+  if(o.payment==='PAID')return '<span class="chip ok">Paid</span>';
+  if(o.payment_claim)return '<span class="chip warn">Customer says paid</span>';
+  if(o.stage==='ESCALATED')return '<span class="chip bad">Not paid · 7+ days</span>';
+  if(o.stage==='UDHAAR')return '<span class="chip warn">Payment due</span>';
+  return '<span class="chip">Not paid yet</span>';
+}
+function handChip(o){
+  if(o.status==='CANCELLED')return '';
+  return o.status==='FULFILLED'?'<span class="chip ok">Handed over</span>':'<span class="chip">To hand over</span>';
+}
+const who=o=>o.test?'Test customer':esc(o.customer_name||'+'+o.phone);
+async function act(id,action){
+  if(action==='cancel'&&!confirm(`Cancel order #${id}?`))return;
+  try{await api(`/api/orders/${id}/${action}`,{method:'POST',body:{}});toast({paid:'Marked paid ✅',fulfilled:'Marked handed over ✅',cancel:'Order cancelled'}[action]||'Updated');}catch(err){toast(err.message);}
+  refreshCurrent();
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;e.stopPropagation();b.disabled=true;act(b.dataset.id,b.dataset.act);});
 
 // ---------- HOME ----------
 function renderChecklist(){
@@ -307,12 +335,18 @@ function renderChecklist(){
 loaders.home=async()=>{
   await loadStatus();renderChecklist();
   const [s,orders]=await Promise.all([api('/api/summary'),api('/api/orders')]);
-  const real=orders.filter(o=>!o.test);
+  $('#testNote').hidden=!s.test_orders;
+  $('#testNote').innerHTML=`These numbers include ${s.test_orders} test order${s.test_orders===1?'':'s'} from the test chat. <a href="#chats">Delete the test chat</a> to clear them.`;
   const today=new Date().toDateString();
-  const todays=real.filter(o=>o.status!=='CANCELLED'&&new Date(o.fulfil_at).toDateString()===today).sort((a,b)=>a.fulfil_at.localeCompare(b.fulfil_at));
-  $('#kpis').innerHTML=[['Orders this month',s.orders],['Collected this month',rs(s.collected)],['Owed to you',rs(s.due_amount)],['Orders for today',todays.length]].map(([k,v])=>`<div class="card"><div class="small muted">${k}</div><div class="kpi">${v}</div></div>`).join('');
-  $('#todayList').innerHTML=todays.length?todays.map(o=>`<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${timeOnly(o.fulfil_at)}</b> · #${o.id} ${esc(o.customer_name||'')}<div class="small muted">${o.items.map(l=>`${l.qty} × ${esc(l.name)}`).join(', ')}</div></div>${stageChip(o.stage)}</div>`).join(''):'<p class="empty">No orders for today.</p>';
-  $('#dueMini').innerHTML=s.due.length?s.due.slice(0,5).map(o=>`<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${esc(o.customer_name||'+'+o.phone)}</b><div class="small muted">#${o.id} · ${o.days} day${o.days===1?'':'s'} overdue</div></div><b>${rs(o.total)}</b></div>`).join(''):'<p class="empty">Nobody owes you money 🎉</p>';
+  const todays=orders.filter(o=>o.status!=='CANCELLED'&&new Date(o.fulfil_at).toDateString()===today).sort((a,b)=>a.fulfil_at.localeCompare(b.fulfil_at));
+  $('#kpis').innerHTML=[['Orders this month',s.orders],['Collected this month',rs(s.collected)],['Still to collect',rs(orders.filter(o=>o.payment!=='PAID'&&o.status!=='CANCELLED').reduce((t,o)=>t+o.total,0))],['Orders for today',todays.length]].map(([k,v])=>`<div class="card"><div class="small muted">${k}</div><div class="kpi">${v}</div></div>`).join('');
+  const att=[
+    ...s.attention.payment_claims.map(o=>`<div class="line"><div><b>${who(o)}</b>${testChip(o)} says they paid <b>${rs(o.total)}</b> for #${o.id}<div class="small muted">${esc(o.payment_claim.method||'')}${o.payment_claim.note?` “${esc(o.payment_claim.note)}”`:''} · ${when(o.payment_claim.at)}</div></div><div class="row"><button class="b s p" data-act="paid" data-id="${o.id}">Confirm paid</button></div></div>`),
+    ...s.attention.to_hand_over.map(o=>`<div class="line"><div><b>#${o.id}</b>${testChip(o)} ${who(o)} — ${o.items.map(l=>`${l.qty} × ${esc(l.name)}`).join(', ')}<div class="small muted">${o.mode==='delivery'?'Delivery':'Pickup'} ${when(o.fulfil_at)} · ${o.payment==='PAID'?'paid':'not paid yet'}</div></div><button class="b s" data-act="fulfilled" data-id="${o.id}">Handed over</button></div>`),
+  ];
+  $('#attention').hidden=!att.length;$('#attnList').innerHTML=att.join('');
+  $('#todayList').innerHTML=todays.length?todays.map(o=>`<div class="line"><div><b>${timeOnly(o.fulfil_at)}</b> · #${o.id} ${who(o)}${testChip(o)}<div class="small muted">${o.items.map(l=>`${l.qty} × ${esc(l.name)}`).join(', ')} · ${rs(o.total)}</div></div><div class="row">${payChip(o)}${handChip(o)}</div></div>`).join(''):'<p class="empty">No orders for today.</p>';
+  $('#payList').innerHTML=s.recent_payments.length?s.recent_payments.map(o=>`<div class="line"><div><b>${rs(o.total)}</b> · #${o.id} ${who(o)}${testChip(o)}<div class="small muted">${when(o.paid_at)} · ${({owner_cash:'marked by you',razorpay:'Razorpay',viasocket:'payment app'})[o.payment_source]||o.payment_source||''}</div></div><span class="chip ok">Paid</span></div>`).join(''):'<p class="empty">No payments yet.</p>';
 };
 
 // ---------- CHATS ----------
@@ -346,33 +380,36 @@ loaders.chats=async()=>{await loadConvs();await paint();};
 setInterval(()=>{if($('#chats').classList.contains('on')&&token)paint().catch(()=>{});},3000);
 
 // ---------- ORDERS ----------
+let openOrder='';
 loaders.orders=async()=>{
   const f=$('#orderFilter').value;
-  const list=(await api('/api/orders')).filter(o=>f==='all'||(f==='unpaid'&&o.payment!=='PAID'&&o.status!=='CANCELLED')||(f==='open'&&o.status==='CONFIRMED')||(f==='done'&&o.status==='FULFILLED'));
-  $('#orderRows').innerHTML=list.length?list.map(o=>`<tr>
-    <td><b>${o.id}</b>${o.test?' <span class="chip">Test</span>':''}</td><td>${esc(o.customer_name||'')}<div class="small muted">${o.test?'From the test chat':'+'+o.phone}</div></td>
+  const list=(await api('/api/orders')).filter(o=>f==='all'||(f==='unpaid'&&o.payment!=='PAID'&&o.status!=='CANCELLED')||(f==='open'&&o.status==='CONFIRMED')||(f==='done'&&o.status==='FULFILLED'&&o.payment==='PAID'));
+  $('#orderRows').innerHTML=list.length?list.map(o=>`<tr class="order" data-open="${o.id}">
+    <td><b>${o.id}</b>${testChip(o)}</td><td>${who(o)}<div class="small muted">${o.test?'From the test chat':'+'+o.phone}</div></td>
     <td>${o.items.map(l=>`${l.qty} × ${esc(l.name)}`).join('<br>')}${o.notes?`<div class="small muted">${esc(o.notes)}</div>`:''}</td>
     <td>${rs(o.total)}</td><td>${when(o.fulfil_at)}<div class="small muted">${o.mode==='delivery'?'Delivery'+(o.address?': '+esc(o.address):''):'Pickup'}</div></td>
-    <td>${stageChip(o.stage)}</td>
-    <td><div class="row">${o.payment!=='PAID'&&o.status!=='CANCELLED'?`<button class="b s" data-act="paid" data-id="${o.id}">Mark paid</button>`:''}
+    <td><div class="row">${payChip(o)}${handChip(o)}</div></td>
+    <td><div class="row">${o.payment!=='PAID'&&o.status!=='CANCELLED'?`<button class="b s ${o.payment_claim?'p':''}" data-act="paid" data-id="${o.id}">${o.payment_claim?'Confirm paid':'Mark paid'}</button>`:''}
       ${o.status==='CONFIRMED'?`<button class="b s" data-act="fulfilled" data-id="${o.id}">Handed over</button>`:''}
-      ${o.payment!=='PAID'&&o.status==='CONFIRMED'?`<button class="b s" data-act="cancel" data-id="${o.id}">Cancel</button>`:''}</div></td></tr>`).join(''):`<tr><td colspan="7" class="empty">${f==='all'?'No orders yet. They appear here as customers order on WhatsApp.':'Nothing here.'}</td></tr>`;
+      ${o.payment!=='PAID'&&o.status==='CONFIRMED'?`<button class="b s" data-act="cancel" data-id="${o.id}">Cancel</button>`:''}</div></td></tr>
+    <tr class="detail" ${openOrder===o.id?'':'hidden'} data-detail="${o.id}"><td colspan="7"><b>History of order #${o.id}</b><ul class="tl" style="margin-top:8px">${(o.events||[{at:o.created_at,text:'Order placed'}]).map(e=>`<li><time>${when(e.at)}</time><span>${esc(e.text)}</span></li>`).join('')}</ul></td></tr>`).join(''):`<tr><td colspan="7" class="empty">${f==='all'?'No orders yet. They appear here as customers order on WhatsApp.':'Nothing here.'}</td></tr>`;
 };
 $('#orderFilter').onchange=()=>loaders.orders();
-$('#orderRows').onclick=async e=>{const b=e.target.closest('[data-act]');if(!b)return;
-  if(b.dataset.act==='cancel'&&!confirm(`Cancel order #${b.dataset.id}?`))return;b.disabled=true;
-  try{await api(`/api/orders/${b.dataset.id}/${b.dataset.act}`,{method:'POST',body:{}});toast('Updated');}catch(err){toast(err.message);}loaders.orders();};
+$('#orderRows').onclick=e=>{const tr=e.target.closest('tr.order');if(!tr||e.target.closest('button'))return;const id=tr.dataset.open;openOrder=openOrder===id?'':id;$$('#orderRows tr.detail').forEach(d=>d.hidden=d.dataset.detail!==openOrder);};
 
 // ---------- DUES ----------
 loaders.dues=async()=>{
   const s=await api('/api/summary');
   $('#dueRows').innerHTML=s.due.length?s.due.map(o=>`<tr>
-    <td><b>${esc(o.customer_name||'')}</b><div class="small muted">+${o.phone} · order ${o.id}</div></td><td><b>${rs(o.total)}</b></td>
+    <td><b>${who(o)}</b>${testChip(o)}<div class="small muted">${o.test?'':'+'+o.phone+' · '}order ${o.id}</div></td><td><b>${rs(o.total)}</b></td>
     <td>${o.days} day${o.days===1?'':'s'}</td>
-    <td>${o.reminders.udhaar.length?`${o.reminders.udhaar.length} sent`:'None yet'}${o.reminders.escalated_at?' · <span class="chip bad">You were alerted</span>':''}</td>
-    <td><button class="b s" data-paid="${o.id}">Mark paid</button></td></tr>`).join(''):'<tr><td colspan="5" class="empty">Nobody owes you money 🎉</td></tr>';
+    <td>${o.payment_claim?'<span class="chip warn">Customer says paid</span> ':''}${o.reminders.udhaar.length?`${o.reminders.udhaar.length} sent`:(o.test?'Not sent for test orders':'None yet')}${o.reminders.escalated_at?' · <span class="chip bad">You were alerted</span>':''}</td>
+    <td><button class="b s ${o.payment_claim?'p':''}" data-act="paid" data-id="${o.id}">${o.payment_claim?'Confirm paid':'Mark paid'}</button></td></tr>`).join(''):'<tr><td colspan="5" class="empty">Nobody owes you money 🎉</td></tr>';
 };
-$('#dueRows').onclick=async e=>{const b=e.target.closest('[data-paid]');if(!b)return;b.disabled=true;await api(`/api/orders/${b.dataset.paid}/paid`,{method:'POST',body:{}}).catch(err=>toast(err.message));toast('Marked paid');loaders.dues();};
+
+// Keep the open screen current without reloading.
+function refreshCurrent(){const t=$('main>section.on')?.id;if(['home','orders','dues'].includes(t))loaders[t]().catch(()=>{});}
+setInterval(()=>{if(token&&document.visibilityState==='visible'&&$('#login').hidden)refreshCurrent();},10000);
 
 // ---------- SHOP ----------
 function catRow(c={}){return `<div class="cat-row"><input placeholder="Chocolate Cake (1 kg)" value="${esc(c.name||'')}" data-k="name" aria-label="Item"><input placeholder="choco cake, cake" value="${esc((c.aliases||[]).join(', '))}" data-k="aliases" aria-label="Other names"><input type="number" min="1" value="${c.price||''}" data-k="price" aria-label="Price"><input type="number" min="0" value="${c.lead_time_hours??0}" data-k="lead_time_hours" aria-label="Notice hours"><button type="button" class="b s" data-del aria-label="Remove">✕</button></div>`;}

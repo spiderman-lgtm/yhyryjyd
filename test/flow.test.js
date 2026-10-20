@@ -185,3 +185,20 @@ test('test-chat orders: shown as test, not counted, reminder lands in the test c
   store.clearTestData();
   assert.equal(store.get().orders.filter((x) => x.phone === T).length, 0);
 });
+
+test('customer says they got the order and paid: handed over + claim for the owner to confirm', async () => {
+  await say(CUST, '2 cupcakes aaj 5 baje'); await say(CUST, 'yes');
+  assert.match(await say(CUST, 'I got the cake, thanks'), /Glad you got it[\s\S]*UPI ID/);
+  const o = store.findOrder('341');
+  assert.equal(o.status, 'FULFILLED');
+  assert.ok(o.events.some((e) => e.type === 'handed_over' && /Customer confirmed/.test(e.text)));
+  const reply = await say(CUST, 'I have paid by UPI');
+  assert.match(reply, /confirm/);
+  assert.equal(o.payment, 'PENDING', 'a customer saying "paid" never marks it paid');
+  assert.ok(o.payment_claim);
+  assert.ok(store.get().messages.some((m) => m.phone === OWNER && /says they paid/.test(m.text)));
+  await say(OWNER, '341 paid');
+  assert.equal(o.payment, 'PAID');
+  assert.equal(o.payment_claim, undefined);
+  assert.deepEqual(o.events.map((e) => e.type), ['created', 'handed_over', 'claim', 'paid']);
+});

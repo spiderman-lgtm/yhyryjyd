@@ -5,12 +5,13 @@ import { config } from './config.js';
 import { get, save } from './store.js';
 import { triggerFlow } from './viasocket.js';
 import { sendTemplate, sendText } from './whatsapp.js';
-import { ensurePaymentLink, paymentText, dueList, describeOrder } from './orders.js';
+import { ensurePaymentLink, paymentText, dueList, describeOrder, addEvent } from './orders.js';
 import { now, fmt, rupees, inQuietHours, isLastDayOfMonth, monthKey, parts } from './time.js';
 
 const firstName = (o) => (o.customer_name || '').split(' ')[0] || 'there';
 
 async function remind(o, kind, text, templateParams) {
+  addEvent(o, 'reminder', { pickup_reminder: 'Pickup reminder sent to customer', reminder_polite: 'Payment reminder sent (1st)', reminder_firm: 'Payment reminder sent (2nd)' }[kind] || 'Reminder sent');
   if (o.test) { await sendTemplate(o.phone, `dukaan_${kind}`, templateParams, text, { order_id: o.id, kind }); return; }
   const flow = await triggerFlow('send_reminder', { kind, order_id: o.id, phone: o.phone, customer_name: o.customer_name, text, amount: o.total, link: o.payment_link?.url || '' });
   // A live viaSocket flow delivers the template itself; demo mode sends from here.
@@ -61,6 +62,7 @@ export async function udhaarLadder(at = now()) {
       const flow = await triggerFlow('escalate_to_owner', { order_id: order.id, phone: order.phone, amount: order.total, days: o.days, text });
       if (flow.mode === 'demo' || !flow.ok) await sendText(get().shop.owner_phone, text, { kind: 'escalation', order_id: order.id });
       r.escalated_at = at.toISOString();
+      addEvent(order, 'escalated', 'You were alerted: payment overdue 7+ days');
     } else {
       const w = await ensurePaymentLink(order.id);
       const text = step === d1
@@ -75,12 +77,12 @@ export async function udhaarLadder(at = now()) {
   }
 }
 
-export function monthStats(at = now()) {
+export function monthStats(at = now(), { includeTest = false } = {}) {
   const key = monthKey(at);
   const inMonth = (iso) => iso && monthKey(new Date(iso)) === key;
-  const orders = get().orders.filter((o) => !o.test && o.status !== 'CANCELLED' && inMonth(o.created_at));
-  const collected = get().orders.filter((o) => !o.test && o.payment === 'PAID' && inMonth(o.paid_at)).reduce((s, o) => s + o.total, 0);
-  const due = dueList(at);
+  const orders = get().orders.filter((o) => (includeTest || !o.test) && o.status !== 'CANCELLED' && inMonth(o.created_at));
+  const collected = get().orders.filter((o) => (includeTest || !o.test) && o.payment === 'PAID' && inMonth(o.paid_at)).reduce((s, o) => s + o.total, 0);
+  const due = dueList(at, { includeTest });
   const top = {};
   for (const o of orders) for (const l of o.items) top[l.name] = (top[l.name] || 0) + l.qty;
   const best = Object.entries(top).sort((a, b) => b[1] - a[1])[0];

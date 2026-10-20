@@ -34,6 +34,13 @@ export function stage(o, at = now()) {
 
 export const publicOrder = (o) => ({ ...o, stage: stage(o) });
 
+/** One line in the order's history, shown in the dashboard. */
+export function addEvent(o, type, text) {
+  o.events ||= [];
+  o.events.push({ at: now().toISOString(), type, text });
+  save();
+}
+
 export async function createOrder({ phone, name, items, fulfil_at, mode = 'pickup', address = '', notes = '' }) {
   if (!Array.isArray(items) || !items.length) throw new Error('items required');
   const lines = items.map((it) => {
@@ -65,7 +72,7 @@ export async function createOrder({ phone, name, items, fulfil_at, mode = 'picku
     created_at: now().toISOString(),
   };
   get().orders.push(order);
-  save();
+  addEvent(order, 'created', `Order placed on WhatsApp — ${rupees(order.total)}`);
 
   const r = await triggerFlow('save_order', {
     order_id: order.id, phone: order.phone, customer_name: order.customer_name,
@@ -101,7 +108,7 @@ export async function ensurePaymentLink(orderId) {
   });
   if (!r.ok || !r.result?.url) throw new Error('could not create the payment link');
   o.payment_link = { id: r.result.id || '', url: r.result.url, sent_at: now().toISOString() };
-  save();
+  addEvent(o, 'link', 'Payment link sent');
   await triggerFlow('update_order', { order_id: o.id, status: stage(o), payment_link: o.payment_link.url });
   return o;
 }
@@ -112,21 +119,22 @@ export async function markPaid(orderId, { amount, payment_id = '', source = 'via
   if (o.payment === 'PAID') return { order: o, already: true };
   if (amount != null && Number(amount) + 0.5 < o.total) {
     o.partial_payments = [...(o.partial_payments || []), { amount: Number(amount), payment_id, at: now().toISOString() }];
-    save();
+    addEvent(o, 'partial', `Part payment of ${rupees(amount)} received`);
     return { order: o, partial: true };
   }
   o.payment = 'PAID';
   o.paid_at = now().toISOString();
   o.payment_ref = payment_id;
   o.payment_source = source;
-  save();
+  delete o.payment_claim;
+  addEvent(o, 'paid', `Payment received — ${rupees(o.total)} (${{ owner_cash: 'marked by you', razorpay: 'Razorpay', viasocket: 'payment app', demo: 'demo' }[source] || source})`);
   await triggerFlow('update_order', { order_id: o.id, status: stage(o), paid_at: o.paid_at, payment_id });
   const when = o.status === 'FULFILLED' ? '' : `\n${o.mode === 'delivery' ? 'Delivery' : 'Pickup'}: ${fmt(o.fulfil_at)} 🎂`;
   await sendText(o.phone, `Payment received ✅ ${rupees(o.total)} — Order #${o.id}. Thank you!${when}`, { order_id: o.id, kind: 'paid' });
   return { order: o };
 }
 
-export async function markFulfilled(orderId) {
+export async function markFulfilled(orderId, by = 'owner') {
   const o = findOrder(orderId);
   if (!o) throw new Error('order not found');
   if (o.status === 'CANCELLED') throw new Error('cancelled order');
@@ -134,7 +142,7 @@ export async function markFulfilled(orderId) {
   o.fulfilled_at = now().toISOString();
   // Goods left without payment → the overdue clock starts now.
   if (o.payment !== 'PAID' && new Date(o.due_at) > now()) o.due_at = o.fulfilled_at;
-  save();
+  addEvent(o, 'handed_over', by === 'customer' ? 'Customer confirmed they received the order' : 'Marked as handed over by you');
   await triggerFlow('update_order', { order_id: o.id, status: stage(o) });
   return o;
 }
@@ -146,8 +154,21 @@ export async function cancelOrder(orderId, reason = '') {
   if (o.status === 'FULFILLED') throw new Error('the order has already been handed over');
   o.status = 'CANCELLED';
   o.cancel_reason = reason;
-  save();
+  addEvent(o, 'cancelled', `Cancelled${reason ? ` — ${reason}` : ''}`);
   await triggerFlow('update_order', { order_id: o.id, status: 'CANCELLED', reason });
+  return o;
+}
+
+/** The customer says they paid. Never marks paid on its own: the owner confirms. */
+export async function claimPaid(orderId, { method = '', note = '' } = {}) {
+  const o = findOrder(orderId);
+  if (!o) throw new Error('order not found');
+  if (o.payment === 'PAID') return o;
+  o.payment_claim = { at: now().toISOString(), method, note };
+  addEvent(o, 'claim', `Customer says they paid${method ? ` by ${method}` : ''}${note ? ` — "${note}"` : ''}`);
+  if (!o.test) {
+    await sendText(get().shop.owner_phone, `💰 ${o.customer_name || o.phone} says they paid ${rupees(o.total)} for order #${o.id}${method ? ` (${method})` : ''}. Check and reply "${o.id} paid" to confirm.`, { kind: 'owner_alert', order_id: o.id });
+  }
   return o;
 }
 
@@ -165,9 +186,9 @@ export function describeOrder(o) {
   return `#${o.id}: ${items} — ${rupees(o.total)} · ${o.mode === 'delivery' ? 'delivery' : 'pickup'} ${fmt(o.fulfil_at)} · ${st}`;
 }
 
-export function dueList(at = now()) {
+export function dueList(at = now(), { includeTest = false } = {}) {
   return get().orders
-    .filter((o) => !o.test && o.status !== 'CANCELLED' && o.payment !== 'PAID' && new Date(o.due_at) < at)
+    .filter((o) => (includeTest || !o.test) && o.status !== 'CANCELLED' && o.payment !== 'PAID' && new Date(o.due_at) < at)
     .map((o) => ({ ...o, days: Math.floor((at - new Date(o.due_at)) / 86_400_000) }))
     .sort((a, b) => b.days - a.days);
 }

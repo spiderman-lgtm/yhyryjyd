@@ -1,7 +1,7 @@
 // Rule-based brain. Understands English and Hinglish input, replies in English. Used when
 // no AI is configured (demo) and as a fallback if the AI call fails, so customers never get silence.
 import { get, save, normPhone } from './store.js';
-import { matchCatalog, createOrder, ensurePaymentLink, paymentText, ordersFor, describeOrder, cancelOrder, stage } from './orders.js';
+import { matchCatalog, createOrder, ensurePaymentLink, paymentText, ordersFor, describeOrder, cancelOrder, stage, markFulfilled, claimPaid } from './orders.js';
 import { now, addDaysLocal, parts, localDate, fmt, rupees } from './time.js';
 
 const NUM = { ek: 1, one: 1, do: 2, two: 2, teen: 3, three: 3, char: 4, chaar: 4, four: 4, paanch: 5, panch: 5, five: 5, chhe: 6, che: 6, six: 6, saat: 7, aath: 8, nau: 9, das: 10, dus: 10 };
@@ -115,9 +115,19 @@ export async function rulesReply(phone, text, name = '') {
     const o = ordersFor(phone).find((x) => x.status !== 'CANCELLED' && x.payment !== 'PAID');
     if (!o) return 'All your orders are paid ✅ Thank you!';
     const w = await ensurePaymentLink(o.id);
+    await claimPaid(o.id, { note: t.slice(0, 200) });
     return w.payment_link?.url
       ? `We haven't received the payment for order #${o.id} yet. It updates automatically within a few minutes — if you haven't paid, you can use this link:\n${w.payment_link.url}`
       : `Thank you! The shop will confirm order #${o.id} as soon as they see the payment 🙏`;
+  }
+
+  // "I got the cake" / "cake mil gaya" → the customer confirms they received it.
+  if (/\b(got|received|recieved|picked up|collected|mil gaya|mil gayi|mila|le liya|le li)\b/.test(low) && !parseWhen(t)) {
+    const o = ordersFor(phone).find((x) => x.status === 'CONFIRMED');
+    if (o) {
+      const done = await markFulfilled(o.id, 'customer');
+      return `Glad you got it — thank you! 🙏${done.payment === 'PAID' ? '' : `\n${paymentText(done)}`}`;
+    }
   }
 
   if (s.awaitingAddress && s.draft) {

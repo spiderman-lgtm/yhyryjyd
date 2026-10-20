@@ -135,8 +135,22 @@ route('POST', '/api/orders/:id/:action', async (req, res, { params, body }) => {
   } catch (e) { return json(res, 400, { error: e.message }); }
 }, { admin: true });
 route('GET', '/api/summary', (req, res) => {
-  const s = scheduler.monthStats();
-  return json(res, 200, { ...s, line: scheduler.monthLine(s), due: dueList().map(publicOrder) });
+  // The dashboard shows test-chat orders too (marked Test); the WhatsApp report does not.
+  const s = scheduler.monthStats(clock.now(), { includeTest: true });
+  const all = store.get().orders;
+  const today = clock.parts();
+  const isToday = (iso) => { const p = clock.parts(new Date(iso)); return p.y === today.y && p.m === today.m && p.d === today.d; };
+  return json(res, 200, {
+    ...s,
+    line: scheduler.monthLine(s),
+    due: s.due.map(publicOrder),
+    test_orders: all.filter((o) => o.test).length,
+    attention: {
+      payment_claims: all.filter((o) => o.payment_claim && o.payment !== 'PAID' && o.status !== 'CANCELLED').map(publicOrder),
+      to_hand_over: all.filter((o) => o.status === 'CONFIRMED' && (isToday(o.fulfil_at) || new Date(o.fulfil_at) < clock.now())).map(publicOrder),
+    },
+    recent_payments: all.filter((o) => o.payment === 'PAID').sort((a, b) => b.paid_at.localeCompare(a.paid_at)).slice(0, 8).map(publicOrder),
+  });
 }, { admin: true });
 route('GET', '/api/shop', (req, res) => json(res, 200, { shop: store.get().shop, catalog: store.get().catalog }), { admin: true });
 route('PUT', '/api/shop', (req, res, { body }) => {
