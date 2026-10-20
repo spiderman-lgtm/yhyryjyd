@@ -2,7 +2,7 @@
 // dashboard simulator can show it.
 import { config } from './config.js';
 import crypto from 'node:crypto';
-import { get, save, logMessage, normPhone } from './store.js';
+import { get, save, logMessage, normPhone, TEST_PHONE } from './store.js';
 
 // Credentials come from the dashboard (saved server-side in the data file) or env vars.
 export function creds() {
@@ -75,7 +75,8 @@ export async function sendText(to, text, meta = {}) {
   to = normPhone(to);
   if (!to) return { skipped: 'no phone number', text };
   const msg = logMessage(to, 'out', text, meta);
-  if (live()) {
+  // The dashboard test chat is not a real number: record only.
+  if (live() && to !== TEST_PHONE) {
     try {
       const r = await post({ to, type: 'text', text: { body: text, preview_url: true } });
       msg.wa_id = r.messages?.[0]?.id;
@@ -92,7 +93,7 @@ export async function sendText(to, text, meta = {}) {
 export async function sendTemplate(to, name, params, fallbackText, meta = {}) {
   to = normPhone(to);
   const msg = logMessage(to, 'out', fallbackText, { template: name, ...meta });
-  if (live()) {
+  if (live() && to !== TEST_PHONE) {
     try {
       await post({
         to, type: 'template',

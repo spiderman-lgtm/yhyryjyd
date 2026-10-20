@@ -11,6 +11,7 @@ import { now, fmt, rupees, inQuietHours, isLastDayOfMonth, monthKey, parts } fro
 const firstName = (o) => (o.customer_name || '').split(' ')[0] || 'there';
 
 async function remind(o, kind, text, templateParams) {
+  if (o.test) { await sendTemplate(o.phone, `dukaan_${kind}`, templateParams, text, { order_id: o.id, kind }); return; }
   const flow = await triggerFlow('send_reminder', { kind, order_id: o.id, phone: o.phone, customer_name: o.customer_name, text, amount: o.total, link: o.payment_link?.url || '' });
   // A live viaSocket flow delivers the template itself; demo mode sends from here.
   if (flow.mode === 'demo' || !flow.ok) await sendTemplate(o.phone, `dukaan_${kind}`, templateParams, text, { order_id: o.id, kind });
@@ -21,7 +22,7 @@ export async function fulfilmentReminders(at = now()) {
   const lead = config.scheduler.reminderLeadHours * 3_600_000;
   const shop = get().shop;
   for (const o of get().orders) {
-    if (o.test || o.status !== 'CONFIRMED' || o.reminders.fulfilment_sent_at) continue;
+    if (o.status !== 'CONFIRMED' || o.reminders.fulfilment_sent_at) continue;
     const t = new Date(o.fulfil_at);
     if (t - at > lead || t < at) continue;
     const pay = o.payment === 'PAID' ? '' : `\n${paymentText(o)}`;

@@ -173,3 +173,15 @@ test('a new shop starts empty and old demo data is cleared', async () => {
   assert.equal(e.catalog.length, 1);
   store.load(':memory:');
 });
+
+test('test-chat orders: shown as test, not counted, reminder lands in the test chat', async () => {
+  const T = store.TEST_PHONE;
+  await say(T, '2 cupcakes aaj 5 baje'); await say(T, 'yes');
+  const o = store.get().orders.at(-1);
+  assert.equal(o.test, true);
+  assert.equal(sch.monthStats().orders, 0);
+  clock.travel(5.5); await sch.tick();
+  assert.ok(store.get().messages.some((m) => m.phone === T && m.kind === 'pickup_reminder'));
+  store.clearTestData();
+  assert.equal(store.get().orders.filter((x) => x.phone === T).length, 0);
+});

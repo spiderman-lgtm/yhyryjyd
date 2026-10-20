@@ -286,6 +286,7 @@ $('#theme').onclick=()=>{const d=root.dataset.theme?root.dataset.theme==='dark':
 const loaders={};
 function show(t){$$('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.t===t)));$$('main>section').forEach(s=>s.classList.toggle('on',s.id===t));try{history.replaceState(null,'','#'+t);}catch(e){}loaders[t]?.().catch?.(e=>{if(e.message!=='login required')toast(e.message);});}
 $$('#tabs button').forEach(b=>b.onclick=()=>show(b.dataset.t));
+window.addEventListener('hashchange',()=>{const t=location.hash.slice(1);if(loaders[t]&&!$('#'+t).classList.contains('on'))show(t);});
 document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g){e.preventDefault();show(g.dataset.go);}});
 
 let status={};
@@ -347,9 +348,9 @@ setInterval(()=>{if($('#chats').classList.contains('on')&&token)paint().catch(()
 // ---------- ORDERS ----------
 loaders.orders=async()=>{
   const f=$('#orderFilter').value;
-  const list=(await api('/api/orders')).filter(o=>!o.test).filter(o=>f==='all'||(f==='unpaid'&&o.payment!=='PAID'&&o.status!=='CANCELLED')||(f==='open'&&o.status==='CONFIRMED')||(f==='done'&&o.status==='FULFILLED'));
+  const list=(await api('/api/orders')).filter(o=>f==='all'||(f==='unpaid'&&o.payment!=='PAID'&&o.status!=='CANCELLED')||(f==='open'&&o.status==='CONFIRMED')||(f==='done'&&o.status==='FULFILLED'));
   $('#orderRows').innerHTML=list.length?list.map(o=>`<tr>
-    <td><b>${o.id}</b></td><td>${esc(o.customer_name||'')}<div class="small muted">+${o.phone}</div></td>
+    <td><b>${o.id}</b>${o.test?' <span class="chip">Test</span>':''}</td><td>${esc(o.customer_name||'')}<div class="small muted">${o.test?'From the test chat':'+'+o.phone}</div></td>
     <td>${o.items.map(l=>`${l.qty} × ${esc(l.name)}`).join('<br>')}${o.notes?`<div class="small muted">${esc(o.notes)}</div>`:''}</td>
     <td>${rs(o.total)}</td><td>${when(o.fulfil_at)}<div class="small muted">${o.mode==='delivery'?'Delivery'+(o.address?': '+esc(o.address):''):'Pickup'}</div></td>
     <td>${stageChip(o.stage)}</td>
