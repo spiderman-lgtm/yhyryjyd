@@ -2,6 +2,7 @@ import 'server-only';
 import { read, write, type Product, type StoreOffer } from './db';
 import { PLATFORM_NAMES } from './scraper';
 import { askAI } from './viasocket';
+import { searchStores } from './storesearch';
 
 const TTL_MS = 6 * 3600_000;
 
@@ -48,8 +49,7 @@ function hostOk(url: string) {
   }
 }
 
-async function search(product: Product): Promise<StoreOffer[]> {
-  const here = PLATFORM_NAMES[product.platform].toLowerCase();
+async function searchWithAI(product: Product): Promise<StoreOffer[]> {
   const r = await askAI<{ offers: StoreOffer[] }>({
     thread_id: `compare-${product.id}-${Date.now()}`,
     prompt: PROMPT,
@@ -57,8 +57,15 @@ async function search(product: Product): Promise<StoreOffer[]> {
     schemaName: 'offers',
     schema: OFFERS_SCHEMA,
   });
+  return r?.offers || [];
+}
+
+async function search(product: Product): Promise<StoreOffer[]> {
+  const here = PLATFORM_NAMES[product.platform].toLowerCase();
+  // Direct store searches always run; AI web search adds stores we have no searcher for, when credits allow.
+  const [direct, ai] = await Promise.all([searchStores(product).catch(() => []), searchWithAI(product).catch(() => [])]);
   const seen = new Set<string>();
-  const offers = (r?.offers || [])
+  const offers = [...direct, ...ai]
     .filter((o) => o.price > 0 && hostOk(o.url) && o.store.toLowerCase() !== here)
     // A price under a quarter of this one is almost always an accessory or a different item.
     .filter((o) => o.price >= product.price * 0.25)
@@ -73,7 +80,8 @@ async function search(product: Product): Promise<StoreOffer[]> {
 
 export async function compareStores(product: Product): Promise<{ offers: StoreOffer[]; fetched_at: string; cached: boolean }> {
   const hit = read((d) => d.compare[product.id]);
-  if (hit && Date.now() - Date.parse(hit.fetched_at) < TTL_MS) return { ...hit, cached: true };
+  // An empty result may be a temporary block, so it is retried sooner.
+  if (hit && Date.now() - Date.parse(hit.fetched_at) < (hit.offers.length ? TTL_MS : 30 * 60_000)) return { ...hit, cached: true };
   let p = inFlight.get(product.id);
   if (!p) {
     p = search(product).finally(() => inFlight.delete(product.id));

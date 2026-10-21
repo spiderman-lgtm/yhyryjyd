@@ -1,0 +1,250 @@
+import 'server-only';
+import * as cheerio from 'cheerio';
+import type { Platform, Product, StoreOffer } from './db';
+
+// Each store's own public search, read the way a browser would. Stores that block automated
+// requests from the server simply return nothing; the rest still give a comparison.
+
+const UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+
+interface Hit {
+  store: string;
+  platform: Platform;
+  title: string;
+  price: number;
+  mrp: number | null;
+  url: string;
+  image: string | null;
+  in_stock: boolean;
+}
+
+async function get(url: string, headers: Record<string, string> = {}, timeoutMs = 12000) {
+  const res = await fetch(url, {
+    headers: { 'User-Agent': UA, 'Accept-Language': 'en-IN,en;q=0.9', Accept: 'text/html,application/json,*/*', ...headers },
+    signal: AbortSignal.timeout(timeoutMs),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.text();
+}
+
+const num = (v: unknown) => (typeof v === 'number' && v > 0 ? v : typeof v === 'string' ? Number(v.replace(/[^\d.]/g, '')) || 0 : 0);
+
+const SEARCHERS: Record<string, (q: string) => Promise<Hit[]>> = {
+  async flipkart(q) {
+    const html = await get(`https://www.flipkart.com/search?q=${encodeURIComponent(q)}`);
+    const i = html.indexOf('window.__INITIAL_STATE__ =');
+    if (i < 0) return [];
+    const j = html.indexOf('</script>', i);
+    const state = JSON.parse(html.slice(i + 'window.__INITIAL_STATE__ ='.length, j).trim().replace(/;\s*$/, ''));
+    const hits: Hit[] = [];
+    const walk = (o: any, d: number) => {
+      if (!o || typeof o !== 'object' || d > 14 || hits.length >= 12) return;
+      if (o.titles && o.pricing && o.baseUrl) {
+        const prices: { strikeOff: boolean; value: number }[] = o.pricing.prices || [];
+        const price = prices.find((p) => !p.strikeOff)?.value ?? 0;
+        const mrp = prices.find((p) => p.strikeOff)?.value ?? null;
+        const img = o.media?.images?.[0]?.url as string | undefined;
+        if (price > 0)
+          hits.push({
+            store: 'Flipkart',
+            platform: 'flipkart',
+            title: o.titles.title || o.titles.newTitle,
+            price,
+            mrp,
+            url: `https://www.flipkart.com${String(o.baseUrl).split('&')[0]}`,
+            image: img ? img.replace('{@width}', '416').replace('{@height}', '416').replace('{@quality}', '70').replace(/^http:/, 'https:') : null,
+            in_stock: o.availability?.displayState !== 'out_of_stock',
+          });
+        return;
+      }
+      for (const v of Object.values(o)) walk(v, d + 1);
+    };
+    walk(state, 0);
+    return hits;
+  },
+
+  async croma(q) {
+    const json = JSON.parse(
+      await get(
+        `https://api.croma.com/searchservices/v1/search?currentPage=0&query=${encodeURIComponent(q)}%3Arelevance&fields=FULL&channel=WEB&channelCode=400049&spellOpt=DEFAULT`,
+        { Origin: 'https://www.croma.com', Referer: 'https://www.croma.com/' },
+      ),
+    );
+    return (json.products || []).slice(0, 12).map((p: any) => ({
+      store: 'Croma',
+      platform: 'croma',
+      title: p.name,
+      price: num(p.price?.value),
+      mrp: num(p.mrp?.value) || null,
+      url: p.url ? `https://www.croma.com${p.url}` : `https://www.croma.com/p/${p.code}`,
+      image: p.plpImage || null,
+      in_stock: p.stockStatus ? !/out/i.test(p.stockStatus) : true,
+    }));
+  },
+
+  async reliancedigital(q) {
+    const json = JSON.parse(await get(`https://www.reliancedigital.in/ext/raven-api/catalog/v1.0/products?q=${encodeURIComponent(q)}&page_size=12`));
+    return (json.items || []).map((p: any) => ({
+      store: 'Reliance Digital',
+      platform: 'reliancedigital',
+      title: p.name,
+      price: num(p.price?.effective?.min),
+      mrp: num(p.price?.marked?.min) || null,
+      url: `https://www.reliancedigital.in/product/${p.slug}`,
+      image: p.medias?.find((m: any) => m.type === 'image')?.url ?? null,
+      in_stock: p.sellable !== false,
+    }));
+  },
+
+  async tatacliq(q) {
+    const json = JSON.parse(
+      await get(
+        `https://searchbff.tatacliq.com/products/mpl/search/?searchText=${encodeURIComponent(q)}%3Arelevance&isKeywordRedirect=true&isKeywordRedirectEnabled=true&channel=WEB&isMDE=true&isTextSearch=false&isFilter=false&qc=false&page=0&isSuggested=false&isPwa=true&pageSize=20&typeID=all`,
+        { Origin: 'https://www.tatacliq.com', Referer: 'https://www.tatacliq.com/' },
+      ),
+    );
+    return (json.searchresult || []).map((p: any) => ({
+      store: 'Tata CLiQ',
+      platform: 'tatacliq',
+      title: p.productname,
+      price: num(p.price?.sellingPrice?.doubleValue),
+      mrp: num(p.price?.mrpPrice?.doubleValue) || null,
+      url: p.webURL ? (String(p.webURL).startsWith('http') ? p.webURL : `https://www.tatacliq.com${p.webURL}`) : `https://www.tatacliq.com/p-${String(p.productId).toLowerCase()}`,
+      image: p.imageURL ? `https:${String(p.imageURL).replace(/^https?:/, '')}` : null,
+      in_stock: p.inStockFlag !== false,
+    }));
+  },
+
+  async ajio(q) {
+    const json = JSON.parse(
+      await get(`https://www.ajio.com/api/search?fields=SITE&currentPage=0&pageSize=24&format=json&query=${encodeURIComponent(q)}%3Arelevance&sortBy=relevance&text=${encodeURIComponent(q)}`, {}, 10000),
+    );
+    return (json.products || []).map((p: any) => ({
+      store: 'AJIO',
+      platform: 'ajio',
+      title: [p.fnlColorVariantData?.brandName, p.name].filter(Boolean).join(' '),
+      price: num(p.offerPrice?.value) || num(p.price?.value),
+      mrp: num(p.wasPriceData?.value) || null,
+      url: `https://www.ajio.com${p.url}`,
+      image: p.images?.[0]?.url ?? p.fnlColorVariantData?.outfitPictureURL ?? null,
+      in_stock: true,
+    }));
+  },
+
+  async amazon(q) {
+    const $ = cheerio.load(await get(`https://www.amazon.in/s?k=${encodeURIComponent(q)}`));
+    const hits: Hit[] = [];
+    $('div[data-component-type="s-search-result"]').each((_, el) => {
+      const c = $(el);
+      if (c.find('.puis-sponsored-label-text').length) return;
+      const title = c.find('h2').text().trim();
+      const href = c.find('a.a-link-normal[href*="/dp/"]').first().attr('href') || '';
+      const asin = c.attr('data-asin') || href.match(/\/dp\/([A-Z0-9]{10})/)?.[1];
+      const price = num(c.find('.a-price:not(.a-text-price) .a-offscreen').first().text());
+      if (title && asin && price) {
+        hits.push({
+          store: 'Amazon',
+          platform: 'amazon',
+          title,
+          price,
+          mrp: num(c.find('.a-price.a-text-price .a-offscreen').first().text()) || null,
+          url: `https://www.amazon.in/dp/${asin}`,
+          image: c.find('img.s-image').attr('src') || null,
+          in_stock: true,
+        });
+      }
+    });
+    return hits.slice(0, 12);
+  },
+
+  async myntra(q) {
+    const slug = q.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const html = await get(`https://www.myntra.com/${slug}?rawQuery=${encodeURIComponent(q)}`);
+    const m = html.match(/window\.__myx\s*=\s*(\{[\s\S]*?\})<\/script>/);
+    if (!m) return [];
+    const products = JSON.parse(m[1])?.searchData?.results?.products || [];
+    return products.slice(0, 12).map((p: any) => ({
+      store: 'Myntra',
+      platform: 'myntra',
+      title: [p.brand, p.productName].filter(Boolean).join(' '),
+      price: num(p.price),
+      mrp: num(p.mrp) || null,
+      url: `https://www.myntra.com/${p.landingPageUrl}`,
+      image: p.searchImage || null,
+      in_stock: true,
+    }));
+  },
+};
+
+// Which stores to ask, by what the product is.
+const FASHION = /\b(shirt|t-shirt|tshirt|tee|jeans|kurta|saree|dress|top|shoe|sneaker|sandal|jacket|hoodie|trouser|shorts|bag|watch|sunglass|bra|lehenga|leggings|sweatshirt|track)/i;
+
+function storesFor(p: Product) {
+  const fashion = FASHION.test(p.title) || ['myntra', 'ajio'].includes(p.platform);
+  const list = fashion ? ['myntra', 'ajio', 'flipkart', 'amazon', 'tatacliq'] : ['amazon', 'flipkart', 'croma', 'reliancedigital', 'tatacliq'];
+  return list.filter((s) => s !== p.platform);
+}
+
+const STOP = new Set(['with', 'for', 'and', 'the', 'of', 'in', 'by', 'from', 'new', 'latest', 'free', 'pack', 'combo', 'online', 'buy', 'gb', 'ram', 'rom']);
+const tokens = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/(\d+)\s*(gb|tb|mah|w|inch|cm|ml|kg|g)\b/g, '$1$2')
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w && !STOP.has(w));
+const COLORS = new Set(
+  'black white blue green red yellow pink purple grey gray silver gold orange brown beige navy maroon teal olive cream violet titanium graphite midnight starlight natural desert ultramarine'.split(' '),
+);
+const ACCESSORY = /\b(case|cover|protector|tempered|glass|guard|skin|charger|cable|adapter|stand|holder|strap|pouch|refurbished|renewed)\b/i;
+
+// The search query: brand, model and size words from the title, without marketing filler.
+export function queryFor(title: string) {
+  return title
+    .replace(/\(.*?\)/g, (m) => m.replace(/[(),|]/g, ' '))
+    .replace(/[|,].*$/, '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 9)
+    .join(' ');
+}
+
+function match(source: Product, hit: Hit): { ok: boolean; same: boolean; score: number } {
+  const src = tokens(source.title);
+  const cand = new Set(tokens(hit.title));
+  if (!src.length) return { ok: false, same: false, score: 0 };
+  if (ACCESSORY.test(hit.title) && !ACCESSORY.test(source.title)) return { ok: false, same: false, score: 0 };
+  if (hit.price < source.price * 0.4 || hit.price > source.price * 2.5) return { ok: false, same: false, score: 0 };
+  // Model numbers and sizes (15, 128gb, 8gb…) must all match.
+  const specs = src.filter((t) => /\d/.test(t));
+  if (specs.some((t) => !cand.has(t))) return { ok: false, same: false, score: 0 };
+  const shared = src.filter((t) => cand.has(t)).length;
+  const score = shared / src.length;
+  // A different colour is listed, but not as the same item.
+  const srcColors = src.filter((t) => COLORS.has(t));
+  const candColors = [...cand].filter((t) => COLORS.has(t));
+  const otherColour = srcColors.length > 0 && candColors.length > 0 && !srcColors.some((c) => cand.has(c));
+  return { ok: score >= 0.55, same: score >= 0.7 && !otherColour, score: score - (otherColour ? 0.2 : 0) };
+}
+
+export async function searchStores(product: Product): Promise<StoreOffer[]> {
+  const q = queryFor(product.title);
+  const stores = storesFor(product);
+  const results = await Promise.all(
+    stores.map(async (s) => {
+      try {
+        const hits = await SEARCHERS[s](q);
+        const best = hits
+          .filter((h) => h.price > 0 && h.title)
+          .map((h) => ({ h, m: match(product, h) }))
+          .filter((x) => x.m.ok)
+          .sort((a, b) => b.m.score - a.m.score || a.h.price - b.h.price)[0];
+        return best ? { store: best.h.store, price: Math.round(best.h.price), url: best.h.url, in_stock: best.h.in_stock, same_variant: best.m.same } : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return results.filter((x): x is StoreOffer => !!x);
+}
