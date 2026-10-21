@@ -3,6 +3,7 @@ import { currentUser, viewerUid } from '@/lib/auth';
 import BuyNow from '@/components/BuyNow';
 import CartAndEnquire from '@/components/CartAndEnquire';
 import PriceChart from '@/components/PriceChart';
+import PriceCompare from '@/components/PriceCompare';
 import TrackForm from '@/components/TrackForm';
 import LinkInput from '@/components/LinkInput';
 import { historyFor, read } from '@/lib/db';
@@ -73,6 +74,12 @@ export default function ProductPage({ params, searchParams }: { params: { id: st
           </p>
         </div>
       </div>
+
+      <section className="card p-5">
+        <h2 className="font-bold">Compare prices on other stores</h2>
+        <p className="mb-4 mt-1 text-sm text-ink-soft">The same product on Amazon, Flipkart, Croma and more — cheapest first.</p>
+        <PriceCompare productId={p.id} store={store} price={p.price} url={p.url} />
+      </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card p-5">

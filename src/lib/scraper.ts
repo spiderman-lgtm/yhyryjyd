@@ -21,6 +21,12 @@ export function detectPlatform(url: URL): Platform {
   if (/myntra\.com$/.test(h)) return 'myntra';
   if (/ajio\.com$/.test(h)) return 'ajio';
   if (/meesho\.com$/.test(h)) return 'meesho';
+  if (/croma\.com$/.test(h)) return 'croma';
+  if (/tatacliq\.com$/.test(h)) return 'tatacliq';
+  if (/reliancedigital\.in$/.test(h)) return 'reliancedigital';
+  if (/vijaysales\.com$/.test(h)) return 'vijaysales';
+  if (/nykaa\.com$/.test(h)) return 'nykaa';
+  if (/jiomart\.com$/.test(h)) return 'jiomart';
   return 'other';
 }
 
@@ -30,6 +36,12 @@ export const PLATFORM_NAMES: Record<Platform, string> = {
   myntra: 'Myntra',
   ajio: 'AJIO',
   meesho: 'Meesho',
+  croma: 'Croma',
+  tatacliq: 'Tata CLiQ',
+  reliancedigital: 'Reliance Digital',
+  vijaysales: 'Vijay Sales',
+  nykaa: 'Nykaa',
+  jiomart: 'JioMart',
   other: 'Online store',
 };
 

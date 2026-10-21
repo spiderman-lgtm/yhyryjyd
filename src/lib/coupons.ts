@@ -71,13 +71,17 @@ export function cachedCoupon(product: Product): Coupon | null {
 }
 
 export function affiliateLink(product: Product): string {
+  return affiliateUrl(product.url);
+}
+
+export function affiliateUrl(url: string): string {
   const tag = process.env.AMAZON_ASSOCIATE_TAG;
-  if (product.platform === 'amazon' && tag) {
-    const u = new URL(product.url);
+  const u = new URL(url);
+  if (tag && /(^|\.)amazon\.in$/.test(u.hostname)) {
     u.searchParams.set('tag', tag);
     return u.toString();
   }
   const cid = process.env.CUELINKS_CID;
-  if (cid) return `https://linksredirect.com/?cid=${encodeURIComponent(cid)}&source=linkkit&url=${encodeURIComponent(product.url)}`;
-  return product.url;
+  if (cid) return `https://linksredirect.com/?cid=${encodeURIComponent(cid)}&source=linkkit&url=${encodeURIComponent(url)}`;
+  return url;
 }

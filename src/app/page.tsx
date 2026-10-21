@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 const STEPS = [
   { n: '1', t: 'Paste the link', d: 'Any product page from Amazon, Flipkart, Myntra, AJIO or Meesho.' },
-  { n: '2', t: 'Buying now? Get the coupon', d: 'We search for live coupon codes and bank offers for that store and product.' },
+  { n: '2', t: 'Compare stores, get the coupon', d: 'See the same product on Amazon, Flipkart, Croma and more — cheapest first — plus live coupon codes and bank offers.' },
   { n: '3', t: 'Not yet? We watch the price', d: 'Pick 7 or 15 days. When it drops, you get an email or WhatsApp with the buy link.' },
 ];
 

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-export type Platform = 'amazon' | 'flipkart' | 'myntra' | 'ajio' | 'meesho' | 'other';
+export type Platform = 'amazon' | 'flipkart' | 'myntra' | 'ajio' | 'meesho' | 'croma' | 'tatacliq' | 'reliancedigital' | 'vijaysales' | 'nykaa' | 'jiomart' | 'other';
 export type Tier = 'urgent' | 'normal' | 'digest';
 export type Channel = 'email' | 'whatsapp';
 
@@ -83,6 +83,19 @@ export interface Coupon {
   source_url: string;
 }
 
+export interface StoreOffer {
+  store: string;
+  price: number;
+  url: string;
+  in_stock: boolean;
+  same_variant: boolean;
+}
+
+export interface CompareCache {
+  offers: StoreOffer[];
+  fetched_at: string;
+}
+
 export interface CouponCache {
   key: string;
   coupons: Coupon[];
@@ -120,6 +133,7 @@ interface Data {
   cart: Record<string, CartItem>;
   enquiries: Enquiry[];
   coupons: Record<string, CouponCache>;
+  compare: Record<string, CompareCache>;
   clicks: { product_id: string; uid: string; at: string }[];
   deliveries: DeliveryLog[];
   settings: Settings;
@@ -137,6 +151,7 @@ function empty(): Data {
     cart: {},
     enquiries: [],
     coupons: {},
+    compare: {},
     clicks: [],
     deliveries: [],
     settings: { gmail: null, whatsapp: null, flows: {}, flows_activated_at: null },
