@@ -92,10 +92,11 @@ export function priceStats(productId: string, current: number) {
 
 // Viewed products are re-checked on a schedule too, so their price history keeps growing.
 export function markViewed(id: string) {
-  const p = getProduct(id);
-  if (!p || (p.last_viewed_at && Date.now() - Date.parse(p.last_viewed_at) < 3600_000)) return;
   write((d) => {
-    if (d.products[id]) d.products[id].last_viewed_at = new Date().toISOString();
+    const p = d.products[id];
+    if (!p) return;
+    p.last_viewed_at = new Date().toISOString();
+    p.views = (p.views ?? 0) + 1;
   });
 }
 
@@ -105,6 +106,8 @@ export interface DealScore {
   verdict: string;
   vsAverage: 'below' | 'same' | 'above';
   rows: { text: string; pts: number; max: number }[];
+  action: 'buy' | 'okay' | 'skip';
+  flags: string[];
 }
 
 export function dealScore(productId: string, current: number): DealScore | null {
@@ -148,5 +151,9 @@ export function dealScore(productId: string, current: number): DealScore | null 
     : score >= 70 ? ['Good deal', 'Better than usual for this product.']
     : score >= 50 ? ['Decent catch', 'An okay price, but it has been cheaper.']
     : ['Wait for a drop', 'Higher than usual. Set a price alert and buy later.'];
-  return { score, label, verdict, vsAverage: current < avg * 0.995 ? 'below' : current <= avg * 1.005 ? 'same' : 'above', rows };
+  const flags: string[] = [];
+  if (hikedThenCut) flags.push(`Price was hiked to ${inr(peak)} before this sale`);
+  if (current > avg * 1.1) flags.push(`Inflated: ${Math.round(((current - avg) / avg) * 100)}% above its usual price`);
+  const action = score >= 70 && !hikedThenCut ? 'buy' : score >= 50 ? 'okay' : 'skip';
+  return { score, label, verdict, vsAverage: current < avg * 0.995 ? 'below' : current <= avg * 1.005 ? 'same' : 'above', rows, action, flags };
 }

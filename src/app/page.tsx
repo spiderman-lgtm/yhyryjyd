@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
-import { HomeHero, HowItWorks, RecentlyChecked } from '@/components/HomeSections';
+import { HomeHero } from '@/components/HomeHero';
+import { HowItWorks, RecentlyChecked, ShopByStore, TopDeals, Trending } from '@/components/HomeSections';
 import { currentUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -9,7 +10,10 @@ export default function Home() {
   return (
     <div className="space-y-14">
       <HomeHero />
+      <TopDeals />
+      <Trending />
       <HowItWorks />
+      <ShopByStore />
       <RecentlyChecked />
     </div>
   );

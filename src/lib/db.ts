@@ -23,6 +23,7 @@ export interface Product {
   rating?: number | null;
   reviews?: number | null;
   last_viewed_at?: string;
+  views?: number;
 }
 
 export interface PricePoint {

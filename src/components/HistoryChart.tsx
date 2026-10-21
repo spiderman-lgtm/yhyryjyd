@@ -116,8 +116,8 @@ export default function HistoryChart({ history, current }: { history: Pt[]; curr
           {xTicks.map((t) => (
             <text key={t} x={x(t)} y={H - 10} textAnchor="middle" fontSize="12" fill="#64748b">{fmtDate(t)}</text>
           ))}
-          <path d={area} fill="url(#hc-fill)" />
-          <path d={line} fill="none" stroke="#ea580c" strokeWidth="2.5" strokeLinejoin="round" />
+          <path key={`a-${range}`} d={area} fill="url(#hc-fill)" className="fade-area" />
+          <path key={`l-${range}`} d={line} pathLength={1} fill="none" stroke="#ea580c" strokeWidth="2.5" strokeLinejoin="round" className="draw-line" />
           {changes.length <= 60 &&
             changes.map((c) => {
               const down = c.price < c.prev;

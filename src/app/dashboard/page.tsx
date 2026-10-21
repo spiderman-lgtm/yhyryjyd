@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { HomeHero, HowItWorks, RecentlyChecked } from '@/components/HomeSections';
+import { HomeHero } from '@/components/HomeHero';
+import { HowItWorks, RecentlyChecked, TopDeals, Trending } from '@/components/HomeSections';
 import { currentUser } from '@/lib/auth';
 import { read } from '@/lib/db';
 import { TIER_INFO } from '@/lib/alerts';
@@ -88,7 +89,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <HomeHero />
+      <HomeHero greeting={`Welcome back, ${user.name.split(' ')[0]}`} />
 
       <section className="grid grid-cols-2 gap-3 pt-4 md:grid-cols-5">
         {tiles.map((t) => (
@@ -196,6 +197,8 @@ export default function Dashboard() {
       </div>
 
       <div className="space-y-10 pt-6">
+        <TopDeals />
+        <Trending />
         <HowItWorks />
         <RecentlyChecked />
       </div>

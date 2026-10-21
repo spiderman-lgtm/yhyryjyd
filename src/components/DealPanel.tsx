@@ -1,7 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { fetchOnce } from '@/lib/fetch-once';
+import type { StoreOffer } from '@/lib/db';
 import BuyNow from './BuyNow';
 import TrackForm from './TrackForm';
 import { inr } from '@/lib/format';
@@ -12,7 +15,15 @@ interface Score {
   verdict: string;
   vsAverage: 'below' | 'same' | 'above';
   rows: { text: string; pts: number; max: number }[];
+  action: 'buy' | 'okay' | 'skip';
+  flags: string[];
 }
+
+const ACTION = {
+  buy: { text: 'BUY', sub: 'Good time to buy', cls: 'bg-deal text-white' },
+  okay: { text: 'OKAY', sub: 'Fair price, could drop', cls: 'bg-amber-500 text-white' },
+  skip: { text: 'SKIP', sub: 'Wait for a better price', cls: 'bg-red-600 text-white' },
+};
 
 function Gauge({ score }: { score: number }) {
   const colors = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#16a34a'];
@@ -22,13 +33,19 @@ function Gauge({ score }: { score: number }) {
     const a1 = Math.PI * (1 - to);
     return `M ${60 + r * Math.cos(a0)} ${62 - r * Math.sin(a0)} A ${r} ${r} 0 0 1 ${60 + r * Math.cos(a1)} ${62 - r * Math.sin(a1)}`;
   };
-  const angle = Math.PI * (1 - score / 100);
+  const reduce = useReducedMotion();
   return (
     <svg viewBox="0 0 120 76" className="w-36" role="img" aria-label={`Deal score ${score} out of 100`}>
       {colors.map((c, i) => (
         <path key={c} d={arc(i / 5 + 0.01, (i + 1) / 5 - 0.01)} stroke={c} strokeWidth="12" fill="none" />
       ))}
-      <line x1="60" y1="62" x2={60 + 40 * Math.cos(angle)} y2={62 - 40 * Math.sin(angle)} stroke="#1e293b" strokeWidth="3.5" strokeLinecap="round" />
+      <motion.line
+        x1="60" y1="62" x2="20" y2="62" stroke="#1e293b" strokeWidth="3.5" strokeLinecap="round"
+        style={{ transformOrigin: '60px 62px', transformBox: 'view-box' }}
+        initial={{ rotate: reduce ? (score / 100) * 180 : 0 }}
+        animate={{ rotate: (score / 100) * 180 }}
+        transition={{ type: 'spring', stiffness: 60, damping: 12, delay: 0.2 }}
+      />
       <circle cx="60" cy="62" r="5" fill="#1e293b" />
       <text x="6" y="75" fontSize="8" fill="#64748b">0</text>
       <text x="106" y="75" fontSize="8" fill="#64748b">100</text>
@@ -49,6 +66,15 @@ export default function DealPanel(props: {
   const [tab, setTab] = useState<'scan' | 'drop'>('scan');
   const [target, setTarget] = useState(String(Math.floor(price * 0.9)));
   const [busy, setBusy] = useState(false);
+  const [cheaper, setCheaper] = useState<{ store: string; price: number; i: number } | null>(null);
+  useEffect(() => {
+    fetchOnce<{ offers?: StoreOffer[] }>(`/api/product/${productId}/compare`)
+      .then((d) => {
+        const best = (d.offers || []).map((o, i) => ({ ...o, i })).filter((o) => o.same_variant && o.in_stock && o.price < price).sort((a, b) => a.price - b.price)[0];
+        if (best) setCheaper({ store: best.store, price: best.price, i: best.i });
+      })
+      .catch(() => {});
+  }, [productId, price]);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(props.tracking ? { ok: true, text: 'You are already tracking this price.' } : null);
 
   async function quickAlert() {
@@ -80,6 +106,11 @@ export default function DealPanel(props: {
 
       {tab === 'scan' ? (
         <div className="space-y-4 p-5">
+          {cheaper && (
+            <a href={`/api/buy/${productId}?o=${cheaper.i}`} target="_blank" rel="noopener" className="block rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100">
+              {inr(price - cheaper.price)} cheaper on {cheaper.store} ({inr(cheaper.price)}) — buy there →
+            </a>
+          )}
           {deal ? (
             <>
               <div className="flex items-center justify-between gap-3">
@@ -92,6 +123,13 @@ export default function DealPanel(props: {
                   <div className="-mt-1 text-sm">Deal Score <b>{deal.score}</b></div>
                 </div>
               </div>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+                <span className={`rounded-lg px-3 py-1.5 text-lg font-black tracking-wide ${ACTION[deal.action].cls}`}>{ACTION[deal.action].text}</span>
+                <span className="text-sm font-semibold text-ink-soft">{ACTION[deal.action].sub}</span>
+              </div>
+              {deal.flags.map((f) => (
+                <div key={f} className="rounded-xl bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">⚠ {f}</div>
+              ))}
               <div className={`rounded-xl px-4 py-2.5 text-sm font-semibold ${deal.vsAverage === 'below' ? 'bg-deal-light text-deal' : deal.vsAverage === 'same' ? 'bg-slate-100 text-ink-soft' : 'bg-amber-50 text-amber-700'}`}>
                 {deal.vsAverage === 'below' ? 'Less than average price' : deal.vsAverage === 'same' ? 'Same as average price' : 'More than average price'}
               </div>
