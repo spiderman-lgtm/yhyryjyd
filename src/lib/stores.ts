@@ -15,3 +15,16 @@ export const STORES: { slug: Platform; name: string; color: string; example: str
 ];
 
 export const storeBySlug = (s: string) => STORES.find((x) => x.slug === s) ?? null;
+
+// Brand colours for stores we compare against but do not open links from.
+const EXTRA_COLORS: Record<string, string> = { zepto: '#5a189a', blinkit: '#0c831f', instamart: '#fc8019', bigbasket: '#84c225' };
+const FALLBACK = ['#0891b2', '#7c3aed', '#be185d', '#4d7c0f', '#b45309', '#475569'];
+
+export function storeColor(name: string) {
+  const key = name.toLowerCase();
+  const known = STORES.find((s) => s.name.toLowerCase() === key)?.color ?? EXTRA_COLORS[key];
+  if (known) return known;
+  let h = 0;
+  for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return FALLBACK[h % FALLBACK.length];
+}

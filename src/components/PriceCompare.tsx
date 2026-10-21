@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { StoreOffer } from '@/lib/db';
-import { inr } from '@/lib/format';
+import { deliveryText, inr } from '@/lib/format';
 import { fetchOnce } from '@/lib/fetch-once';
 
 type Row = StoreOffer & { index: number | null; here?: boolean };
@@ -58,14 +58,15 @@ export default function PriceCompare({ productId, store, price, url }: { product
             </div>
           ))}
         </div>
-        <p className="mt-4 text-sm text-ink-mute">Searching Amazon, Flipkart, Croma, Tata CLiQ, Reliance Digital and more for this exact product… {secs}s</p>
+        <p className="mt-4 text-sm text-ink-mute">Searching Flipkart, Tata CLiQ, Croma, AJIO, Reliance Digital, Amazon and Myntra for this exact product… {secs}s</p>
       </div>
     );
   }
 
   const here: Row = { store, price, url, in_stock: true, same_variant: true, index: null, here: true };
-  const same = offers.map((o, i) => ({ ...o, index: i }) as Row).filter((o) => o.same_variant && o.in_stock);
-  const other = offers.map((o, i) => ({ ...o, index: i }) as Row).filter((o) => !(o.same_variant && o.in_stock));
+  const buyable = (o: StoreOffer) => o.same_variant && o.in_stock && o.delivery?.ok !== false;
+  const same = offers.map((o, i) => ({ ...o, index: i }) as Row).filter(buyable);
+  const other = offers.map((o, i) => ({ ...o, index: i }) as Row).filter((o) => !buyable(o));
   const rows = [here, ...same].sort((a, b) => a.price - b.price);
   const best = rows[0];
   const max = Math.max(...rows.map((r) => r.price), ...other.map((r) => r.price));
@@ -89,6 +90,7 @@ export default function PriceCompare({ productId, store, price, url }: { product
               <div className="truncate text-sm font-semibold" title={r.store}>
                 {r.store}
                 {r.here && <div className="text-[11px] font-normal text-ink-mute">you are here</div>}
+                {r.delivery && <div className="text-[11px] font-normal text-deal">{deliveryText(r.delivery)}</div>}
               </div>
               <div className="relative h-9 rounded-lg bg-slate-50">
                 <div
@@ -114,11 +116,11 @@ export default function PriceCompare({ productId, store, price, url }: { product
 
       {other.length > 0 && (
         <div className="mt-4 border-t border-slate-100 pt-3">
-          <div className="label">Similar listings (different variant or out of stock)</div>
+          <div className="label">Similar listings (different variant, out of stock or not delivered to you)</div>
           <ul className="space-y-1 text-sm text-ink-soft">
             {other.map((o) => (
               <li key={o.index} className="flex justify-between gap-3">
-                <span>{o.store}{!o.in_stock && ' · out of stock'}{!o.same_variant && ' · different variant'}</span>
+                <span>{o.store}{!o.in_stock && ' · out of stock'}{!o.same_variant && ' · different variant'}{o.delivery?.ok === false && ` · ${deliveryText(o.delivery)}`}</span>
                 <a href={`/api/buy/${productId}?o=${o.index}`} target="_blank" rel="noopener" className="font-semibold underline">{inr(o.price)}</a>
               </li>
             ))}

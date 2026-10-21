@@ -1,8 +1,6 @@
 /* global importScripts, DEALRADAR_API, DRMatch, chrome */
 importScripts('config.js', 'match.js');
 
-const FASHION = /\b(shirt|t-shirt|tshirt|tee|jeans|kurta|saree|dress|top|shoe|sneaker|sandal|jacket|hoodie|trouser|shorts|bag|watch|sunglass|lehenga|leggings|sweatshirt|lipstick|perfume|serum|cream)/i;
-
 async function api(path, body) {
   const res = await fetch(DEALRADAR_API + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
   const data = await res.json().catch(() => ({}));
@@ -126,7 +124,7 @@ async function contribute(productId, offers) {
 async function compare({ id, title, price: p, store }) {
   const source = { title, price: p };
   const q = DRMatch.query(title);
-  const stores = Object.keys(SEARCH).filter((s) => s !== store && (s !== 'Myntra' || FASHION.test(title) || store === 'AJIO'));
+  const stores = Object.keys(SEARCH).filter((s) => s !== store);
   const [server, ...found] = await Promise.all([
     api('/api/product/' + id + '/compare').catch(() => ({ offers: [] })),
     ...stores.map((s) =>

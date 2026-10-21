@@ -4,13 +4,18 @@ var DRMatch = (function () {
   var COLORS = new Set(
     'black white blue green red yellow pink purple grey gray silver gold orange brown beige navy maroon teal olive cream violet titanium graphite midnight starlight natural desert ultramarine'.split(' '),
   );
-  var ACCESSORY = /\b(case|cover|protector|tempered|glass|guard|skin|charger|cable|adapter|stand|holder|strap|pouch|refurbished|renewed)\b/i;
+  var ACCESSORY = /\b(case|cover|protector|tempered|glass|guard|charger|cable|adapter|stand|holder|strap|pouch|refurbished|renewed)\b/i;
+  var MODEL = ['plus', 'pro', 'max', 'mini', 'ultra', 'lite', 'fe', 'neo', 'prime', 'air'];
+  var SIZE = /^\d+(\.\d+)?(ml|g|kg|l|ltr)$/;
 
   function tokens(s) {
     return String(s)
       .toLowerCase()
-      .replace(/(\d+)\s*(gb|tb|mah|w|inch|cm|ml|kg|g|l|ltr)\b/g, '$1$2')
-      .split(/[^a-z0-9]+/)
+      .replace(/(\d+(?:\.\d+)?)\s*(gb|tb|mah|w|inch|cm|ml|kg|g|l|ltr)\b/g, '$1$2')
+      .split(/[^a-z0-9.]+/)
+      .map(function (w) {
+        return w.replace(/^\.+|\.+$/g, '');
+      })
       .filter(function (w) {
         return w && !STOP.has(w);
       });
@@ -30,38 +35,58 @@ var DRMatch = (function () {
 
   // { ok, same, score } for a candidate listing against the product the shopper is viewing.
   function match(source, cand) {
-    var src = tokens(source.title);
-    var set = new Set(tokens(cand.title));
     var none = { ok: false, same: false, score: 0 };
-    if (!src.length) return none;
+    var src = Array.from(new Set(tokens(query(source.title))));
+    var candList = tokens(cand.title);
+    var set = new Set(candList);
+    if (src.length < 2) return none;
     if (ACCESSORY.test(cand.title) && !ACCESSORY.test(source.title)) return none;
     if (cand.price < source.price * 0.4 || cand.price > source.price * 2.5) return none;
-    var specs = src.filter(function (t) {
-      return /\d/.test(t);
+    if (!set.has(src[0])) return none;
+    var isSize = function (t) {
+      return SIZE.test(t);
+    };
+    if (
+      src.some(function (t) {
+        return /\d/.test(t) && !isSize(t) && !set.has(t);
+      })
+    )
+      return none;
+    var full = new Set(tokens(source.title));
+    var hasModelNo = src.some(function (t) {
+      return /\d/.test(t) && !isSize(t);
     });
     if (
-      specs.some(function (t) {
-        return !set.has(t);
+      hasModelNo &&
+      MODEL.some(function (m) {
+        return set.has(m) !== full.has(m);
       })
     )
       return none;
     var shared = src.filter(function (t) {
       return set.has(t);
     }).length;
-    var score = shared / src.length;
+    var contain = shared / Math.min(src.length, set.size);
+    var cover = shared / src.length;
+    if (shared < 2 || cover < 0.4) return none;
+    var score = contain * 0.7 + cover * 0.3;
     var srcColors = src.filter(function (t) {
       return COLORS.has(t);
     });
     var candColors = Array.from(set).filter(function (t) {
       return COLORS.has(t);
     });
-    var other =
+    var otherColour =
       srcColors.length > 0 &&
       candColors.length > 0 &&
       !srcColors.some(function (c) {
         return set.has(c);
       });
-    return { ok: score >= 0.55, same: score >= 0.7 && !other, score: score - (other ? 0.2 : 0) };
+    var srcSize = src.find(isSize) || Array.from(full).find(isSize);
+    var candSizes = candList.filter(isSize);
+    var otherSize = !!srcSize && candSizes.length > 0 && candSizes.indexOf(srcSize) < 0;
+    var off = otherColour || otherSize;
+    return { ok: score >= 0.6, same: score >= 0.7 && !off, score: score - (off ? 0.2 : 0) };
   }
 
   function best(source, list) {

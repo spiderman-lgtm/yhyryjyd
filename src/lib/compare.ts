@@ -1,5 +1,5 @@
 import 'server-only';
-import { read, write, type Product, type StoreOffer } from './db';
+import { read, recordOffers, write, type Product, type StoreOffer } from './db';
 import { PLATFORM_NAMES } from './scraper';
 import { askAI } from './viasocket';
 import { searchStores } from './storesearch';
@@ -60,42 +60,52 @@ async function searchWithAI(product: Product): Promise<StoreOffer[]> {
   return r?.offers || [];
 }
 
-async function search(product: Product): Promise<StoreOffer[]> {
+// Quick-commerce prices depend on whose delivery address the extension used, so they stay out of other pincodes' lists.
+const LOCAL_ONLY = new Set(['zepto', 'blinkit', 'instamart', 'bigbasket']);
+
+export const isPin = (v: unknown): v is string => typeof v === 'string' && /^[1-9]\d{5}$/.test(v);
+const keyFor = (productId: string, pin?: string | null) => (pin ? `${productId}@${pin}` : productId);
+
+async function search(product: Product, pin: string | null, allowAi: boolean): Promise<StoreOffer[]> {
   const here = PLATFORM_NAMES[product.platform].toLowerCase();
+  const key = keyFor(product.id, pin);
   // Direct store searches always run; AI web search adds stores we have no searcher for, when credits allow.
-  const [direct, ai] = await Promise.all([searchStores(product).catch(() => []), searchWithAI(product).catch(() => [])]);
+  const [direct, ai] = await Promise.all([searchStores(product, pin).catch(() => []), allowAi ? searchWithAI(product).catch(() => []) : []]);
   const seen = new Set<string>();
   const offers = [...direct, ...ai]
     .filter((o) => o.price > 0 && hostOk(o.url) && o.store.toLowerCase() !== here)
     // A price under a quarter of this one is almost always an accessory or a different item.
     .filter((o) => o.price >= product.price * 0.25)
     .filter((o) => (seen.has(o.store.toLowerCase()) ? false : (seen.add(o.store.toLowerCase()), true)))
-    .map((o) => ({ store: o.store.slice(0, 40), price: Math.round(o.price), url: o.url, in_stock: o.in_stock, same_variant: o.same_variant }))
+    .map((o) => ({ store: o.store.slice(0, 40), price: Math.round(o.price), url: o.url, in_stock: o.in_stock, same_variant: o.same_variant, ...(o.delivery ? { delivery: o.delivery } : {}) }))
     .sort((a, b) => a.price - b.price);
   // Keep stores the extension reported from shoppers' browsers that the server search cannot reach.
   const merged = write((d) => {
     const found = new Set(offers.map((o) => o.store.toLowerCase()));
-    const kept = (d.compare[product.id]?.offers ?? []).filter((o) => !found.has(o.store.toLowerCase()));
+    const previous = [...(d.compare[key]?.offers ?? []), ...(pin ? (d.compare[product.id]?.offers ?? []).filter((o) => !LOCAL_ONLY.has(o.store.toLowerCase())) : [])];
+    const kept = previous.filter((o) => !found.has(o.store.toLowerCase()) && (found.add(o.store.toLowerCase()), true));
     const all = [...offers, ...kept].sort((a, b) => a.price - b.price);
-    d.compare[product.id] = { offers: all, fetched_at: new Date().toISOString() };
+    d.compare[key] = { offers: all, fetched_at: new Date().toISOString() };
+    recordOffers(d, product.id, offers);
     return all;
   });
   return merged;
 }
 
-export async function compareStores(product: Product): Promise<{ offers: StoreOffer[]; fetched_at: string; cached: boolean }> {
-  const hit = read((d) => d.compare[product.id]);
+export async function compareStores(product: Product, pin: string | null = null, { allowAi = true } = {}): Promise<{ offers: StoreOffer[]; fetched_at: string; cached: boolean }> {
+  const key = keyFor(product.id, pin);
+  const hit = read((d) => d.compare[key]);
   // An empty result may be a temporary block, so it is retried sooner.
   if (hit && Date.now() - Date.parse(hit.fetched_at) < (hit.offers.length ? TTL_MS : 30 * 60_000)) return { ...hit, cached: true };
-  let p = inFlight.get(product.id);
+  let p = inFlight.get(key);
   if (!p) {
-    p = search(product).finally(() => inFlight.delete(product.id));
-    inFlight.set(product.id, p);
+    p = search(product, pin, allowAi).finally(() => inFlight.delete(key));
+    inFlight.set(key, p);
   }
   const offers = await p;
   return { offers, fetched_at: new Date().toISOString(), cached: false };
 }
 
-export function cachedOffer(productId: string, index: number): StoreOffer | null {
-  return read((d) => d.compare[productId]?.offers[index] ?? null);
+export function cachedOffer(productId: string, index: number, pin: string | null = null): StoreOffer | null {
+  return read((d) => d.compare[keyFor(productId, pin)]?.offers[index] ?? null);
 }

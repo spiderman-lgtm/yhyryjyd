@@ -94,6 +94,8 @@ export interface StoreOffer {
   url: string;
   in_stock: boolean;
   same_variant: boolean;
+  // Whether the store delivers to the shopper's pincode, where the store can tell us.
+  delivery?: { pin: string; ok: boolean; by: string | null };
 }
 
 export interface RelatedItem {
@@ -114,6 +116,9 @@ export interface CompareCache {
   offers: StoreOffer[];
   fetched_at: string;
 }
+
+// Each store's price for a product over time, from comparisons and the extension.
+export type OfferHistory = Record<string, { price: number; at: string }[]>;
 
 export interface CouponCache {
   key: string;
@@ -153,6 +158,7 @@ interface Data {
   enquiries: Enquiry[];
   coupons: Record<string, CouponCache>;
   compare: Record<string, CompareCache>;
+  offer_history: Record<string, OfferHistory>;
   related: Record<string, RelatedCache>;
   clicks: { product_id: string; uid: string; at: string }[];
   deliveries: DeliveryLog[];
@@ -172,6 +178,7 @@ function empty(): Data {
     enquiries: [],
     coupons: {},
     compare: {},
+    offer_history: {},
     related: {},
     clicks: [],
     deliveries: [],
@@ -224,4 +231,17 @@ export function recordPrice(productId: string, price: number) {
   write((d) => {
     d.history.push({ product_id: productId, price, at: new Date().toISOString() });
   });
+}
+
+// Call inside write(): adds a point per in-stock store when its price changed, or every 12 hours otherwise.
+export function recordOffers(d: Data, productId: string, offers: StoreOffer[], at = new Date().toISOString()) {
+  const h = (d.offer_history[productId] ??= {});
+  for (const o of offers) {
+    if (!o.in_stock || !(o.price > 0)) continue;
+    const pts = (h[o.store] ??= []);
+    const last = pts[pts.length - 1];
+    if (last && last.price === o.price && Date.parse(at) - Date.parse(last.at) < 12 * 3600_000) continue;
+    pts.push({ price: o.price, at });
+    if (pts.length > 300) pts.splice(0, pts.length - 300);
+  }
 }

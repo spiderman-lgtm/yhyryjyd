@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { write, type StoreOffer } from '@/lib/db';
+import { recordOffers, write, type StoreOffer } from '@/lib/db';
 import { getProduct } from '@/lib/products';
 import { PLATFORM_NAMES } from '@/lib/scraper';
 import { OFFER_DOMAINS, rateLimited } from '@/lib/ext';
@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
     const merged = [...current.filter((o) => !stores.has(o.store)), ...incoming].sort((a, b) => a.price - b.price);
     // A first report from the extension must not count as a fresh server search.
     d.compare[product.id] = { offers: merged, fetched_at: d.compare[product.id]?.fetched_at ?? new Date(0).toISOString() };
+    recordOffers(d, product.id, incoming);
     return merged;
   });
   return NextResponse.json({ offers, accepted: incoming.length });

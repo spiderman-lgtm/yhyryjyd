@@ -17,6 +17,7 @@ interface Hit {
   url: string;
   image: string | null;
   in_stock: boolean;
+  ref?: string;
 }
 
 async function get(url: string, headers: Record<string, string> = {}, timeoutMs = 12000) {
@@ -31,7 +32,7 @@ async function get(url: string, headers: Record<string, string> = {}, timeoutMs 
 
 const num = (v: unknown) => (typeof v === 'number' && v > 0 ? v : typeof v === 'string' ? Number(v.replace(/[^\d.]/g, '')) || 0 : 0);
 
-const SEARCHERS: Record<string, (q: string) => Promise<Hit[]>> = {
+const SEARCHERS: Record<string, (q: string, pin: string | null) => Promise<Hit[]>> = {
   async flipkart(q) {
     const html = await get(`https://www.flipkart.com/search?q=${encodeURIComponent(q)}`);
     const i = html.indexOf('window.__INITIAL_STATE__ =');
@@ -50,7 +51,7 @@ const SEARCHERS: Record<string, (q: string) => Promise<Hit[]>> = {
           hits.push({
             store: 'Flipkart',
             platform: 'flipkart',
-            title: o.titles.title || o.titles.newTitle,
+            title: [o.titles.title || o.titles.newTitle, o.titles.subtitle].filter(Boolean).join(' '),
             price,
             mrp,
             url: `https://www.flipkart.com${String(o.baseUrl).split('&')[0]}`,
@@ -65,10 +66,11 @@ const SEARCHERS: Record<string, (q: string) => Promise<Hit[]>> = {
     return hits;
   },
 
-  async croma(q) {
+  // Croma prices and stock by pincode (its channelCode); without one it uses a Mumbai default.
+  async croma(q, pin) {
     const json = JSON.parse(
       await get(
-        `https://api.croma.com/searchservices/v1/search?currentPage=0&query=${encodeURIComponent(q)}%3Arelevance&fields=FULL&channel=WEB&channelCode=400049&spellOpt=DEFAULT`,
+        `https://api.croma.com/searchservices/v1/search?currentPage=0&query=${encodeURIComponent(q)}%3Arelevance&fields=FULL&channel=WEB&channelCode=${pin || '400049'}&spellOpt=DEFAULT`,
         { Origin: 'https://www.croma.com', Referer: 'https://www.croma.com/' },
       ),
     );
@@ -76,11 +78,12 @@ const SEARCHERS: Record<string, (q: string) => Promise<Hit[]>> = {
       store: 'Croma',
       platform: 'croma',
       title: p.name,
-      price: num(p.price?.value),
+      price: num(p.pincodePrice?.value ?? p.pincodePrice) || num(p.price?.value),
       mrp: num(p.mrp?.value) || null,
       url: p.url ? `https://www.croma.com${p.url}` : `https://www.croma.com/p/${p.code}`,
       image: p.plpImage || null,
-      in_stock: p.stockStatus ? !/out/i.test(p.stockStatus) : true,
+      in_stock: true,
+      ref: p.code ? String(p.code) : undefined,
     }));
   },
 
@@ -178,26 +181,51 @@ const SEARCHERS: Record<string, (q: string) => Promise<Hit[]>> = {
   },
 };
 
-// Which stores to ask, by what the product is.
-const FASHION = /\b(shirt|t-shirt|tshirt|tee|jeans|kurta|saree|dress|top|shoe|sneaker|sandal|jacket|hoodie|trouser|shorts|bag|watch|sunglass|bra|lehenga|leggings|sweatshirt|track)/i;
+// Croma's own delivery promise for a pincode: whether it ships there, and by when.
+async function cromaDelivery(code: string, pin: string): Promise<StoreOffer['delivery']> {
+  const res = await fetch('https://api.croma.com/inventory/oms/v2/tms/details-pwa/', {
+    method: 'POST',
+    headers: { 'User-Agent': UA, 'Content-Type': 'application/json', Accept: 'application/json', Origin: 'https://www.croma.com', Referer: 'https://www.croma.com/' },
+    body: JSON.stringify({
+      promise: {
+        allocationRuleID: 'SYSTEM',
+        checkInventory: 'Y',
+        organizationCode: 'CROMA',
+        sourcingClassification: 'EC',
+        promiseLines: { promiseLine: [{ fulfillmentType: 'HDEL', itemID: code, lineId: '1', requiredQty: '1', shipToAddress: { zipCode: pin }, extn: { widerStoreFlag: 'Y' } }] },
+      },
+    }),
+    signal: AbortSignal.timeout(8000),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`${res.status}`);
+  const line = (await res.json())?.promise?.suggestedOption?.option?.promiseLines?.promiseLine?.[0];
+  const by = line?.assignments?.assignment?.[0]?.deliveryDate;
+  return { pin, ok: !!line, by: typeof by === 'string' ? by : null };
+}
 
+// Every store we can search, except the one the shopper is already on. Stores that do not sell the
+// item simply return no match, so asking them all costs only time, and they run in parallel.
 function storesFor(p: Product) {
-  const fashion = FASHION.test(p.title) || ['myntra', 'ajio'].includes(p.platform);
-  const list = fashion ? ['myntra', 'ajio', 'flipkart', 'amazon', 'tatacliq'] : ['amazon', 'flipkart', 'croma', 'reliancedigital', 'tatacliq'];
-  return list.filter((s) => s !== p.platform);
+  return Object.keys(SEARCHERS).filter((s) => s !== p.platform);
 }
 
 const STOP = new Set(['with', 'for', 'and', 'the', 'of', 'in', 'by', 'from', 'new', 'latest', 'free', 'pack', 'combo', 'online', 'buy', 'gb', 'ram', 'rom']);
 const tokens = (s: string) =>
   s
     .toLowerCase()
-    .replace(/(\d+)\s*(gb|tb|mah|w|inch|cm|ml|kg|g)\b/g, '$1$2')
-    .split(/[^a-z0-9]+/)
+    .replace(/(\d+(?:\.\d+)?)\s*(gb|tb|mah|w|inch|cm|ml|kg|g|l|ltr)\b/g, '$1$2')
+    .split(/[^a-z0-9.]+/)
+    .map((w) => w.replace(/^\.+|\.+$/g, ''))
     .filter((w) => w && !STOP.has(w));
 const COLORS = new Set(
   'black white blue green red yellow pink purple grey gray silver gold orange brown beige navy maroon teal olive cream violet titanium graphite midnight starlight natural desert ultramarine'.split(' '),
 );
-const ACCESSORY = /\b(case|cover|protector|tempered|glass|guard|skin|charger|cable|adapter|stand|holder|strap|pouch|refurbished|renewed)\b/i;
+const ACCESSORY = /\b(case|cover|protector|tempered|glass|guard|charger|cable|adapter|stand|holder|strap|pouch|refurbished|renewed)\b/i;
+// Words that name a different model of the same line: an iPhone 15 is not an iPhone 15 Pro.
+const MODEL = new Set(['plus', 'pro', 'max', 'mini', 'ultra', 'lite', 'fe', 'neo', 'prime', 'air']);
+// Pack sizes: a different size is the same product in another variant, not a different product.
+const SIZE = /^\d+(\.\d+)?(ml|g|kg|l|ltr)$/;
 
 // The search query: brand, model and size words from the title, without marketing filler.
 export function queryFor(title: string) {
@@ -210,37 +238,52 @@ export function queryFor(title: string) {
     .join(' ');
 }
 
-function match(source: Product, hit: Hit): { ok: boolean; same: boolean; score: number } {
-  const src = tokens(source.title);
-  const cand = new Set(tokens(hit.title));
-  if (!src.length) return { ok: false, same: false, score: 0 };
-  if (ACCESSORY.test(hit.title) && !ACCESSORY.test(source.title)) return { ok: false, same: false, score: 0 };
-  if (hit.price < source.price * 0.4 || hit.price > source.price * 2.5) return { ok: false, same: false, score: 0 };
-  // Model numbers and sizes (15, 128gb, 8gb…) must all match.
-  const specs = src.filter((t) => /\d/.test(t));
-  if (specs.some((t) => !cand.has(t))) return { ok: false, same: false, score: 0 };
+export function match(source: Product, hit: Hit): { ok: boolean; same: boolean; score: number } {
+  const none = { ok: false, same: false, score: 0 };
+  // Compare on the core name (brand, model, size), not the long marketing title.
+  const src = [...new Set(tokens(queryFor(source.title)))];
+  const candList = tokens(hit.title);
+  const cand = new Set(candList);
+  if (src.length < 2) return none;
+  if (ACCESSORY.test(hit.title) && !ACCESSORY.test(source.title)) return none;
+  if (hit.price < source.price * 0.4 || hit.price > source.price * 2.5) return none;
+  if (!cand.has(src[0])) return none; // the brand
+  // Model numbers and storage (15, s24, 128gb…) must all match; pack sizes may differ.
+  if (src.some((t) => /\d/.test(t) && !SIZE.test(t) && !cand.has(t))) return none;
+  const fullSrc = new Set(tokens(source.title));
+  const hasModelNo = src.some((t) => /\d/.test(t) && !SIZE.test(t));
+  if (hasModelNo && [...MODEL].some((m) => cand.has(m) !== fullSrc.has(m))) return none;
   const shared = src.filter((t) => cand.has(t)).length;
-  const score = shared / src.length;
-  // A different colour is listed, but not as the same item.
+  // How much of the shorter name the other one contains, and how much of ours it covers.
+  const contain = shared / Math.min(src.length, new Set(candList).size);
+  const cover = shared / src.length;
+  if (shared < 2 || cover < 0.4) return none;
+  const score = contain * 0.7 + cover * 0.3;
   const srcColors = src.filter((t) => COLORS.has(t));
   const candColors = [...cand].filter((t) => COLORS.has(t));
   const otherColour = srcColors.length > 0 && candColors.length > 0 && !srcColors.some((c) => cand.has(c));
-  return { ok: score >= 0.55, same: score >= 0.7 && !otherColour, score: score - (otherColour ? 0.2 : 0) };
+  const srcSize = src.find((t) => SIZE.test(t)) ?? [...fullSrc].find((t) => SIZE.test(t));
+  const candSizes = candList.filter((t) => SIZE.test(t));
+  const otherSize = !!srcSize && candSizes.length > 0 && !candSizes.includes(srcSize);
+  return { ok: score >= 0.6, same: score >= 0.7 && !otherColour && !otherSize, score: score - (otherColour || otherSize ? 0.2 : 0) };
 }
 
-export async function searchStores(product: Product): Promise<StoreOffer[]> {
+export async function searchStores(product: Product, pin: string | null = null): Promise<StoreOffer[]> {
   const q = queryFor(product.title);
   const stores = storesFor(product);
   const results = await Promise.all(
     stores.map(async (s) => {
       try {
-        const hits = await SEARCHERS[s](q);
+        const hits = await SEARCHERS[s](q, pin);
         const best = hits
           .filter((h) => h.price > 0 && h.title)
           .map((h) => ({ h, m: match(product, h) }))
           .filter((x) => x.m.ok)
           .sort((a, b) => b.m.score - a.m.score || a.h.price - b.h.price)[0];
-        return best ? { store: best.h.store, price: Math.round(best.h.price), url: best.h.url, in_stock: best.h.in_stock, same_variant: best.m.same } : null;
+        if (!best) return null;
+        const offer: StoreOffer = { store: best.h.store, price: Math.round(best.h.price), url: best.h.url, in_stock: best.h.in_stock, same_variant: best.m.same };
+        if (pin && s === 'croma' && best.h.ref) offer.delivery = await cromaDelivery(best.h.ref, pin).catch(() => undefined);
+        return offer;
       } catch {
         return null;
       }

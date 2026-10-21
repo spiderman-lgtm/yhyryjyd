@@ -1,6 +1,7 @@
 import 'server-only';
 import { historyFor, read, write, type Alert, type Product, type Settings, type Tier } from './db';
 import { refreshProduct } from './products';
+import { compareStores } from './compare';
 import { cachedCoupon } from './coupons';
 import { PLATFORM_NAMES } from './scraper';
 import { appUrl, linkSig } from './config';
@@ -206,6 +207,17 @@ export async function runTier(tier: Tier) {
       if (Date.now() - started > CHECK_BUDGET_MS) break;
       await refreshProduct(p, { allowAi: false });
       checked++;
+    }
+
+    // Other stores' prices for the same products, so each store's line in the graph keeps moving.
+    // compareStores only searches again once its cached result is stale (6 hours).
+    const compared = [...productIds, ...viewed].filter((p) => {
+      const c = read((d) => d.compare[p.id]);
+      return !c || Date.now() - Date.parse(c.fetched_at) > 6 * 3600_000;
+    });
+    for (const p of compared.slice(0, 8)) {
+      if (Date.now() - started > CHECK_BUDGET_MS) break;
+      await compareStores(read((d) => d.products[p.id]) ?? p, null, { allowAi: false }).catch(() => null);
     }
   }
 

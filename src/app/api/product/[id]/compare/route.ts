@@ -1,15 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { getProduct } from '@/lib/products';
-import { compareStores } from '@/lib/compare';
+import { compareStores, isPin } from '@/lib/compare';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const product = getProduct(params.id);
   if (!product) return NextResponse.json({ error: 'Unknown product' }, { status: 404 });
+  const pin = req.cookies.get('dr_pin')?.value;
   try {
-    return NextResponse.json(await compareStores(product));
+    return NextResponse.json({ ...(await compareStores(product, isPin(pin) ? pin : null)), pin: isPin(pin) ? pin : null });
   } catch {
     return NextResponse.json({ offers: [], error: 'Price comparison is unavailable right now.' });
   }

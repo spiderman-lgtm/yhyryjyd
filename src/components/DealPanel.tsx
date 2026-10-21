@@ -70,7 +70,7 @@ export default function DealPanel(props: {
   useEffect(() => {
     fetchOnce<{ offers?: StoreOffer[] }>(`/api/product/${productId}/compare`)
       .then((d) => {
-        const best = (d.offers || []).map((o, i) => ({ ...o, i })).filter((o) => o.same_variant && o.in_stock && o.price < price).sort((a, b) => a.price - b.price)[0];
+        const best = (d.offers || []).map((o, i) => ({ ...o, i })).filter((o) => o.same_variant && o.in_stock && o.delivery?.ok !== false && o.price < price).sort((a, b) => a.price - b.price)[0];
         if (best) setCheaper({ store: best.store, price: best.price, i: best.i });
       })
       .catch(() => {});

@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { currentUser, viewerUid } from '@/lib/auth';
 import BuyNow from '@/components/BuyNow';
@@ -7,12 +8,15 @@ import DealPanel from '@/components/DealPanel';
 import Gallery from '@/components/Gallery';
 import HistoryChart from '@/components/HistoryChart';
 import LinkInput from '@/components/LinkInput';
+import LocationPin from '@/components/LocationPin';
 import LookAlike from '@/components/LookAlike';
 import PriceCompare from '@/components/PriceCompare';
 import ShareButtons from '@/components/ShareButtons';
 import { historyFor, read } from '@/lib/db';
 import { dealScore, getProduct, markViewed } from '@/lib/products';
 import { PLATFORM_NAMES } from '@/lib/scraper';
+import { storeColor } from '@/lib/stores';
+import { isPin } from '@/lib/compare';
 import { dateShort, inr } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -39,6 +43,19 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   const off = p.mrp ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
   const store = PLATFORM_NAMES[p.platform];
   const images = p.images?.length ? p.images : p.image ? [p.image] : [];
+  const pinCookie = cookies().get('dr_pin')?.value;
+  const pin = isPin(pinCookie) ? pinCookie : null;
+  const area = pin ? cookies().get('dr_area')?.value || null : null;
+  // Every other store's recorded prices, drawn beside this store's in the history graph.
+  const storeLines = read((d) => {
+    const offers = d.compare[pin ? `${p.id}@${pin}` : p.id]?.offers ?? d.compare[p.id]?.offers ?? [];
+    return Object.entries(d.offer_history[p.id] ?? {})
+      .filter(([s]) => s.toLowerCase() !== store.toLowerCase())
+      .map(([s, points]) => {
+        const now = offers.find((o) => o.store === s && o.in_stock);
+        return { store: s, color: storeColor(s), points, live: !!now, current: now?.price ?? null, variant: now ? !now.same_variant : false };
+      });
+  });
 
   return (
     <div className="space-y-6">
@@ -64,6 +81,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
           <ShareButtons title={p.title} />
           <BuyNow productId={p.id} store={store} priceLabel={inr(p.price)} />
           <CartAndEnquire productId={p.id} inCart={inCart} />
+          <LocationPin pin={pin} area={area} />
           <CompareList productId={p.id} store={store} price={p.price} />
           <p className="text-xs text-ink-mute">
             Checked {dateShort(p.last_checked_at)}, {new Date(p.last_checked_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
@@ -83,8 +101,8 @@ export default function ProductPage({ params }: { params: { id: string } }) {
       </div>
 
       <section className="card p-5 sm:p-6">
-        <h2 className="mb-4 text-xl font-bold">Price History</h2>
-        <HistoryChart history={history.map((h) => ({ price: h.price, at: h.at }))} current={p.price} />
+        <h2 className="mb-4 text-xl font-bold">Price History{storeLines.length > 0 && <span className="ml-2 text-sm font-normal text-ink-mute">{store} vs {storeLines.length} other store{storeLines.length > 1 ? 's' : ''}</span>}</h2>
+        <HistoryChart history={history.map((h) => ({ price: h.price, at: h.at }))} current={p.price} store={store} color={storeColor(store)} stores={storeLines} />
       </section>
 
       <section className="card p-5 sm:p-6">

@@ -4,7 +4,7 @@ import { viewerUid } from '@/lib/auth';
 import { write } from '@/lib/db';
 import { getProduct } from '@/lib/products';
 import { affiliateLink, affiliateUrl } from '@/lib/coupons';
-import { cachedOffer } from '@/lib/compare';
+import { cachedOffer, isPin } from '@/lib/compare';
 import { cachedRelated } from '@/lib/related';
 
 export const dynamic = 'force-dynamic';
@@ -15,8 +15,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   // ?o=<n> sends the shopper to another store's offer from this product's own comparison, never an arbitrary URL.
   const o = req.nextUrl.searchParams.get('o');
   const r = req.nextUrl.searchParams.get('r');
+  const pin = req.cookies.get('dr_pin')?.value;
   const offer =
-    o !== null && /^\d$/.test(o) ? cachedOffer(product.id, Number(o)) : r !== null && /^\d{1,2}$/.test(r) ? cachedRelated(product.id, Number(r)) : null;
+    o !== null && /^\d{1,2}$/.test(o) ? cachedOffer(product.id, Number(o), isPin(pin) ? pin : null) : r !== null && /^\d{1,2}$/.test(r) ? cachedRelated(product.id, Number(r)) : null;
   write((d) => {
     d.clicks.push({ product_id: product.id, uid: viewerUid() || req.nextUrl.searchParams.get('a') || 'email', at: new Date().toISOString() });
   });
