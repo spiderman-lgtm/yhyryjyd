@@ -207,7 +207,7 @@ export default function AdminConsole(props: {
         ))}
       </section>
 
-      <section className="card space-y-4 p-5">
+      <section id="automation" className="card scroll-mt-20 space-y-4 p-5">
         <div>
           <h2 className="font-bold">1 · Gmail — sends price-drop emails</h2>
           <p className="text-sm text-ink-soft">Alerts go out from your own Gmail account. Shoppers never connect anything.</p>
