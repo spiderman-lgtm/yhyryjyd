@@ -72,10 +72,15 @@ async function search(product: Product): Promise<StoreOffer[]> {
     .filter((o) => (seen.has(o.store.toLowerCase()) ? false : (seen.add(o.store.toLowerCase()), true)))
     .map((o) => ({ store: o.store.slice(0, 40), price: Math.round(o.price), url: o.url, in_stock: o.in_stock, same_variant: o.same_variant }))
     .sort((a, b) => a.price - b.price);
-  write((d) => {
-    d.compare[product.id] = { offers, fetched_at: new Date().toISOString() };
+  // Keep stores the extension reported from shoppers' browsers that the server search cannot reach.
+  const merged = write((d) => {
+    const found = new Set(offers.map((o) => o.store.toLowerCase()));
+    const kept = (d.compare[product.id]?.offers ?? []).filter((o) => !found.has(o.store.toLowerCase()));
+    const all = [...offers, ...kept].sort((a, b) => a.price - b.price);
+    d.compare[product.id] = { offers: all, fetched_at: new Date().toISOString() };
+    return all;
   });
-  return offers;
+  return merged;
 }
 
 export async function compareStores(product: Product): Promise<{ offers: StoreOffer[]; fetched_at: string; cached: boolean }> {

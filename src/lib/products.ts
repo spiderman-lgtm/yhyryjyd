@@ -157,3 +157,54 @@ export function dealScore(productId: string, current: number): DealScore | null 
   const action = score >= 70 && !hikedThenCut ? 'buy' : score >= 50 ? 'okay' : 'skip';
   return { score, label, verdict, vsAverage: current < avg * 0.995 ? 'below' : current <= avg * 1.005 ? 'same' : 'above', rows, action, flags };
 }
+
+export interface PageReport {
+  url: string;
+  title: string;
+  price: number;
+  mrp?: number | null;
+  image?: string | null;
+  images?: string[];
+  rating?: number | null;
+  reviews?: number | null;
+  in_stock?: boolean;
+}
+
+// What a shopper's own browser saw on a product page (the DealRadar extension). It lets us track
+// stores that block our server, so a reported price is accepted only when it is plausible.
+export function upsertFromPage(r: PageReport): Product {
+  const url = new URL(r.url);
+  const platform = detectPlatform(url);
+  const canonical = canonicalUrl(url, platform);
+  const id = productIdFor(canonical);
+  const now = new Date().toISOString();
+  const existing = read((d) => d.products[id]);
+  const plausible = !existing || (r.price >= existing.price * 0.3 && r.price <= existing.price * 3);
+  const changed = !existing || existing.price !== r.price;
+  const recentlyRecorded = existing && Date.now() - Date.parse(existing.last_checked_at) < 30 * 60_000;
+  if (existing && !plausible) return existing;
+  const product: Product = {
+    ...(existing ?? ({} as Product)),
+    id,
+    url: canonical,
+    platform,
+    title: r.title.slice(0, 300),
+    image: r.image || existing?.image || null,
+    images: r.images?.length ? r.images.slice(0, 8) : existing?.images,
+    price: r.price,
+    mrp: r.mrp && r.mrp > r.price ? r.mrp : existing?.mrp ?? null,
+    currency: 'INR',
+    in_stock: r.in_stock ?? true,
+    source: existing?.source === 'page' ? 'page' : 'extension',
+    rating: r.rating ?? existing?.rating ?? null,
+    reviews: r.reviews ?? existing?.reviews ?? null,
+    created_at: existing?.created_at ?? now,
+    last_checked_at: changed || !recentlyRecorded ? now : existing!.last_checked_at,
+    last_error: undefined,
+  };
+  write((d) => {
+    d.products[id] = product;
+  });
+  if (changed || !recentlyRecorded) recordPrice(id, r.price);
+  return product;
+}

@@ -95,7 +95,7 @@ export default function DealPanel(props: {
   const tone = !deal ? 'bg-slate-100 text-ink-soft' : deal.score >= 70 ? 'bg-deal-light text-deal' : deal.score >= 50 ? 'bg-lime-50 text-lime-700' : 'bg-red-50 text-red-600';
 
   return (
-    <div className="card overflow-hidden">
+    <div id="alert" className="card scroll-mt-24 overflow-hidden">
       <div className="grid grid-cols-2 border-b border-slate-200 text-sm font-semibold">
         {(['scan', 'drop'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className={`py-3 ${tab === t ? 'border-b-2 border-brand text-brand' : 'text-ink-mute hover:text-ink'}`}>

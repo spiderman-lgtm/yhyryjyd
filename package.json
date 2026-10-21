@@ -8,10 +8,11 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "start": "HOSTNAME=0.0.0.0 node --max-old-space-size=128 --optimize-for-size .next/standalone/server.js",
     "typecheck": "tsc --noEmit",
-    "check:viasocket": "node viasocket-check.mjs src"
+    "check:viasocket": "node viasocket-check.mjs src",
+    "build:extension": "rm -f public/dealradar-extension.zip && cd extension && zip -qr -X ../public/dealradar-extension.zip . -x \".*\""
   },
   "dependencies": {
     "cheerio": "^1.0.0",

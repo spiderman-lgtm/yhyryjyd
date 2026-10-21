@@ -15,7 +15,7 @@ export interface Product {
   mrp: number | null;
   currency: string;
   in_stock: boolean;
-  source: 'page' | 'ai';
+  source: 'page' | 'ai' | 'extension';
   created_at: string;
   last_checked_at: string;
   last_error?: string;
