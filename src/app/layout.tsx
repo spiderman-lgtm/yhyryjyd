@@ -23,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               Deal<span className="text-brand">Radar</span>
             </Link>
             <div className="flex items-center gap-1 whitespace-nowrap text-sm font-medium sm:gap-3">
+              {user && <Link href="/dashboard" className="rounded-lg px-2 py-1.5 hover:bg-slate-100">Dashboard</Link>}
               <Link href="/cart" className="hidden rounded-lg px-2 py-1.5 hover:bg-slate-100 sm:block">My cart</Link>
               <Link href="/alerts" className="hidden rounded-lg px-2 py-1.5 hover:bg-slate-100 sm:block">My alerts</Link>
               {user ? (
