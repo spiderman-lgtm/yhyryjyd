@@ -18,13 +18,15 @@ export default function CompareList({ productId, store, price }: { productId: st
       .catch(() => setOffers([]));
   }, [productId]);
 
-  const all: Row[] = [
+  // The same item ranks above other sizes or colours, which are not a like-for-like price.
+  const rows: Row[] = [
     { store, price, href: `/api/buy/${productId}`, here: true },
     ...(offers || [])
       .map((o, i) => ({ ...o, i }))
       .filter((o) => o.in_stock && o.delivery?.ok !== false)
       .map((o) => ({ store: o.store, price: o.price, href: `/api/buy/${productId}?o=${o.i}`, here: false, variant: !o.same_variant, delivery: o.delivery })),
-  ].sort((a, b) => a.price - b.price);
+  ];
+  const all = rows.sort((a, b) => Number(!!a.variant) - Number(!!b.variant) || a.price - b.price);
   const top = all.slice(0, 5);
   const hereRow = top.some((r) => r.here) ? null : all.find((r) => r.here)!;
   const lowest = all[0];
