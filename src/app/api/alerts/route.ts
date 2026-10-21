@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { newId, read, type Channel, type Tier } from '@/lib/db';
 import { getProduct } from '@/lib/products';
 import { createAlert } from '@/lib/alerts';
-import { currentUid } from '@/lib/session';
+import { currentUid } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 

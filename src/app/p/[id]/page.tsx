@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { currentUser, viewerUid } from '@/lib/auth';
 import BuyNow from '@/components/BuyNow';
 import CartAndEnquire from '@/components/CartAndEnquire';
 import PriceChart from '@/components/PriceChart';
@@ -15,7 +15,8 @@ export const dynamic = 'force-dynamic';
 export default function ProductPage({ params, searchParams }: { params: { id: string }; searchParams: { days?: string } }) {
   const p = getProduct(params.id);
   if (!p) notFound();
-  const uid = cookies().get('dr_uid')?.value ?? '';
+  const uid = viewerUid();
+  const user = currentUser();
   const days = searchParams.days === '7' ? 7 : 15;
   const stats = priceStats(p.id, p.price);
   const points = historyFor(p.id, days);
@@ -89,7 +90,7 @@ export default function ProductPage({ params, searchParams }: { params: { id: st
         <section className="card p-5">
           <h2 className="font-bold">Not buying today? Get a price-drop alert</h2>
           <p className="mb-4 mt-1 text-sm text-ink-soft">We re-check the price and message you the moment it falls, with the best coupon and a buy link.</p>
-          <TrackForm productId={p.id} price={p.price} existing={tracking} />
+          <TrackForm productId={p.id} price={p.price} existing={tracking} defaultEmail={user?.email ?? ''} />
         </section>
       </div>
 

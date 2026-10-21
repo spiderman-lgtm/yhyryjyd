@@ -186,7 +186,7 @@ export default function AdminConsole(props: {
 
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">DealRadar admin</h1>
-        <button className="text-sm underline" onClick={() => fetch('/api/admin/login', { method: 'DELETE' }).then(() => router.refresh())}>Sign out</button>
+        <button className="text-sm underline" onClick={() => fetch('/api/auth/logout', { method: 'POST' }).then(() => router.push('/'))}>Sign out</button>
       </div>
 
       {msg && <div className="rounded-xl bg-brand-light px-4 py-3 text-sm font-medium text-brand-dark">{msg}</div>}

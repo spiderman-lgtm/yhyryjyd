@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
+import { currentUser, viewerUid } from '@/lib/auth';
 import AlertActions from '@/components/AlertActions';
 import { read } from '@/lib/db';
 import { TIER_INFO } from '@/lib/alerts';
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 const STATUS_STYLE = { active: 'bg-deal-light text-deal', expired: 'bg-slate-100 text-ink-mute', cancelled: 'bg-red-50 text-red-600' };
 
 export default function AlertsPage({ searchParams }: { searchParams: { msg?: string } }) {
-  const uid = cookies().get('dr_uid')?.value ?? '';
+  const uid = viewerUid();
   const rows = read((d) =>
     Object.values(d.alerts)
       .filter((a) => a.uid === uid && d.products[a.product_id])
@@ -24,7 +24,13 @@ export default function AlertsPage({ searchParams }: { searchParams: { msg?: str
         <h1 className="text-2xl font-bold">My price alerts</h1>
         <p className="text-sm text-ink-soft">Everything we are watching for you on this device.</p>
       </div>
-      {searchParams.msg && <div className="rounded-xl bg-brand-light px-4 py-3 text-sm font-medium text-brand-dark">{searchParams.msg}</div>}
+      {!currentUser() && (
+        <div className="rounded-xl bg-white px-4 py-3 text-sm ring-1 ring-slate-200">
+          These alerts are saved on this browser only. <Link href="/signup?next=/alerts" className="font-semibold text-brand underline">Create an account</Link> or{' '}
+          <Link href="/login?next=/alerts" className="font-semibold text-brand underline">sign in</Link> to keep them on every device.
+        </div>
+      )}
+      {searchParams.msg &&<div className="rounded-xl bg-brand-light px-4 py-3 text-sm font-medium text-brand-dark">{searchParams.msg}</div>}
       {rows.length === 0 && (
         <div className="card p-10 text-center text-ink-soft">
           No alerts yet. <Link href="/" className="font-semibold text-brand underline">Paste a product link</Link> and choose “Track price”.

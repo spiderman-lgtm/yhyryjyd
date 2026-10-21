@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { cancelAlert, extendAlert } from '@/lib/alerts';
-import { linkSig } from '@/lib/config';
+import { absolute, linkSig } from '@/lib/config';
 import { safeEqual } from '@/lib/viasocket';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const id = q.get('id') || '';
   const op = q.get('op');
   const sig = q.get('sig') || '';
-  const back = (msg: string) => NextResponse.redirect(new URL(`/alerts?msg=${encodeURIComponent(msg)}`, req.url));
+  const back = (msg: string) => NextResponse.redirect(absolute(`/alerts?msg=${encodeURIComponent(msg)}`));
   if (!id || !safeEqual(sig, linkSig(id))) return back('That link is not valid.');
   if (op === 'cancel') return back(cancelAlert(id) ? 'Alerts stopped for that product.' : 'Alert not found.');
   if (op === 'extend') {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { read } from '@/lib/db';
 import { cancelAlert, extendAlert } from '@/lib/alerts';
-import { currentUid } from '@/lib/session';
+import { currentUid } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 

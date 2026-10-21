@@ -1,7 +1,8 @@
-import AdminLogin from '@/components/admin/AdminLogin';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import AdminConsole from '@/components/admin/AdminConsole';
 import { read, type Tier } from '@/lib/db';
-import { isAdmin } from '@/lib/session';
+import { currentUser } from '@/lib/auth';
 import { TIER_INFO } from '@/lib/alerts';
 import { GMAIL, WHATSAPP, flowRunCounts, listConnections } from '@/lib/viasocket';
 
@@ -9,10 +10,17 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'DealRadar admin', robots: { index: false } };
 
 export default async function AdminPage() {
-  if (!process.env.ADMIN_KEY) {
-    return <div className="card mx-auto max-w-md p-6 text-sm">Set <code>ADMIN_KEY</code> in the server environment to enable the admin page.</div>;
+  const user = currentUser();
+  if (!user) redirect('/login?next=/admin');
+  if (user.role !== 'owner') {
+    return (
+      <div className="card mx-auto max-w-md p-6 text-center text-sm">
+        <h1 className="text-lg font-bold">Owner access only</h1>
+        <p className="mt-2 text-ink-soft">You are signed in as {user.email}, which is not the DealRadar owner account.</p>
+        <Link href="/" className="btn-dark mt-4">Back to DealRadar</Link>
+      </div>
+    );
   }
-  if (!isAdmin()) return <AdminLogin />;
 
   const data = read((d) => ({
     settings: d.settings,

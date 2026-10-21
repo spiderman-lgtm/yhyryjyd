@@ -46,6 +46,16 @@ export interface Alert {
   status: 'active' | 'expired' | 'cancelled';
 }
 
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  password_hash: string | null;
+  google_sub: string | null;
+  role: 'owner' | 'user';
+  created_at: string;
+}
+
 export interface CartItem {
   id: string;
   uid: string;
@@ -103,6 +113,7 @@ export interface DeliveryLog {
 }
 
 interface Data {
+  users: Record<string, User>;
   products: Record<string, Product>;
   history: PricePoint[];
   alerts: Record<string, Alert>;
@@ -119,6 +130,7 @@ const FILE = path.join(DIR, 'dealradar.json');
 
 function empty(): Data {
   return {
+    users: {},
     products: {},
     history: [],
     alerts: {},

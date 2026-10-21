@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
+import { viewerUid } from '@/lib/auth';
 import RemoveFromCart from '@/components/RemoveFromCart';
 import { read } from '@/lib/db';
 import { inr } from '@/lib/format';
@@ -9,7 +9,7 @@ import { PLATFORM_NAMES } from '@/lib/scraper';
 export const dynamic = 'force-dynamic';
 
 export default function CartPage() {
-  const uid = cookies().get('dr_uid')?.value ?? '';
+  const uid = viewerUid();
   const items = read((d) =>
     Object.values(d.cart)
       .filter((c) => c.uid === uid && d.products[c.product_id])
