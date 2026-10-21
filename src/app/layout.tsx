@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
           <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-            <Link href="/" className="flex shrink-0 items-center gap-2 text-lg font-extrabold">
+            <Link href={user ? '/dashboard' : '/'} className="flex shrink-0 items-center gap-2 text-lg font-extrabold">
               <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-white">₹</span>
               Deal<span className="text-brand">Radar</span>
             </Link>

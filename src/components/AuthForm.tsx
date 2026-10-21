@@ -39,7 +39,7 @@ export default function AuthForm({ mode, next, google, error: initialError }: { 
       setBusy(false);
       return setError(data.error || 'Something went wrong.');
     }
-    router.push(next === '/' && data.role === 'owner' ? '/admin' : next);
+    router.push(next === '/' ? '/dashboard' : next);
     router.refresh();
   }
 

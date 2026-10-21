@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     }
   }
   mergeAnonymous(req.cookies.get(ANON_COOKIE)?.value, user.id);
-  const res = NextResponse.redirect(absolute(next));
+  const res = NextResponse.redirect(absolute(next === '/' ? '/dashboard' : next));
   res.cookies.delete('dr_oauth');
   setSession(res, user.id, secureCookies());
   return res;

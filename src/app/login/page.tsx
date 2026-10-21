@@ -7,6 +7,6 @@ export const metadata = { title: 'Sign in — DealRadar' };
 
 export default function LoginPage({ searchParams }: { searchParams: { next?: string; error?: string } }) {
   const next = safeNext(searchParams.next);
-  if (currentUser()) redirect(next);
+  if (currentUser()) redirect(next === '/' ? '/dashboard' : next);
   return <AuthForm mode="login" next={next} google={googleEnabled()} error={searchParams.error} />;
 }
