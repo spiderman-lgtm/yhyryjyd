@@ -25,8 +25,7 @@ export default function UserMenu({ name, email, owner }: { name: string; email: 
             <div className="font-semibold">{name}</div>
             <div className="truncate text-xs text-ink-mute">{email}</div>
           </div>
-          {owner && <Link href="/admin" onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 hover:bg-slate-50">Admin</Link>}
-          {owner && <Link href="/admin#automation" onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 hover:bg-slate-50">Automation</Link>}
+          {owner && <Link href="/admin" onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 hover:bg-slate-50">Automation</Link>}
           <button
             className="block w-full rounded-lg px-3 py-2 text-left text-red-600 hover:bg-red-50"
             onClick={async () => {
