@@ -18,13 +18,13 @@ const DROPS = [
   { v: 20, t: '20% or more' },
 ];
 
-export default function TrackForm({ productId, price, existing, defaultEmail = '' }: { productId: string; price: number; existing: boolean; defaultEmail?: string }) {
+export default function TrackForm({ productId, price, existing, defaultEmail = '', defaultTarget = '' }: { productId: string; price: number; existing: boolean; defaultEmail?: string; defaultTarget?: string }) {
   const [tier, setTier] = useState<Tier>('normal');
   const [drop, setDrop] = useState(5);
   const [days, setDays] = useState<7 | 15>(7);
   const [email, setEmail] = useState(defaultEmail);
   const [phone, setPhone] = useState('');
-  const [target, setTarget] = useState('');
+  const [target, setTarget] = useState(defaultTarget);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(existing);

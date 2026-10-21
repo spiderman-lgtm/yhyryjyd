@@ -189,6 +189,26 @@ export async function runTier(tier: Tier) {
     checked++;
   }
 
+  // Products people looked at in the last 2 weeks are re-checked every 6 hours too, so their
+  // price graph keeps filling in. Page reads only: no AI credits are spent on these.
+  if (tier === 'normal') {
+    const alerted = new Set(productIds.map((p) => p.id));
+    const viewed = read((d) =>
+      Object.values(d.products).filter(
+        (p) =>
+          !alerted.has(p.id) &&
+          p.last_viewed_at &&
+          Date.now() - Date.parse(p.last_viewed_at) < 14 * 86400_000 &&
+          Date.now() - Date.parse(p.last_checked_at) > 6 * 3600_000,
+      ),
+    ).sort((a, b) => Date.parse(a.last_checked_at) - Date.parse(b.last_checked_at));
+    for (const p of viewed) {
+      if (Date.now() - started > CHECK_BUDGET_MS) break;
+      await refreshProduct(p, { allowAi: false });
+      checked++;
+    }
+  }
+
   // 3. Decide who hears about it.
   if (tier === 'digest') {
     const byEmail = new Map<string, { alert: Alert; product: Product }[]>();

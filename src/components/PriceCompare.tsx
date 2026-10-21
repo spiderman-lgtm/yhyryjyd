@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { StoreOffer } from '@/lib/db';
 import { inr } from '@/lib/format';
+import { fetchOnce } from '@/lib/fetch-once';
 
 type Row = StoreOffer & { index: number | null; here?: boolean };
 
@@ -17,26 +18,18 @@ export default function PriceCompare({ productId, store, price, url }: { product
   useEffect(() => {
     let alive = true;
     const tick = setInterval(() => setSecs((s) => s + 1), 1000);
-    (async () => {
-      // The web search can outlast the host's proxy; the server keeps going, so a retry joins it.
-      for (let attempt = 0; attempt < 2 && alive; attempt++) {
-        try {
-          const res = await fetch(`/api/product/${productId}/compare`);
-          if (!res.ok) throw new Error(String(res.status));
-          const data = await res.json();
-          if (!alive) return;
-          setOffers(data.offers || []);
-          setNote(data.error || '');
-          break;
-        } catch {
-          if (attempt === 1 && alive) {
-            setOffers([]);
-            setNote('Price comparison is unavailable right now.');
-          }
-        }
-      }
-      clearInterval(tick);
-    })();
+    fetchOnce<{ offers?: StoreOffer[]; error?: string }>(`/api/product/${productId}/compare`)
+      .then((data) => {
+        if (!alive) return;
+        setOffers(data.offers || []);
+        setNote(data.error || '');
+      })
+      .catch(() => {
+        if (!alive) return;
+        setOffers([]);
+        setNote('Price comparison is unavailable right now.');
+      })
+      .finally(() => clearInterval(tick));
     return () => {
       alive = false;
       clearInterval(tick);

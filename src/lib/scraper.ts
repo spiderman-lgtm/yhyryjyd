@@ -12,7 +12,12 @@ export interface Scraped {
   currency: string;
   in_stock: boolean;
   source: 'page' | 'ai';
+  images: string[];
+  rating: number | null;
+  reviews: number | null;
 }
+
+const absUrl = (u: unknown): string | null => (typeof u === 'string' && /^https?:\/\//.test(u) ? u : typeof u === 'object' && u && typeof (u as any).url === 'string' ? (u as any).url : null);
 
 export function detectPlatform(url: URL): Platform {
   const h = url.hostname.replace(/^www\./, '');
@@ -117,8 +122,14 @@ function fromJsonLd($: cheerio.CheerioAPI) {
       const type = Array.isArray(n?.['@type']) ? n['@type'] : [n?.['@type']];
       if (!type.includes('Product')) continue;
       out.title ??= n.name;
-      const img = Array.isArray(n.image) ? n.image[0] : n.image;
-      out.image ??= typeof img === 'string' ? img : img?.url ?? null;
+      const imgs = ((Array.isArray(n.image) ? n.image : [n.image]) as unknown[]).map(absUrl).filter((x): x is string => !!x);
+      out.image ??= imgs[0] ?? null;
+      if (!out.images?.length && imgs.length) out.images = imgs;
+      const r = n.aggregateRating;
+      if (r) {
+        out.rating ??= parsePrice(r.ratingValue);
+        out.reviews ??= parsePrice(r.reviewCount ?? r.ratingCount);
+      }
       const offers = Array.isArray(n.offers) ? n.offers[0] : n.offers;
       const price = parsePrice(offers?.price ?? offers?.lowPrice);
       if (price) out.price ??= price;
@@ -138,8 +149,20 @@ function parseHtml(html: string, platform: Platform): Partial<Scraped> {
   let image = ld.image || meta('og:image') || null;
   let price = ld.price || parsePrice(meta('product:price:amount')) || parsePrice(meta('og:price:amount'));
   let mrp: number | null = null;
+  let images = ld.images ?? [];
+  let rating = ld.rating ?? null;
+  let reviews = ld.reviews ?? null;
 
   if (platform === 'amazon') {
+    rating = rating || parsePrice($('#acrPopover').attr('title'));
+    reviews = reviews || parsePrice($('#acrCustomerReviewText').first().text());
+    // Thumbnails carry a size token (._SS40_.); removing it gives the full-size image.
+    const alt = $('#altImages img')
+      .map((_, el) => $(el).attr('src') || '')
+      .get()
+      .filter((s) => /\/images\/I\//.test(s))
+      .map((s) => s.replace(/\._[^/]+_\./, '.'));
+    if (alt.length) images = alt;
     title = $('#productTitle').text().trim() || title;
     price = parsePrice($('#corePriceDisplay_desktop_feature_div .a-price .a-offscreen').first().text()) ||
       parsePrice($('.a-price .a-offscreen').first().text()) || price;
@@ -159,14 +182,20 @@ function parseHtml(html: string, platform: Platform): Partial<Scraped> {
     mrp: mrp && price && mrp > price ? mrp : null,
     currency: ld.currency || 'INR',
     in_stock: ld.in_stock ?? !/currently unavailable|out of stock|sold out/i.test($('body').text().slice(0, 50000)),
+    images: [...new Set([image, ...images].filter((x): x is string => !!x))].slice(0, 8),
+    rating: rating && rating <= 5 ? rating : null,
+    reviews,
   };
 }
 
 const PRODUCT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['found', 'title', 'price', 'mrp', 'image', 'currency', 'in_stock'],
+  required: ['found', 'title', 'price', 'mrp', 'image', 'images', 'rating', 'review_count', 'currency', 'in_stock'],
   properties: {
+    images: { type: 'array', maxItems: 6, items: { type: 'string' }, description: 'absolute URLs of the product gallery images' },
+    rating: { type: ['number', 'null'], description: 'average star rating out of 5, if shown' },
+    review_count: { type: ['number', 'null'], description: 'number of ratings or reviews, if shown' },
     found: { type: 'boolean', description: 'true only if the page was read and a selling price was seen on it' },
     title: { type: 'string' },
     price: { type: ['number', 'null'], description: 'current selling price, number only' },
@@ -177,7 +206,18 @@ const PRODUCT_SCHEMA = {
   },
 };
 
-type AiProduct = { found: boolean; title: string; price: number | null; mrp: number | null; image: string | null; currency: string; in_stock: boolean };
+type AiProduct = {
+  found: boolean;
+  title: string;
+  price: number | null;
+  mrp: number | null;
+  image: string | null;
+  images: string[];
+  rating: number | null;
+  review_count: number | null;
+  currency: string;
+  in_stock: boolean;
+};
 
 const EXTRACT_PROMPT =
   'You read e-commerce product pages. Open the URL you are given and report what the page shows right now: ' +
@@ -204,6 +244,9 @@ async function aiExtract(url: string, productId: string, useBrowser: boolean): P
     currency: r.currency || 'INR',
     in_stock: r.in_stock,
     source: 'ai',
+    images: [...new Set([r.image, ...(r.images || [])].map(absUrl).filter((x): x is string => !!x))].slice(0, 8),
+    rating: r.rating && r.rating <= 5 ? r.rating : null,
+    reviews: r.review_count && r.review_count > 0 ? Math.round(r.review_count) : null,
   };
 }
 
@@ -213,7 +256,18 @@ export async function scrapeProduct(url: string, platform: Platform, productId: 
     const { html } = await fetchHtml(url);
     const p = parseHtml(html, platform);
     if (p.price && p.title) {
-      return { title: p.title, image: p.image ?? null, price: p.price, mrp: p.mrp ?? null, currency: p.currency || 'INR', in_stock: p.in_stock ?? true, source: 'page' };
+      return {
+        title: p.title,
+        image: p.image ?? null,
+        price: p.price,
+        mrp: p.mrp ?? null,
+        currency: p.currency || 'INR',
+        in_stock: p.in_stock ?? true,
+        source: 'page',
+        images: p.images ?? [],
+        rating: p.rating ?? null,
+        reviews: p.reviews ?? null,
+      };
     }
     pageError = 'price not found on the page';
   } catch (e) {

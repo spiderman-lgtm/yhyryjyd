@@ -19,6 +19,10 @@ export interface Product {
   created_at: string;
   last_checked_at: string;
   last_error?: string;
+  images?: string[];
+  rating?: number | null;
+  reviews?: number | null;
+  last_viewed_at?: string;
 }
 
 export interface PricePoint {
@@ -91,6 +95,20 @@ export interface StoreOffer {
   same_variant: boolean;
 }
 
+export interface RelatedItem {
+  title: string;
+  store: string;
+  price: number;
+  url: string;
+  image: string | null;
+  product_id?: string;
+}
+
+export interface RelatedCache {
+  items: RelatedItem[];
+  fetched_at: string;
+}
+
 export interface CompareCache {
   offers: StoreOffer[];
   fetched_at: string;
@@ -134,6 +152,7 @@ interface Data {
   enquiries: Enquiry[];
   coupons: Record<string, CouponCache>;
   compare: Record<string, CompareCache>;
+  related: Record<string, RelatedCache>;
   clicks: { product_id: string; uid: string; at: string }[];
   deliveries: DeliveryLog[];
   settings: Settings;
@@ -152,6 +171,7 @@ function empty(): Data {
     enquiries: [],
     coupons: {},
     compare: {},
+    related: {},
     clicks: [],
     deliveries: [],
     settings: { gmail: null, whatsapp: null, flows: {}, flows_activated_at: null },

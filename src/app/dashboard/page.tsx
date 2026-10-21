@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import LinkInput from '@/components/LinkInput';
+import { HomeHero, HowItWorks, RecentlyChecked } from '@/components/HomeSections';
 import { currentUser } from '@/lib/auth';
 import { read } from '@/lib/db';
 import { TIER_INFO } from '@/lib/alerts';
@@ -88,18 +88,15 @@ export default function Dashboard() {
         </div>
       )}
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      <HomeHero />
+
+      <section className="grid grid-cols-2 gap-3 pt-4 md:grid-cols-5">
         {tiles.map((t) => (
           <Link key={t.k} href={t.href} className="card p-4 transition hover:shadow-md">
             <div className="text-xs text-ink-mute">{t.k}</div>
             <div className={`mt-1 text-2xl font-extrabold ${t.good ? 'text-deal' : ''}`}>{t.v}</div>
           </Link>
         ))}
-      </section>
-
-      <section className="card p-5">
-        <h2 className="mb-3 font-bold">Check a new product</h2>
-        <LinkInput compact />
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
@@ -196,6 +193,11 @@ export default function Dashboard() {
             <p className="mt-2 text-ink-soft">Alerts go to the email or WhatsApp number you entered when you tracked each product.</p>
           </section>
         </div>
+      </div>
+
+      <div className="space-y-10 pt-6">
+        <HowItWorks />
+        <RecentlyChecked />
       </div>
     </div>
   );

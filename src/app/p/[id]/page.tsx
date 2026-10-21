@@ -2,104 +2,101 @@ import { notFound } from 'next/navigation';
 import { currentUser, viewerUid } from '@/lib/auth';
 import BuyNow from '@/components/BuyNow';
 import CartAndEnquire from '@/components/CartAndEnquire';
-import PriceChart from '@/components/PriceChart';
-import PriceCompare from '@/components/PriceCompare';
-import TrackForm from '@/components/TrackForm';
+import CompareList from '@/components/CompareList';
+import DealPanel from '@/components/DealPanel';
+import Gallery from '@/components/Gallery';
+import HistoryChart from '@/components/HistoryChart';
 import LinkInput from '@/components/LinkInput';
+import LookAlike from '@/components/LookAlike';
+import PriceCompare from '@/components/PriceCompare';
+import ShareButtons from '@/components/ShareButtons';
 import { historyFor, read } from '@/lib/db';
-import { getProduct, priceStats } from '@/lib/products';
+import { dealScore, getProduct, markViewed } from '@/lib/products';
 import { PLATFORM_NAMES } from '@/lib/scraper';
 import { dateShort, inr } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
-export default function ProductPage({ params, searchParams }: { params: { id: string }; searchParams: { days?: string } }) {
+function Stars({ rating }: { rating: number }) {
+  return (
+    <span className="text-amber-500" aria-hidden="true">
+      {'★★★★★'.slice(0, Math.round(rating))}
+      <span className="text-slate-300">{'★★★★★'.slice(Math.round(rating))}</span>
+    </span>
+  );
+}
+
+export default function ProductPage({ params }: { params: { id: string } }) {
   const p = getProduct(params.id);
   if (!p) notFound();
+  markViewed(p.id);
   const uid = viewerUid();
   const user = currentUser();
-  const days = searchParams.days === '7' ? 7 : 15;
-  const stats = priceStats(p.id, p.price);
-  const points = historyFor(p.id, days);
+  const history = historyFor(p.id);
+  const deal = dealScore(p.id, p.price);
   const inCart = read((d) => Object.values(d.cart).some((c) => c.uid === uid && c.product_id === p.id));
   const tracking = read((d) => Object.values(d.alerts).some((a) => a.uid === uid && a.product_id === p.id && a.status === 'active'));
   const off = p.mrp ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
   const store = PLATFORM_NAMES[p.platform];
-  const atLow = stats.points > 1 && p.price <= stats.d15.low;
+  const images = p.images?.length ? p.images : p.image ? [p.image] : [];
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <div className="card grid aspect-square place-items-center p-6">
-          {p.image ? <img src={p.image} alt={p.title} className="max-h-full max-w-full object-contain" /> : <span className="text-7xl">🛍️</span>}
-        </div>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,4fr)_minmax(0,4fr)_minmax(0,4.5fr)]">
+        <Gallery images={images} title={p.title} />
 
-        <div className="space-y-5">
-          <div>
-            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-ink-soft">{store}</span>
-            <h1 className="mt-3 text-xl font-bold leading-snug sm:text-2xl">{p.title}</h1>
-          </div>
-
+        <div className="space-y-4">
+          <span className="inline-block rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-ink-soft">{store}</span>
+          <h1 className="text-xl font-semibold leading-snug">{p.title}</h1>
+          {p.rating ? (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-semibold text-brand">{p.rating.toFixed(1)}</span>
+              <Stars rating={p.rating} />
+              {p.reviews ? <span className="text-ink-mute">{p.reviews >= 1000 ? `${(p.reviews / 1000).toFixed(1)}K` : p.reviews} ratings</span> : null}
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-baseline gap-3">
             <span className="text-4xl font-extrabold">{inr(p.price)}</span>
             {p.mrp && <span className="text-lg text-ink-mute line-through">{inr(p.mrp)}</span>}
             {off > 0 && <span className="rounded-lg bg-deal-light px-2 py-0.5 text-sm font-bold text-deal">{off}% off</span>}
             {!p.in_stock && <span className="rounded-lg bg-red-50 px-2 py-0.5 text-sm font-bold text-red-600">Out of stock</span>}
           </div>
-
-          {atLow && <div className="rounded-xl bg-deal-light px-4 py-2 text-sm font-semibold text-deal">Lowest price we have seen in the last 15 days — a good time to buy.</div>}
-
-          <div className="grid grid-cols-3 gap-3 text-center">
-            {[
-              { k: '7-day low', v: stats.d7.low },
-              { k: '15-day low', v: stats.d15.low },
-              { k: '15-day high', v: stats.d15.high },
-            ].map((s) => (
-              <div key={s.k} className="card p-3">
-                <div className="text-xs text-ink-mute">{s.k}</div>
-                <div className="font-bold">{inr(s.v)}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="space-y-3">
-            <BuyNow productId={p.id} store={store} priceLabel={inr(p.price)} />
-            <CartAndEnquire productId={p.id} inCart={inCart} />
-          </div>
-
+          <ShareButtons title={p.title} />
+          <BuyNow productId={p.id} store={store} priceLabel={inr(p.price)} />
+          <CartAndEnquire productId={p.id} inCart={inCart} />
+          <CompareList productId={p.id} store={store} price={p.price} />
           <p className="text-xs text-ink-mute">
-            Checked {dateShort(p.last_checked_at)} at {new Date(p.last_checked_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+            Checked {dateShort(p.last_checked_at)}, {new Date(p.last_checked_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
             {p.source === 'ai' && ' · read by AI because the store blocked a direct check'}
-            {stats.trackingSince && ` · price history since ${dateShort(stats.trackingSince)}`}
           </p>
         </div>
+
+        <DealPanel
+          productId={p.id}
+          price={p.price}
+          store={store}
+          deal={deal}
+          trackingSince={history[0]?.at ?? null}
+          tracking={tracking}
+          userEmail={user?.email ?? null}
+        />
       </div>
 
-      <section className="card p-5">
-        <h2 className="font-bold">Compare prices on other stores</h2>
+      <section className="card p-5 sm:p-6">
+        <h2 className="mb-4 text-xl font-bold">Price History</h2>
+        <HistoryChart history={history.map((h) => ({ price: h.price, at: h.at }))} current={p.price} />
+      </section>
+
+      <section className="card p-5 sm:p-6">
+        <h2 className="text-xl font-bold">Compare prices on other stores</h2>
         <p className="mb-4 mt-1 text-sm text-ink-soft">The same product on Amazon, Flipkart, Croma and more — cheapest first.</p>
         <PriceCompare productId={p.id} store={store} price={p.price} url={p.url} />
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="card p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-bold">Price history</h2>
-            <div className="flex gap-1 text-sm">
-              {[7, 15].map((d) => (
-                <a key={d} href={`?days=${d}`} className={days === d ? 'chip-on py-1' : 'chip-off py-1'}>{d} days</a>
-              ))}
-            </div>
-          </div>
-          <PriceChart points={points} days={days} />
-        </section>
-
-        <section className="card p-5">
-          <h2 className="font-bold">Not buying today? Get a price-drop alert</h2>
-          <p className="mb-4 mt-1 text-sm text-ink-soft">We re-check the price and message you the moment it falls, with the best coupon and a buy link.</p>
-          <TrackForm productId={p.id} price={p.price} existing={tracking} defaultEmail={user?.email ?? ''} />
-        </section>
-      </div>
+      <section>
+        <h2 className="mb-1 text-xl font-bold">LookAlike <span className="text-brand">✦</span></h2>
+        <LookAlike productId={p.id} />
+      </section>
 
       <section className="card p-5">
         <h2 className="mb-3 font-bold">Check another product</h2>

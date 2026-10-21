@@ -43,7 +43,7 @@ export default function BuyNow({ productId, store, priceLabel }: { productId: st
 
   return (
     <>
-      <button onClick={start} className="btn-primary w-full py-3.5 text-base">Buy now · {priceLabel}</button>
+      <button onClick={start} className="btn-primary w-full py-3.5 text-base">Buy on {store} · {priceLabel}</button>
       <Modal open={open} onClose={close} title={`Best offers on ${store}`}>
         {state === 'loading' && (
           <div className="space-y-3 py-4">
