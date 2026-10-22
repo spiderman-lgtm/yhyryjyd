@@ -43,8 +43,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="flex items-center gap-1 whitespace-nowrap text-sm font-medium sm:gap-3">
               <HeaderLocation pin={pin} area={area} />
               {user && <Link href="/dashboard" className="rounded-lg px-2 py-1.5 hover:bg-slate-100">Dashboard</Link>}
-              <Link href="/cart" className="hidden rounded-lg px-2 py-1.5 hover:bg-slate-100 sm:block">My cart</Link>
-              <Link href="/alerts" className="hidden rounded-lg px-2 py-1.5 hover:bg-slate-100 sm:block">My alerts</Link>
+              {!user && <Link href="/cart" className="hidden rounded-lg px-2 py-1.5 hover:bg-slate-100 sm:block">My cart</Link>}
+              {!user && <Link href="/alerts" className="hidden rounded-lg px-2 py-1.5 hover:bg-slate-100 sm:block">My alerts</Link>}
               {user ? (
                 <UserMenu name={user.name} email={user.email} owner={user.role === 'owner'} />
               ) : (
@@ -57,8 +57,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </nav>
           <div className="flex gap-1 overflow-x-auto whitespace-nowrap border-t border-slate-100 px-4 py-1.5 text-sm font-medium md:hidden">
             {NAV.map((n) => <Link key={n.href} href={n.href} className="rounded-lg px-3 py-1 hover:bg-slate-100">{n.label}</Link>)}
-            <Link href="/alerts" className="rounded-lg px-3 py-1 hover:bg-slate-100 sm:hidden">My alerts</Link>
-            <Link href="/cart" className="rounded-lg px-3 py-1 hover:bg-slate-100 sm:hidden">My cart</Link>
+            {!user && <Link href="/alerts" className="rounded-lg px-3 py-1 hover:bg-slate-100 sm:hidden">My alerts</Link>}
+            {!user && <Link href="/cart" className="rounded-lg px-3 py-1 hover:bg-slate-100 sm:hidden">My cart</Link>}
           </div>
         </header>
         <main className="mx-auto max-w-7xl px-4 py-8">{children}</main>

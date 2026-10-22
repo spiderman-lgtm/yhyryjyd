@@ -26,6 +26,8 @@ export default function UserMenu({ name, email, owner }: { name: string; email: 
             <div className="truncate text-xs text-ink-mute">{email}</div>
           </div>
           {owner && <Link href="/admin" onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 hover:bg-slate-50">Automation</Link>}
+          <Link href="/cart" onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 hover:bg-slate-50">My cart</Link>
+          <Link href="/alerts" onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 hover:bg-slate-50">My alerts</Link>
           <button
             className="block w-full rounded-lg px-3 py-2 text-left text-red-600 hover:bg-red-50"
             onClick={async () => {
