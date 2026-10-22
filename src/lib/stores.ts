@@ -45,6 +45,20 @@ export const STORE_DOMAINS: Record<string, string> = {
   blinkit: 'blinkit.com',
   instamart: 'swiggy.com',
   bigbasket: 'bigbasket.com',
+  decathlon: 'decathlon.in',
+  boat: 'boat-lifestyle.com',
+  noise: 'gonoise.com',
+  boult: 'boultaudio.com',
+  'fire-boltt': 'fireboltt.com',
+  ptron: 'ptron.in',
+  zebronics: 'zebronics.com',
+  plum: 'plumgoodness.com',
+  'sugar cosmetics': 'in.sugarcosmetics.com',
+  mamaearth: 'mamaearth.in',
+  mcaffeine: 'mcaffeine.com',
+  'bombay shaving company': 'bombayshavingcompany.com',
+  beardo: 'beardo.in',
+  snitch: 'snitch.co.in',
 };
 
 export const storeDomain = (name: string) => STORE_DOMAINS[name.toLowerCase()] ?? null;

@@ -228,13 +228,109 @@ export function searchStore(store: string, q: string, pin: string | null = null)
   return fn(q, pin);
 }
 
-// Every store we can search, except the one the shopper is already on. Stores that do not sell the
-// item simply return no match, so asking them all costs only time, and they run in parallel.
-function storesFor(p: Product) {
-  return Object.keys(SEARCHERS).filter((s) => s !== p.platform);
+// Brand stores on Shopify: each one's public storefront search (/search/suggest.json). A brand store only
+// sells its own brand, so it is asked only when the product or search is that brand or its category.
+type BrandStore = { key: string; name: string; domain: string; brands: string[]; cats: string[] };
+export const BRAND_STORES: BrandStore[] = [
+  { key: 'boat', name: 'boAt', domain: 'www.boat-lifestyle.com', brands: ['boat'], cats: ['audio', 'wearable'] },
+  { key: 'noise', name: 'Noise', domain: 'www.gonoise.com', brands: ['noise'], cats: ['audio', 'wearable'] },
+  { key: 'boult', name: 'Boult', domain: 'www.boultaudio.com', brands: ['boult'], cats: ['audio', 'wearable'] },
+  { key: 'fireboltt', name: 'Fire-Boltt', domain: 'www.fireboltt.com', brands: ['fireboltt', 'boltt'], cats: ['wearable', 'audio'] },
+  { key: 'ptron', name: 'pTron', domain: 'www.ptron.in', brands: ['ptron'], cats: ['audio', 'wearable'] },
+  { key: 'zebronics', name: 'Zebronics', domain: 'www.zebronics.com', brands: ['zebronics', 'zeb'], cats: ['audio', 'computer'] },
+  { key: 'plum', name: 'Plum', domain: 'plumgoodness.com', brands: ['plum'], cats: ['beauty'] },
+  { key: 'sugar', name: 'SUGAR Cosmetics', domain: 'in.sugarcosmetics.com', brands: ['sugar'], cats: ['beauty'] },
+  { key: 'mamaearth', name: 'Mamaearth', domain: 'mamaearth.in', brands: ['mamaearth'], cats: ['beauty'] },
+  { key: 'mcaffeine', name: 'mCaffeine', domain: 'www.mcaffeine.com', brands: ['mcaffeine'], cats: ['beauty'] },
+  { key: 'bsc', name: 'Bombay Shaving Company', domain: 'www.bombayshavingcompany.com', brands: ['bombay'], cats: ['grooming'] },
+  { key: 'beardo', name: 'Beardo', domain: 'www.beardo.in', brands: ['beardo'], cats: ['grooming'] },
+  { key: 'snitch', name: 'Snitch', domain: 'www.snitch.co.in', brands: ['snitch'], cats: ['fashion'] },
+];
+
+const CATS: Record<string, RegExp> = {
+  audio: /earbud|earphone|headphone|headset|neckband|\btws\b|speaker|soundbar|airdopes|\bbuds\b/i,
+  wearable: /smart ?watch|fitness band|\bwatch\b/i,
+  computer: /keyboard|mouse|webcam|speaker|soundbar|monitor/i,
+  beauty: /face ?wash|serum|cream|moisturi|sunscreen|lipstick|kajal|foundation|shampoo|conditioner|cleanser|lotion|toner|body ?wash|lip balm|makeup|skin ?care/i,
+  grooming: /beard|trimmer|razor|shaving|shave|perfume|deodorant|face ?wash/i,
+  fashion: /shirt|t-shirt|tshirt|jeans|trouser|cargo|jacket|hoodie|polo|chinos|shorts/i,
+  sports: /running|cycling|\bcycle\b|\bgym\b|yoga|football|cricket|badminton|trekking|hiking|camping|swim|fitness|dumbbell|sports? shoe/i,
+};
+const DECATHLON_BRANDS = /\b(decathlon|kiprun|kalenji|quechua|forclaz|btwin|domyos|nabaiji|artengo|kipsta|tribord|inesis|wedze|perfly|tarmak|corength|rockrider|triban|simond|olaian)\b/i;
+
+for (const b of BRAND_STORES) {
+  SEARCHERS[`brand:${b.key}`] = async (q) => {
+    const json = JSON.parse(await get(`https://${b.domain}/search/suggest.json?q=${encodeURIComponent(q)}&resources[type]=product&resources[limit]=10`, { Accept: 'application/json' }, 8000));
+    return (json?.resources?.results?.products ?? []).map((p: any): Hit => {
+      const name = String(p.title ?? '').replace(/\s+/g, ' ').trim();
+      const price = num(p.price);
+      const mrp = num(p.compare_at_price_max);
+      const img = p.image || p.featured_image?.url;
+      return {
+        store: b.name,
+        platform: 'other',
+        // Titles often leave out the brand; the matcher needs it.
+        title: name.toLowerCase().includes(b.brands[0]) ? name : `${b.name} ${name}`,
+        name,
+        price,
+        mrp: mrp > price ? mrp : null,
+        url: `https://${b.domain}${String(p.url ?? '').split('?')[0]}`,
+        image: img ? String(img).replace(/^\/\//, 'https://') : null,
+        in_stock: p.available !== false,
+      };
+    });
+  };
 }
 
-export const SEARCH_STORES = Object.keys(SEARCHERS);
+// Decathlon renders its search results on the server with labelled product cards.
+SEARCHERS.decathlon = async (q) => {
+  const $ = cheerio.load(await get(`https://www.decathlon.in/search?query=${encodeURIComponent(q)}`, {}, 10000));
+  const hits: Hit[] = [];
+  $('a[data-test-id="product-card-link"]').each((_, el) => {
+    const a = $(el);
+    const title = a.find('[data-test-id="product-card:product-card:title"]').text().replace(/\s+/g, ' ').trim();
+    const price = num(a.find('[data-test-id="product-card-product-card:selling-price"]').first().text());
+    const mrp = num(a.find('[data-test-id="product-card-product-card:mrp"]').first().text());
+    const href = a.attr('href') || '';
+    if (title && price && href)
+      hits.push({
+        store: 'Decathlon',
+        platform: 'other',
+        title,
+        price,
+        mrp: mrp > price ? mrp : null,
+        url: href.startsWith('http') ? href : `https://www.decathlon.in${href}`,
+        image: a.find('img').attr('src')?.replace(/&amp;/g, '&') ?? null,
+        in_stock: true,
+      });
+  });
+  return hits.slice(0, 12);
+};
+
+// The big general stores, asked for everything.
+export const SEARCH_STORES = ['flipkart', 'croma', 'reliancedigital', 'tatacliq', 'ajio', 'amazon', 'myntra'];
+
+// General stores, plus brand stores and Decathlon when the text names their brand or category.
+export function storesForText(text: string, maxBrandStores = 6): string[] {
+  const t = text.toLowerCase();
+  const words = new Set(tokens(t));
+  const byBrand = BRAND_STORES.filter((b) => b.brands.some((w) => words.has(w) || t.includes(w)));
+  const byCat = BRAND_STORES.filter((b) => !byBrand.includes(b) && b.cats.some((c) => CATS[c]?.test(t)));
+  const extra = [...byBrand, ...byCat].slice(0, maxBrandStores).map((b) => `brand:${b.key}`);
+  if (DECATHLON_BRANDS.test(t) || CATS.sports.test(t)) extra.push('decathlon');
+  return [...SEARCH_STORES, ...extra];
+}
+
+// Every store we can search for this product, except the one the shopper is already on. Stores that do
+// not sell it simply return no match; they all run in parallel.
+function storesFor(p: Product) {
+  // A brand's own store only for that brand (its first word), never just for the category.
+  const brand = tokens(p.title)[0] ?? '';
+  const own = BRAND_STORES.filter((b) => b.brands.includes(brand)).map((b) => `brand:${b.key}`);
+  const extra = DECATHLON_BRANDS.test(p.title) || CATS.sports.test(p.title) ? ['decathlon'] : [];
+  return [...SEARCH_STORES, ...own, ...extra].filter((s) => s !== p.platform);
+}
+
 export const searchTokens = (s: string) => tokens(s);
 
 const STOP = new Set(['with', 'for', 'and', 'the', 'of', 'in', 'by', 'from', 'new', 'latest', 'free', 'pack', 'combo', 'online', 'buy', 'gb', 'ram', 'rom']);

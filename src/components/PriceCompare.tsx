@@ -58,7 +58,7 @@ export default function PriceCompare({ productId, store, price, url }: { product
             </div>
           ))}
         </div>
-        <p className="mt-4 text-sm text-ink-mute">Searching Flipkart, Tata CLiQ, Croma, AJIO, Reliance Digital, Amazon and Myntra for this exact product… {secs}s</p>
+        <p className="mt-4 text-sm text-ink-mute">Searching Flipkart, Amazon, Croma, Reliance Digital, Tata CLiQ, AJIO, Myntra, Decathlon and the brand’s own store for this exact product… {secs}s</p>
       </div>
     );
   }

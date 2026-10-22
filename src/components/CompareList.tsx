@@ -56,7 +56,7 @@ export default function CompareList({ productId, store, price }: { productId: st
     <div>
       <h3 className="mb-2 font-bold">
         Compare {all.length} available price{all.length > 1 ? 's' : ''}
-        {offers === null && <span className="ml-2 text-xs font-normal text-ink-mute">searching Flipkart, Tata CLiQ, Croma, AJIO, Reliance…</span>}
+        {offers === null && <span className="ml-2 text-xs font-normal text-ink-mute">searching Flipkart, Amazon, Croma, Tata CLiQ, AJIO, brand stores and more…</span>}
       </h3>
       {offers === null ? (
         <div className="space-y-2">{[0, 1, 2].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-100" />)}</div>

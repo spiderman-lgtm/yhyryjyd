@@ -1,6 +1,6 @@
 import 'server-only';
 import { affiliateUrl } from './coupons';
-import { SEARCH_STORES, queryFor, searchStore, searchTokens, type Hit } from './storesearch';
+import { queryFor, searchStore, searchTokens, storesForText, type Hit } from './storesearch';
 
 export type SearchItem = {
   title: string;
@@ -41,7 +41,7 @@ export async function keywordSearch(raw: string): Promise<SearchItem[]> {
   if (hit && Date.now() - hit.at < 3600_000) return hit.items;
 
   const qTokens = [...new Set(searchTokens(q))];
-  const found = (await Promise.all(SEARCH_STORES.map((s) => searchStore(s, q).catch(() => [] as Hit[])))).flat();
+  const found = (await Promise.all(storesForText(q).map((s) => searchStore(s, q).catch(() => [] as Hit[])))).flat();
   const perStore = new Map<string, number>();
   const seen = new Set<string>();
   const items = found
