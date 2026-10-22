@@ -161,13 +161,27 @@ export interface Settings {
     variable_map: Record<string, WhatsAppVarSource>;
   } | null;
   flows: Partial<Record<Tier, string>>;
+  // The on-demand flow that sends one-off emails (alert confirmations) as soon as they are queued.
+  mail_flow?: string;
   flows_activated_at: string | null;
   flow_status?: Record<string, string>;
 }
 
+// A one-off email waiting to be sent through the operator's Gmail.
+export interface OutboxMail {
+  id: string;
+  email: string;
+  subject: string;
+  html: string;
+  created_at: string;
+  claimed_at: string | null;
+  sent_at: string | null;
+  tries: number;
+}
+
 export interface DeliveryLog {
   at: string;
-  tier: Tier;
+  tier: Tier | 'mail';
   email: { id: string; ok: boolean; error?: string }[];
   whatsapp: { id: string; ok: boolean; error?: string }[];
 }
@@ -186,6 +200,7 @@ interface Data {
   related: Record<string, RelatedCache>;
   clicks: { product_id: string; uid: string; at: string }[];
   deliveries: DeliveryLog[];
+  outbox: OutboxMail[];
   settings: Settings;
 }
 
@@ -207,6 +222,7 @@ function empty(): Data {
     related: {},
     clicks: [],
     deliveries: [],
+    outbox: [],
     settings: { gmail: null, whatsapp: null, flows: {}, flows_activated_at: null },
   };
 }
@@ -239,6 +255,7 @@ export function write<T>(fn: (d: Data) => T): T {
   const result = fn(data);
   if (data.deliveries.length > 200) data.deliveries = data.deliveries.slice(-200);
   if (data.clicks.length > 5000) data.clicks = data.clicks.slice(-5000);
+  if (data.outbox.length > 300) data.outbox = data.outbox.filter((m) => !m.sent_at).slice(-300);
   save(data);
   return result;
 }

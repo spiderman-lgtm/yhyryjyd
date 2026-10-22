@@ -28,3 +28,32 @@ export function storeColor(name: string) {
   for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return FALLBACK[h % FALLBACK.length];
 }
+
+// Each store's web address, used to show its real logo (see /api/logo).
+export const STORE_DOMAINS: Record<string, string> = {
+  amazon: 'amazon.in',
+  flipkart: 'flipkart.com',
+  myntra: 'myntra.com',
+  ajio: 'ajio.com',
+  meesho: 'meesho.com',
+  croma: 'croma.com',
+  'tata cliq': 'tatacliq.com',
+  'reliance digital': 'reliancedigital.in',
+  'vijay sales': 'vijaysales.com',
+  nykaa: 'nykaa.com',
+  jiomart: 'jiomart.com',
+  zepto: 'zeptonow.com',
+  blinkit: 'blinkit.com',
+  instamart: 'swiggy.com',
+  bigbasket: 'bigbasket.com',
+};
+
+export const storeDomain = (name: string) => STORE_DOMAINS[name.toLowerCase()] ?? null;
+
+export function hostOf(url: string | null | undefined) {
+  try {
+    return url ? new URL(url).hostname.replace(/^www\./, '') : null;
+  } catch {
+    return null;
+  }
+}

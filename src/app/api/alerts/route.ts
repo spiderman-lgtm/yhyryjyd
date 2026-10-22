@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { newId, read, type Channel, type Tier } from '@/lib/db';
 import { getProduct } from '@/lib/products';
-import { createAlert } from '@/lib/alerts';
+import { confirmationEmail, createAlert, queueMail } from '@/lib/alerts';
+import { sendQueuedMailNow } from '@/lib/flows';
 import { currentUid } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
 
   const tier: Tier = TIERS.includes(b.tier) ? b.tier : 'normal';
   if (tier === 'digest' && !email) return NextResponse.json({ error: 'The daily digest is sent by email — add an email.' }, { status: 400 });
-  const drop = [0, 5, 10, 20].includes(Number(b.drop_percent)) ? Number(b.drop_percent) : 5;
+  const drop = [0, 5, 10, 20].includes(Number(b.drop_percent)) ? Number(b.drop_percent) : 0;
   const target = Number(b.target_price);
   const window_days = Number(b.window_days) === 15 ? 15 : 7;
 
@@ -48,7 +49,13 @@ export async function POST(req: Request) {
     window_days,
     baseline_price: product.price,
   });
-  return NextResponse.json({ alert });
+  // Confirm by email straight away; the reply does not wait for the email to be sent.
+  if (email) {
+    const { subject, html } = confirmationEmail(alert, product);
+    queueMail(email, subject, html);
+    sendQueuedMailNow().catch((e) => console.error('confirmation email:', e instanceof Error ? e.message : e));
+  }
+  return NextResponse.json({ alert, confirmation: !!email });
 }
 
 export async function GET() {

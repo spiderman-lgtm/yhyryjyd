@@ -2,21 +2,23 @@ import 'server-only';
 import { read, write, type Settings, type Tier } from './db';
 import { TIER_INFO } from './alerts';
 import { appUrl } from './config';
-import { GMAIL, WHATSAPP, derivedKey, upsertCronFlow, type FlowStep } from './viasocket';
+import { GMAIL, WHATSAPP, derivedKey, runFlow, upsertCronFlow, upsertWebhookFlow, type FlowStep } from './viasocket';
 
 export const automationKey = () => derivedKey('automation');
 
 // Each step is code that runs in viaSocket's VM. Values fixed for the operator are baked in with
 // JSON.stringify; values that change per run come from context.res of the earlier step.
-export function buildSteps(tier: Tier, s: Settings): FlowStep[] {
+// The 'mail' flow is the same pipeline, but its first step collects the queued one-off emails.
+export function buildSteps(tier: Tier | 'mail', s: Settings): FlowStep[] {
   const base = JSON.stringify(appUrl());
   const key = JSON.stringify(automationKey());
+  const source = JSON.stringify(tier === 'mail' ? '/api/cron/outbox' : '/api/cron/run');
   const list: FlowStep[] = [
     {
       stepname: 'check_prices',
       service_action_functions: [],
       code: `
-const res = await axios.post(${base} + "/api/cron/run", { tier: ${JSON.stringify(tier)} }, { headers: { "x-automation-key": ${key} }, timeout: 45000 });
+const res = await axios.post(${base} + ${source}, { tier: ${JSON.stringify(tier)} }, { headers: { "x-automation-key": ${key} }, timeout: 45000 });
 const d = res.data || {};
 console.log("### Checked " + (d.checked || 0) + " of " + (d.products || 0) + " products; " + (d.notifications || []).length + " notifications due");
 return d;`,
@@ -46,7 +48,7 @@ return { sent };`,
   }
 
   const wa = s.whatsapp;
-  if (tier !== 'digest' && wa?.wba_id && wa.phone_id && wa.message_template_id) {
+  if (tier !== 'digest' && tier !== 'mail' && wa?.wba_id && wa.phone_id && wa.message_template_id) {
     list.push({
       stepname: 'send_whatsapp',
       service_action_functions: [{ name: 'sendTemplate', auth_id: wa.auth_id, action_id: WHATSAPP.send_template.action_id }],
@@ -115,8 +117,41 @@ export async function activateFlows() {
       d.settings.flows[tier] = ids[tier];
     });
   }
+  if (s.gmail) await ensureMailFlow(true);
   write((d) => {
     d.settings.flows_activated_at = new Date().toISOString();
   });
   return ids;
+}
+
+let creatingMailFlow: Promise<string | null> | null = null;
+
+// Creates (or, with refresh, rebuilds) the on-demand email flow. Needs a connected Gmail.
+export async function ensureMailFlow(refresh = false): Promise<string | null> {
+  const s = read((d) => d.settings);
+  if (s.mail_flow && !refresh) return s.mail_flow;
+  // Two alerts at the same moment share one creation instead of making two flows.
+  creatingMailFlow ??= buildMailFlow().finally(() => (creatingMailFlow = null));
+  return creatingMailFlow;
+}
+
+async function buildMailFlow(): Promise<string | null> {
+  const s = read((d) => d.settings);
+  if (!s.gmail) return null;
+  const id = await upsertWebhookFlow({
+    scriptId: s.mail_flow,
+    title: 'DealRadar — instant emails',
+    description: 'Started by DealRadar the moment a shopper sets a price alert: sends the confirmation email through your Gmail.',
+    steps: buildSteps('mail', s),
+  });
+  write((d) => {
+    d.settings.mail_flow = id;
+  });
+  return id;
+}
+
+// Asks viaSocket to send the queued emails now. If this fails, the next scheduled check sends them.
+export async function sendQueuedMailNow() {
+  const id = await ensureMailFlow();
+  if (id) await runFlow(id);
 }

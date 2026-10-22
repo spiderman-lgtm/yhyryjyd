@@ -2,12 +2,12 @@ import Link from 'next/link';
 import CouponCard, { type CouponView } from '@/components/CouponCard';
 import { Reveal, Stagger, StaggerItem } from '@/components/Motion';
 import StoreLogo from '@/components/StoreLogo';
+import StoreIcon from '@/components/StoreIcon';
 import { isOwner } from '@/lib/auth';
 import type { CouponCategory, StoreCoupon } from '@/lib/db';
 import { couponDirectory } from '@/lib/feeds';
 import { PLATFORM_NAMES } from '@/lib/scraper';
-import { CATEGORY_LABELS, couponStores, liveCoupons, storeSlug } from '@/lib/storecoupons';
-import { STORES } from '@/lib/stores';
+import { CATEGORY_LABELS, couponDomain, couponStores, liveCoupons, storeSlug } from '@/lib/storecoupons';
 
 export const dynamic = 'force-dynamic';
 export const metadata = {
@@ -20,6 +20,7 @@ const view = (c: StoreCoupon): CouponView => ({
   store: c.store,
   slug: storeSlug(c.store),
   logo_url: c.logo_url,
+  domain: couponDomain(c),
   title: c.title,
   discount_text: c.discount_text,
   code: c.code,
@@ -64,7 +65,7 @@ export default function CouponsPage({ searchParams }: { searchParams: { store?: 
             <div>
               {store ? (
                 <div className="flex items-center gap-4">
-                  <StoreLogo store={store.store} logo={store.logo_url} size="lg" />
+                  <StoreLogo store={store.store} logo={store.logo_url} domain={store.domain} size="lg" />
                   <div>
                     <h1 className="text-3xl font-extrabold tracking-tight">{store.store} coupons & offers</h1>
                     <p className="mt-1 text-ink-soft">{store.count} working offer{store.count > 1 ? 's' : ''} · <Link href="/coupons" className="font-semibold text-brand hover:underline">All stores</Link></p>
@@ -98,7 +99,7 @@ export default function CouponsPage({ searchParams }: { searchParams: { store?: 
                 <div className="font-semibold">Store of the month</div>
               </div>
               <div className="my-6 grid place-items-center">
-                <StoreLogo store={top.store} logo={top.logo_url} size="lg" />
+                <StoreLogo store={top.store} logo={top.logo_url} domain={top.domain} size="lg" />
               </div>
               <div className="flex justify-between border-t border-white/15 pt-3 text-xs">
                 <span>{top.count} offer{top.count > 1 ? 's' : ''}</span>
@@ -109,7 +110,7 @@ export default function CouponsPage({ searchParams }: { searchParams: { store?: 
               {stores.slice(0, 12).map((s) => (
                 <StaggerItem key={s.slug}>
                   <Link href={`/coupons?store=${s.slug}`} className="card flex h-full flex-col items-center gap-2 p-3 text-center transition hover:-translate-y-1 hover:shadow-md">
-                    <StoreLogo store={s.store} logo={s.logo_url} />
+                    <StoreLogo store={s.store} logo={s.logo_url} domain={s.domain} />
                     <span className="text-sm font-semibold">{s.store}</span>
                     <span className="text-xs text-ink-mute">{s.count} offer{s.count > 1 ? 's' : ''}</span>
                   </Link>
@@ -162,11 +163,10 @@ export default function CouponsPage({ searchParams }: { searchParams: { store?: 
             <p className="mb-4 mt-1 text-sm text-ink-soft">Offers DealRadar found while checking products in the last 7 days. They apply automatically when you pay with the card shown.</p>
           </Reveal>
           {productOffers.map((g) => {
-            const color = STORES.find((s) => s.slug === g.platform)?.color ?? '#0f172a';
             return (
               <div key={g.platform} className="mb-6">
                 <h3 className="mb-3 flex items-center gap-2 text-lg font-bold">
-                  <span className="grid h-7 w-7 place-items-center rounded-lg text-xs font-black text-white" style={{ background: color }}>{PLATFORM_NAMES[g.platform][0]}</span>
+                  <StoreIcon store={PLATFORM_NAMES[g.platform]} className="h-7 w-7 rounded-lg text-xs" />
                   {PLATFORM_NAMES[g.platform]}
                 </h3>
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import type { StoreOffer } from '@/lib/db';
 import { deliveryText, inr } from '@/lib/format';
 import { fetchOnce } from '@/lib/fetch-once';
-import { storeColor } from '@/lib/stores';
+import StoreIcon from './StoreIcon';
 
 type Row = { store: string; price: number; href: string; here: boolean; variant?: boolean; delivery?: StoreOffer['delivery'] };
 
@@ -37,7 +37,7 @@ export default function CompareList({ productId, store, price }: { productId: st
     return (
       <motion.li initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}>
         <a href={r.href} target="_blank" rel="noopener" className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition hover:-translate-y-0.5 hover:shadow-md ${isLowest ? 'border-deal/40 bg-deal-light' : 'border-slate-200 bg-white'}`}>
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sm font-black text-white" style={{ background: storeColor(r.store) }}>{r.store[0]}</span>
+          <StoreIcon store={r.store} className="h-8 w-8 rounded-lg text-sm" />
           <span className="min-w-0 flex-1">
             <span className="block font-semibold">{r.store}</span>
             <span className="block text-xs text-ink-mute">

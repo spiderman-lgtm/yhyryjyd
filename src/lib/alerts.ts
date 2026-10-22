@@ -1,5 +1,5 @@
 import 'server-only';
-import { historyFor, read, write, type Alert, type Product, type Settings, type Tier } from './db';
+import { historyFor, newId, read, write, type Alert, type OutboxMail, type Product, type Settings, type Tier } from './db';
 import { refreshProduct } from './products';
 import { compareStores } from './compare';
 import { cachedCoupon } from './coupons';
@@ -18,7 +18,7 @@ const CHECK_BUDGET_MS = 30_000;
 
 export interface Notification {
   id: string;
-  kind: 'drop' | 'digest' | 'expiry';
+  kind: 'drop' | 'digest' | 'expiry' | 'confirm';
   email: string | null;
   phone: string | null;
   subject: string;
@@ -103,6 +103,59 @@ ${couponHtml}
     html,
     whatsapp_vars,
   };
+}
+
+// "You are now tracking…" — sent once, right after a shopper sets an alert with an email.
+export function confirmationEmail(alert: Alert, p: Product): { subject: string; html: string } {
+  const l = links(alert, p);
+  const until = new Date(alert.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+  const drops = alert.drop_percent > 0 ? `when it drops by <b>${alert.drop_percent}% or more</b>` : 'as soon as the price drops';
+  const rule = alert.target_price ? `${drops}, or reaches <b>${inr(alert.target_price)}</b>` : drops;
+  const low = window_low(p.id, 90);
+  const off = p.mrp && p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
+  const row = (k: string, v: string) => `<tr><td style="padding:6px 12px 6px 0;color:#64748b;font-size:13px;white-space:nowrap">${k}</td><td style="padding:6px 0;font-size:14px">${v}</td></tr>`;
+  const html = shell(
+    `<p style="font-size:16px"><b>You are now tracking this price ✓</b></p>
+<p style="font-size:14px;color:#334155">DealRadar will email you ${rule}.${alert.phone && alert.channels.includes('whatsapp') ? ' We will also message you on WhatsApp.' : ''}</p>
+${productBlock(p)}
+<div style="font-size:24px;font-weight:bold">${inr(p.price)}${p.mrp && p.mrp > p.price ? ` <span style="font-size:15px;color:#94a3b8;text-decoration:line-through;font-weight:normal">${inr(p.mrp)}</span> <span style="font-size:14px;color:#16a34a">${off}% off</span>` : ''}</div>
+<table cellpadding="0" cellspacing="0" style="margin:12px 0">
+${row('Store', esc(PLATFORM_NAMES[p.platform]))}
+${row('Price when you started', inr(alert.baseline_price))}
+${alert.target_price ? row('Your target price', inr(alert.target_price)) : ''}
+${low && low < p.price ? row('Lowest we have seen', inr(low)) : ''}
+${row('Watching until', until)}
+${row('Availability', p.in_stock ? 'In stock' : 'Out of stock right now')}
+</table>
+<a href="${l.page}" style="display:inline-block;background:#ea580c;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">See price history & compare</a>
+<a href="${l.buy}" style="display:inline-block;margin-left:8px;border:1px solid #cbd5e1;color:#0f172a;padding:11px 18px;border-radius:8px;text-decoration:none">Open on ${esc(PLATFORM_NAMES[p.platform])}</a>`,
+    `You (or someone using this address) asked DealRadar to watch this product. <a href="${l.stop}">Stop this alert</a>.`,
+  );
+  return { subject: `Tracking started: ${p.title.slice(0, 60)} at ${inr(p.price)}`, html };
+}
+
+export function queueMail(email: string, subject: string, html: string): OutboxMail {
+  const m: OutboxMail = { id: newId('m'), email, subject, html, created_at: new Date().toISOString(), claimed_at: null, sent_at: null, tries: 0 };
+  write((d) => {
+    d.outbox.push(m);
+  });
+  return m;
+}
+
+// Hands out queued emails for sending. A claimed email is not handed out again for 10 minutes,
+// so the instant flow and a scheduled run never both send it.
+export function claimOutbox(minAgeMs = 0): Notification[] {
+  return write((d) => {
+    const now = Date.now();
+    const due = d.outbox.filter(
+      (m) => !m.sent_at && m.tries < 5 && now - Date.parse(m.created_at) >= minAgeMs && now - Date.parse(m.created_at) < 2 * 86400_000 && (!m.claimed_at || now - Date.parse(m.claimed_at) > 10 * 60_000),
+    );
+    for (const m of due.slice(0, MAX_NOTIFICATIONS_PER_RUN)) {
+      m.claimed_at = new Date(now).toISOString();
+      m.tries++;
+    }
+    return due.slice(0, MAX_NOTIFICATIONS_PER_RUN).map((m) => ({ id: m.id, kind: 'confirm' as const, email: m.email, phone: null, subject: m.subject, html: m.html, whatsapp_vars: null }));
+  });
 }
 
 function evaluate(alert: Alert, p: Product): { reference: number; reason: string } | null {
@@ -253,6 +306,9 @@ export async function runTier(tier: Tier) {
       });
     }
   }
+
+  // Emails the instant flow did not get to (older than 2 minutes) go out with this run.
+  notifications.push(...claimOutbox(2 * 60_000));
 
   return { tier, checked, products: productIds.length, notifications, at: nowIso() };
 }

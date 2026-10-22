@@ -2,6 +2,7 @@ import 'server-only';
 import { COUPON_CATEGORIES, newId, read, type Coupon, type CouponCategory, type Platform, type StoreCoupon } from './db';
 import { absolute } from './config';
 import { PLATFORM_NAMES } from './scraper';
+import { hostOf, storeDomain } from './stores';
 
 export const CATEGORY_LABELS: Record<CouponCategory, string> = {
   fashion: 'Fashion',
@@ -113,16 +114,18 @@ export function liveCoupons(): StoreCoupon[] {
   return read((d) => Object.values(d.store_coupons).filter(live));
 }
 
-export type StoreSummary = { store: string; slug: string; count: number; clicks: number; logo_url: string | null };
+export type StoreSummary = { store: string; slug: string; count: number; clicks: number; logo_url: string | null; domain: string | null };
 
 export const storeSlug = (store: string) => store.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+export const couponDomain = (c: StoreCoupon) => storeDomain(c.store) ?? hostOf(c.url);
 
 // Stores with live coupons, most used first.
 export function couponStores(list = liveCoupons()): StoreSummary[] {
   const by = new Map<string, StoreSummary>();
   for (const c of list) {
     const slug = storeSlug(c.store);
-    const s = by.get(slug) ?? { store: c.store, slug, count: 0, clicks: 0, logo_url: null };
+    const s = by.get(slug) ?? { store: c.store, slug, count: 0, clicks: 0, logo_url: null, domain: couponDomain(c) };
     s.count++;
     s.clicks += c.clicks;
     s.logo_url ??= c.logo_url;

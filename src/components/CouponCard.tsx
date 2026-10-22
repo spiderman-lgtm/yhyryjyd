@@ -10,6 +10,7 @@ export type CouponView = {
   store: string;
   slug: string;
   logo_url: string | null;
+  domain: string | null;
   title: string;
   discount_text: string;
   code: string | null;
@@ -94,7 +95,7 @@ export default function CouponCard({ c, showStoreLink = true }: { c: CouponView;
       </div>
       {showStoreLink && (
         <div className="flex items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/60 px-4 py-2">
-          <StoreLogo store={c.store} logo={c.logo_url} size="sm" />
+          <StoreLogo store={c.store} logo={c.logo_url} domain={c.domain} size="sm" />
           <Link href={`/coupons?store=${c.slug}`} className="text-xs font-semibold text-brand hover:underline">View all {c.store} coupons ›</Link>
         </div>
       )}

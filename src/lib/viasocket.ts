@@ -165,6 +165,32 @@ export async function upsertCronFlow(opts: {
   cronStatement: string;
   steps: FlowStep[];
 }): Promise<string> {
+  return upsertFlow({ ...opts, trigger: { triggerType: 'cron', cronStatement: opts.cronStatement } });
+}
+
+// A flow DealRadar starts itself by calling its webhook URL (see runFlow).
+export async function upsertWebhookFlow(opts: { scriptId?: string; title: string; description: string; steps: FlowStep[] }): Promise<string> {
+  return upsertFlow({ ...opts, trigger: { triggerType: 'webhook' } });
+}
+
+export async function runFlow(scriptId: string, body: Record<string, unknown> = {}) {
+  const res = await fetch(`${RUN}${scriptId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10000),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`flow ${scriptId} answered ${res.status}`);
+}
+
+async function upsertFlow(opts: {
+  scriptId?: string;
+  title: string;
+  description: string;
+  trigger: Record<string, unknown>;
+  steps: FlowStep[];
+}): Promise<string> {
   const token = await proxyAuthToken();
   const projectId = env('VIASOCKET_PROJECT_ID');
   let scriptId = opts.scriptId;
@@ -173,7 +199,7 @@ export async function upsertCronFlow(opts: {
     scriptId = created?.data?.script_id;
     if (!scriptId) throw new Error('viaSocket did not return a script_id for the new flow');
   }
-  await flowCall('scrij2DSRMlP', { scriptId, projectId, triggerType: 'cron', cronStatement: opts.cronStatement, proxy_auth_token: token });
+  await flowCall('scrij2DSRMlP', { scriptId, projectId, ...opts.trigger, proxy_auth_token: token });
   const saved = await flowCall('scrigkyMNOEC', { scriptId, steps: opts.steps, proxy_auth_token: token });
   if (!saved?.steps && !saved?.data?.steps) throw new Error('viaSocket did not save the flow steps');
   return scriptId;

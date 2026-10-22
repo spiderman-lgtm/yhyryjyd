@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { currentUser, viewerUid } from '@/lib/auth';
 import AlertActions from '@/components/AlertActions';
 import { read } from '@/lib/db';
-import { TIER_INFO } from '@/lib/alerts';
 import { dateShort, inr } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -47,7 +46,7 @@ export default function AlertsPage({ searchParams }: { searchParams: { msg?: str
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_STYLE[a.status]}`}>{a.status}</span>
-                  <span className="text-xs text-ink-mute">{TIER_INFO[a.tier].label} · {a.window_days} days · until {dateShort(a.expires_at)}</span>
+                  <span className="text-xs text-ink-mute">{a.window_days}-day watch · until {dateShort(a.expires_at)}</span>
                 </div>
                 <Link href={`/p/${p.id}`} className="mt-1 line-clamp-1 font-medium hover:underline">{p.title}</Link>
                 <div className="mt-1 text-sm text-ink-soft">

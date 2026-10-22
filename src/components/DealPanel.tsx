@@ -85,11 +85,11 @@ export default function DealPanel(props: {
     const res = await fetch('/api/alerts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product_id: productId, email: userEmail, target_price: t, drop_percent: 5, tier: 'normal', window_days: 15 }),
+      body: JSON.stringify({ product_id: productId, email: userEmail, target_price: t, drop_percent: 0, tier: 'normal', window_days: 15 }),
     });
     const data = await res.json().catch(() => ({}));
     setBusy(false);
-    setMsg(res.ok ? { ok: true, text: `Done — we will email ${userEmail} when it reaches ${inr(t)} or drops 5%.` } : { ok: false, text: data.error || 'Could not set the alert.' });
+    setMsg(res.ok ? { ok: true, text: `Done — check ${userEmail} for the confirmation. We will email you when the price drops or reaches ${inr(t)}.` } : { ok: false, text: data.error || 'Could not set the alert.' });
   }
 
   const tone = !deal ? 'bg-slate-100 text-ink-soft' : deal.score >= 70 ? 'bg-deal-light text-deal' : deal.score >= 50 ? 'bg-lime-50 text-lime-700' : 'bg-red-50 text-red-600';

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import ProductCard from './ProductCard';
+import StoreIcon from './StoreIcon';
 import { Reveal, Stagger, StaggerItem } from './Motion';
 import { read } from '@/lib/db';
 import { dealsFeed, trendingFeed } from '@/lib/feeds';
@@ -62,7 +63,7 @@ export function ShopByStore() {
         {STORES.map((s) => (
           <StaggerItem key={s.slug}>
             <Link href={`/price-tracker/${s.slug}`} className="card flex items-center gap-3 p-4 transition hover:shadow-lg">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-lg font-black text-white shadow-md" style={{ background: s.color }}>{s.name[0]}</span>
+              <StoreIcon store={s.name} className="h-10 w-10 rounded-xl text-lg shadow-md" />
               <span className="text-sm font-semibold leading-tight">{s.name}<span className="block text-xs font-normal text-ink-mute">price history</span></span>
             </Link>
           </StaggerItem>

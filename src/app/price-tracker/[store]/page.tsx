@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import LinkInput from '@/components/LinkInput';
 import ProductCard from '@/components/ProductCard';
+import StoreIcon from '@/components/StoreIcon';
 import { HowItWorks } from '@/components/HomeSections';
 import { Reveal, Stagger, StaggerItem } from '@/components/Motion';
 import { read } from '@/lib/db';
@@ -37,7 +38,7 @@ export default function StoreTracker({ params }: { params: { store: string } }) 
       <section className="hero-bg relative overflow-hidden rounded-[2rem] px-6 py-10 ring-1 ring-orange-100 sm:px-12">
         <div className="blob blob-a" />
         <Reveal className="relative max-w-2xl">
-          <span className="inline-grid h-12 w-12 place-items-center rounded-2xl text-xl font-black text-white shadow-lg" style={{ background: s.color }}>{s.name[0]}</span>
+          <StoreIcon store={s.name} className="h-14 w-14 rounded-2xl text-xl shadow-lg" />
           <h1 className="mt-4 text-4xl font-extrabold tracking-tight">{s.name} Price History Tracker</h1>
           <p className="mt-2 text-lg text-ink-soft">See every price drop and hike on {s.name}, compare with other stores, and get alerted when it gets cheaper.</p>
           <div className="mt-6"><LinkInput /></div>
