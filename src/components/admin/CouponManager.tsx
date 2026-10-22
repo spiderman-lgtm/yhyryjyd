@@ -127,7 +127,7 @@ export default function CouponManager({ initial }: { initial: StoreCoupon[] }) {
     <section id="coupons" className="card scroll-mt-20 space-y-5 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-bold">5 · Coupons & offers</h2>
+          <h2 className="font-bold">4 · Coupons & offers</h2>
           <p className="text-sm text-ink-soft">
             Coupons you add here show on the <a href="/coupons" target="_blank" className="font-semibold text-brand underline">Coupons page</a>, at “Buy now” for that store, and in price-drop alerts.
             Clicks go through your affiliate link.

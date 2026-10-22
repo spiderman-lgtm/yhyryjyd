@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { guard } from '@/lib/admin-guard';
 import { write, type WhatsAppVarSource } from '@/lib/db';
+import { syncFlows } from '@/lib/flows';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 const SOURCES: WhatsAppVarSource[] = ['product_title', 'price', 'old_price', 'drop_percent', 'coupon', 'buy_link'];
 const str = (v: unknown) => (typeof v === 'string' && v ? v.slice(0, 200) : null);
@@ -28,5 +30,5 @@ export async function POST(req: Request) {
     if (b.disconnect === 'whatsapp') d.settings.whatsapp = null;
     return d.settings;
   });
-  return NextResponse.json({ settings, needsReactivation: !!settings.flows_activated_at });
+  return NextResponse.json({ settings, schedules: await syncFlows() });
 }

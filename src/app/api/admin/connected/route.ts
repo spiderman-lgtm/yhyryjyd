@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import { guard, errorJson } from '@/lib/admin-guard';
 import { write } from '@/lib/db';
 import { APPS, listConnections, type AppKey } from '@/lib/viasocket';
+import { syncFlows } from '@/lib/flows';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 // The Connect popup reports an auth_id; confirm it belongs to the operator before storing it.
 export async function POST(req: Request) {
@@ -28,5 +30,5 @@ export async function POST(req: Request) {
           ? d.settings.whatsapp
           : { auth_id: authId, wba_id: null, phone_id: null, message_template_id: null, variable_map: {} };
   });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, schedules: await syncFlows() });
 }

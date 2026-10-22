@@ -87,6 +87,18 @@ return { reported: true };`,
   return list;
 }
 
+// Keeps the schedules in step with the Gmail/WhatsApp setup, so the owner never has to apply it by hand.
+export async function syncFlows(): Promise<{ ok: boolean; error?: string } | null> {
+  const s = read((d) => d.settings);
+  if (!s.gmail && !s.whatsapp?.message_template_id) return null;
+  try {
+    await activateFlows();
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 export async function activateFlows() {
   const s = read((d) => d.settings);
   if (!s.gmail && !s.whatsapp?.message_template_id) throw new Error('Connect Gmail or finish the WhatsApp setup first.');

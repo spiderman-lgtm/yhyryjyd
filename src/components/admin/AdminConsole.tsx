@@ -117,8 +117,8 @@ export default function AdminConsole(props: {
         const app = pendingApp.current;
         pendingApp.current = null;
         try {
-          await post('/api/admin/connected', { app, authId: event.data.data.id });
-          setMsg(`${apps[app].name} connected.`);
+          const r = await post('/api/admin/connected', { app, authId: event.data.data.id });
+          setMsg(r?.schedules?.ok === false ? `${apps[app].name} connected, but the price-alert schedule could not be updated: ${r.schedules.error}` : `${apps[app].name} connected.`);
           router.refresh();
         } catch (e) {
           setMsg(e instanceof Error ? e.message : String(e));
@@ -150,8 +150,8 @@ export default function AdminConsole(props: {
       setBusy(label);
       setMsg('');
       try {
-        await fn();
-        setMsg(done);
+        const r = (await fn()) as { schedules?: { ok: boolean; error?: string } | null } | undefined;
+        setMsg(r?.schedules?.ok === false ? `${done} But the price-alert schedule could not be updated: ${r.schedules.error}` : done);
         router.refresh();
       } catch (e) {
         setMsg(e instanceof Error ? e.message : String(e));
@@ -178,7 +178,6 @@ export default function AdminConsole(props: {
   }, [embedOpen, embedReady, token, router]);
 
   const waReady = !!(wbaId && phoneId && templateId);
-  const activated = props.flows.some((f) => f.id);
 
   return (
     <div className="space-y-6">
@@ -224,7 +223,7 @@ export default function AdminConsole(props: {
           <div className="grid gap-3 sm:grid-cols-2">
             <Picker id="gm-from" label="Send from" hint="Which of your Gmail addresses or aliases the alerts come from." app="gmail" fieldKey="from" existing={{}} enabled value={from} onChange={setFrom} optional />
             <div className="flex items-end">
-              <button className="btn-ghost" disabled={busy === 'gm'} onClick={() => run('gm', () => post('/api/admin/settings', { gmail: { from } }), activated ? 'Saved. Press “Update schedules” to apply it.' : 'Saved.')}>Save</button>
+              <button className="btn-ghost" disabled={busy === 'gm'} onClick={() => run('gm', () => post('/api/admin/settings', { gmail: { from } }), 'Saved — price alerts use this from the next check.')}>Save</button>
             </div>
           </div>
         )}
@@ -255,48 +254,18 @@ export default function AdminConsole(props: {
             </div>
             {wbaId && templateId && <TemplateVars wbaId={wbaId} templateId={templateId} varMap={varMap} setVarMap={setVarMap} />}
             <button className="btn-ghost" disabled={!waReady || busy === 'wa'}
-              onClick={() => run('wa', () => post('/api/admin/settings', { whatsapp: { wba_id: wbaId, phone_id: phoneId, message_template_id: templateId, variable_map: varMap } }), activated ? 'Saved. Press “Update schedules” to apply it.' : 'Saved.')}>
+              onClick={() => run('wa', () => post('/api/admin/settings', { whatsapp: { wba_id: wbaId, phone_id: phoneId, message_template_id: templateId, variable_map: varMap } }), 'Saved — price alerts use this from the next check.')}>
               Save WhatsApp setup
             </button>
           </div>
         )}
       </section>
 
-      <section className="card space-y-4 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-bold">3 · Price-check schedules (viaSocket automations)</h2>
-            <p className="text-sm text-ink-soft">Each schedule re-checks prices, then sends the due alerts through your Gmail and WhatsApp.</p>
-          </div>
-          <button className="btn-primary" disabled={busy === 'act' || (!settings.gmail && !waReady)} onClick={() => run('act', () => post('/api/admin/activate', {}), 'Schedules are live on viaSocket.')}>
-            {busy === 'act' ? 'Saving…' : activated ? 'Update schedules' : 'Activate schedules'}
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase text-ink-mute">
-              <tr><th className="py-2">Schedule</th><th>Runs</th><th>Status</th><th>Runs (30 days)</th><th /></tr>
-            </thead>
-            <tbody>
-              {props.flows.map((f) => (
-                <tr key={f.tier} className="border-t border-slate-100">
-                  <td className="py-2 font-medium">{f.label}</td>
-                  <td>{f.every}</td>
-                  <td>{f.id ? f.status : 'not created'}</td>
-                  <td>{f.counts ? `${f.counts.successCount} ok · ${f.counts.failedCount} failed` : '—'}</td>
-                  <td className="text-right">{f.id && <button className="text-brand underline" onClick={() => setEmbedOpen({ flowId: f.id! })}>Open in viaSocket</button>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       <section className="card space-y-3 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-bold">4 · More automations</h2>
-            <p className="text-sm text-ink-soft">View a schedule's run history, or build your own flows across 2,300+ apps (Slack alert on new enquiries, Sheets export…).</p>
+            <h2 className="font-bold">3 · More automations</h2>
+            <p className="text-sm text-ink-soft">Build your own flows across 2,300+ apps (Slack alert on new enquiries, Sheets export…).</p>
           </div>
           <div className="flex gap-2">
             <button className="btn-ghost" onClick={() => setEmbedOpen({})}>Browse apps</button>
