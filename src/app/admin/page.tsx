@@ -6,6 +6,7 @@ import { read, type Tier } from '@/lib/db';
 import { currentUser } from '@/lib/auth';
 import { TIER_INFO } from '@/lib/alerts';
 import { GMAIL, WHATSAPP, flowRunCounts, listConnections } from '@/lib/viasocket';
+import { ensureMailFlow } from '@/lib/flows';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'DealRadar admin', robots: { index: false } };
@@ -22,6 +23,9 @@ export default async function AdminPage() {
       </div>
     );
   }
+
+  // Sets up the instant email automation if Gmail is connected but it does not exist yet.
+  await ensureMailFlow().catch(() => null);
 
   const data = read((d) => ({
     settings: d.settings,

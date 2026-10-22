@@ -9,7 +9,6 @@ export const STORES: { slug: Platform; name: string; color: string; example: str
   { slug: 'croma', name: 'Croma', color: '#12daa8', example: 'https://www.croma.com/…/p/…' },
   { slug: 'tatacliq', name: 'Tata CLiQ', color: '#da1c5c', example: 'https://www.tatacliq.com/…/p-mp…' },
   { slug: 'reliancedigital', name: 'Reliance Digital', color: '#e42529', example: 'https://www.reliancedigital.in/…/p/…' },
-  { slug: 'vijaysales', name: 'Vijay Sales', color: '#ed1c24', example: 'https://www.vijaysales.com/…' },
   { slug: 'nykaa', name: 'Nykaa', color: '#fc2779', example: 'https://www.nykaa.com/…/p/…' },
   { slug: 'jiomart', name: 'JioMart', color: '#0078ad', example: 'https://www.jiomart.com/p/…' },
 ];

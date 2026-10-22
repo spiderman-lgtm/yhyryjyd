@@ -163,6 +163,8 @@ export interface Settings {
   flows: Partial<Record<Tier, string>>;
   // The on-demand flow that sends one-off emails (alert confirmations) as soon as they are queued.
   mail_flow?: string;
+  // Why instant emails are not going out, when they are not (shown in Admin).
+  mail_flow_error?: string | null;
   flows_activated_at: string | null;
   flow_status?: Record<string, string>;
 }

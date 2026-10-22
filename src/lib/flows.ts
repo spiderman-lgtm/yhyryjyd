@@ -135,23 +135,45 @@ export async function ensureMailFlow(refresh = false): Promise<string | null> {
   return creatingMailFlow;
 }
 
+const mailError = (error: string | null) =>
+  write((d) => {
+    d.settings.mail_flow_error = error;
+  });
+
 async function buildMailFlow(): Promise<string | null> {
   const s = read((d) => d.settings);
-  if (!s.gmail) return null;
-  const id = await upsertWebhookFlow({
-    scriptId: s.mail_flow,
-    title: 'DealRadar — instant emails',
-    description: 'Started by DealRadar the moment a shopper sets a price alert: sends the confirmation email through your Gmail.',
-    steps: buildSteps('mail', s),
-  });
-  write((d) => {
-    d.settings.mail_flow = id;
-  });
-  return id;
+  if (!s.gmail) {
+    mailError('Gmail is not connected in DealRadar — connect it above.');
+    return null;
+  }
+  try {
+    const id = await upsertWebhookFlow({
+      scriptId: s.mail_flow,
+      title: 'DealRadar — instant emails',
+      description: 'Started by DealRadar the moment a shopper sets a price alert: sends the confirmation email through your Gmail.',
+      steps: buildSteps('mail', s),
+    });
+    write((d) => {
+      d.settings.mail_flow = id;
+      d.settings.mail_flow_error = null;
+    });
+    return id;
+  } catch (e) {
+    mailError(`Could not set up the instant email automation: ${e instanceof Error ? e.message : String(e)}`);
+    throw e;
+  }
 }
 
 // Asks viaSocket to send the queued emails now. If this fails, the next scheduled check sends them.
 export async function sendQueuedMailNow() {
   const id = await ensureMailFlow();
-  if (id) await runFlow(id);
+  if (!id) return false;
+  try {
+    await runFlow(id);
+    if (read((d) => d.settings.mail_flow_error)) mailError(null);
+    return true;
+  } catch (e) {
+    mailError(`The instant email automation did not start: ${e instanceof Error ? e.message : String(e)}`);
+    throw e;
+  }
 }

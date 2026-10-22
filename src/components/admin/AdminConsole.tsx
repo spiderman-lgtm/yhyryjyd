@@ -220,6 +220,18 @@ export default function AdminConsole(props: {
           {settings.gmail && <button className="text-sm text-red-600 underline" onClick={() => run('dg', () => post('/api/admin/settings', { disconnect: 'gmail' }), 'Gmail removed from DealRadar.')}>Remove</button>}
         </div>
         {settings.gmail && (
+          <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm ${settings.mail_flow && !settings.mail_flow_error ? 'bg-deal-light text-deal' : 'bg-amber-50 text-amber-800'}`}>
+            <span>
+              {settings.mail_flow && !settings.mail_flow_error
+                ? 'Instant emails: on ✓ — shoppers get their alert confirmation as soon as they tap Track price.'
+                : `Instant emails: off — ${settings.mail_flow_error || 'not set up yet.'} Confirmations still go out with the next 15-minute check.`}
+            </span>
+            <button className="btn-ghost px-3 py-1.5" disabled={busy === 'test'} onClick={() => run('test', () => post('/api/admin/test-email', {}), 'Test email sent — check your inbox (and Spam) in a minute.')}>
+              {busy === 'test' ? 'Sending…' : 'Send me a test email'}
+            </button>
+          </div>
+        )}
+        {settings.gmail && (
           <div className="grid gap-3 sm:grid-cols-2">
             <Picker id="gm-from" label="Send from" hint="Which of your Gmail addresses or aliases the alerts come from." app="gmail" fieldKey="from" existing={{}} enabled value={from} onChange={setFrom} optional />
             <div className="flex items-end">
