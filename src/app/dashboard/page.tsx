@@ -74,9 +74,6 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold">Hi {user.name.split(' ')[0]}</h1>
           <p className="text-sm text-ink-soft">Here is what DealRadar is watching for you.</p>
         </div>
-        {data.owner && (
-          <Link href="/admin" className="btn-dark">Owner admin →</Link>
-        )}
       </div>
 
       {data.owner && (!data.owner.gmail || !data.owner.schedules) && (
@@ -85,7 +82,7 @@ export default function Dashboard() {
           {[!data.owner.gmail && 'connect Gmail', !data.owner.whatsapp && 'set up WhatsApp Business', !data.owner.schedules && 'activate the price-check schedules']
             .filter(Boolean)
             .join(' · ')}{' '}
-          — <Link href="/admin" className="font-semibold underline">open Admin</Link>
+          — <Link href="/admin" className="font-semibold underline">open Automation</Link>
         </div>
       )}
 
