@@ -246,6 +246,9 @@
     Beardo: 'beardo.in.png',
     'Nykaa Fashion': 'nykaafashion.com.jpg',
     Miraggio: 'miraggiolife.com.png',
+    Snapdeal: 'snapdeal.com.png',
+    'Shoppers Stop': 'shoppersstop.com.png',
+    Lifestyle: 'lifestylestores.com.png',
   };
   const chip = (name) =>
     LOGOS[name]
