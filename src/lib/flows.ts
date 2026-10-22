@@ -2,7 +2,7 @@ import 'server-only';
 import { read, write, type Settings, type Tier } from './db';
 import { TIER_INFO } from './alerts';
 import { appUrl } from './config';
-import { GMAIL, WHATSAPP, derivedKey, listConnections, runFlow, upsertCronFlow, upsertWebhookFlow, type FlowStep } from './viasocket';
+import { GMAIL, WHATSAPP, derivedKey, listConnections, listFlows, runFlow, upsertCronFlow, upsertWebhookFlow, type FlowStep } from './viasocket';
 
 export const automationKey = () => derivedKey('automation');
 
@@ -135,6 +135,8 @@ export async function ensureMailFlow(refresh = false): Promise<string | null> {
   return creatingMailFlow;
 }
 
+const MAIL_FLOW_TITLE = 'DealRadar — instant emails';
+
 const mailError = (error: string | null) =>
   write((d) => {
     d.settings.mail_flow_error = error;
@@ -159,9 +161,11 @@ async function buildMailFlow(): Promise<string | null> {
     return null;
   }
   try {
+    // Reuse the flow if one already exists, so two requests at once never leave two copies.
+    const existing = s.mail_flow ?? (await listFlows().catch(() => [])).find((f) => f.title === MAIL_FLOW_TITLE && f.status === 'active')?.id;
     const id = await upsertWebhookFlow({
-      scriptId: s.mail_flow,
-      title: 'DealRadar — instant emails',
+      scriptId: existing,
+      title: MAIL_FLOW_TITLE,
       description: 'Started by DealRadar the moment a shopper sets a price alert: sends the confirmation email through your Gmail.',
       steps: buildSteps('mail', s),
     });
@@ -178,10 +182,15 @@ async function buildMailFlow(): Promise<string | null> {
 
 // Asks viaSocket to send the queued emails now. If this fails, the next scheduled check sends them.
 export async function sendQueuedMailNow() {
-  const id = await ensureMailFlow();
+  let id = await ensureMailFlow();
   if (!id) return false;
   try {
-    await runFlow(id);
+    await runFlow(id).catch(async () => {
+      // The saved flow may have been deleted in viaSocket: find or rebuild it once, then retry.
+      write((d) => void delete d.settings.mail_flow);
+      id = await ensureMailFlow();
+      if (id) await runFlow(id);
+    });
     if (read((d) => d.settings.mail_flow_error)) mailError(null);
     return true;
   } catch (e) {

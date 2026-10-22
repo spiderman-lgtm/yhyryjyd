@@ -76,6 +76,13 @@ export interface Connection {
   [k: string]: unknown;
 }
 
+// Every flow the operator has in this project (id, title, status).
+export async function listFlows(): Promise<{ id: string; title: string; status: string }[]> {
+  const res = await fetch(`${API}projects/${env('VIASOCKET_PROJECT_ID')}/integrations`, { headers: { authorization: embedToken() }, cache: 'no-store' });
+  const payload: any = await res.json().catch(() => null);
+  return payload?.data?.flows ?? [];
+}
+
 export async function listConnections(): Promise<Connection[]> {
   return (await call<Connection[]>('/embed/authentications', undefined, 'GET')) || [];
 }
