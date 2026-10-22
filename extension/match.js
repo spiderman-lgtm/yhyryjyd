@@ -1,16 +1,18 @@
 // Same-product matching, kept in step with src/lib/storesearch.ts on the server.
 var DRMatch = (function () {
-  var STOP = new Set(['with', 'for', 'and', 'the', 'of', 'in', 'by', 'from', 'new', 'latest', 'free', 'pack', 'combo', 'online', 'buy', 'gb', 'ram', 'rom']);
+  var STOP = new Set(['with', 'for', 'and', 'the', 'of', 'in', 'by', 'from', 'new', 'latest', 'free', 'pack', 'combo', 'online', 'buy', 'gb', 'ram', 'rom',
+    'women', 'womens', 'men', 'mens', 'ladies', 'girls', 'boys', 'unisex', 'office', 'use', 'stylish', 'trendy', 'solid', 'casual']);
   var COLORS = new Set(
     'black white blue green red yellow pink purple grey gray silver gold orange brown beige navy maroon teal olive cream violet titanium graphite midnight starlight natural desert ultramarine'.split(' '),
   );
   var ACCESSORY = /\b(case|cover|protector|tempered|glass|guard|charger|cable|adapter|stand|holder|strap|pouch|refurbished|renewed)\b/i;
   var MODEL = ['plus', 'pro', 'max', 'mini', 'ultra', 'lite', 'fe', 'neo', 'prime', 'air'];
-  var SIZE = /^\d+(\.\d+)?(ml|g|kg|l|ltr)$/;
+  var SIZE = /^\d+(\.\d+)?(ml|g|kg|l|ltr|inch|cm)$/;
 
   function tokens(s) {
     return String(s)
       .toLowerCase()
+      .replace(/(\d+(?:\.\d+)?)\s*(?:"|”|''|-?inches\b|-inch\b)/g, '$1inch ')
       .replace(/(\d+(?:\.\d+)?)\s*(gb|tb|mah|w|inch|cm|ml|kg|g|l|ltr)\b/g, '$1$2')
       .split(/[^a-z0-9.]+/)
       .map(function (w) {
@@ -39,22 +41,32 @@ var DRMatch = (function () {
     var src = Array.from(new Set(tokens(query(source.title))));
     var candList = tokens(cand.title);
     var set = new Set(candList);
-    if (src.length < 2) return none;
-    if (ACCESSORY.test(cand.title) && !ACCESSORY.test(source.title)) return none;
-    if (cand.price < source.price * 0.4 || cand.price > source.price * 2.5) return none;
-    if (!set.has(src[0])) return none;
     var isSize = function (t) {
       return SIZE.test(t);
     };
+    var core = src.filter(function (t) {
+      return !isSize(t);
+    });
+    if (core.length < 2) return none;
+    var what = function (t) {
+      return String(t).replace(/\bwith\b.*$/i, '');
+    };
+    if (ACCESSORY.test(what(cand.title)) && !ACCESSORY.test(what(source.title))) return none;
+    if (cand.price < source.price * 0.4 || cand.price > source.price * 2.5) return none;
+    if (!set.has(src[0])) return none;
+    var missing = core.filter(function (t) {
+      return /\d/.test(t) && !set.has(t);
+    });
     if (
-      src.some(function (t) {
-        return /\d/.test(t) && !isSize(t) && !set.has(t);
+      missing.length &&
+      candList.some(function (t) {
+        return /\d/.test(t) && !isSize(t) && src.indexOf(t) < 0;
       })
     )
       return none;
     var full = new Set(tokens(source.title));
-    var hasModelNo = src.some(function (t) {
-      return /\d/.test(t) && !isSize(t);
+    var hasModelNo = core.some(function (t) {
+      return /\d/.test(t);
     });
     if (
       hasModelNo &&
@@ -63,11 +75,14 @@ var DRMatch = (function () {
       })
     )
       return none;
-    var shared = src.filter(function (t) {
+    var shared = core.filter(function (t) {
       return set.has(t);
     }).length;
-    var contain = shared / Math.min(src.length, set.size);
-    var cover = shared / src.length;
+    var candCore = new Set(candList.filter(function (t) {
+      return !isSize(t);
+    }));
+    var contain = shared / Math.min(core.length, candCore.size);
+    var cover = shared / core.length;
     if (shared < 2 || cover < 0.4) return none;
     var score = contain * 0.7 + cover * 0.3;
     var srcColors = src.filter(function (t) {
@@ -86,7 +101,8 @@ var DRMatch = (function () {
     var candSizes = candList.filter(isSize);
     var otherSize = !!srcSize && candSizes.length > 0 && candSizes.indexOf(srcSize) < 0;
     var off = otherColour || otherSize;
-    return { ok: score >= 0.6, same: score >= 0.7 && !off, score: score - (off ? 0.2 : 0) };
+    var miss = missing.length > 0;
+    return { ok: score >= (miss ? 0.7 : 0.6), same: score >= 0.7 && !off && !miss, score: score - (off ? 0.2 : 0) - (miss ? 0.1 : 0) };
   }
 
   function best(source, list) {

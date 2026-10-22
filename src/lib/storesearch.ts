@@ -333,7 +333,9 @@ function storesFor(p: Product) {
 
 export const searchTokens = (s: string) => tokens(s);
 
-const STOP = new Set(['with', 'for', 'and', 'the', 'of', 'in', 'by', 'from', 'new', 'latest', 'free', 'pack', 'combo', 'online', 'buy', 'gb', 'ram', 'rom']);
+const STOP = new Set(['with', 'for', 'and', 'the', 'of', 'in', 'by', 'from', 'new', 'latest', 'free', 'pack', 'combo', 'online', 'buy', 'gb', 'ram', 'rom',
+  // Who it is for and how it is pitched; stores word these differently for the same item.
+  'women', 'womens', 'men', 'mens', 'ladies', 'girls', 'boys', 'unisex', 'office', 'use', 'stylish', 'trendy', 'solid', 'casual']);
 const tokens = (s: string) =>
   s
     .toLowerCase()
@@ -368,21 +370,25 @@ export function match(source: Product, hit: Hit): { ok: boolean; same: boolean; 
   const src = [...new Set(tokens(queryFor(source.title)))];
   const candList = tokens(hit.title);
   const cand = new Set(candList);
-  if (src.length < 2) return none;
+  if (src.filter((t) => !SIZE.test(t)).length < 2) return none;
   // What comes after "with" is what is included (a bag with a strap), not what the item is.
   const what = (t: string) => t.replace(/\bwith\b.*$/i, '');
   if (ACCESSORY.test(what(hit.title)) && !ACCESSORY.test(what(source.title))) return none;
   if (hit.price < source.price * 0.4 || hit.price > source.price * 2.5) return none;
   if (!cand.has(src[0])) return none; // the brand
-  // Model numbers and storage (15, s24, 128gb…) must all match; pack sizes may differ.
-  if (src.some((t) => /\d/.test(t) && !SIZE.test(t) && !cand.has(t))) return none;
+  // A different model number or storage (15 vs 16, 128gb vs 256gb) is a different product. A store that
+  // leaves the number out may list another version, so that is kept only as a close name match.
+  const core = src.filter((t) => !SIZE.test(t));
+  const missing = core.filter((t) => /\d/.test(t) && !cand.has(t));
+  if (missing.length && candList.some((t) => /\d/.test(t) && !SIZE.test(t) && !src.includes(t))) return none;
   const fullSrc = new Set(tokens(source.title));
-  const hasModelNo = src.some((t) => /\d/.test(t) && !SIZE.test(t));
+  const hasModelNo = core.some((t) => /\d/.test(t));
   if (hasModelNo && [...MODEL].some((m) => cand.has(m) !== fullSrc.has(m))) return none;
-  const shared = src.filter((t) => cand.has(t)).length;
+  // Sizes are compared separately below, so the name score leaves them out.
+  const shared = core.filter((t) => cand.has(t)).length;
   // How much of the shorter name the other one contains, and how much of ours it covers.
-  const contain = shared / Math.min(src.length, new Set(candList).size);
-  const cover = shared / src.length;
+  const contain = shared / Math.min(core.length, new Set(candList.filter((t) => !SIZE.test(t))).size);
+  const cover = shared / core.length;
   if (shared < 2 || cover < 0.4) return none;
   const score = contain * 0.7 + cover * 0.3;
   const srcColors = src.filter((t) => COLORS.has(t));
@@ -391,7 +397,11 @@ export function match(source: Product, hit: Hit): { ok: boolean; same: boolean; 
   const srcSize = src.find((t) => SIZE.test(t)) ?? [...fullSrc].find((t) => SIZE.test(t));
   const candSizes = candList.filter((t) => SIZE.test(t));
   const otherSize = !!srcSize && candSizes.length > 0 && !candSizes.includes(srcSize);
-  return { ok: score >= 0.6, same: score >= 0.7 && !otherColour && !otherSize, score: score - (otherColour || otherSize ? 0.2 : 0) };
+  return {
+    ok: score >= (missing.length ? 0.7 : 0.6),
+    same: score >= 0.7 && !otherColour && !otherSize && !missing.length,
+    score: score - (otherColour || otherSize ? 0.2 : 0) - (missing.length ? 0.1 : 0),
+  };
 }
 
 export async function searchStores(product: Product, pin: string | null = null): Promise<StoreOffer[]> {
