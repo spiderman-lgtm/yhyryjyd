@@ -7,8 +7,6 @@ import { currentUid } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-const TIERS: Tier[] = ['urgent', 'normal', 'digest'];
-
 export async function POST(req: Request) {
   const uid = currentUid();
   const b = await req.json().catch(() => ({}));
@@ -27,7 +25,8 @@ export async function POST(req: Request) {
   if (phone && (phone.length < 11 || phone.length > 15)) return NextResponse.json({ error: 'Enter the WhatsApp number with country code.' }, { status: 400 });
   if (!channels.length) return NextResponse.json({ error: 'Add an email or a WhatsApp number to be alerted.' }, { status: 400 });
 
-  const tier: Tier = TIERS.includes(b.tier) ? b.tier : 'normal';
+  // Every alert is checked every 15 minutes; only the daily digest is kept as a separate choice.
+  const tier: Tier = b.tier === 'digest' ? 'digest' : 'urgent';
   if (tier === 'digest' && !email) return NextResponse.json({ error: 'The daily digest is sent by email — add an email.' }, { status: 400 });
   const drop = [0, 5, 10, 20].includes(Number(b.drop_percent)) ? Number(b.drop_percent) : 0;
   const target = Number(b.target_price);

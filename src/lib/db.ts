@@ -120,7 +120,7 @@ export interface CompareCache {
 // Each store's price for a product over time, from comparisons and the extension.
 export type OfferHistory = Record<string, { price: number; at: string }[]>;
 
-export const COUPON_CATEGORIES = ['fashion', 'beauty', 'electronics', 'travel', 'food', 'grocery', 'recharge', 'ott', 'education', 'health', 'other'] as const;
+export const COUPON_CATEGORIES = ['fashion', 'beauty', 'electronics', 'travel', 'food', 'grocery', 'recharge', 'ott', 'education', 'health', 'giftcard', 'other'] as const;
 export type CouponCategory = (typeof COUPON_CATEGORIES)[number];
 
 // A coupon or offer the owner adds in Admin (by hand or from a CSV), shown on the Coupons page.
@@ -141,6 +141,17 @@ export interface StoreCoupon {
   clicks: number;
   created_at: string;
   updated_at: string;
+}
+
+// A discounted product found by searching stores for a category (Trending page).
+export interface CatalogItem {
+  title: string;
+  store: string;
+  price: number;
+  mrp: number;
+  off: number;
+  url: string;
+  image: string | null;
 }
 
 export interface CouponCache {
@@ -203,6 +214,7 @@ interface Data {
   clicks: { product_id: string; uid: string; at: string }[];
   deliveries: DeliveryLog[];
   outbox: OutboxMail[];
+  catalog: Record<string, { items: CatalogItem[]; fetched_at: string }>;
   settings: Settings;
 }
 
@@ -225,6 +237,7 @@ function empty(): Data {
     clicks: [],
     deliveries: [],
     outbox: [],
+    catalog: {},
     settings: { gmail: null, whatsapp: null, flows: {}, flows_activated_at: null },
   };
 }

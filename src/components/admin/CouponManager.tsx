@@ -14,13 +14,15 @@ const CATEGORIES: [CouponCategory, string][] = [
   ['ott', 'OTT'],
   ['education', 'Education'],
   ['health', 'Health'],
+  ['giftcard', 'Gift card'],
   ['other', 'Other'],
 ];
 
 const TEMPLATE =
   'store,title,discount,code,category,expires,link,description,logo,exclusive,featured\n' +
   'AJIO,"All Stars Sale: 50-90% off + extra ₹400 off",Up to 90% off,AJIO400,fashion,2026-11-30,https://www.ajio.com/,"On orders above ₹2,500",,no,yes\n' +
-  'Udemy,Best-selling courses from ₹449,Up to 85% off,,education,,https://www.udemy.com/,,,no,no\n';
+  'Udemy,Best-selling courses from ₹449,Up to 85% off,,education,,https://www.udemy.com/,,,no,no\n' +
+  'Flipkart,Flipkart Gift Card,3.6% off,,giftcard,,https://www.gyftr.com/flipkart,"Instant e-gift card, use at Flipkart checkout",,no,no\n';
 
 type Form = {
   id?: string;

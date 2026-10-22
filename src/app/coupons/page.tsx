@@ -7,7 +7,7 @@ import { isOwner } from '@/lib/auth';
 import type { CouponCategory, StoreCoupon } from '@/lib/db';
 import { couponDirectory } from '@/lib/feeds';
 import { PLATFORM_NAMES } from '@/lib/scraper';
-import { CATEGORY_LABELS, couponDomain, couponStores, liveCoupons, storeSlug } from '@/lib/storecoupons';
+import { CATEGORY_LABELS, couponDomain, couponStores, liveCoupons, liveGiftCards, storeSlug } from '@/lib/storecoupons';
 
 export const dynamic = 'force-dynamic';
 export const metadata = {
@@ -39,6 +39,7 @@ export default function CouponsPage({ searchParams }: { searchParams: { store?: 
   const store = stores.find((s) => s.slug === searchParams.store) ?? null;
   const cat = (Object.keys(CATEGORY_LABELS) as CouponCategory[]).includes(searchParams.cat as CouponCategory) ? (searchParams.cat as CouponCategory) : null;
   const owner = isOwner();
+  const gifts = liveGiftCards().length;
 
   const matches = all
     .filter((c) => !store || storeSlug(c.store) === store.slug)
@@ -88,6 +89,17 @@ export default function CouponsPage({ searchParams }: { searchParams: { store?: 
           </div>
         </section>
       </Reveal>
+
+      {!store && !q && gifts > 0 && (
+        <Link href="/gift-cards" className="group flex items-center gap-4 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 text-white shadow-lg shadow-indigo-900/20 transition hover:-translate-y-0.5">
+          <span className="text-3xl" aria-hidden="true">🎁</span>
+          <span className="flex-1">
+            <span className="block font-bold">Save more with gift cards</span>
+            <span className="text-sm text-white/80">{gifts} store gift card{gifts > 1 ? 's' : ''} at a discount — pay with them for extra savings.</span>
+          </span>
+          <span className="font-semibold transition group-hover:translate-x-1">View ›</span>
+        </Link>
+      )}
 
       {!store && !q && stores.length > 0 && (
         <section>

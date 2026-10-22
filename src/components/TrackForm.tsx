@@ -29,7 +29,7 @@ export default function TrackForm({ productId, price, existing, defaultEmail = '
     const res = await fetch('/api/alerts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product_id: productId, email, phone, tier: 'normal', drop_percent: drop, target_price: target, window_days: days }),
+      body: JSON.stringify({ product_id: productId, email, phone, tier: 'urgent', drop_percent: drop, target_price: target, window_days: days }),
     });
     const data = await res.json();
     setBusy(false);

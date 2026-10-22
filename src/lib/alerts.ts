@@ -2,6 +2,7 @@ import 'server-only';
 import { historyFor, newId, read, write, type Alert, type OutboxMail, type Product, type Settings, type Tier } from './db';
 import { refreshProduct } from './products';
 import { compareStores } from './compare';
+import { catalogStale, refreshCatalog } from './catalog';
 import { cachedCoupon } from './coupons';
 import { PLATFORM_NAMES } from './scraper';
 import { appUrl, linkSig } from './config';
@@ -69,7 +70,8 @@ ${coupon.code ? `Use code <b style="font-size:16px">${esc(coupon.code)}</b> — 
 ${coupon.conditions ? `<div style="font-size:12px;color:#64748b">${esc(coupon.conditions)}</div>` : ''}</div>`
     : '';
   const html = shell(
-    `<p style="font-size:16px">Price dropped ${dropPct >= 0.5 ? `<b>${dropPct.toFixed(0)}%</b>` : ''} on a product you are tracking.</p>
+    `<p style="font-size:18px;font-weight:bold;color:#16a34a">Price dropped${dropPct >= 0.5 ? ` ${dropPct.toFixed(0)}%` : ''} — you can buy it now!</p>
+<p style="font-size:14px;color:#334155">The product you are tracking just got cheaper.</p>
 ${productBlock(p)}
 <div style="font-size:26px;font-weight:bold;color:#16a34a">${inr(p.price)}
 <span style="font-size:15px;color:#94a3b8;text-decoration:line-through;font-weight:normal">${inr(reference)}</span></div>
@@ -99,7 +101,7 @@ ${couponHtml}
     kind: 'drop',
     email: alert.channels.includes('email') ? alert.email : null,
     phone: whatsapp_vars ? alert.phone : null,
-    subject: `Price drop: ${p.title.slice(0, 60)} is now ${inr(p.price)}`,
+    subject: `Price dropped! ${p.title.slice(0, 55)} is now ${inr(p.price)} — buy now`,
     html,
     whatsapp_vars,
   };
@@ -229,6 +231,13 @@ export async function runTier(tier: Tier) {
     if (p && a.email) notifications.push(expiryNotification(a, p));
   }
 
+  // Alerts made on the 2-hour setting moved to the 15-minute check, which now covers every price alert.
+  if (tier === 'urgent') {
+    write((d) => {
+      for (const a of Object.values(d.alerts)) if (a.status === 'active' && a.tier === 'normal') a.tier = 'urgent';
+    });
+  }
+
   // 2. Refresh prices for this tier's products, stalest first, within the time budget.
   const alerts = read((d) => Object.values(d.alerts).filter((a) => a.status === 'active' && a.tier === tier));
   const productIds = [...new Set(alerts.map((a) => a.product_id))]
@@ -273,6 +282,9 @@ export async function runTier(tier: Tier) {
       await compareStores(read((d) => d.products[p.id]) ?? p, null, { allowAi: false }).catch(() => null);
     }
   }
+
+  // The Trending page's deal rows are re-searched in the background when they are a few hours old.
+  if (tier === 'normal' && catalogStale()) void refreshCatalog();
 
   // 3. Decide who hears about it.
   if (tier === 'digest') {

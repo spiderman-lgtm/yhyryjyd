@@ -8,7 +8,7 @@ import type { Platform, Product, StoreOffer } from './db';
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
 
-interface Hit {
+export interface Hit {
   store: string;
   platform: Platform;
   title: string;
@@ -204,6 +204,13 @@ async function cromaDelivery(code: string, pin: string): Promise<StoreOffer['del
   return { pin, ok: !!line, by: typeof by === 'string' ? by : null };
 }
 
+// One store's search results, for the trending catalog. Throws when the store cannot be reached.
+export function searchStore(store: string, q: string, pin: string | null = null): Promise<Hit[]> {
+  const fn = SEARCHERS[store];
+  if (!fn) return Promise.resolve([]);
+  return fn(q, pin);
+}
+
 // Every store we can search, except the one the shopper is already on. Stores that do not sell the
 // item simply return no match, so asking them all costs only time, and they run in parallel.
 function storesFor(p: Product) {
@@ -221,7 +228,7 @@ const tokens = (s: string) =>
 const COLORS = new Set(
   'black white blue green red yellow pink purple grey gray silver gold orange brown beige navy maroon teal olive cream violet titanium graphite midnight starlight natural desert ultramarine'.split(' '),
 );
-const ACCESSORY = /\b(case|cover|protector|tempered|glass|guard|charger|cable|adapter|stand|holder|strap|pouch|refurbished|renewed)\b/i;
+export const ACCESSORY = /\b(case|cover|protector|tempered|glass|guard|charger|cable|adapter|stand|holder|strap|pouch|refurbished|renewed)\b/i;
 // Words that name a different model of the same line: an iPhone 15 is not an iPhone 15 Pro.
 const MODEL = new Set(['plus', 'pro', 'max', 'mini', 'ultra', 'lite', 'fe', 'neo', 'prime', 'air']);
 // Pack sizes: a different size is the same product in another variant, not a different product.

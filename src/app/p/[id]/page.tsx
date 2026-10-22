@@ -17,6 +17,7 @@ import { dealScore, getProduct, markViewed } from '@/lib/products';
 import { PLATFORM_NAMES } from '@/lib/scraper';
 import { storeColor } from '@/lib/stores';
 import { isPin } from '@/lib/compare';
+import { giftCardFor } from '@/lib/storecoupons';
 import { dateShort, inr } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -43,6 +44,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   const off = p.mrp ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
   const store = PLATFORM_NAMES[p.platform];
   const images = p.images?.length ? p.images : p.image ? [p.image] : [];
+  const gift = giftCardFor(p.platform);
   const pinCookie = cookies().get('dr_pin')?.value;
   const pin = isPin(pinCookie) ? pinCookie : null;
   const area = pin ? cookies().get('dr_area')?.value || null : null;
@@ -80,6 +82,16 @@ export default function ProductPage({ params }: { params: { id: string } }) {
           </div>
           <ShareButtons title={p.title} />
           <BuyNow productId={p.id} store={store} priceLabel={inr(p.price)} />
+          {gift && (
+            <a href={`/api/coupon/${gift.id}`} target="_blank" rel="noopener" className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-violet-50 px-4 py-2.5 text-sm transition hover:shadow-md">
+              <span className="text-xl" aria-hidden="true">🎁</span>
+              <span className="flex-1">
+                Save <b>{gift.discount_text}</b> more — pay with a {store} gift card
+                {gift.pct > 0 && <span className="text-ink-mute"> (about {inr((p.price * gift.pct) / 100)} on this order)</span>}
+              </span>
+              <span className="font-semibold text-indigo-700">Get it ›</span>
+            </a>
+          )}
           <CartAndEnquire productId={p.id} inCart={inCart} />
           <LocationPin pin={pin} area={area} />
           <CompareList productId={p.id} store={store} price={p.price} />

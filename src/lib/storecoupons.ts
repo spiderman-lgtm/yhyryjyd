@@ -15,6 +15,7 @@ export const CATEGORY_LABELS: Record<CouponCategory, string> = {
   ott: 'OTT',
   education: 'Education',
   health: 'Health',
+  giftcard: 'Gift cards',
   other: 'Other',
 };
 
@@ -110,8 +111,29 @@ export function parseCsv(csv: string): Record<string, string>[] {
 
 const live = (c: StoreCoupon) => c.active && (!c.expires_at || Date.parse(c.expires_at) > Date.now());
 
+// Coupons and deals. Gift cards are kept apart: they have their own page and are not checkout codes.
 export function liveCoupons(): StoreCoupon[] {
-  return read((d) => Object.values(d.store_coupons).filter(live));
+  return read((d) => Object.values(d.store_coupons).filter((c) => live(c) && c.category !== 'giftcard'));
+}
+
+export function liveGiftCards(): StoreCoupon[] {
+  return read((d) =>
+    Object.values(d.store_coupons)
+      .filter((c) => live(c) && c.category === 'giftcard')
+      .sort((a, b) => Number(b.featured) - Number(a.featured) || b.clicks - a.clicks || a.store.localeCompare(b.store)),
+  );
+}
+
+// The best gift card for the store a product is on, for "save more with a gift card" on its page.
+export function giftCardFor(platform: Platform): (StoreCoupon & { pct: number }) | null {
+  const name = storeSlug(PLATFORM_NAMES[platform]);
+  const pct = (c: StoreCoupon) => Math.max(0, ...(c.discount_text.match(/\d+(\.\d+)?/g) ?? ['0']).map(Number));
+  return (
+    liveGiftCards()
+      .filter((c) => storeSlug(c.store) === name)
+      .map((c) => ({ ...c, pct: pct(c) }))
+      .sort((a, b) => b.pct - a.pct)[0] ?? null
+  );
 }
 
 export type StoreSummary = { store: string; slug: string; count: number; clicks: number; logo_url: string | null; domain: string | null };

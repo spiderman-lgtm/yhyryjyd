@@ -16,6 +16,7 @@ const NAV = [
   { href: '/deals', label: 'Deals' },
   { href: '/trending', label: 'Trending' },
   { href: '/coupons', label: 'Coupons' },
+  { href: '/gift-cards', label: 'Gift cards' },
   { href: '/extension', label: 'Extension' },
 ];
 

@@ -85,7 +85,7 @@ export default function DealPanel(props: {
     const res = await fetch('/api/alerts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product_id: productId, email: userEmail, target_price: t, drop_percent: 0, tier: 'normal', window_days: 15 }),
+      body: JSON.stringify({ product_id: productId, email: userEmail, target_price: t, drop_percent: 0, tier: 'urgent', window_days: 15 }),
     });
     const data = await res.json().catch(() => ({}));
     setBusy(false);
