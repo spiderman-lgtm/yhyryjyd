@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { inr } from '@/lib/format';
 
 const DROPS = [
   { v: 0, t: 'Any drop' },
@@ -11,12 +10,11 @@ const DROPS = [
   { v: 20, t: '20% or more' },
 ];
 
-export default function TrackForm({ productId, price, existing, defaultEmail = '', defaultTarget = '' }: { productId: string; price: number; existing: boolean; defaultEmail?: string; defaultTarget?: string }) {
+export default function TrackForm({ productId, existing, defaultEmail = '' }: { productId: string; existing: boolean; defaultEmail?: string }) {
   const [drop, setDrop] = useState(0);
   const [days, setDays] = useState<7 | 15>(7);
   const [email, setEmail] = useState(defaultEmail);
   const [phone, setPhone] = useState('');
-  const [target, setTarget] = useState(defaultTarget);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(existing);
@@ -29,7 +27,7 @@ export default function TrackForm({ productId, price, existing, defaultEmail = '
     const res = await fetch('/api/alerts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product_id: productId, email, phone, tier: 'urgent', drop_percent: drop, target_price: target, window_days: days }),
+      body: JSON.stringify({ product_id: productId, email, phone, tier: 'urgent', drop_percent: drop, window_days: days }),
     });
     const data = await res.json();
     setBusy(false);
@@ -71,10 +69,6 @@ export default function TrackForm({ productId, price, existing, defaultEmail = '
           {DROPS.map((o) => (
             <button type="button" key={o.v} onClick={() => setDrop(o.v)} className={drop === o.v ? 'chip-on' : 'chip-off'} aria-pressed={drop === o.v}>{o.t}</button>
           ))}
-        </div>
-        <div className="mt-3 flex items-center gap-2 text-sm">
-          <label htmlFor="tf-target" className="text-ink-soft">…or when it reaches</label>
-          <input id="tf-target" type="number" min="1" max={Math.floor(price) - 1} className="input w-32" placeholder={inr(price * 0.9).replace('₹', '₹ ')} value={target} onChange={(e) => setTarget(e.target.value)} />
         </div>
       </fieldset>
 

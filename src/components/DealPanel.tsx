@@ -168,7 +168,7 @@ export default function DealPanel(props: {
         </div>
       ) : (
         <div className="p-5">
-          <TrackForm key={target} productId={productId} price={price} existing={props.tracking} defaultEmail={userEmail ?? ''} defaultTarget={target} />
+          <TrackForm productId={productId} existing={props.tracking} defaultEmail={userEmail ?? ''} />
         </div>
       )}
     </div>
