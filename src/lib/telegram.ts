@@ -4,7 +4,7 @@ import { read, write } from './db';
 import { appUrl } from './config';
 import { automationKey, sendQueuedMailNow } from './flows';
 import { queueTelegram } from './alerts';
-import { TELEGRAM, endSubscription, listFlows, subscribeTelegramMessages } from './viasocket';
+import { TELEGRAM, endSubscription, listFlows, readFlow, subscribeTelegramMessages } from './viasocket';
 
 // The operator's bot username once Telegram is connected and listening, else null.
 export function telegramBot(): string | null {
@@ -52,11 +52,30 @@ return { forwarded: true };`;
     write((d) => {
       if (d.settings.telegram) Object.assign(d.settings.telegram, { subscription: sub, error: null });
     });
+    await syncBotFromListener();
   } catch (e) {
     write((d) => {
       if (d.settings.telegram) d.settings.telegram.error = `Could not listen to the bot: ${e instanceof Error ? e.message : String(e)}`;
     });
   }
+}
+
+// The bot's real username, as Telegram reported it when viaSocket set up the listener. A typed username can
+// point shoppers at someone else's bot, so the real one always wins.
+export async function syncBotFromListener(): Promise<void> {
+  const t = read((d) => d.settings.telegram);
+  if (!t) return;
+  const active = (await listFlows().catch(() => [])).filter((f) => f.status === 'active' && f.title === TELEGRAM.new_message.version_id);
+  const sub = active.find((f) => f.id === t.subscription)?.id ?? active[0]?.id;
+  if (!sub) return;
+  const flow: any = await readFlow(sub).catch(() => null);
+  const trigger = flow?.trigger ?? flow?.data?.trigger;
+  const username = normalizeBot(trigger?.inputData?.performsubscribe?.telegram_bot?.result?.username);
+  write((d) => {
+    if (!d.settings.telegram) return;
+    d.settings.telegram.subscription = sub;
+    if (username) d.settings.telegram.bot = username;
+  });
 }
 
 export async function stopListening() {

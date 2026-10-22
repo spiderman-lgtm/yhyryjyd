@@ -305,7 +305,7 @@ export default function AdminConsole(props: {
           <div className="space-y-3">
             <div className="flex flex-wrap items-end gap-3">
               <label className="text-sm">
-                <span className="label">Bot username</span>
+                <span className="label">Bot username (filled in from your connected bot)</span>
                 <input value={bot} onChange={(e) => setBot(e.target.value)} placeholder="DealRadarAlertsBot" className="input w-64" />
               </label>
               <button className="btn-ghost" disabled={busy === 'tg'} onClick={() => run('tg', () => post('/api/admin/settings', { telegram: { bot } }), 'Saved — shoppers can now choose Telegram for their alerts.')}>Save</button>

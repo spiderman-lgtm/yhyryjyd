@@ -7,6 +7,7 @@ import { currentUser } from '@/lib/auth';
 import { TIER_INFO } from '@/lib/alerts';
 import { GMAIL, TELEGRAM, WHATSAPP, flowRunCounts, listConnections } from '@/lib/viasocket';
 import { ensureMailFlow } from '@/lib/flows';
+import { syncBotFromListener } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'DealRadar admin', robots: { index: false } };
@@ -26,6 +27,8 @@ export default async function AdminPage() {
 
   // Sets up the instant email automation if Gmail is connected but it does not exist yet.
   await ensureMailFlow().catch(() => null);
+  // Keeps the bot username (used in shoppers' "Open Telegram" links) matching the connected bot.
+  await syncBotFromListener().catch(() => null);
 
   const data = read((d) => ({
     settings: d.settings,
