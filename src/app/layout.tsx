@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
+import HeaderLocation from '@/components/HeaderLocation';
 import UserMenu from '@/components/UserMenu';
 import { currentUser } from '@/lib/auth';
 import { STORES } from '@/lib/stores';
@@ -22,11 +24,13 @@ const NAV = [
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const user = currentUser();
+  const pin = cookies().get('dr_pin')?.value ?? null;
+  const area = cookies().get('dr_area')?.value || null;
   return (
     <html lang="en">
       <body>
         <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur-md">
-          <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
+          <nav className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:gap-4">
             <div className="flex items-center gap-6">
               <Link href={user ? '/dashboard' : '/'} className="flex shrink-0 items-center gap-2 text-lg font-extrabold">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-orange-500 to-pink-500 text-white shadow-md shadow-orange-500/30">₹</span>
@@ -37,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
             <div className="flex items-center gap-1 whitespace-nowrap text-sm font-medium sm:gap-3">
+              <HeaderLocation pin={pin} area={area} />
               {user && <Link href="/dashboard" className="rounded-lg px-2 py-1.5 hover:bg-slate-100">Dashboard</Link>}
               <Link href="/cart" className="hidden rounded-lg px-2 py-1.5 hover:bg-slate-100 sm:block">My cart</Link>
               <Link href="/alerts" className="hidden rounded-lg px-2 py-1.5 hover:bg-slate-100 sm:block">My alerts</Link>
@@ -44,7 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <UserMenu name={user.name} email={user.email} owner={user.role === 'owner'} />
               ) : (
                 <>
-                  <Link href="/login" className="rounded-lg px-2 py-1.5 hover:bg-slate-100">Sign in</Link>
+                  <Link href="/login" className="rounded-lg px-1.5 py-1.5 hover:bg-slate-100 sm:px-2">Sign in</Link>
                   <Link href="/signup" className="btn-primary px-3 py-1.5">Sign up</Link>
                 </>
               )}

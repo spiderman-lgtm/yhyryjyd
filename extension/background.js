@@ -67,6 +67,32 @@ const QUICK = [
   { store: 'JioMart', home: 'https://www.jiomart.com/', url: (q) => 'https://www.jiomart.com/search/' + encodeURIComponent(q) },
 ];
 
+// When a store has no delivery location yet, give it the shopper's DealRadar location the way the store's own
+// location picker saves it, then read again. Stores that keep the location server-side (Zepto, BigBasket) are
+// left to the shopper: the panel offers to open them.
+const MONTH = () => Math.floor(Date.now() / 1000) + 30 * 86400;
+const LOCATE = {
+  async Blinkit(loc) {
+    if (!loc.lat) return false;
+    const city = (loc.area || '').split(',')[0] || loc.pin;
+    for (const [name, value] of [['gr_1_lat', loc.lat], ['gr_1_lon', loc.lng], ['gr_1_locality', city]])
+      await chrome.cookies.set({ url: 'https://blinkit.com/', name, value: String(value), expirationDate: MONTH() });
+    return true;
+  },
+  async Instamart(loc) {
+    if (!loc.lat) return false;
+    const value = encodeURIComponent(JSON.stringify({ address: loc.area || loc.pin, lat: loc.lat, lng: loc.lng, id: '', annotation: '', name: '' }));
+    await chrome.cookies.set({ url: 'https://www.swiggy.com/', name: 'userLocation', value, expirationDate: MONTH() });
+    return true;
+  },
+  async JioMart(loc) {
+    await chrome.cookies.set({ url: 'https://www.jiomart.com/', name: 'nms_mgo_pincode', value: loc.pin, expirationDate: MONTH() });
+    const city = (loc.area || '').split(',')[0];
+    if (city) await chrome.cookies.set({ url: 'https://www.jiomart.com/', name: 'nms_mgo_city', value: city, expirationDate: MONTH() });
+    return true;
+  },
+};
+
 function readCards() {
   const priceRe = /₹\s?([\d,]+(?:\.\d+)?)/;
   const out = [];
@@ -154,10 +180,13 @@ async function quick({ id, title, price: p }) {
   const source = { title, price: p };
   const q = DRMatch.query(title);
   const status = {};
+  const loc = await api('/api/pincode').catch(() => ({}));
   const results = await Promise.all(
     QUICK.map(async (s) => {
       try {
-        const { cards, needsLocation } = await readQuickStore(s, q);
+        let { cards, needsLocation } = await readQuickStore(s, q);
+        if (!DRMatch.best(source, cards) && (needsLocation || !cards.length) && loc.pin && LOCATE[s.store] && (await LOCATE[s.store](loc).catch(() => false)))
+          ({ cards, needsLocation } = await readQuickStore(s, q));
         const hit = DRMatch.best(source, cards);
         // seen says whether the page showed products at all: none seen usually means no location set yet.
         status[s.store] = hit
@@ -174,22 +203,22 @@ async function quick({ id, title, price: p }) {
   return { status, offers: merged?.offers };
 }
 
+const HANDLERS = {
+  lookup: (msg) => api('/api/ext/lookup', msg.page),
+  compare,
+  quick,
+  getLocation: () => api('/api/pincode'),
+  setLocation: (msg) => api('/api/pincode', { pin: msg.pin }),
+  alerts: () => api('/api/alerts'),
+  setAlert: (msg) => api('/api/alerts', msg.alert),
+  stopAlert: (msg) => api('/api/alerts/' + encodeURIComponent(msg.id), { op: 'cancel' }),
+};
+
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
-  const run =
-    msg.type === 'lookup'
-      ? api('/api/ext/lookup', msg.page)
-      : msg.type === 'compare'
-        ? compare(msg)
-        : msg.type === 'quick'
-          ? quick(msg)
-          : msg.type === 'alerts'
-            ? api('/api/alerts')
-            : msg.type === 'setAlert'
-              ? api('/api/alerts', msg.alert)
-              : msg.type === 'stopAlert'
-                ? api('/api/alerts/' + encodeURIComponent(msg.id), { op: 'cancel' })
-                : null;
-  if (!run) return false;
-  run.then((data) => reply({ ok: true, data })).catch((e) => reply({ ok: false, error: String(e.message || e) }));
+  const handler = HANDLERS[msg.type];
+  if (!handler) return false;
+  handler(msg)
+    .then((data) => reply({ ok: true, data }))
+    .catch((e) => reply({ ok: false, error: String(e.message || e) }));
   return true; // keeps the channel open for the async reply
 });

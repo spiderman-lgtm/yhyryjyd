@@ -23,7 +23,8 @@
   "permissions": [
     "storage",
     "scripting",
-    "tabs"
+    "tabs",
+    "cookies"
   ],
   "host_permissions": [
     "https://dealradar.embarko.app/*",

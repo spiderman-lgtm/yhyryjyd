@@ -112,6 +112,20 @@
     };
   }
 
+  // The delivery pincode this store already shows (Amazon's "Deliver to … 560001", Flipkart's delivery box),
+  // so the shopper does not have to type it again.
+  function pagePin() {
+    const pin = (t) => (String(t || '').match(/\b[1-9]\d{5}\b/) || [])[0] || null;
+    for (const sel of ['#glow-ingress-line2', '#contextualIngressPtLabel_deliveryShortLine', '[id*="pincode" i]', '[class*="pincode" i]']) {
+      for (const el of document.querySelectorAll(sel)) {
+        const p = pin(el.textContent) || pin(el.value);
+        if (p) return p;
+      }
+    }
+    const m = document.body.innerText.slice(0, 30000).match(/deliver(?:y|ing)?\s*(?:to|at|by)?\b[^\d\n₹]{0,40}?\b([1-9]\d{5})\b/i);
+    return m ? m[1] : null;
+  }
+
   const send = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, (r) => resolve(r || { ok: false, error: 'No reply' })));
 
   // ---------- panel ----------
@@ -149,6 +163,7 @@
     svg { display:block; width:100%; height:64px; }
     .note { font-size:11px; color:#64748b; margin-top:6px; }
     .err { color:#b91c1c; font-size:13px; }
+    .note a, .row a { color:#ea580c; font-weight:700; text-decoration:none; }
     .ah { display:flex; align-items:center; justify-content:space-between; margin:-12px -14px 10px; padding:10px 14px; background:#fff7ed; color:#c2410c; font-weight:900; font-size:15px; text-decoration:none; }
     .ah span { font-size:18px; color:#64748b; }
     .ask { border:1px solid #e2e8f0; border-radius:14px; padding:12px; animation:in .3s cubic-bezier(.22,1,.36,1); }
@@ -173,6 +188,8 @@
   const state = { open: true, product: null, data: null, offers: null, error: '', quick: null, quickBusy: false };
   // Price alerts, set from the panel without leaving the store. contact is where the last alert went.
   const al = { list: null, contact: null, mode: 'ask', msg: '', err: '', tg: null };
+  // The DealRadar delivery location, shared with the website; nearby stores are checked there.
+  const loc = { pin: null, area: null, editing: false, busy: false, err: '' };
 
   function spark(history, current) {
     const pts = history.concat([{ p: current, t: Date.now() }]);
@@ -212,6 +229,36 @@
         )
         .join('') + (rows.length > 5 ? `<div class="note">Showing the 5 lowest of ${rows.length} stores.</div>` : '')
     );
+  }
+
+  function locationHtml() {
+    if (loc.editing || !loc.pin)
+      return `<div class="row" style="margin-top:8px;gap:6px"><span>📍</span>
+        <input class="field" id="loc-pin" inputmode="numeric" maxlength="6" placeholder="Your delivery pincode" value="${esc(loc.draft ?? loc.pin ?? '')}" style="margin:0;flex:1" />
+        <button class="stop" id="loc-save" style="padding:8px 10px">${loc.busy ? '…' : 'Save'}</button></div>
+        ${loc.err ? `<div class="err" style="font-size:12px;margin-top:4px">${esc(loc.err)}</div>` : '<div class="note">Set once: used here and on dealradar.embarko.app.</div>'}`;
+    return `<div class="row note" style="margin-top:8px"><span>📍 Delivering to <b>${esc(loc.pin)}</b>${loc.area ? ' · ' + esc(loc.area.split(',')[0]) : ''}${
+      loc.from ? ` <span class="muted">(from ${esc(loc.from)})</span>` : ''
+    }</span><a href="#" id="loc-change">Change</a></div>${
+      loc.suggest ? `<div class="note">${esc(store.name)} delivers to ${esc(loc.suggest)} · <a href="#" id="loc-use">Use ${esc(loc.suggest)}</a></div>` : ''
+    }`;
+  }
+
+  async function saveLocation() {
+    const pin = root.getElementById('loc-pin').value.replace(/\D/g, '');
+    if (pin.length !== 6) {
+      loc.err = 'Enter a 6-digit pincode.';
+      return render();
+    }
+    loc.busy = true;
+    loc.err = '';
+    render();
+    const r = await send({ type: 'setLocation', pin });
+    loc.busy = false;
+    if (!r.ok) loc.err = r.error;
+    else Object.assign(loc, { pin: r.data.pin, area: r.data.area, editing: false, from: null, suggest: null, draft: undefined });
+    state.quick = null;
+    render();
   }
 
   function quickHtml() {
@@ -358,6 +405,8 @@
     // The panel is redrawn as results arrive; keep what the shopper is typing into the alert form.
     const typing = root.getElementById('al-email');
     if (typing) al.draft = { email: typing.value, phone: root.getElementById('al-phone').value, telegram: root.getElementById('al-tg').checked };
+    const pinTyping = root.getElementById('loc-pin');
+    if (pinTyping) loc.draft = pinTyping.value;
     const focused = root.activeElement && root.activeElement.id;
     if (!state.open) {
       const score = state.data?.deal?.score;
@@ -386,7 +435,8 @@
         <div class="sec">${alertsHtml()}</div>
         <div class="sec"><div class="s">Price history</div>${spark(d.history || [], p.price)}</div>
         <div class="sec"><div class="s">Compare prices</div>${offersHtml()}
-          <button class="btn ghost" id="quick" ${state.quickBusy ? 'disabled' : ''}>📍 Check nearby: Zepto · Blinkit · Instamart · BigBasket · JioMart</button>${quickHtml()}
+          ${locationHtml()}
+          <button class="btn ghost" id="quick" ${state.quickBusy || !loc.pin ? 'disabled' : ''}>📍 Check nearby: Zepto · Blinkit · Instamart · BigBasket · JioMart</button>${quickHtml()}
         </div>
         <div class="sec" style="border:0">
           <a class="btn ghost" href="${esc(d.page)}" target="_blank" rel="noopener">Full price history & coupons</a>
@@ -397,7 +447,29 @@
       state.open = false;
       render();
     };
-    if (d && !state.error) bindAlerts();
+    if (d && !state.error) {
+      bindAlerts();
+      const save = root.getElementById('loc-save');
+      if (save) save.onclick = () => saveLocation();
+      const pinInput = root.getElementById('loc-pin');
+      if (pinInput) pinInput.onkeydown = (e) => e.key === 'Enter' && saveLocation();
+      const use = root.getElementById('loc-use');
+      if (use)
+        use.onclick = async (e) => {
+          e.preventDefault();
+          const r = await send({ type: 'setLocation', pin: loc.suggest });
+          if (r.ok) Object.assign(loc, { pin: r.data.pin, area: r.data.area, from: store.name, suggest: null });
+          state.quick = null;
+          render();
+        };
+      const change = root.getElementById('loc-change');
+      if (change)
+        change.onclick = (e) => {
+          e.preventDefault();
+          loc.editing = true;
+          render();
+        };
+    }
     const again = focused && root.getElementById(focused);
     if (again && again.focus) again.focus();
     const q = root.getElementById('quick');
@@ -431,8 +503,10 @@
     al.msg = '';
     al.err = '';
     al.tg = null;
+    loc.suggest = null;
+    loc.from = null;
     const { autoOpen = true } = await chrome.storage.local.get('autoOpen');
-    state.open = autoOpen;
+    state.open = autoOpen || forceOpen;
     if (!host.isConnected) document.documentElement.appendChild(host);
     render();
     const r = await send({ type: 'lookup', page: product });
@@ -444,11 +518,37 @@
     state.data = r.data;
     render();
     loadAlerts();
+    send({ type: 'getLocation' }).then(async (l) => {
+      if (l.ok) Object.assign(loc, { pin: l.data.pin, area: l.data.area });
+      const here = pagePin();
+      if (here && !loc.pin) {
+        // No DealRadar location yet: use the one this store already has.
+        const r = await send({ type: 'setLocation', pin: here });
+        if (r.ok) Object.assign(loc, { pin: r.data.pin, area: r.data.area, from: store.name });
+      } else if (here && here !== loc.pin) loc.suggest = here;
+      render();
+    });
     const c = await send({ type: 'compare', id: r.data.id, title: product.title, price: product.price, store: store.name });
     state.offers = c.ok ? c.data.offers : [];
     render();
     return true;
   }
+
+  // Clicking the DealRadar toolbar icon on a product page opens the panel here, even if it was minimised.
+  let forceOpen = false;
+  chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+    if (msg.type !== 'openPanel') return false;
+    if (!store.product()) {
+      reply({ ok: false });
+      return false;
+    }
+    forceOpen = true;
+    state.open = true;
+    if (host.isConnected) render();
+    else done = ''; // not shown yet: the next check builds it, open
+    reply({ ok: true });
+    return false;
+  });
 
   // Flipkart and Myntra change pages without reloading, so the URL is watched.
   let done = '';
