@@ -2,7 +2,7 @@ import 'server-only';
 import { read, write, type Settings, type Tier } from './db';
 import { TIER_INFO } from './alerts';
 import { appUrl } from './config';
-import { GMAIL, WHATSAPP, derivedKey, listConnections, listFlows, runFlow, upsertCronFlow, upsertWebhookFlow, type FlowStep } from './viasocket';
+import { GMAIL, TELEGRAM, WHATSAPP, derivedKey, listConnections, listFlows, runFlow, upsertCronFlow, upsertWebhookFlow, type FlowStep } from './viasocket';
 
 export const automationKey = () => derivedKey('automation');
 
@@ -48,7 +48,7 @@ return { sent };`,
   }
 
   const wa = s.whatsapp;
-  if (tier !== 'digest' && tier !== 'mail' && wa?.wba_id && wa.phone_id && wa.message_template_id) {
+  if (tier !== 'digest' && wa?.wba_id && wa.phone_id && wa.message_template_id) {
     list.push({
       stepname: 'send_whatsapp',
       service_action_functions: [{ name: 'sendTemplate', auth_id: wa.auth_id, action_id: WHATSAPP.send_template.action_id }],
@@ -62,7 +62,7 @@ for (const n of due) {
       wba_id: ${JSON.stringify(wa.wba_id)},
       phone_id: ${JSON.stringify(wa.phone_id)},
       to: [n.phone],
-      message_template_id: ${JSON.stringify(wa.message_template_id)},
+      message_template_id: n.whatsapp_template || ${JSON.stringify(wa.message_template_id)},
       variables: n.whatsapp_vars
     } });
     sent.push(r && r.error ? { id: n.id, ok: false, error: JSON.stringify(r.error).slice(0, 300) } : { id: n.id, ok: true });
@@ -75,14 +75,42 @@ return { sent };`,
     });
   }
 
+  if (s.telegram) {
+    list.push({
+      stepname: 'send_telegram',
+      service_action_functions: [{ name: 'sendTelegram', auth_id: s.telegram.auth_id, action_id: TELEGRAM.send_message.action_id }],
+      code: `
+const d = context?.res?.check_prices;
+const due = (d && !d.error && Array.isArray(d.notifications)) ? d.notifications.filter((n) => n.telegram && n.telegram.chat) : [];
+const sent = [];
+for (const n of due) {
+  try {
+    const buttons = n.telegram.url ? { inline_buttons: { [n.telegram.label || "Open in DealRadar"]: n.telegram.url } } : {};
+    // With a product photo the message is a picture with the text as its caption (Telegram allows 1,024 characters).
+    const photo = n.telegram.image && /^https:/.test(n.telegram.image) && n.telegram.text.length <= 1000;
+    const r = await sendTelegram({ inputData: photo
+      ? { chat: String(n.telegram.chat), message_type: "photo", media_details: { media_url: n.telegram.image, caption: n.telegram.text }, buttons }
+      : { chat: String(n.telegram.chat), message_type: "text", text_message: { text: n.telegram.text }, buttons } });
+    const failed = r && (r.error || r.ok === false);
+    sent.push(failed ? { id: n.id, ok: false, error: JSON.stringify(r.error || r).slice(0, 300) } : { id: n.id, ok: true });
+  } catch (e) {
+    sent.push({ id: n.id, ok: false, error: String((e && e.message) || e).slice(0, 300) });
+  }
+}
+console.log("### Telegram sent: " + sent.filter((x) => x.ok).length + "/" + sent.length);
+return { sent };`,
+    });
+  }
+
   list.push({
     stepname: 'report_delivery',
     service_action_functions: [],
     code: `
 const email = (context?.res?.send_emails && context.res.send_emails.sent) || [];
 const whatsapp = (context?.res?.send_whatsapp && context.res.send_whatsapp.sent) || [];
-if (!email.length && !whatsapp.length) { console.log("### Nothing was sent this run"); return { reported: false }; }
-await axios.post(${base} + "/api/cron/ack", { tier: ${JSON.stringify(tier)}, email, whatsapp }, { headers: { "x-automation-key": ${key} }, timeout: 8000 });
+const telegram = (context?.res?.send_telegram && context.res.send_telegram.sent) || [];
+if (!email.length && !whatsapp.length && !telegram.length) { console.log("### Nothing was sent this run"); return { reported: false }; }
+await axios.post(${base} + "/api/cron/ack", { tier: ${JSON.stringify(tier)}, email, whatsapp, telegram }, { headers: { "x-automation-key": ${key} }, timeout: 8000 });
 console.log("### Delivery reported to DealRadar");
 return { reported: true };`,
   });
@@ -92,7 +120,7 @@ return { reported: true };`,
 // Keeps the schedules in step with the Gmail/WhatsApp setup, so the owner never has to apply it by hand.
 export async function syncFlows(): Promise<{ ok: boolean; error?: string } | null> {
   const s = read((d) => d.settings);
-  if (!s.gmail && !s.whatsapp?.message_template_id) return null;
+  if (!s.gmail && !s.whatsapp?.message_template_id && !s.telegram) return null;
   try {
     await activateFlows();
     return { ok: true };
@@ -103,7 +131,7 @@ export async function syncFlows(): Promise<{ ok: boolean; error?: string } | nul
 
 export async function activateFlows() {
   const s = read((d) => d.settings);
-  if (!s.gmail && !s.whatsapp?.message_template_id) throw new Error('Connect Gmail or finish the WhatsApp setup first.');
+  if (!s.gmail && !s.whatsapp?.message_template_id && !s.telegram) throw new Error('Connect Gmail, Telegram or finish the WhatsApp setup first.');
   const ids: Partial<Record<Tier, string>> = {};
   for (const tier of ['urgent', 'normal', 'digest'] as Tier[]) {
     ids[tier] = await upsertCronFlow({
@@ -117,7 +145,7 @@ export async function activateFlows() {
       d.settings.flows[tier] = ids[tier];
     });
   }
-  if (s.gmail) await ensureMailFlow(true);
+  if (s.gmail || s.telegram || s.whatsapp?.confirm_template_id) await ensureMailFlow(true);
   write((d) => {
     d.settings.flows_activated_at = new Date().toISOString();
   });
@@ -156,7 +184,7 @@ async function adoptGmail(): Promise<boolean> {
 async function buildMailFlow(): Promise<string | null> {
   if (!read((d) => d.settings.gmail)) await adoptGmail();
   const s = read((d) => d.settings);
-  if (!s.gmail) {
+  if (!s.gmail && !s.telegram && !s.whatsapp?.confirm_template_id) {
     mailError('Gmail is not connected in DealRadar — connect it above.');
     return null;
   }
@@ -166,7 +194,7 @@ async function buildMailFlow(): Promise<string | null> {
     const id = await upsertWebhookFlow({
       scriptId: existing,
       title: MAIL_FLOW_TITLE,
-      description: 'Started by DealRadar the moment a shopper sets a price alert: sends the confirmation email through your Gmail.',
+      description: 'Started by DealRadar the moment a shopper sets a price alert: sends the confirmation by email (your Gmail), WhatsApp and Telegram (your bot).',
       steps: buildSteps('mail', s),
     });
     write((d) => {

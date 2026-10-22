@@ -26,6 +26,9 @@ export interface Notification {
   subject: string;
   html: string;
   whatsapp_vars: Record<string, string> | null;
+  // Set for a template other than the price-drop one (the confirmation).
+  whatsapp_template?: string | null;
+  telegram: { chat: string; text: string; url: string | null; image?: string | null; label?: string } | null;
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -97,6 +100,20 @@ ${couponHtml}
     whatsapp_vars = Object.fromEntries(Object.entries(wa.variable_map).map(([key, src]) => [key, values[src] ?? '']));
   }
 
+  const telegram =
+    alert.channels.includes('telegram') && alert.telegram_chat
+      ? {
+          chat: alert.telegram_chat,
+          text:
+            `📉 Price dropped${dropPct >= 0.5 ? ` ${dropPct.toFixed(0)}%` : ''} — you can buy it now!\n\n${p.title.slice(0, 150)}\n\n` +
+            `Now ${inr(p.price)} (was ${inr(reference)}) on ${PLATFORM_NAMES[p.platform]}\n${reason}${isLow ? `\nLowest in ${alert.window_days} days` : ''}` +
+            (coupon ? `\n\n🏷 ${coupon.code ? `Code ${coupon.code}: ` : ''}${coupon.discount_text || coupon.title}` : ''),
+          url: l.buy,
+          image: p.image,
+          label: `🛒 Buy now at ${inr(p.price)}`,
+        }
+      : null;
+
   return {
     id: alert.id,
     kind: 'drop',
@@ -105,6 +122,7 @@ ${couponHtml}
     subject: `Price dropped! ${p.title.slice(0, 55)} is now ${inr(p.price)} — buy now`,
     html,
     whatsapp_vars,
+    telegram,
   };
 }
 
@@ -137,6 +155,49 @@ ${row('Availability', p.in_stock ? 'In stock' : 'Out of stock right now')}
   return { subject: `Tracking started: ${p.title.slice(0, 60)} at ${inr(p.price)}`, html };
 }
 
+// The Telegram version of the confirmation.
+export function confirmationTelegram(alert: Alert, p: Product): { text: string; url: string; image: string | null; label: string } {
+  const drops = alert.drop_percent > 0 ? `drops by ${alert.drop_percent}% or more` : 'drops';
+  return {
+    text:
+      `✅ You are now tracking this price\n\n${p.title.slice(0, 150)}\n\nNow ${inr(p.price)} on ${PLATFORM_NAMES[p.platform]}\n` +
+      `We will message you here as soon as it ${drops} (until ${new Date(alert.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}).`,
+    url: links(alert, p).page,
+    image: p.image,
+    label: '📈 See price history',
+  };
+}
+
+// The WhatsApp confirmation, when the owner picked a confirmation template in Admin.
+export function queueWhatsAppConfirmation(alert: Alert, p: Product, settings: Settings): boolean {
+  const wa = settings.whatsapp;
+  if (!alert.phone || !wa?.confirm_template_id) return false;
+  const l = links(alert, p);
+  const coupon = cachedCoupon(p);
+  const values: Record<string, string> = {
+    product_title: p.title.slice(0, 120),
+    price: inr(p.price),
+    old_price: inr(p.price),
+    drop_percent: '0%',
+    coupon: coupon ? (coupon.code ? `${coupon.code} (${coupon.discount_text})` : coupon.discount_text) : 'No coupon right now',
+    buy_link: l.page,
+  };
+  const vars = Object.fromEntries(Object.entries(wa.confirm_variable_map ?? {}).map(([key, src]) => [key, values[src] ?? '']));
+  const m: OutboxMail = { id: newId('m'), email: null, whatsapp: { phone: alert.phone, template_id: wa.confirm_template_id, vars }, subject: '', html: '', created_at: new Date().toISOString(), claimed_at: null, sent_at: null, tries: 0 };
+  write((d) => {
+    d.outbox.push(m);
+  });
+  return true;
+}
+
+export function queueTelegram(chat: string, text: string, url: string | null, image: string | null = null, label?: string): OutboxMail {
+  const m: OutboxMail = { id: newId('m'), email: null, telegram: { chat, text, url, image, label }, subject: '', html: '', created_at: new Date().toISOString(), claimed_at: null, sent_at: null, tries: 0 };
+  write((d) => {
+    d.outbox.push(m);
+  });
+  return m;
+}
+
 export function queueMail(email: string, subject: string, html: string): OutboxMail {
   const m: OutboxMail = { id: newId('m'), email, subject, html, created_at: new Date().toISOString(), claimed_at: null, sent_at: null, tries: 0 };
   write((d) => {
@@ -157,7 +218,19 @@ export function claimOutbox(minAgeMs = 0): Notification[] {
       m.claimed_at = new Date(now).toISOString();
       m.tries++;
     }
-    return due.slice(0, MAX_NOTIFICATIONS_PER_RUN).map((m) => ({ id: m.id, kind: 'confirm' as const, email: m.email, phone: null, subject: m.subject, html: m.html, whatsapp_vars: null }));
+    return due
+      .slice(0, MAX_NOTIFICATIONS_PER_RUN)
+      .map((m) => ({
+        id: m.id,
+        kind: 'confirm' as const,
+        email: m.email,
+        phone: m.whatsapp?.phone ?? null,
+        subject: m.subject,
+        html: m.html,
+        whatsapp_vars: m.whatsapp?.vars ?? null,
+        whatsapp_template: m.whatsapp?.template_id ?? null,
+        telegram: m.telegram ?? null,
+      }));
   });
 }
 
@@ -189,6 +262,10 @@ function expiryNotification(alert: Alert, p: Product): Notification {
       'This is the last email about this product unless you extend.',
     ),
     whatsapp_vars: null,
+    telegram:
+      alert.channels.includes('telegram') && alert.telegram_chat
+        ? { chat: alert.telegram_chat, text: `⏰ Your ${alert.window_days}-day price watch has ended.\n\n${p.title.slice(0, 150)}\n\nPrice now ${inr(p.price)}${low ? ` · lowest we saw ${inr(low)}` : ''}.\nTap below to keep watching.`, url: l.extend, image: p.image, label: '🔔 Keep watching' }
+        : null,
   };
 }
 
@@ -213,6 +290,7 @@ function digestNotification(email: string, items: { alert: Alert; product: Produ
     subject: `Your DealRadar watchlist today (${items.length} product${items.length > 1 ? 's' : ''})`,
     html: shell(`<p>Today's prices for what you are watching (compared with when you started):</p><table width="100%" cellpadding="0" cellspacing="0">${rows}</table>`, 'Daily digest from DealRadar.'),
     whatsapp_vars: null,
+    telegram: null,
   };
 }
 

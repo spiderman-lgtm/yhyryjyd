@@ -61,6 +61,7 @@ export default function DealPanel(props: {
   trackingSince: string | null;
   tracking: boolean;
   userEmail: string | null;
+  telegram?: boolean;
 }) {
   const { productId, price, store, deal, userEmail } = props;
   const [tab, setTab] = useState<'scan' | 'drop'>('scan');
@@ -168,7 +169,7 @@ export default function DealPanel(props: {
         </div>
       ) : (
         <div className="p-5">
-          <TrackForm productId={productId} existing={props.tracking} defaultEmail={userEmail ?? ''} />
+          <TrackForm productId={productId} existing={props.tracking} defaultEmail={userEmail ?? ''} telegram={props.telegram} />
         </div>
       )}
     </div>

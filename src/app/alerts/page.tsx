@@ -3,6 +3,7 @@ import { currentUser, viewerUid } from '@/lib/auth';
 import AlertActions from '@/components/AlertActions';
 import { read } from '@/lib/db';
 import { dateShort, inr } from '@/lib/format';
+import { linkFor } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,8 @@ export default function AlertsPage({ searchParams }: { searchParams: { msg?: str
       .sort((a, b) => (a.status === 'active' ? -1 : 1) - (b.status === 'active' ? -1 : 1) || Date.parse(b.created_at) - Date.parse(a.created_at))
       .map((a) => ({ a, p: d.products[a.product_id] })),
   );
+  // Alerts waiting for the shopper to press Start in the Telegram bot.
+  const tgLink = rows.some(({ a }) => a.status === 'active' && a.channels.includes('telegram') && !a.telegram_chat) ? linkFor(uid) : null;
 
   return (
     <div className="space-y-6">
@@ -55,6 +58,9 @@ export default function AlertsPage({ searchParams }: { searchParams: { msg?: str
                   {' · '}alert on {a.target_price ? `≤ ${inr(a.target_price)} or ` : ''}{a.drop_percent ? `${a.drop_percent}%+ drop` : 'any drop'}
                   {' · '}via {a.channels.join(' + ')}
                 </div>
+                {tgLink && a.status === 'active' && a.channels.includes('telegram') && !a.telegram_chat && (
+                  <a href={tgLink} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#229ED9] hover:underline">✈️ Connect Telegram — press Start in the bot</a>
+                )}
               </div>
               <AlertActions id={a.id} status={a.status} />
             </div>

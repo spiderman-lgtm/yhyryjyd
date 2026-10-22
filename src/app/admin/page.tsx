@@ -5,7 +5,7 @@ import CouponManager from '@/components/admin/CouponManager';
 import { read, type Tier } from '@/lib/db';
 import { currentUser } from '@/lib/auth';
 import { TIER_INFO } from '@/lib/alerts';
-import { GMAIL, WHATSAPP, flowRunCounts, listConnections } from '@/lib/viasocket';
+import { GMAIL, TELEGRAM, WHATSAPP, flowRunCounts, listConnections } from '@/lib/viasocket';
 import { ensureMailFlow } from '@/lib/flows';
 
 export const dynamic = 'force-dynamic';
@@ -63,9 +63,9 @@ export default async function AdminPage() {
 
   return (
     <AdminConsole
-      apps={{ gmail: { ...GMAIL }, whatsapp: { ...WHATSAPP } }}
+      apps={{ gmail: { ...GMAIL }, whatsapp: { ...WHATSAPP }, telegram: { service_id: TELEGRAM.service_id, name: TELEGRAM.name, icon: TELEGRAM.icon, send_message: { action_id: TELEGRAM.send_message.action_id } } }}
       settings={data.settings}
-      expired={{ gmail: !!(data.settings.gmail && expired[data.settings.gmail.auth_id]), whatsapp: !!(data.settings.whatsapp && expired[data.settings.whatsapp.auth_id]) }}
+      expired={{ gmail: !!(data.settings.gmail && expired[data.settings.gmail.auth_id]), whatsapp: !!(data.settings.whatsapp && expired[data.settings.whatsapp.auth_id]), telegram: !!(data.settings.telegram && expired[data.settings.telegram.auth_id]) }}
       connError={connError}
       flows={flows}
       stats={data.stats}

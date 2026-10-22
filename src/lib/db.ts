@@ -3,7 +3,7 @@ import path from 'path';
 
 export type Platform = 'amazon' | 'flipkart' | 'myntra' | 'ajio' | 'meesho' | 'croma' | 'tatacliq' | 'reliancedigital' | 'vijaysales' | 'nykaa' | 'jiomart' | 'other';
 export type Tier = 'urgent' | 'normal' | 'digest';
-export type Channel = 'email' | 'whatsapp';
+export type Channel = 'email' | 'whatsapp' | 'telegram';
 
 export interface Product {
   id: string;
@@ -47,6 +47,8 @@ export interface Alert {
   target_price: number | null;
   window_days: 7 | 15;
   baseline_price: number;
+  // The shopper's Telegram chat, once they have pressed Start on the bot.
+  telegram_chat?: string | null;
   last_notified_price: number | null;
   last_notified_at: string | null;
   created_at: string;
@@ -197,7 +199,11 @@ export interface Settings {
     phone_id: string | null;
     message_template_id: string | null;
     variable_map: Record<string, WhatsAppVarSource>;
+    // An optional second approved template, sent the moment a shopper sets an alert.
+    confirm_template_id?: string | null;
+    confirm_variable_map?: Record<string, WhatsAppVarSource>;
   } | null;
+  telegram?: { auth_id: string; bot: string | null; subscription: string | null; error?: string | null } | null;
   flows: Partial<Record<Tier, string>>;
   // The on-demand flow that sends one-off emails (alert confirmations) as soon as they are queued.
   mail_flow?: string;
@@ -211,7 +217,9 @@ export interface Settings {
 // A one-off email waiting to be sent through the operator's Gmail.
 export interface OutboxMail {
   id: string;
-  email: string;
+  email: string | null;
+  telegram?: { chat: string; text: string; url: string | null; image?: string | null; label?: string } | null;
+  whatsapp?: { phone: string; template_id: string; vars: Record<string, string> } | null;
   subject: string;
   html: string;
   created_at: string;
@@ -225,6 +233,7 @@ export interface DeliveryLog {
   tier: Tier | 'mail';
   email: { id: string; ok: boolean; error?: string }[];
   whatsapp: { id: string; ok: boolean; error?: string }[];
+  telegram?: { id: string; ok: boolean; error?: string }[];
 }
 
 interface Data {
@@ -244,6 +253,8 @@ interface Data {
   deliveries: DeliveryLog[];
   outbox: OutboxMail[];
   catalog: Record<string, { items: CatalogItem[]; fetched_at: string }>;
+  // Shoppers' linked Telegram chats (by browser/account id) and the one-time codes that link them.
+  telegram: { chats: Record<string, { chat: string; name: string | null; at: string }>; codes: Record<string, { uid: string; at: string }> };
   settings: Settings;
 }
 
@@ -268,6 +279,7 @@ function empty(): Data {
     deliveries: [],
     outbox: [],
     catalog: {},
+    telegram: { chats: {}, codes: {} },
     settings: { gmail: null, whatsapp: null, flows: {}, flows_activated_at: null },
   };
 }

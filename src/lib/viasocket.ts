@@ -1,6 +1,7 @@
 import 'server-only';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import { ViaSocket } from 'viasocket-apps';
 
 const API = 'https://flow-api.viasocket.com/';
 const RUN = 'https://flow.sokt.io/func/';
@@ -23,13 +24,38 @@ export const WHATSAPP = {
   send_template: { action_id: 'rowsd70emhii', action_version_id: 'rowj80xxlox1' },
 };
 
-export const APPS = { gmail: GMAIL, whatsapp: WHATSAPP } as const;
+// The operator's own Telegram bot: sends alerts, and hears "/start" from shoppers to link their chat.
+export const TELEGRAM = {
+  service_id: 'rows0luvn',
+  name: 'Telegram',
+  icon: 'https://stuff.thingsofbrand.com/telegram.org/images/img6c1c10f144_telegram.jpg',
+  send_message: { action_id: 'rowg5vf64', version: 'V33' },
+  new_message: { trigger_id: 'row75zh5gf76', version: 'V13' },
+};
+
+export const APPS = { gmail: GMAIL, whatsapp: WHATSAPP, telegram: TELEGRAM } as const;
 export type AppKey = keyof typeof APPS;
 
 function env(name: string) {
   const v = process.env[name];
   if (!v) throw new Error(`${name} is not set`);
   return v;
+}
+
+let client: ViaSocket | null = null;
+const viasocket = () =>
+  (client ??= new ViaSocket({ orgId: env('VIASOCKET_ORG_ID'), projectId: env('VIASOCKET_PROJECT_ID'), secret: env('VIASOCKET_EMBED_SECRET') }));
+
+// Runs `handler` on viaSocket for every message the operator's bot receives. Returns the subscription's script_id.
+export async function subscribeTelegramMessages(authId: string, handler: string): Promise<string> {
+  const vs = viasocket();
+  const triggerVersionId = await vs.catalog.versionIdFor(TELEGRAM.service_id, TELEGRAM.new_message.trigger_id, TELEGRAM.new_message.version);
+  const sub = await vs.user(OPERATOR_UID).subscribe(triggerVersionId, { authId, inputData: {}, code: handler });
+  return sub.scriptId;
+}
+
+export async function endSubscription(scriptId: string) {
+  await viasocket().user(OPERATOR_UID).setFlowStatus(scriptId, 0);
 }
 
 export function embedToken(uniqueIdentifier: string = OPERATOR_UID) {

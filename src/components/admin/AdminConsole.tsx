@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DeliveryLog, Enquiry, Settings, WhatsAppVarSource } from '@/lib/db';
 
-type AppKey = 'gmail' | 'whatsapp';
+type AppKey = 'gmail' | 'whatsapp' | 'telegram';
 interface AppInfo {
   service_id: string;
   name: string;
   icon: string;
   send_email?: { action_id: string };
   send_template?: { action_id: string };
+  send_message?: { action_id: string };
 }
 interface FlowRow {
   tier: string;
@@ -101,6 +102,9 @@ export default function AdminConsole(props: {
   const [phoneId, setPhoneId] = useState<string | null>(wa0?.phone_id ?? null);
   const [templateId, setTemplateId] = useState<string | null>(wa0?.message_template_id ?? null);
   const [varMap, setVarMap] = useState<Record<string, WhatsAppVarSource>>(wa0?.variable_map ?? {});
+  const [confirmTemplateId, setConfirmTemplateId] = useState<string | null>(wa0?.confirm_template_id ?? null);
+  const [confirmVarMap, setConfirmVarMap] = useState<Record<string, WhatsAppVarSource>>(wa0?.confirm_variable_map ?? {});
+  const [bot, setBot] = useState(settings.telegram?.bot ?? '');
 
   const embedBox = useRef<HTMLDivElement>(null);
   const [embedOpen, setEmbedOpen] = useState<null | { flowId?: string }>(null);
@@ -135,8 +139,8 @@ export default function AdminConsole(props: {
   function connect(app: AppKey) {
     if (!token || !window.openViasocketConnection) return setMsg('Still loading — try again in a second.');
     const info = apps[app];
-    const actionId = app === 'gmail' ? info.send_email!.action_id : info.send_template!.action_id;
-    const current = app === 'gmail' ? settings.gmail?.auth_id : settings.whatsapp?.auth_id;
+    const actionId = app === 'gmail' ? info.send_email!.action_id : app === 'telegram' ? info.send_message!.action_id : info.send_template!.action_id;
+    const current = settings[app]?.auth_id;
     pendingApp.current = app;
     window.openViasocketConnection(token, info.service_id, {
       filteredActions: [actionId],
@@ -265,10 +269,56 @@ export default function AdminConsole(props: {
                 onChange={(v) => { setTemplateId(v); setVarMap({}); }} />
             </div>
             {wbaId && templateId && <TemplateVars wbaId={wbaId} templateId={templateId} varMap={varMap} setVarMap={setVarMap} />}
+            <div className="rounded-xl border border-slate-200 p-3">
+              <div className="mb-2 text-sm font-semibold">Confirmation message (optional)</div>
+              <p className="mb-2 text-xs text-ink-soft">A second approved template, e.g. “✅ You are tracking {'{{1}}'} at {'{{2}}'} — we will message you when the price drops.” Sent the moment a shopper sets an alert with their number.</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Picker id="wa-ctpl" label="Confirmation template" hint="Leave empty to skip WhatsApp confirmations." app="whatsapp" fieldKey="message_template_id" existing={{ wba_id: wbaId }} enabled={!!wbaId} value={confirmTemplateId}
+                  onChange={(v) => { setConfirmTemplateId(v); setConfirmVarMap({}); }} optional />
+              </div>
+              {wbaId && confirmTemplateId && <div className="mt-3"><TemplateVars wbaId={wbaId} templateId={confirmTemplateId} varMap={confirmVarMap} setVarMap={setConfirmVarMap} /></div>}
+            </div>
             <button className="btn-ghost" disabled={!waReady || busy === 'wa'}
-              onClick={() => run('wa', () => post('/api/admin/settings', { whatsapp: { wba_id: wbaId, phone_id: phoneId, message_template_id: templateId, variable_map: varMap } }), 'Saved — price alerts use this from the next check.')}>
+              onClick={() => run('wa', () => post('/api/admin/settings', { whatsapp: { wba_id: wbaId, phone_id: phoneId, message_template_id: templateId, variable_map: varMap, confirm_template_id: confirmTemplateId, confirm_variable_map: confirmVarMap } }), 'Saved — price alerts use this from the next check.')}>
               Save WhatsApp setup
             </button>
+          </div>
+        )}
+      </section>
+
+      <section className="card space-y-4 p-5">
+        <div>
+          <h2 className="font-bold">3 · Telegram — sends alerts from your DealRadar bot</h2>
+          <p className="text-sm text-ink-soft">
+            Create a bot with <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand underline">@BotFather</a> (name it “DealRadar”, set the ₹ logo as its picture with /setuserpic), then connect it here with its token.
+            Shoppers tap “Open Telegram → Start” once, and get confirmations and price drops with the product photo.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button className={settings.telegram && !props.expired.telegram ? 'btn-ghost' : 'btn-dark'} onClick={() => connect('telegram')}>
+            <img src={apps.telegram.icon} alt="" width={20} height={20} className="rounded" />
+            {settings.telegram ? (props.expired.telegram ? 'Reconnect Telegram (expired)' : 'Telegram bot connected · switch bot') : 'Connect Telegram bot'}
+          </button>
+          {settings.telegram && <button className="text-sm text-red-600 underline" onClick={() => run('dt', () => post('/api/admin/settings', { disconnect: 'telegram' }), 'Telegram removed from DealRadar.')}>Remove</button>}
+        </div>
+        {settings.telegram && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="text-sm">
+                <span className="label">Bot username</span>
+                <input value={bot} onChange={(e) => setBot(e.target.value)} placeholder="DealRadarAlertsBot" className="input w-64" />
+              </label>
+              <button className="btn-ghost" disabled={busy === 'tg'} onClick={() => run('tg', () => post('/api/admin/settings', { telegram: { bot } }), 'Saved — shoppers can now choose Telegram for their alerts.')}>Save</button>
+            </div>
+            <div className={`rounded-xl px-4 py-3 text-sm ${settings.telegram.subscription && settings.telegram.bot && !settings.telegram.error ? 'bg-deal-light text-deal' : 'bg-amber-50 text-amber-800'}`}>
+              {settings.telegram.error
+                ? settings.telegram.error
+                : !settings.telegram.bot
+                  ? 'Add the bot username so shoppers can open your bot.'
+                  : settings.telegram.subscription
+                    ? `Telegram alerts: on ✓ — shoppers link their chat at t.me/${settings.telegram.bot}.`
+                    : 'Not listening to the bot yet — connect it again.'}
+            </div>
           </div>
         )}
       </section>
@@ -276,7 +326,7 @@ export default function AdminConsole(props: {
       <section className="card space-y-3 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-bold">3 · More automations</h2>
+            <h2 className="font-bold">4 · More automations</h2>
             <p className="text-sm text-ink-soft">Build your own flows across 2,300+ apps (Slack alert on new enquiries, Sheets export…).</p>
           </div>
           <div className="flex gap-2">
