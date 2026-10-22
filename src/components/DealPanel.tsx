@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { fetchOnce } from '@/lib/fetch-once';
@@ -65,8 +64,6 @@ export default function DealPanel(props: {
 }) {
   const { productId, price, store, deal, userEmail } = props;
   const [tab, setTab] = useState<'scan' | 'drop'>('scan');
-  const [target, setTarget] = useState(String(Math.floor(price * 0.9)));
-  const [busy, setBusy] = useState(false);
   const [cheaper, setCheaper] = useState<{ store: string; price: number; i: number } | null>(null);
   useEffect(() => {
     fetchOnce<{ offers?: StoreOffer[] }>(`/api/product/${productId}/compare`)
@@ -76,22 +73,9 @@ export default function DealPanel(props: {
       })
       .catch(() => {});
   }, [productId, price]);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(props.tracking ? { ok: true, text: 'You are already tracking this price.' } : null);
+  const msg = props.tracking ? { ok: true, text: 'You are already tracking this price ✓' } : null;
 
-  async function quickAlert() {
-    const t = Number(target);
-    if (!(t > 0 && t < price)) return setMsg({ ok: false, text: `Enter a price below ${inr(price)}.` });
-    if (!userEmail) return setTab('drop');
-    setBusy(true);
-    const res = await fetch('/api/alerts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product_id: productId, email: userEmail, target_price: t, drop_percent: 0, tier: 'urgent', window_days: 15 }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setBusy(false);
-    setMsg(res.ok ? { ok: true, text: `Done — check ${userEmail} for the confirmation. We will email you when the price drops or reaches ${inr(t)}.` } : { ok: false, text: data.error || 'Could not set the alert.' });
-  }
+
 
   const tone = !deal ? 'bg-slate-100 text-ink-soft' : deal.score >= 70 ? 'bg-deal-light text-deal' : deal.score >= 50 ? 'bg-lime-50 text-lime-700' : 'bg-red-50 text-red-600';
 
@@ -155,20 +139,42 @@ export default function DealPanel(props: {
           )}
 
           <div className="border-t border-slate-100 pt-4">
-            <div className="mb-2 text-center text-sm font-bold">Set a price drop alert to buy later</div>
-            <div className="flex overflow-hidden rounded-xl border border-slate-300 focus-within:border-brand">
-              <span className="grid place-items-center pl-3 text-ink-mute">₹</span>
-              <input value={target} onChange={(e) => setTarget(e.target.value.replace(/\D/g, ''))} inputMode="numeric" aria-label="Alert me at this price" className="min-w-0 flex-1 px-2 py-2.5 text-sm outline-none" />
-              <button onClick={quickAlert} disabled={busy} className="bg-brand-light px-4 text-sm font-bold text-brand-dark hover:bg-orange-100">{busy ? '…' : 'Set Price Alert'}</button>
-            </div>
-            {msg && <p className={`mt-2 text-xs ${msg.ok ? 'text-deal' : 'text-red-600'}`}>{msg.text}</p>}
-            {!userEmail && <p className="mt-1 text-xs text-ink-mute"><Link href={`/login?next=/p/${productId}`} className="underline">Sign in</Link> for one-click alerts.</p>}
+            <div className="mb-2 text-center text-sm font-bold">Not buying yet? Get a price drop alert</div>
+            {msg?.ok ? (
+              <p className="rounded-xl bg-deal-light px-4 py-3 text-center text-sm font-semibold text-deal">{msg.text}</p>
+            ) : (
+              <button onClick={() => setTab('drop')} className="w-full rounded-xl border-2 border-brand bg-brand-light py-3 text-sm font-bold text-brand-dark transition hover:bg-orange-100">
+                🔔 Set price drop alert · Email · WhatsApp{props.telegram ? ' · Telegram' : ''}
+              </button>
+            )}
             <div className="my-3 text-center text-xs text-ink-mute">OR</div>
             <BuyNow productId={productId} store={store} priceLabel={inr(price)} />
           </div>
         </div>
       ) : (
-        <div className="p-5">
+        <div className="space-y-4 p-5">
+          {/* The Deal Scanner's verdict, so the shopper sees whether waiting is worth it while setting the alert. */}
+          <button onClick={() => setTab('scan')} className="block w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-left text-sm transition hover:border-slate-300">
+            <span className="flex items-center gap-3">
+              {deal ? (
+                <>
+                  <span className={`shrink-0 rounded-lg px-2.5 py-1 text-sm font-black tracking-wide ${ACTION[deal.action].cls}`}>{ACTION[deal.action].text}</span>
+                  <span className="min-w-0 flex-1">
+                    <b>Deal Score {deal.score}</b> <span className="text-ink-soft">· {deal.label}</span>
+                  </span>
+                </>
+              ) : (
+                <span className="min-w-0 flex-1">
+                  <b>Deal Scanner:</b> <span className="text-ink-soft">score coming soon</span>
+                </span>
+              )}
+              <span className="shrink-0 text-xs font-semibold text-brand">Details ›</span>
+            </span>
+            <span className="mt-1.5 block text-xs text-ink-mute">
+              {deal ? ACTION[deal.action].sub : 'We need a few days of prices — an alert catches the drop meanwhile.'}
+              {cheaper && <span className="ml-1 font-semibold text-amber-700">· {inr(price - cheaper.price)} cheaper on {cheaper.store}</span>}
+            </span>
+          </button>
           <TrackForm productId={productId} existing={props.tracking} defaultEmail={userEmail ?? ''} telegram={props.telegram} />
         </div>
       )}
