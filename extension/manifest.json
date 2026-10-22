@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "DealRadar — Price History & Compare",
   "short_name": "DealRadar",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "See price history, a Deal Score and cheaper prices on other stores — Amazon, Flipkart, Myntra, Zepto, Blinkit, Instamart and more.",
   "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" },
   "action": { "default_popup": "popup.html", "default_title": "DealRadar", "default_icon": { "16": "icons/16.png", "48": "icons/48.png" } },
@@ -23,7 +23,8 @@
     "https://www.jiomart.com/*",
     "https://www.zeptonow.com/*",
     "https://blinkit.com/*",
-    "https://www.swiggy.com/*"
+    "https://www.swiggy.com/*",
+    "https://www.bigbasket.com/*"
   ],
   "content_scripts": [
     {

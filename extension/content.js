@@ -196,10 +196,22 @@
   }
 
   function quickHtml() {
-    if (state.quickBusy) return '<div class="note">Checking Zepto, Blinkit and Instamart at your saved delivery location… (opens their pages briefly in the background)</div>';
+    if (state.quickBusy) return '<div class="note">Checking Zepto, Blinkit, Instamart, BigBasket and JioMart at your delivery location… (their pages open briefly in the background)</div>';
     if (!state.quick) return '';
-    const label = { found: 'price found', none: 'not found', location: 'set your delivery location on the site first', error: 'could not check' };
-    return '<div class="note">' + Object.entries(state.quick).map(([s, v]) => `${esc(s)}: ${label[v] || v}`).join(' · ') + '</div>';
+    const label = { none: 'not available near you', location: 'set your delivery location there first', error: 'could not check right now' };
+    return (
+      '<div class="note">' +
+      Object.entries(state.quick)
+        .map(([s, v]) => {
+          const x = typeof v === 'string' ? { state: v } : v;
+          const dot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${COLORS[s] || '#64748b'};margin-right:6px"></span>`;
+          if (x.state === 'found') return `<div>${dot}<b>${esc(s)}</b>: <a href="${esc(x.url)}" target="_blank" rel="noopener" style="color:#16a34a;font-weight:700">${inr(x.price)} ›</a></div>`;
+          const fix = x.state === 'location' && x.url ? ` · <a href="${esc(x.url)}" target="_blank" rel="noopener">open ${esc(s)}</a>` : '';
+          return `<div>${dot}${esc(s)}: ${label[x.state] || x.state}${fix}</div>`;
+        })
+        .join('') +
+      '</div>'
+    );
   }
 
   function render() {
@@ -229,7 +241,7 @@
         </div>
         <div class="sec"><div class="s">Price history</div>${spark(d.history || [], p.price)}</div>
         <div class="sec"><div class="s">Compare prices</div>${offersHtml()}
-          <button class="btn ghost" id="quick" ${state.quickBusy ? 'disabled' : ''}>Check Zepto · Blinkit · Instamart <span style="font-weight:600;color:#64748b">(beta)</span></button>${quickHtml()}
+          <button class="btn ghost" id="quick" ${state.quickBusy ? 'disabled' : ''}>📍 Check nearby: Zepto · Blinkit · Instamart · BigBasket · JioMart</button>${quickHtml()}
         </div>
         <div class="sec" style="border:0">
           <a class="btn primary" href="${esc(d.alert)}" target="_blank" rel="noopener">🔔 Alert me when the price drops</a>
@@ -251,7 +263,7 @@
         if (r.ok) {
           state.quick = r.data.status;
           if (r.data.offers) state.offers = r.data.offers;
-        } else state.quick = { Zepto: 'error', Blinkit: 'error', Instamart: 'error' };
+        } else state.quick = { Zepto: 'error', Blinkit: 'error', Instamart: 'error', BigBasket: 'error', JioMart: 'error' };
         render();
       };
   }

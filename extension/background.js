@@ -54,11 +54,13 @@ const SEARCH = {
 };
 
 // Quick-commerce stores price by delivery address, so they are read from a background tab that uses the
-// location the shopper already set on that site. Beta: product cards are found by their ₹ price and image.
+// location the shopper already set on that site. Product cards are found by their ₹ price and image.
 const QUICK = [
-  { store: 'Zepto', url: (q) => 'https://www.zeptonow.com/search?query=' + encodeURIComponent(q) },
-  { store: 'Blinkit', url: (q) => 'https://blinkit.com/s/?q=' + encodeURIComponent(q) },
-  { store: 'Instamart', url: (q) => 'https://www.swiggy.com/instamart/search?custom_back=true&query=' + encodeURIComponent(q) },
+  { store: 'Zepto', home: 'https://www.zeptonow.com/', url: (q) => 'https://www.zeptonow.com/search?query=' + encodeURIComponent(q) },
+  { store: 'Blinkit', home: 'https://blinkit.com/', url: (q) => 'https://blinkit.com/s/?q=' + encodeURIComponent(q) },
+  { store: 'Instamart', home: 'https://www.swiggy.com/instamart', url: (q) => 'https://www.swiggy.com/instamart/search?custom_back=true&query=' + encodeURIComponent(q) },
+  { store: 'BigBasket', home: 'https://www.bigbasket.com/', url: (q) => 'https://www.bigbasket.com/ps/?q=' + encodeURIComponent(q) },
+  { store: 'JioMart', home: 'https://www.jiomart.com/', url: (q) => 'https://www.jiomart.com/search/' + encodeURIComponent(q) },
 ];
 
 function readCards() {
@@ -108,9 +110,15 @@ async function readQuickStore(s, q) {
     const loaded = waitForLoad(tab.id);
     await chrome.tabs.update(tab.id, { url: s.url(q) });
     await loaded;
-    await new Promise((r) => setTimeout(r, 4000)); // these sites render their results after load
-    const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: readCards });
-    return res?.result || { cards: [], needsLocation: false };
+    // These sites render results after the page loads, so read until cards (or a location prompt) appear.
+    let last = { cards: [], needsLocation: false };
+    for (let i = 0; i < 12; i++) {
+      await new Promise((r) => setTimeout(r, 1200));
+      const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: readCards }).catch(() => [null]);
+      last = res?.result || last;
+      if (last.cards.length >= 3 || last.needsLocation) break;
+    }
+    return last;
   } finally {
     chrome.tabs.remove(tab.id).catch(() => {});
   }
@@ -147,10 +155,10 @@ async function quick({ id, title, price: p }) {
       try {
         const { cards, needsLocation } = await readQuickStore(s, q);
         const hit = DRMatch.best(source, cards);
-        status[s.store] = hit ? 'found' : needsLocation ? 'location' : 'none';
+        status[s.store] = hit ? { state: 'found', price: hit.price, url: hit.url } : { state: needsLocation ? 'location' : 'none', url: s.home };
         return hit ? { store: s.store, price: hit.price, url: hit.url, in_stock: true, same_variant: hit.same_variant } : null;
       } catch (e) {
-        status[s.store] = 'error';
+        status[s.store] = { state: 'error', url: s.home };
         return null;
       }
     }),

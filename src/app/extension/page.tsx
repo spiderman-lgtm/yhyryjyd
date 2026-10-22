@@ -2,14 +2,14 @@ import { Reveal, Stagger, StaggerItem } from '@/components/Motion';
 
 export const metadata = {
   title: 'DealRadar browser extension — price history on every store',
-  description: 'See price history, a Deal Score and cheaper prices on Amazon, Flipkart, Myntra, Zepto, Blinkit and Instamart right on the product page.',
+  description: 'See price history, a Deal Score and cheaper prices on Amazon, Flipkart, Myntra, Zepto, Blinkit, Instamart, BigBasket and JioMart right on the product page.',
 };
 
 const FEATURES = [
   { t: 'Price history on the product page', d: 'A DealRadar panel appears on Amazon, Flipkart, Myntra and 8 more stores with the price graph and lows.' },
   { t: 'Buy or Skip, instantly', d: 'The Deal Score flags fake sales — prices raised just before a “discount” — and inflated prices.' },
   { t: 'Cheaper on another store?', d: 'Compares Amazon, Flipkart, Myntra, Croma, Reliance Digital, Tata CLiQ and more, cheapest first.' },
-  { t: 'Zepto, Blinkit & Instamart', d: 'One tap checks quick-commerce prices at the delivery location you already use on those apps. (Beta)' },
+  { t: 'Zepto, Blinkit, Instamart, BigBasket & JioMart', d: 'One tap checks quick-commerce prices and availability at the delivery location you already use on those apps.' },
   { t: 'Alerts on email & WhatsApp', d: 'Set a target price from the panel; DealRadar messages you when it drops.' },
   { t: 'Private by design', d: 'It reads only the product you are viewing. No browsing history, logins or passwords leave your browser.' },
 ];
@@ -30,7 +30,7 @@ export default function ExtensionPage() {
         <Reveal className="relative mx-auto max-w-2xl">
           <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-orange-500 to-pink-500 text-3xl font-black text-white shadow-xl shadow-orange-500/30">₹</span>
           <h1 className="mt-5 text-4xl font-extrabold tracking-tight sm:text-5xl">DealRadar for Chrome</h1>
-          <p className="mt-3 text-lg text-ink-soft">Price history, Deal Score and cheaper stores — right on the product page, including Zepto, Blinkit and Instamart.</p>
+          <p className="mt-3 text-lg text-ink-soft">Price history, Deal Score and cheaper stores — right on the product page, including Zepto, Blinkit, Instamart, BigBasket and JioMart near you.</p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <a href="/dealradar-extension.zip" download className="btn-primary px-6 py-3 text-base">⬇ Download for Chrome</a>
             <a href="#install" className="btn-ghost px-6 py-3 text-base">How to install</a>
