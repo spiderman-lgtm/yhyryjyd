@@ -2,6 +2,7 @@ import Link from 'next/link';
 import CouponCard, { type CouponView } from '@/components/CouponCard';
 import { Reveal, Stagger, StaggerItem } from '@/components/Motion';
 import StoreLogo from '@/components/StoreLogo';
+import SubmitCoupon from '@/components/SubmitCoupon';
 import StoreIcon from '@/components/StoreIcon';
 import { isOwner } from '@/lib/auth';
 import type { CouponCategory, StoreCoupon } from '@/lib/db';
@@ -28,9 +29,17 @@ const view = (c: StoreCoupon): CouponView => ({
   expires_at: c.expires_at,
   exclusive: c.exclusive,
   clicks: c.clicks,
+  votes_up: c.votes_up ?? 0,
+  votes_down: c.votes_down ?? 0,
 });
 
-const rank = (a: StoreCoupon, b: StoreCoupon) => Number(b.featured) - Number(a.featured) || b.clicks - a.clicks || Date.parse(b.created_at) - Date.parse(a.created_at);
+// Coupons shoppers say don't work sink to the bottom; then featured, most used, newest.
+const failing = (c: StoreCoupon) => {
+  const total = (c.votes_up ?? 0) + (c.votes_down ?? 0);
+  return total >= 5 && (c.votes_up ?? 0) / total < 0.3;
+};
+const rank = (a: StoreCoupon, b: StoreCoupon) =>
+  Number(failing(a)) - Number(failing(b)) || Number(b.featured) - Number(a.featured) || b.clicks + (b.votes_up ?? 0) * 3 - (a.clicks + (a.votes_up ?? 0) * 3) || Date.parse(b.created_at) - Date.parse(a.created_at);
 
 export default function CouponsPage({ searchParams }: { searchParams: { store?: string; cat?: string; q?: string } }) {
   const all = liveCoupons();
@@ -81,11 +90,16 @@ export default function CouponsPage({ searchParams }: { searchParams: { store?: 
                 </>
               )}
             </div>
-            <form action="/coupons" className="flex w-full max-w-sm gap-2">
+            <div className="flex w-full max-w-md flex-col gap-2">
+            <form action="/coupons" className="flex w-full gap-2">
               {store && <input type="hidden" name="store" value={store.slug} />}
               <input name="q" defaultValue={q} placeholder="Search stores or offers" aria-label="Search coupons" className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:border-brand" />
               <button className="btn-primary px-4">Search</button>
             </form>
+              <div className="flex justify-end">
+                <SubmitCoupon stores={[...new Set(['Amazon', 'Flipkart', 'Myntra', 'AJIO', 'Nykaa', 'Croma', 'Tata CLiQ', ...stores.map((x) => x.store)])]} />
+              </div>
+            </div>
           </div>
         </section>
       </Reveal>

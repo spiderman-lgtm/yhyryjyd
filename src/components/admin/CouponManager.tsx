@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { CouponCategory, StoreCoupon } from '@/lib/db';
+import type { CouponCategory, CouponSuggestion, StoreCoupon } from '@/lib/db';
+import SuggestionQueue from './SuggestionQueue';
 
 const CATEGORIES: [CouponCategory, string][] = [
   ['fashion', 'Fashion'],
@@ -43,7 +44,7 @@ const EMPTY: Form = { store: '', url: '', logo_url: '', title: '', discount_text
 
 const status = (c: StoreCoupon) => (!c.active ? 'Paused' : c.expires_at && Date.parse(c.expires_at) <= Date.now() ? 'Expired' : 'Live');
 
-export default function CouponManager({ initial }: { initial: StoreCoupon[] }) {
+export default function CouponManager({ initial, suggestions, checkedAt }: { initial: StoreCoupon[]; suggestions: CouponSuggestion[]; checkedAt: string | null }) {
   const [coupons, setCoupons] = useState(initial);
   const [form, setForm] = useState<Form>(EMPTY);
   const [busy, setBusy] = useState(false);
@@ -141,6 +142,12 @@ export default function CouponManager({ initial }: { initial: StoreCoupon[] }) {
           <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-semibold text-ink-soft">{counts.paused} paused</span>
         </div>
       </div>
+
+      <SuggestionQueue
+        initial={suggestions}
+        checkedAt={checkedAt}
+        onApproved={() => fetch('/api/admin/coupons').then((r) => r.json()).then((d) => d.coupons && setCoupons(d.coupons)).catch(() => {})}
+      />
 
       <form onSubmit={save} className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/50 p-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="sm:col-span-2 lg:col-span-3 font-semibold">{form.id ? 'Edit coupon' : 'Add a coupon'}</div>
@@ -250,7 +257,7 @@ export default function CouponManager({ initial }: { initial: StoreCoupon[] }) {
                       </td>
                       <td className="font-mono text-xs">{c.code ?? '—'}</td>
                       <td><span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${st === 'Live' ? 'bg-deal-light text-deal' : st === 'Expired' ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-ink-mute'}`}>{st}</span></td>
-                      <td className="text-right">{c.clicks}</td>
+                      <td className="whitespace-nowrap text-right">{c.clicks}{(c.votes_up || c.votes_down) ? <span className="block text-[10px] text-ink-mute">👍 {c.votes_up ?? 0} · 👎 {c.votes_down ?? 0}</span> : null}</td>
                       <td className="whitespace-nowrap text-right text-xs">
                         <button onClick={() => edit(c)} className="px-1.5 font-semibold text-brand hover:underline">Edit</button>
                         <button onClick={() => toggle(c)} className="px-1.5 text-ink-soft hover:underline">{c.active ? 'Pause' : 'Resume'}</button>

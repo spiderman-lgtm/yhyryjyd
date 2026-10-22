@@ -142,8 +142,32 @@ export interface StoreCoupon {
   featured: boolean;
   active: boolean;
   clicks: number;
+  // Shoppers' "worked / didn't work" votes, one per browser or account.
+  votes_up?: number;
+  votes_down?: number;
+  voters?: Record<string, 1 | -1>;
   created_at: string;
   updated_at: string;
+}
+
+// An offer waiting for the owner's approval: sent by a shopper, or found on a store's own offer pages.
+export interface CouponSuggestion {
+  id: string;
+  key: string;
+  source: 'shopper' | 'amazon-coupons' | 'product-offers';
+  store: string;
+  title: string;
+  discount_text: string;
+  code: string | null;
+  description: string;
+  url: string;
+  image: string | null;
+  category: CouponCategory;
+  expires_at: string | null;
+  submitted_by: string | null;
+  created_at: string;
+  status: 'pending' | 'approved' | 'rejected';
+  coupon_id?: string;
 }
 
 // A discounted product found by searching stores for a category (Trending page).
@@ -181,6 +205,7 @@ export interface Settings {
   mail_flow_error?: string | null;
   flows_activated_at: string | null;
   flow_status?: Record<string, string>;
+  offers_checked_at?: string;
 }
 
 // A one-off email waiting to be sent through the operator's Gmail.
@@ -211,6 +236,7 @@ interface Data {
   enquiries: Enquiry[];
   coupons: Record<string, CouponCache>;
   store_coupons: Record<string, StoreCoupon>;
+  coupon_suggestions: Record<string, CouponSuggestion>;
   compare: Record<string, CompareCache>;
   offer_history: Record<string, OfferHistory>;
   related: Record<string, RelatedCache>;
@@ -234,6 +260,7 @@ function empty(): Data {
     enquiries: [],
     coupons: {},
     store_coupons: {},
+    coupon_suggestions: {},
     compare: {},
     offer_history: {},
     related: {},

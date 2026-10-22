@@ -38,7 +38,10 @@ export default async function AdminPage() {
     },
     enquiries: d.enquiries.slice(-20).reverse().map((e) => ({ ...e, product: d.products[e.product_id]?.title ?? e.product_id })),
     deliveries: d.deliveries.slice(-10).reverse(),
-    coupons: Object.values(d.store_coupons),
+    coupons: Object.values(d.store_coupons).map(({ voters, ...c }) => c),
+    suggestions: Object.values(d.coupon_suggestions)
+      .filter((x) => x.status === 'pending')
+      .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)),
   }));
 
   let connError = '';
@@ -69,7 +72,7 @@ export default async function AdminPage() {
       enquiries={data.enquiries}
       deliveries={data.deliveries}
     >
-      <CouponManager initial={data.coupons} />
+      <CouponManager initial={data.coupons} suggestions={data.suggestions} checkedAt={data.settings.offers_checked_at ?? null} />
     </AdminConsole>
   );
 }

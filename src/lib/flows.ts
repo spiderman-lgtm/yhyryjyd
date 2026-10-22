@@ -2,7 +2,7 @@ import 'server-only';
 import { read, write, type Settings, type Tier } from './db';
 import { TIER_INFO } from './alerts';
 import { appUrl } from './config';
-import { GMAIL, WHATSAPP, derivedKey, runFlow, upsertCronFlow, upsertWebhookFlow, type FlowStep } from './viasocket';
+import { GMAIL, WHATSAPP, derivedKey, listConnections, runFlow, upsertCronFlow, upsertWebhookFlow, type FlowStep } from './viasocket';
 
 export const automationKey = () => derivedKey('automation');
 
@@ -140,7 +140,19 @@ const mailError = (error: string | null) =>
     d.settings.mail_flow_error = error;
   });
 
+// The operator's Gmail connection in viaSocket, when DealRadar's own settings lost track of it
+// (the price-check schedules may still be sending through it).
+async function adoptGmail(): Promise<boolean> {
+  const conn = (await listConnections().catch(() => [])).find((c) => c.id.endsWith(`_${GMAIL.service_id}`) && !c.isExpired);
+  if (!conn) return false;
+  write((d) => {
+    d.settings.gmail ??= { auth_id: conn.id, from: null };
+  });
+  return true;
+}
+
 async function buildMailFlow(): Promise<string | null> {
+  if (!read((d) => d.settings.gmail)) await adoptGmail();
   const s = read((d) => d.settings);
   if (!s.gmail) {
     mailError('Gmail is not connected in DealRadar — connect it above.');

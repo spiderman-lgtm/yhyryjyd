@@ -3,6 +3,7 @@ import { historyFor, newId, read, write, type Alert, type OutboxMail, type Produ
 import { refreshProduct } from './products';
 import { compareStores } from './compare';
 import { catalogStale, refreshCatalog } from './catalog';
+import { checkStoreOffers } from './offerfeed';
 import { cachedCoupon } from './coupons';
 import { PLATFORM_NAMES } from './scraper';
 import { appUrl, linkSig } from './config';
@@ -285,6 +286,8 @@ export async function runTier(tier: Tier) {
 
   // The Trending page's deal rows are re-searched in the background when they are a few hours old.
   if (tier === 'normal' && catalogStale()) void refreshCatalog();
+  // New offers from the stores' own pages are queued in Admin for approval (at most every 6 hours).
+  if (tier === 'normal') void checkStoreOffers().catch(() => null);
 
   // 3. Decide who hears about it.
   if (tier === 'digest') {

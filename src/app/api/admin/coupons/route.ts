@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 import { guard } from '@/lib/admin-guard';
-import { write } from '@/lib/db';
+import { read, write } from '@/lib/db';
 import { cleanCoupon } from '@/lib/storecoupons';
 
 export const dynamic = 'force-dynamic';
+
+export async function GET() {
+  const denied = guard();
+  if (denied) return denied;
+  return NextResponse.json({ coupons: read((d) => Object.values(d.store_coupons).map(({ voters, ...c }) => c)) });
+}
 
 // Add a coupon, or edit one when the body has its id.
 export async function POST(req: Request) {

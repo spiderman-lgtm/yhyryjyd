@@ -48,7 +48,9 @@ export function currentUser(): User | null {
   if (!raw) return null;
   const [id, exp, sig] = raw.split('.');
   if (!id || !exp || !sig || !safeEqual(sig, sign(`${id}.${exp}`)) || Number(exp) < Date.now()) return null;
-  return read((d) => d.users[id] ?? null);
+  const user = read((d) => d.users[id] ?? null);
+  // Anyone listed in ADMIN_EMAILS is an owner too, including accounts made before they were listed.
+  return user && user.role !== 'owner' && ownerEmails().includes(user.email) ? { ...user, role: 'owner' } : user;
 }
 
 export function isOwner(): boolean {
