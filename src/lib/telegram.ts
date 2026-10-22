@@ -4,7 +4,7 @@ import { read, write } from './db';
 import { appUrl } from './config';
 import { automationKey, sendQueuedMailNow } from './flows';
 import { queueTelegram } from './alerts';
-import { endSubscription, subscribeTelegramMessages } from './viasocket';
+import { TELEGRAM, endSubscription, listFlows, subscribeTelegramMessages } from './viasocket';
 
 // The operator's bot username once Telegram is connected and listening, else null.
 export function telegramBot(): string | null {
@@ -13,17 +13,21 @@ export function telegramBot(): string | null {
 
 export const chatFor = (uid: string) => read((d) => d.telegram.chats[uid]?.chat ?? null);
 
-// A one-time link that opens the bot with a code tying the shopper's Telegram chat to their alerts.
+// A one-time code (also typeable) and the link that opens the bot with it, tying the shopper's chat to their alerts.
 export function linkFor(uid: string): string | null {
+  return codeAndLink(uid)?.link ?? null;
+}
+
+export function codeAndLink(uid: string): { code: string; link: string } | null {
   const bot = telegramBot();
   if (!bot) return null;
-  const code = crypto.randomBytes(12).toString('base64url');
+  const code = crypto.randomBytes(6).toString('base64url').replace(/[-_]/g, 'x').toUpperCase();
   write((d) => {
     const old = Date.now() - 2 * 86400_000;
     for (const [k, v] of Object.entries(d.telegram.codes)) if (Date.parse(v.at) < old) delete d.telegram.codes[k];
     d.telegram.codes[code] = { uid, at: new Date().toISOString() };
   });
-  return `https://t.me/${bot}?start=${code}`;
+  return { code, link: `https://t.me/${bot}?start=${code}` };
 }
 
 export function normalizeBot(v: unknown): string | null {
@@ -40,8 +44,11 @@ const ev = context.req.body;
 await axios.post(${JSON.stringify(appUrl() + '/api/telegram/inbound')}, { event: ev }, { headers: { "x-automation-key": ${JSON.stringify(automationKey())} }, timeout: 15000 });
 return { forwarded: true };`;
   try {
+    // Old listeners (an earlier connection, or one made by hand) would deliver every message twice.
+    const old = (await listFlows().catch(() => [])).filter((f) => f.status === 'active' && f.title === TELEGRAM.new_message.version_id);
+    for (const f of old) await endSubscription(f.id).catch(() => null);
+    if (t.subscription) await endSubscription(t.subscription).catch(() => null);
     const sub = await subscribeTelegramMessages(t.auth_id, handler);
-    if (t.subscription && t.subscription !== sub) await endSubscription(t.subscription).catch(() => null);
     write((d) => {
       if (d.settings.telegram) Object.assign(d.settings.telegram, { subscription: sub, error: null });
     });
@@ -64,13 +71,16 @@ export async function handleBotMessage(ev: any): Promise<string> {
   const name = ev?.message_details?.from?.first_name ?? ev?.message_details?.chat?.first_name ?? null;
   if (!/^-?\d{3,20}$/.test(chat)) return 'ignored: no chat';
 
-  const start = text.match(/^\/start(?:\s+([A-Za-z0-9_-]{8,64}))?/);
-  if (start) {
-    const linked = start[1]
+  // "/start CODE" from the link, or the code typed on its own.
+  const start = text.match(/^\/start(?:\s+([A-Za-z0-9_-]{6,64}))?$/) ?? (/^[A-Za-z0-9]{8}$/.test(text) ? [text, text] : null);
+  const code = start?.[1]?.toUpperCase() ?? null;
+  if (start || !read((d) => Object.values(d.telegram.chats).some((v) => v.chat === chat))) {
+    const linked = code
       ? write((d) => {
-          const c = d.telegram.codes[start[1]];
+          const c = d.telegram.codes[code] ?? d.telegram.codes[start![1]];
           if (!c) return null;
-          delete d.telegram.codes[start[1]];
+          delete d.telegram.codes[code];
+          delete d.telegram.codes[start![1]];
           d.telegram.chats[c.uid] = { chat, name: name ? String(name).slice(0, 60) : null, at: new Date().toISOString() };
           const titles: string[] = [];
           for (const a of Object.values(d.alerts)) {
@@ -93,9 +103,17 @@ export async function handleBotMessage(ev: any): Promise<string> {
         '🔔 My alerts',
       );
     } else {
-      queueTelegram(chat, '👋 Welcome to DealRadar! To get price-drop alerts here, open a product on DealRadar, choose “Telegram” in Price Drop Alert and tap “Open Telegram”.', appUrl(), null, 'Open DealRadar');
+      queueTelegram(
+        chat,
+        code
+          ? '⚠️ That code has expired or was already used. On DealRadar, open the product again, choose Telegram in Price Drop Alert and tap “Open Telegram”.'
+          : '👋 Welcome to DealRadar! To get price-drop alerts here: open a product on DealRadar, choose Telegram in Price Drop Alert, tap “Track price” and then “Open Telegram” — or send the 8-character code shown there.',
+        appUrl(),
+        null,
+        'Open DealRadar',
+      );
     }
-    await sendQueuedMailNow().catch(() => null);
+    void sendQueuedMailNow().catch(() => null);
     return linked ? 'linked' : 'welcome';
   }
 
@@ -110,7 +128,7 @@ export async function handleBotMessage(ev: any): Promise<string> {
       }
     });
     queueTelegram(chat, '🛑 Telegram alerts are off. You can turn them on again from any product page on DealRadar.', appUrl(), null, 'Open DealRadar');
-    await sendQueuedMailNow().catch(() => null);
+    void sendQueuedMailNow().catch(() => null);
     return 'stopped';
   }
   return 'ignored';

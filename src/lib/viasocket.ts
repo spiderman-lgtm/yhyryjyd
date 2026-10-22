@@ -30,7 +30,8 @@ export const TELEGRAM = {
   name: 'Telegram',
   icon: 'https://stuff.thingsofbrand.com/telegram.org/images/img6c1c10f144_telegram.jpg',
   send_message: { action_id: 'rowg5vf64', version: 'V33' },
-  new_message: { trigger_id: 'row75zh5gf76', version: 'V13' },
+  // version_id is also the title viaSocket gives each subscription flow, which is how old listeners are found.
+  new_message: { trigger_id: 'row75zh5gf76', version: 'V13', version_id: 'row7z8fsm3ca' },
 };
 
 export const APPS = { gmail: GMAIL, whatsapp: WHATSAPP, telegram: TELEGRAM } as const;

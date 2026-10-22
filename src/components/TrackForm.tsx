@@ -21,6 +21,7 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
   const [sentTo, setSentTo] = useState('');
   const [telegram, setTelegram] = useState(false);
   const [tgLink, setTgLink] = useState<string | null>(null);
+  const [tgCode, setTgCode] = useState<string | null>(null);
   const [tgLinked, setTgLinked] = useState(false);
   const [waSent, setWaSent] = useState(false);
 
@@ -38,6 +39,7 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
     if (!res.ok) return setError(data.error || 'Could not save.');
     if (data.confirmation) setSentTo(email);
     setTgLink(data.telegram_link ?? null);
+    setTgCode(data.telegram_code ?? null);
     setTgLinked(!!data.telegram_linked);
     setWaSent(!!data.whatsapp_confirmation);
     setDone(true);
@@ -58,7 +60,12 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
             <span aria-hidden="true">✈️</span> Open Telegram &amp; press Start
           </a>
         )}
-        {tgLink && <p className="mt-1 text-xs text-ink-mute">One tap on “Start” in the DealRadar bot and your confirmation and price drops arrive in Telegram.</p>}
+        {tgLink && (
+          <p className="mt-1 text-xs text-ink-mute">
+            Tap “Start” in the DealRadar bot and your confirmation and price drops arrive in Telegram.
+            {tgCode && <> No Start button? Send this code to the bot: <b className="select-all font-mono text-sm text-ink">{tgCode}</b></>}
+          </p>
+        )}
         <Link href="/alerts" className="mt-3 inline-block font-semibold text-brand underline">Manage my alerts</Link>
       </div>
     );

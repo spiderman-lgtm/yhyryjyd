@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { newId, read, type Channel, type Tier } from '@/lib/db';
 import { getProduct } from '@/lib/products';
 import { confirmationEmail, confirmationTelegram, createAlert, queueMail, queueTelegram, queueWhatsAppConfirmation } from '@/lib/alerts';
-import { chatFor, linkFor, telegramBot } from '@/lib/telegram';
+import { chatFor, codeAndLink, telegramBot } from '@/lib/telegram';
 import { sendQueuedMailNow } from '@/lib/flows';
 import { currentUid } from '@/lib/auth';
 
@@ -58,14 +58,14 @@ export async function POST(req: Request) {
     const { subject, html } = confirmationEmail(alert, product);
     queueMail(email, subject, html);
   }
-  let telegram_link: string | null = null;
+  let telegram: { code: string; link: string } | null = null;
   if (wantTelegram && alert.telegram_chat) {
     const t = confirmationTelegram(alert, product);
     queueTelegram(alert.telegram_chat, t.text, t.url, t.image, t.label);
-  } else if (wantTelegram) telegram_link = linkFor(uid);
+  } else if (wantTelegram) telegram = codeAndLink(uid);
   const whatsappConfirm = phone ? queueWhatsAppConfirmation(alert, product, read((d) => d.settings)) : false;
   if (email || alert.telegram_chat || whatsappConfirm) sendQueuedMailNow().catch((e) => console.error('confirmation:', e instanceof Error ? e.message : e));
-  return NextResponse.json({ alert, confirmation: !!email, whatsapp_confirmation: whatsappConfirm, telegram_link, telegram_linked: !!alert.telegram_chat });
+  return NextResponse.json({ alert, confirmation: !!email, whatsapp_confirmation: whatsappConfirm, telegram_link: telegram?.link ?? null, telegram_code: telegram?.code ?? null, telegram_linked: !!alert.telegram_chat });
 }
 
 export async function GET() {
