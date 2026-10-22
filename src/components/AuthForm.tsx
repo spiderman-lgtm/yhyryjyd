@@ -74,11 +74,21 @@ export default function AuthForm({ mode, next, google, error: initialError }: { 
             <input id="au-email" name="email" type="email" className="input" autoComplete="email" required />
           </div>
           <div>
-            <label className="label" htmlFor="au-pass">Password</label>
+            <div className="flex items-baseline justify-between">
+              <label className="label" htmlFor="au-pass">Password</label>
+              {!isSignup && <Link href="/forgot" className="text-xs font-semibold text-brand hover:underline">Forgot password?</Link>}
+            </div>
             <input id="au-pass" name="password" type="password" className="input" minLength={isSignup ? 8 : undefined} autoComplete={isSignup ? 'new-password' : 'current-password'} required />
             {isSignup && <p className="mt-1 text-xs text-ink-mute">At least 8 characters.</p>}
           </div>
-          {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+          {error && (
+            <p className="text-sm font-medium text-red-600">
+              {error}
+              {!isSignup && /wrong email or password/i.test(error) && (
+                <> <Link href="/forgot" className="font-semibold underline">Reset your password</Link></>
+              )}
+            </p>
+          )}
           <button className="btn-primary w-full py-3" disabled={busy}>{busy ? 'Please wait…' : isSignup ? 'Create account' : 'Sign in'}</button>
         </form>
       </div>

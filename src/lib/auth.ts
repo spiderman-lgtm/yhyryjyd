@@ -121,6 +121,33 @@ export function mergeAnonymous(anonUid: string | undefined, userId: string) {
   });
 }
 
+// ---------- password reset ----------
+// A signed link valid for an hour. It also signs part of the current password hash, so it stops
+// working once the password has been changed — each link resets the password at most once.
+
+const RESET_MS = 60 * 60_000;
+const resetSig = (u: User, exp: number) =>
+  crypto.createHmac('sha256', derivedKey('reset')).update(`${u.id}.${exp}.${(u.password_hash ?? 'none').slice(-16)}`).digest('base64url');
+
+export function resetToken(u: User): string {
+  const exp = Date.now() + RESET_MS;
+  return `${u.id}.${exp}.${resetSig(u, exp)}`;
+}
+
+export function userForResetToken(token: string): User | null {
+  const [id, expRaw, sig] = String(token).split('.');
+  const exp = Number(expRaw);
+  if (!id || !sig || !Number.isFinite(exp) || exp < Date.now()) return null;
+  const user = read((d) => d.users[id] ?? null);
+  return user && safeEqual(sig, resetSig(user, exp)) ? user : null;
+}
+
+export function setPassword(userId: string, password: string) {
+  write((d) => {
+    if (d.users[userId]) d.users[userId].password_hash = hashPassword(password);
+  });
+}
+
 // ---------- brute-force protection ----------
 
 const attempts = new Map<string, { n: number; until: number }>();

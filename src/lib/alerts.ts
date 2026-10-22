@@ -164,6 +164,18 @@ ${row('Availability', p.in_stock ? 'In stock' : 'Out of stock right now')}
   return { subject: `Tracking started: ${p.title.slice(0, 60)} at ${inr(p.price)}`, html };
 }
 
+// The link to choose a new password, from "Forgot password?".
+export function resetEmail(name: string, link: string): { subject: string; html: string } {
+  const html = shell(
+    `<p style="font-size:16px"><b>Hi ${esc(name.split(' ')[0] || 'there')},</b></p>
+<p style="font-size:14px;color:#334155">Someone asked to reset the password for your DealRadar account. Click below to choose a new one. The link works for 1 hour, once.</p>
+<a href="${link}" style="display:inline-block;background:#ea580c;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Choose a new password</a>
+<p style="font-size:12px;color:#64748b;margin-top:16px">Or paste this link into your browser:<br/><span style="word-break:break-all">${link}</span></p>`,
+    'If you did not ask for this, ignore this email — your password stays the same.',
+  );
+  return { subject: 'Reset your DealRadar password', html };
+}
+
 // The Telegram version of the confirmation.
 export function confirmationTelegram(alert: Alert, p: Product): { text: string; url: string; image: string | null; label: string } {
   const rule = alert.drop_percent > 0 ? `drops by ${alert.drop_percent}% or more` : 'any price drop';
