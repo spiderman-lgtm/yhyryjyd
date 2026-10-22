@@ -1,9 +1,11 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 import Modal from './Modal';
 
 export default function CartAndEnquire({ productId, inCart: initial }: { productId: string; inCart: boolean }) {
+  const router = useRouter();
   const [inCart, setInCart] = useState(initial);
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
@@ -13,7 +15,10 @@ export default function CartAndEnquire({ productId, inCart: initial }: { product
 
   async function toggleCart() {
     const res = await fetch('/api/cart', { method: inCart ? 'DELETE' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: productId }) });
-    if (res.ok) setInCart(!inCart);
+    if (res.ok) {
+      setInCart(!inCart);
+      router.refresh(); // so My cart and the dashboard show the change right away
+    }
   }
 
   async function enquire(e: React.FormEvent<HTMLFormElement>) {
