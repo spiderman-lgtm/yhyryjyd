@@ -149,11 +149,30 @@
     svg { display:block; width:100%; height:64px; }
     .note { font-size:11px; color:#64748b; margin-top:6px; }
     .err { color:#b91c1c; font-size:13px; }
+    .ah { display:flex; align-items:center; justify-content:space-between; margin:-12px -14px 10px; padding:10px 14px; background:#fff7ed; color:#c2410c; font-weight:900; font-size:15px; text-decoration:none; }
+    .ah span { font-size:18px; color:#64748b; }
+    .ask { border:1px solid #e2e8f0; border-radius:14px; padding:12px; animation:in .3s cubic-bezier(.22,1,.36,1); }
+    .ask h4 { margin:0; font-size:15px; font-weight:900; }
+    .pr { display:flex; gap:10px; margin-top:10px; }
+    .pr img, .pr .ph { width:72px; height:72px; flex-shrink:0; border:1px solid #e2e8f0; border-radius:10px; object-fit:contain; background:#fff; }
+    .t2 { font-size:12.5px; color:#334155; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-top:4px; }
+    .field { width:100%; border:1px solid #cbd5e1; border-radius:10px; padding:8px 10px; font-size:13px; margin-top:6px; outline:none; }
+    .field:focus { border-color:#ea580c; }
+    .tick { display:flex; align-items:center; gap:6px; font-size:12.5px; margin-top:8px; }
+    .ok { margin-top:8px; background:#f0fdf4; color:#15803d; border-radius:10px; padding:8px 10px; font-size:12.5px; font-weight:700; }
+    .al { display:flex; align-items:center; gap:8px; padding:7px 0; border-top:1px solid #f1f5f9; }
+    .al img { width:38px; height:38px; border-radius:8px; object-fit:contain; border:1px solid #e2e8f0; background:#fff; flex-shrink:0; }
+    .al a { color:inherit; text-decoration:none; }
+    .stop { border:0; background:#f1f5f9; color:#475569; border-radius:8px; padding:5px 8px; font-size:11px; font-weight:700; cursor:pointer; }
+    .empty { text-align:center; padding:14px 6px 4px; }
+    .empty svg { width:44px; height:44px; margin:0 auto 6px; }
   </style><div id="app"></div>`;
   const app = root.getElementById('app');
 
   const COLORS = { Amazon: '#ff9900', Flipkart: '#2874f0', Myntra: '#ff3f6c', AJIO: '#2c4152', Meesho: '#9f2089', Croma: '#12daa8', 'Tata CLiQ': '#da1c5c', 'Reliance Digital': '#e42529', 'Vijay Sales': '#ed1c24', Nykaa: '#fc2779', JioMart: '#0078ad', Zepto: '#5f259f', Blinkit: '#0c831f', Instamart: '#fc8019', BigBasket: '#84c225' };
   const state = { open: true, product: null, data: null, offers: null, error: '', quick: null, quickBusy: false };
+  // Price alerts, set from the panel without leaving the store. contact is where the last alert went.
+  const al = { list: null, contact: null, mode: 'ask', msg: '', err: '', tg: null };
 
   function spark(history, current) {
     const pts = history.concat([{ p: current, t: Date.now() }]);
@@ -196,25 +215,150 @@
   }
 
   function quickHtml() {
-    if (state.quickBusy) return '<div class="note">Checking Zepto, Blinkit, Instamart, BigBasket and JioMart at your delivery location… (their pages open briefly in the background)</div>';
+    if (state.quickBusy)
+      return '<div class="note">Checking Zepto, Blinkit, Instamart, BigBasket and JioMart at your delivery location… their pages open for a few seconds in the background.</div>';
     if (!state.quick) return '';
-    const label = { none: 'not available near you', location: 'set your delivery location there first', error: 'could not check right now' };
-    return (
-      '<div class="note">' +
-      Object.entries(state.quick)
-        .map(([s, v]) => {
-          const x = typeof v === 'string' ? { state: v } : v;
-          const dot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${COLORS[s] || '#64748b'};margin-right:6px"></span>`;
-          if (x.state === 'found') return `<div>${dot}<b>${esc(s)}</b>: <a href="${esc(x.url)}" target="_blank" rel="noopener" style="color:#16a34a;font-weight:700">${inr(x.price)} ›</a></div>`;
-          const fix = x.state === 'location' && x.url ? ` · <a href="${esc(x.url)}" target="_blank" rel="noopener">open ${esc(s)}</a>` : '';
-          return `<div>${dot}${esc(s)}: ${label[x.state] || x.state}${fix}</div>`;
-        })
-        .join('') +
-      '</div>'
-    );
+    const why = {
+      none: (x) => `not sold near you${x.seen ? ` (${x.seen} items checked)` : ''}`,
+      empty: () => 'showed no products — open it once and set your location',
+      location: () => 'set your delivery location there first',
+      error: () => 'could not open it right now',
+    };
+    return Object.entries(state.quick)
+      .map(([s, v]) => {
+        const x = typeof v === 'string' ? { state: v } : v;
+        const chip = `<span class="chip" style="background:${COLORS[s] || '#64748b'}">${esc(s[0])}</span>`;
+        if (x.state === 'found')
+          return `<a class="offer" href="${esc(x.url)}" target="_blank" rel="noopener">${chip}<span class="grow"><span class="s">${esc(s)}</span><div class="muted">Near you</div></span><span class="p" style="color:#16a34a">${inr(x.price)}</span></a>`;
+        const fix = x.state !== 'none' && x.url ? `<a class="stop" style="text-decoration:none" href="${esc(x.url)}" target="_blank" rel="noopener">Open ${esc(s)}</a>` : '';
+        return `<div class="offer" style="opacity:${x.state === 'none' ? 0.7 : 1}">${chip}<span class="grow"><span class="s">${esc(s)}</span><div class="muted">${(why[x.state] || (() => x.state))(x)}</div></span>${fix}</div>`;
+      })
+      .join('');
+  }
+
+  const BELL = '<svg viewBox="0 0 24 24" fill="#ea580c"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg>';
+  const where = (c) => [c.email && 'Email', c.phone && 'WhatsApp', c.telegram && 'Telegram'].filter(Boolean).join(' · ');
+
+  function alertsHtml() {
+    const p = state.product;
+    const d = state.data;
+    const active = (al.list || []).filter((a) => a.status === 'active');
+    const mine = active.find((a) => a.product_id === d.id);
+    const c = (al.mode === 'form' && al.draft) || al.contact || {};
+    let card = '';
+    if (al.mode === 'done' || mine) {
+      card = `<div class="ok">✓ ${al.msg ? esc(al.msg) : 'You are tracking this price. We will message you when it drops.'}</div>${
+        al.tg ? `<a class="btn ghost" href="${esc(al.tg)}" target="_blank" rel="noopener">Open Telegram and press Start to get alerts there</a>` : ''
+      }`;
+    } else if (al.mode !== 'dismissed') {
+      const form =
+        al.mode === 'form'
+          ? `<input class="field" id="al-email" type="email" placeholder="Email" value="${esc(c.email || '')}" />
+             <input class="field" id="al-phone" type="tel" placeholder="WhatsApp number (optional)" value="${esc(c.phone || '')}" />
+             <label class="tick"><input type="checkbox" id="al-tg" ${c.telegram ? 'checked' : ''} /> Also on Telegram</label>`
+          : '';
+      const known = al.mode !== 'form' && where(c);
+      card = `<div class="ask">
+        <div class="row"><h4>Do you want to set price alert?</h4><button class="x" id="al-x" title="Not now">×</button></div>
+        <div class="pr">${p.image ? `<img src="${esc(p.image)}" alt="" />` : '<span class="ph"></span>'}
+          <div class="grow"><span class="chip" style="background:${COLORS[store.name] || '#64748b'};width:20px;height:20px;font-size:11px">${esc(store.name[0])}</span>
+            <div class="t2">${esc(p.title)}</div><div class="p" style="margin-top:4px">${inr(p.price)}</div></div></div>
+        ${form}
+        ${al.err ? `<div class="err" style="margin-top:6px">${esc(al.err)}</div>` : ''}
+        <button class="btn primary" id="al-set" ${al.mode === 'busy' ? 'disabled' : ''}>${al.mode === 'busy' ? 'Setting alert…' : 'Set price alert'}</button>
+        ${known ? `<div class="note">Alerts go to ${esc(known)} · <a href="#" id="al-change">change</a></div>` : ''}
+      </div>`;
+    }
+    const list = active.length
+      ? active
+          .slice(0, 4)
+          .map(
+            (a) => `<div class="al">${a.product?.image ? `<img src="${esc(a.product.image)}" alt="" />` : ''}
+            <a class="grow" href="${esc(a.product?.page || DEALRADAR_API + '/alerts')}" target="_blank" rel="noopener"><div class="t2" style="margin:0;-webkit-line-clamp:1">${esc(a.product?.title || 'Product')}</div>
+            <div class="muted">${a.product ? inr(a.product.price) + ' · ' : ''}${esc(a.product?.store || '')} · till ${new Date(a.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div></a>
+            <button class="stop" data-stop="${esc(a.id)}">Stop</button></div>`,
+          )
+          .join('') + (active.length > 4 ? `<div class="note">+${active.length - 4} more under Price Alerts</div>` : '')
+      : al.list
+        ? `<div class="empty">${BELL}<div class="s">No Price Alerts Yet</div><div class="muted">Set an alert and we will message you as soon as the price drops.</div></div>`
+        : '<div class="skel"></div>';
+    return `<a class="ah" href="${DEALRADAR_API}/alerts" target="_blank" rel="noopener">Price Alerts <span>→</span></a>${card}<div style="margin-top:10px">${list}</div>`;
+  }
+
+  async function loadAlerts() {
+    const r = await send({ type: 'alerts' });
+    al.list = r.ok ? r.data.alerts || [] : [];
+    al.contact = r.ok ? r.data.contact : al.contact;
+    render();
+  }
+
+  async function setAlert() {
+    let c = al.contact || {};
+    if (al.mode === 'form') {
+      c = { email: root.getElementById('al-email').value.trim(), phone: root.getElementById('al-phone').value.trim(), telegram: root.getElementById('al-tg').checked };
+    } else if (!where(c)) {
+      al.mode = 'form';
+      render();
+      return;
+    }
+    if (!c.email && !c.phone && !c.telegram) {
+      al.err = 'Add an email or WhatsApp number, or tick Telegram.';
+      render();
+      return;
+    }
+    al.mode = 'busy';
+    al.err = '';
+    render();
+    const r = await send({ type: 'setAlert', alert: { product_id: state.data.id, email: c.email || '', phone: c.phone || '', telegram: !!c.telegram, drop_percent: 0, window_days: 7 } });
+    if (!r.ok) {
+      al.mode = /already tracking/i.test(r.error) ? 'done' : 'form';
+      al.err = /already tracking/i.test(r.error) ? '' : r.error;
+      al.msg = /already tracking/i.test(r.error) ? 'You are already tracking this price.' : '';
+      render();
+      return;
+    }
+    al.contact = c;
+    al.draft = null;
+    al.mode = 'done';
+    al.msg = `Price alert set! We will message you on ${where(c)} when the price drops.`;
+    al.tg = r.data.telegram_link || null;
+    await loadAlerts();
+  }
+
+  function bindAlerts() {
+    const on = (id, fn) => {
+      const el = root.getElementById(id);
+      if (el) el.onclick = fn;
+    };
+    on('al-set', () => setAlert());
+    on('al-x', () => {
+      al.mode = 'dismissed';
+      render();
+    });
+    on('al-change', (e) => {
+      e.preventDefault();
+      al.mode = 'form';
+      render();
+    });
+    root.querySelectorAll('[data-stop]').forEach((b) => {
+      b.onclick = async () => {
+        b.disabled = true;
+        const r = await send({ type: 'stopAlert', id: b.getAttribute('data-stop') });
+        if (r.ok && r.data.alert && r.data.alert.product_id === state.data.id) {
+          al.mode = 'ask';
+          al.msg = '';
+          al.tg = null;
+        }
+        await loadAlerts();
+      };
+    });
   }
 
   function render() {
+    // The panel is redrawn as results arrive; keep what the shopper is typing into the alert form.
+    const typing = root.getElementById('al-email');
+    if (typing) al.draft = { email: typing.value, phone: root.getElementById('al-phone').value, telegram: root.getElementById('al-tg').checked };
+    const focused = root.activeElement && root.activeElement.id;
     if (!state.open) {
       const score = state.data?.deal?.score;
       app.innerHTML = `<button class="pill" id="open">₹ DealRadar${score != null ? ' · ' + score : ''}</button>`;
@@ -239,12 +383,12 @@
           ${verdict ? `<div style="text-align:right"><span class="verdict ${verdict[1]}">${verdict[0]}</span><div class="muted">Deal Score ${d.deal.score}</div></div>` : '<div class="muted" style="text-align:right">Deal Score<br/>needs a few days</div>'}</div>
           ${(d.deal?.flags || []).map((f) => `<div class="flag">⚠ ${esc(f)}</div>`).join('')}
         </div>
+        <div class="sec">${alertsHtml()}</div>
         <div class="sec"><div class="s">Price history</div>${spark(d.history || [], p.price)}</div>
         <div class="sec"><div class="s">Compare prices</div>${offersHtml()}
           <button class="btn ghost" id="quick" ${state.quickBusy ? 'disabled' : ''}>📍 Check nearby: Zepto · Blinkit · Instamart · BigBasket · JioMart</button>${quickHtml()}
         </div>
         <div class="sec" style="border:0">
-          <a class="btn primary" href="${esc(d.alert)}" target="_blank" rel="noopener">🔔 Alert me when the price drops</a>
           <a class="btn ghost" href="${esc(d.page)}" target="_blank" rel="noopener">Full price history & coupons</a>
         </div>`
       }
@@ -253,6 +397,9 @@
       state.open = false;
       render();
     };
+    if (d && !state.error) bindAlerts();
+    const again = focused && root.getElementById(focused);
+    if (again && again.focus) again.focus();
     const q = root.getElementById('quick');
     if (q)
       q.onclick = async () => {
@@ -280,6 +427,10 @@
     state.offers = null;
     state.error = '';
     state.quick = null;
+    al.mode = 'ask';
+    al.msg = '';
+    al.err = '';
+    al.tg = null;
     const { autoOpen = true } = await chrome.storage.local.get('autoOpen');
     state.open = autoOpen;
     if (!host.isConnected) document.documentElement.appendChild(host);
@@ -292,6 +443,7 @@
     }
     state.data = r.data;
     render();
+    loadAlerts();
     const c = await send({ type: 'compare', id: r.data.id, title: product.title, price: product.price, store: store.name });
     state.offers = c.ok ? c.data.offers : [];
     render();

@@ -2,12 +2,29 @@
   "manifest_version": 3,
   "name": "DealRadar — Price History & Compare",
   "short_name": "DealRadar",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "See price history, a Deal Score and cheaper prices on other stores — Amazon, Flipkart, Myntra, Zepto, Blinkit, Instamart and more.",
-  "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" },
-  "action": { "default_popup": "popup.html", "default_title": "DealRadar", "default_icon": { "16": "icons/16.png", "48": "icons/48.png" } },
-  "background": { "service_worker": "background.js" },
-  "permissions": ["storage", "scripting", "tabs"],
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "DealRadar",
+    "default_icon": {
+      "16": "icons/16.png",
+      "48": "icons/48.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "scripting",
+    "tabs"
+  ],
   "host_permissions": [
     "https://dealradar.embarko.app/*",
     "https://www.amazon.in/*",
@@ -22,6 +39,8 @@
     "https://www.nykaa.com/*",
     "https://www.jiomart.com/*",
     "https://www.zeptonow.com/*",
+    "https://www.zepto.com/*",
+    "https://zepto.com/*",
     "https://blinkit.com/*",
     "https://www.swiggy.com/*",
     "https://www.bigbasket.com/*"
@@ -41,7 +60,11 @@
         "https://www.nykaa.com/*",
         "https://www.jiomart.com/*"
       ],
-      "js": ["config.js", "match.js", "content.js"],
+      "js": [
+        "config.js",
+        "match.js",
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ]

@@ -4,7 +4,9 @@ import { getProduct } from '@/lib/products';
 import { confirmationEmail, confirmationTelegram, createAlert, queueMail, queueTelegram, queueWhatsAppConfirmation } from '@/lib/alerts';
 import { chatFor, codeAndLink, telegramBot } from '@/lib/telegram';
 import { sendQueuedMailNow } from '@/lib/flows';
-import { currentUid } from '@/lib/auth';
+import { currentUid, currentUser } from '@/lib/auth';
+import { PLATFORM_NAMES } from '@/lib/scraper';
+import { appUrl } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,8 +70,21 @@ export async function POST(req: Request) {
   return NextResponse.json({ alert, confirmation: !!email, whatsapp_confirmation: whatsappConfirm, telegram_link: telegram?.link ?? null, telegram_code: telegram?.code ?? null, telegram_linked: !!alert.telegram_chat });
 }
 
+// The shopper's alerts with the product each one watches, and the contact they used last, so the
+// browser extension can list them and set the next alert in one tap.
 export async function GET() {
   const uid = currentUid();
-  const alerts = read((d) => Object.values(d.alerts).filter((a) => a.uid === uid));
-  return NextResponse.json({ alerts });
+  const { alerts, products } = read((d) => {
+    const alerts = Object.values(d.alerts)
+      .filter((a) => a.uid === uid)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+    return { alerts, products: Object.fromEntries(alerts.map((a) => [a.product_id, d.products[a.product_id]])) };
+  });
+  const items = alerts.map((a) => {
+    const p = products[a.product_id];
+    return { ...a, product: p ? { title: p.title, image: p.image, price: p.price, store: PLATFORM_NAMES[p.platform], page: `${appUrl()}/p/${p.id}` } : null };
+  });
+  const last = alerts[0];
+  const contact = { email: last?.email ?? currentUser()?.email ?? null, phone: last?.phone ?? null, telegram: !!last?.channels.includes('telegram') };
+  return NextResponse.json({ alerts: items, contact });
 }

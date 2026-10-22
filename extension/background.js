@@ -1,8 +1,12 @@
 /* global importScripts, DEALRADAR_API, DRMatch, chrome */
 importScripts('config.js', 'match.js');
 
+// Sent with the browser's DealRadar cookies, so alerts set here belong to the same shopper as on the site.
 async function api(path, body) {
-  const res = await fetch(DEALRADAR_API + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+  const res = await fetch(DEALRADAR_API + path, {
+    credentials: 'include',
+    ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'DealRadar is not reachable right now.');
   return data;
@@ -155,7 +159,10 @@ async function quick({ id, title, price: p }) {
       try {
         const { cards, needsLocation } = await readQuickStore(s, q);
         const hit = DRMatch.best(source, cards);
-        status[s.store] = hit ? { state: 'found', price: hit.price, url: hit.url } : { state: needsLocation ? 'location' : 'none', url: s.home };
+        // seen says whether the page showed products at all: none seen usually means no location set yet.
+        status[s.store] = hit
+          ? { state: 'found', price: hit.price, url: hit.url }
+          : { state: needsLocation ? 'location' : cards.length ? 'none' : 'empty', url: s.home, seen: cards.length };
         return hit ? { store: s.store, price: hit.price, url: hit.url, in_stock: true, same_variant: hit.same_variant } : null;
       } catch (e) {
         status[s.store] = { state: 'error', url: s.home };
@@ -168,7 +175,20 @@ async function quick({ id, title, price: p }) {
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
-  const run = msg.type === 'lookup' ? api('/api/ext/lookup', msg.page) : msg.type === 'compare' ? compare(msg) : msg.type === 'quick' ? quick(msg) : null;
+  const run =
+    msg.type === 'lookup'
+      ? api('/api/ext/lookup', msg.page)
+      : msg.type === 'compare'
+        ? compare(msg)
+        : msg.type === 'quick'
+          ? quick(msg)
+          : msg.type === 'alerts'
+            ? api('/api/alerts')
+            : msg.type === 'setAlert'
+              ? api('/api/alerts', msg.alert)
+              : msg.type === 'stopAlert'
+                ? api('/api/alerts/' + encodeURIComponent(msg.id), { op: 'cancel' })
+                : null;
   if (!run) return false;
   run.then((data) => reply({ ok: true, data })).catch((e) => reply({ ok: false, error: String(e.message || e) }));
   return true; // keeps the channel open for the async reply
