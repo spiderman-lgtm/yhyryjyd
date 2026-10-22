@@ -14,7 +14,7 @@ export const OFFER_DOMAINS: Record<string, RegExp> = {
   'Vijay Sales': /(^|\.)vijaysales\.com$/,
   Nykaa: /(^|\.)nykaa\.com$/,
   JioMart: /(^|\.)jiomart\.com$/,
-  Zepto: /(^|\.)zeptonow\.com$/,
+  Zepto: /(^|\.)(zeptonow|zepto)\.com$/,
   Blinkit: /(^|\.)blinkit\.com$/,
   Instamart: /(^|\.)swiggy\.com$/,
   BigBasket: /(^|\.)bigbasket\.com$/,

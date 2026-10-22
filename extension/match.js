@@ -1,7 +1,8 @@
 // Same-product matching, kept in step with src/lib/storesearch.ts on the server.
 var DRMatch = (function () {
   var STOP = new Set(['with', 'for', 'and', 'the', 'of', 'in', 'by', 'from', 'new', 'latest', 'free', 'pack', 'combo', 'online', 'buy', 'gb', 'ram', 'rom',
-    'women', 'womens', 'men', 'mens', 'ladies', 'girls', 'boys', 'unisex', 'office', 'use', 'stylish', 'trendy', 'solid', 'casual']);
+    'women', 'womens', 'men', 'mens', 'ladies', 'girls', 'boys', 'unisex', 'office', 'use', 'stylish', 'trendy', 'solid', 'casual',
+    'fast', 'charging', 'input', 'output', 'compatible', 'premium', 'strong', 'upto', 'up', 'to', 'support', 'supports', 'usb', 'type', 'c']);
   var COLORS = new Set(
     'black white blue green red yellow pink purple grey gray silver gold orange brown beige navy maroon teal olive cream violet titanium graphite midnight starlight natural desert ultramarine'.split(' '),
   );
@@ -102,7 +103,10 @@ var DRMatch = (function () {
     var otherSize = !!srcSize && candSizes.length > 0 && candSizes.indexOf(srcSize) < 0;
     var off = otherColour || otherSize;
     var miss = missing.length > 0;
-    return { ok: score >= (miss ? 0.7 : 0.6), same: score >= 0.7 && !off && !miss, score: score - (off ? 0.2 : 0) - (miss ? 0.1 : 0) };
+    var same = score >= 0.7 && !off && !miss;
+    // A listing that is not an exact match and costs far more or less is a different product, not a variant.
+    if (!same && (cand.price < source.price * 0.6 || cand.price > source.price * 2)) return none;
+    return { ok: score >= (miss ? 0.7 : 0.6), same: same, score: score - (off ? 0.2 : 0) - (miss ? 0.1 : 0) };
   }
 
   function best(source, list) {

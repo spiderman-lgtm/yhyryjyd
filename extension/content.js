@@ -265,20 +265,28 @@
   // ---------- compare tab ----------
   function tiles() {
     const p = state.product;
-    const online = [{ store: store.name, price: p.price, url: null, here: true }].concat(
+    // The store the shopper is on goes with its kind: a quick-commerce app under Near you, any other under Online.
+    const hereTile = { store: store.name, price: p.price, url: null, here: true };
+    const hereIsNear = QUICK.includes(store.name);
+    const online = (hereIsNear ? [] : [hereTile]).concat(
       (state.offers || [])
-        .map((o, i) => ({ ...o, i }))
         .filter((o) => o.in_stock && o.store !== store.name && !QUICK.includes(o.store) && o.delivery?.ok !== false)
-        .map((o) => ({ store: o.store, price: o.price, url: `${DEALRADAR_API}/api/buy/${state.data.id}?o=${o.i}`, variant: !o.same_variant, delivers: o.delivery?.ok ? o.delivery : null })),
+        .map((o) => ({
+          store: o.store,
+          price: o.price,
+          url: `${DEALRADAR_API}/api/buy/${state.data.id}?s=${encodeURIComponent(o.store)}`,
+          variant: !o.same_variant,
+          delivers: o.delivery?.ok ? o.delivery : null,
+        })),
     );
-    const near = QUICK.filter((s) => s !== store.name).map((s) => {
+    const near = (hereIsNear ? [hereTile] : []).concat(QUICK.filter((s) => s !== store.name).map((s) => {
       const x = state.quick?.[s];
       if (x && x.state === 'found') return { store: s, price: x.price, url: x.url, near: true };
       return { store: s, status: x ? x.state : loc.pin ? 'busy' : 'noloc', url: x?.url };
-    });
+    }));
     const priced = online.concat(near.filter((t) => t.price));
     const low = priced.reduce((a, b) => (b.price < a.price ? b : a), priced[0]);
-    return { online, near, low, others: priced.length - 1 };
+    return { online, near, low, here: hereTile, others: priced.length - 1 };
   }
 
   function tileHtml(t, low) {
@@ -350,8 +358,8 @@
 
   // Only stores that have the product near the shopper; stores without it are left out.
   function nearHtml(near, low) {
-    if (!loc.pin) return '';
     const found = near.filter((t) => t.price);
+    if (!loc.pin) return found.length ? `<div class="lbl">Near you</div><div class="grid">${found.map((t) => tileHtml(t, low)).join('')}</div>` : '';
     const checking = near.filter((t) => t.status === 'busy');
     // Apps that showed no products have no delivery address yet; each keeps its own, set once in that app.
     const setup = near.filter((t) => t.status === 'empty' || t.status === 'location');
@@ -373,8 +381,7 @@
     const p = state.product;
     const d = state.data;
     const verdict = d.deal ? { buy: 'BUY', okay: 'OKAY', skip: 'SKIP' }[d.deal.action] : null;
-    const { online, near, low, others } = tiles();
-    const here = online[0];
+    const { online, near, low, here, others } = tiles();
     const best =
       state.offers === null
         ? '<div class="best here">Comparing prices…</div>'
@@ -386,7 +393,7 @@
     return `<div class="prod">${p.image ? `<img src="${esc(p.image)}" alt="" />` : ''}<div class="grow"><div class="t2">${esc(p.title)}</div>
         <div><span class="price">${inr(p.price)}</span>${verdict ? `<span class="verdict ${d.deal.action}">${verdict}</span>` : ''}</div></div></div>
       ${best}
-      <div class="lbl">Online</div>
+      ${online.length || state.offers === null ? '<div class="lbl">Online</div>' : ''}
       <div class="grid">${online.map((t) => tileHtml(t, low)).join('')}${
         state.offers === null ? '<div class="tile off"><div class="top">More stores</div><span class="shim"></span><div class="s">Checking…</div></div>' : ''
       }</div>

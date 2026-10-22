@@ -458,7 +458,9 @@ export const searchTokens = (s: string) => tokens(s);
 
 const STOP = new Set(['with', 'for', 'and', 'the', 'of', 'in', 'by', 'from', 'new', 'latest', 'free', 'pack', 'combo', 'online', 'buy', 'gb', 'ram', 'rom',
   // Who it is for and how it is pitched; stores word these differently for the same item.
-  'women', 'womens', 'men', 'mens', 'ladies', 'girls', 'boys', 'unisex', 'office', 'use', 'stylish', 'trendy', 'solid', 'casual']);
+  'women', 'womens', 'men', 'mens', 'ladies', 'girls', 'boys', 'unisex', 'office', 'use', 'stylish', 'trendy', 'solid', 'casual',
+  // Sales and spec-sheet words that long titles add.
+  'fast', 'charging', 'input', 'output', 'compatible', 'premium', 'strong', 'upto', 'up', 'to', 'support', 'supports', 'usb', 'type', 'c']);
 const tokens = (s: string) =>
   s
     .toLowerCase()
@@ -520,9 +522,12 @@ export function match(source: Product, hit: Hit): { ok: boolean; same: boolean; 
   const srcSize = src.find((t) => SIZE.test(t)) ?? [...fullSrc].find((t) => SIZE.test(t));
   const candSizes = candList.filter((t) => SIZE.test(t));
   const otherSize = !!srcSize && candSizes.length > 0 && !candSizes.includes(srcSize);
+  const same = score >= 0.7 && !otherColour && !otherSize && !missing.length;
+  // A listing that is not an exact match and costs far more or less is a different product, not a variant.
+  if (!same && (hit.price < source.price * 0.6 || hit.price > source.price * 2)) return none;
   return {
     ok: score >= (missing.length ? 0.7 : 0.6),
-    same: score >= 0.7 && !otherColour && !otherSize && !missing.length,
+    same,
     score: score - (otherColour || otherSize ? 0.2 : 0) - (missing.length ? 0.1 : 0),
   };
 }

@@ -106,6 +106,19 @@ export async function compareStores(product: Product, pin: string | null = null,
   return { offers, fetched_at: new Date().toISOString(), cached: false };
 }
 
+// A store's offer by name, from this pincode's comparison or the general one (where the extension adds the
+// prices it found), so a link always opens the store it names.
+export function offerByStore(productId: string, store: string, pin: string | null = null): StoreOffer | null {
+  const name = store.toLowerCase();
+  return read((d) => {
+    for (const key of [keyFor(productId, pin), productId]) {
+      const o = d.compare[key]?.offers.find((x) => x.store.toLowerCase() === name);
+      if (o) return o;
+    }
+    return null;
+  });
+}
+
 export function cachedOffer(productId: string, index: number, pin: string | null = null): StoreOffer | null {
   return read((d) => d.compare[keyFor(productId, pin)]?.offers[index] ?? null);
 }
