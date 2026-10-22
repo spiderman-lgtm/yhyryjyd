@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { askAI } from '@/lib/viasocket';
 import { affiliateUrl } from '@/lib/coupons';
+import { keywordSearch, type SearchItem } from '@/lib/search';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -33,16 +34,28 @@ const SCHEMA = {
   },
 };
 
+// Products from other stores for a search. The stores' own search comes first (no AI credits needed);
+// AI web search only fills in when the stores return little.
 export async function GET(req: NextRequest) {
   const q = (req.nextUrl.searchParams.get('q') || '').trim().slice(0, 120);
   if (q.length < 2) return NextResponse.json({ items: [] });
+  const direct = await keywordSearch(q).catch(() => [] as SearchItem[]);
+  if (direct.length >= 4) return NextResponse.json({ items: direct, source: 'stores' });
+  const ai = await aiSearch(req, q);
+  const seen = new Set(direct.map((d) => d.url));
+  const items = [...direct, ...ai.filter((x) => !seen.has(x.url))];
+  return NextResponse.json(items.length ? { items, source: ai.length ? 'stores+ai' : 'stores' } : { items: [], error: 'No matching products found in stores right now. Try fewer words, or paste the product link.' });
+}
+
+async function aiSearch(req: NextRequest, q: string): Promise<SearchItem[]> {
+  const toItem = (i: Hit): SearchItem => ({ ...i, mrp: null, off: 0, features: [], rating: null, reviews: null, match: 0, buy: affiliateUrl(i.url) });
   const key = q.toLowerCase();
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < 6 * 3600_000) return NextResponse.json({ items: hit.items.map((i) => ({ ...i, buy: affiliateUrl(i.url) })) });
+  if (hit && Date.now() - hit.at < 6 * 3600_000) return hit.items.map(toItem);
   // Each uncached search spends AI credits, so one visitor gets 20 an hour.
   const who = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.cookies.get('dr_uid')?.value || 'anon';
   const used = (quota.get(who) ?? []).filter((t) => Date.now() - t < 3600_000);
-  if (used.length >= 20) return NextResponse.json({ items: [], error: 'You have searched a lot — try again in a little while, or paste a product link.' });
+  if (used.length >= 20) return [];
   quota.set(who, [...used, Date.now()]);
   try {
     const r = await askAI<{ items: Hit[] }>({
@@ -60,8 +73,8 @@ export async function GET(req: NextRequest) {
       .map((i) => ({ ...i, title: i.title.slice(0, 160), store: i.store.slice(0, 40), price: Math.round(i.price), image: i.image && /^https?:\/\//.test(i.image) ? i.image : null }));
     cache.set(key, { at: Date.now(), items });
     if (cache.size > 500) cache.delete(cache.keys().next().value!);
-    return NextResponse.json({ items: items.map((i) => ({ ...i, buy: affiliateUrl(i.url) })) });
+    return items.map(toItem);
   } catch {
-    return NextResponse.json({ items: [], error: 'Web search is unavailable right now.' });
+    return [];
   }
 }

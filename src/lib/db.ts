@@ -24,6 +24,9 @@ export interface Product {
   reviews?: number | null;
   last_viewed_at?: string;
   views?: number;
+  // Highlights from the store's own listing (see /api/product/[id]/features).
+  features?: string[];
+  features_at?: string;
 }
 
 export interface PricePoint {

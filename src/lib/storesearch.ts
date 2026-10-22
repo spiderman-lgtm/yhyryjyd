@@ -18,7 +18,16 @@ export interface Hit {
   image: string | null;
   in_stock: boolean;
   ref?: string;
+  // For showing results: the plain product name (title may carry extra words used for matching),
+  // the store's own highlights, and its rating.
+  name?: string;
+  features?: string[];
+  rating?: number | null;
+  reviews?: number | null;
 }
+
+const tidy = (list: string[]) =>
+  list.map((x) => x.replace(/&amp;/g, '&').replace(/&nbsp;|&#160;/g, ' ').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/\s+/g, ' ').trim()).filter((x) => x.length > 1 && x.length < 90).slice(0, 5);
 
 async function get(url: string, headers: Record<string, string> = {}, timeoutMs = 12000) {
   const res = await fetch(url, {
@@ -57,6 +66,10 @@ const SEARCHERS: Record<string, (q: string, pin: string | null) => Promise<Hit[]
             url: `https://www.flipkart.com${String(o.baseUrl).split('&')[0]}`,
             image: img ? img.replace('{@width}', '416').replace('{@height}', '416').replace('{@quality}', '70').replace(/^http:/, 'https:') : null,
             in_stock: o.availability?.displayState !== 'out_of_stock',
+            name: o.titles.title || o.titles.newTitle,
+            features: o.titles.subtitle ? tidy(String(o.titles.subtitle).split(',')) : [],
+            rating: typeof o.rating?.average === 'number' ? o.rating.average : null,
+            reviews: typeof o.rating?.count === 'number' ? o.rating.count : null,
           });
         return;
       }
@@ -84,6 +97,8 @@ const SEARCHERS: Record<string, (q: string, pin: string | null) => Promise<Hit[]
       image: p.plpImage || null,
       in_stock: true,
       ref: p.code ? String(p.code) : undefined,
+      features: tidy([...String(p.quickViewDesc || '').matchAll(/<li[^>]*>([\s\S]*?)<\/li>/g)].map((m) => m[1].replace(/<[^>]+>/g, ''))),
+      rating: num(p.averageRating) || null,
     }));
   },
 
@@ -117,6 +132,8 @@ const SEARCHERS: Record<string, (q: string, pin: string | null) => Promise<Hit[]
       url: p.webURL ? (String(p.webURL).startsWith('http') ? p.webURL : `https://www.tatacliq.com${p.webURL}`) : `https://www.tatacliq.com/p-${String(p.productId).toLowerCase()}`,
       image: p.imageURL ? `https:${String(p.imageURL).replace(/^https?:/, '')}` : null,
       in_stock: p.inStockFlag !== false,
+      rating: num(p.averageRating) || null,
+      reviews: num(p.ratingCount) || null,
     }));
   },
 
@@ -216,6 +233,9 @@ export function searchStore(store: string, q: string, pin: string | null = null)
 function storesFor(p: Product) {
   return Object.keys(SEARCHERS).filter((s) => s !== p.platform);
 }
+
+export const SEARCH_STORES = Object.keys(SEARCHERS);
+export const searchTokens = (s: string) => tokens(s);
 
 const STOP = new Set(['with', 'for', 'and', 'the', 'of', 'in', 'by', 'from', 'new', 'latest', 'free', 'pack', 'combo', 'online', 'buy', 'gb', 'ram', 'rom']);
 const tokens = (s: string) =>

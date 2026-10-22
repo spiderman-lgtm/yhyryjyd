@@ -7,6 +7,7 @@ import CompareList from '@/components/CompareList';
 import DealPanel from '@/components/DealPanel';
 import Gallery from '@/components/Gallery';
 import HistoryChart from '@/components/HistoryChart';
+import KeyFeatures from '@/components/KeyFeatures';
 import LinkInput from '@/components/LinkInput';
 import LocationPin from '@/components/LocationPin';
 import LookAlike from '@/components/LookAlike';
@@ -80,6 +81,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
             {off > 0 && <span className="rounded-lg bg-deal-light px-2 py-0.5 text-sm font-bold text-deal">{off}% off</span>}
             {!p.in_stock && <span className="rounded-lg bg-red-50 px-2 py-0.5 text-sm font-bold text-red-600">Out of stock</span>}
           </div>
+          <KeyFeatures productId={p.id} initial={p.features_at && Date.now() - Date.parse(p.features_at) < 3 * 86400_000 ? p.features ?? [] : null} />
           <ShareButtons title={p.title} />
           <BuyNow productId={p.id} store={store} priceLabel={inr(p.price)} />
           {gift && (
