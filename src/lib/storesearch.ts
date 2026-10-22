@@ -337,6 +337,7 @@ const STOP = new Set(['with', 'for', 'and', 'the', 'of', 'in', 'by', 'from', 'ne
 const tokens = (s: string) =>
   s
     .toLowerCase()
+    .replace(/(\d+(?:\.\d+)?)\s*(?:"|”|''|-?inches\b|-inch\b)/g, '$1inch ')
     .replace(/(\d+(?:\.\d+)?)\s*(gb|tb|mah|w|inch|cm|ml|kg|g|l|ltr)\b/g, '$1$2')
     .split(/[^a-z0-9.]+/)
     .map((w) => w.replace(/^\.+|\.+$/g, ''))
@@ -348,7 +349,7 @@ export const ACCESSORY = /\b(case|cover|protector|tempered|glass|guard|charger|c
 // Words that name a different model of the same line: an iPhone 15 is not an iPhone 15 Pro.
 const MODEL = new Set(['plus', 'pro', 'max', 'mini', 'ultra', 'lite', 'fe', 'neo', 'prime', 'air']);
 // Pack sizes: a different size is the same product in another variant, not a different product.
-const SIZE = /^\d+(\.\d+)?(ml|g|kg|l|ltr)$/;
+const SIZE = /^\d+(\.\d+)?(ml|g|kg|l|ltr|inch|cm)$/;
 
 // The search query: brand, model and size words from the title, without marketing filler.
 export function queryFor(title: string) {
@@ -368,7 +369,9 @@ export function match(source: Product, hit: Hit): { ok: boolean; same: boolean; 
   const candList = tokens(hit.title);
   const cand = new Set(candList);
   if (src.length < 2) return none;
-  if (ACCESSORY.test(hit.title) && !ACCESSORY.test(source.title)) return none;
+  // What comes after "with" is what is included (a bag with a strap), not what the item is.
+  const what = (t: string) => t.replace(/\bwith\b.*$/i, '');
+  if (ACCESSORY.test(what(hit.title)) && !ACCESSORY.test(what(source.title))) return none;
   if (hit.price < source.price * 0.4 || hit.price > source.price * 2.5) return none;
   if (!cand.has(src[0])) return none; // the brand
   // Model numbers and storage (15, s24, 128gb…) must all match; pack sizes may differ.
@@ -394,23 +397,25 @@ export function match(source: Product, hit: Hit): { ok: boolean; same: boolean; 
 export async function searchStores(product: Product, pin: string | null = null): Promise<StoreOffer[]> {
   const q = queryFor(product.title);
   const stores = storesFor(product);
+  const seen: string[] = [];
   const results = await Promise.all(
     stores.map(async (s) => {
       try {
         const hits = await SEARCHERS[s](q, pin);
-        const best = hits
-          .filter((h) => h.price > 0 && h.title)
-          .map((h) => ({ h, m: match(product, h) }))
-          .filter((x) => x.m.ok)
-          .sort((a, b) => b.m.score - a.m.score || a.h.price - b.h.price)[0];
+        const scored = hits.filter((h) => h.price > 0 && h.title).map((h) => ({ h, m: match(product, h) }));
+        const best = scored.filter((x) => x.m.ok).sort((a, b) => b.m.score - a.m.score || a.h.price - b.h.price)[0];
+        seen.push(`${s}:${hits.length}${best ? '✓' : ''}`);
         if (!best) return null;
         const offer: StoreOffer = { store: best.h.store, price: Math.round(best.h.price), url: best.h.url, in_stock: best.h.in_stock, same_variant: best.m.same };
         if (pin && s === 'croma' && best.h.ref) offer.delivery = await cromaDelivery(best.h.ref, pin).catch(() => undefined);
         return offer;
-      } catch {
+      } catch (e) {
+        seen.push(`${s}:${e instanceof Error ? e.message.slice(0, 40) : 'error'}`);
         return null;
       }
     }),
   );
+  // One line per search: how many results each store sent back, ✓ where one matched.
+  console.log(`[compare] ${product.id} "${q}" ${seen.join(' ')}`);
   return results.filter((x): x is StoreOffer => !!x);
 }
