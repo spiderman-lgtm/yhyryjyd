@@ -63,11 +63,37 @@ export async function GET(req: NextRequest) {
   return res;
 }
 
+// The pincode at a map position, for "Use my current location".
+async function pinAt(lat: number, lng: number): Promise<string | null> {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1`, {
+      headers: { 'User-Agent': 'DealRadar/1.0 (https://dealradar.embarko.app)' },
+      signal: AbortSignal.timeout(6000),
+      cache: 'no-store',
+    });
+    const code = String((await res.json())?.address?.postcode ?? '').replace(/\s/g, '');
+    return isPin(code) ? code : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   const b = await req.json().catch(() => ({}));
-  const pin = String(b.pin ?? '').trim();
+  let pin = String(b.pin ?? '').trim();
+  let here: string | null = null;
+  const lat = Number(b.lat);
+  const lng = Number(b.lng);
+  if (!pin && Number.isFinite(lat) && Number.isFinite(lng)) {
+    if (lat < 6 || lat > 37.5 || lng < 68 || lng > 97.5) return NextResponse.json({ error: 'That location is outside India.' }, { status: 400 });
+    pin = (await pinAt(lat, lng)) ?? '';
+    if (!pin) return NextResponse.json({ error: 'Could not find the pincode for your location. Type it instead.' }, { status: 422 });
+    here = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+  }
   if (!isPin(pin)) return NextResponse.json({ error: 'Enter a 6-digit Indian pincode.' }, { status: 400 });
-  const [area, point] = await Promise.all([areaFor(pin), pointFor(pin)]);
+  const [area, found] = await Promise.all([areaFor(pin), here ? Promise.resolve(null) : pointFor(pin)]);
+  // The shopper's exact position is more precise than the pincode's centre, for stores that locate by it.
+  const point = here ?? found;
   const res = NextResponse.json({ pin, area, ...asPoint(point) });
   res.cookies.set('dr_pin', pin, { ...cookie, secure: secureCookies() });
   res.cookies.set('dr_area', area ?? '', { ...cookie, secure: secureCookies() });

@@ -173,9 +173,6 @@
     .loc input { flex:1; min-width:0; border:1px solid #cbd5e1; border-radius:8px; padding:5px 8px; font-size:12px; outline:none; }
     .loc input:focus { border-color:#ea580c; }
     a.lk, button.lk { color:#ea580c; font-weight:700; font-size:12px; text-decoration:none; background:none; border:0; cursor:pointer; padding:0; }
-    .tabs { display:flex; border-bottom:1px solid #f1f5f9; }
-    .tabs button { flex:1; border:0; background:none; padding:9px; font-size:13px; font-weight:700; color:#64748b; cursor:pointer; border-bottom:2px solid transparent; }
-    .tabs button.on { color:#ea580c; border-color:#ea580c; }
     .body { overflow:auto; padding:12px; }
     .prod { display:flex; gap:10px; align-items:center; }
     .prod img { width:52px; height:52px; border-radius:10px; object-fit:contain; border:1px solid #f1f5f9; background:#fff; flex-shrink:0; }
@@ -196,7 +193,7 @@
     .tile .s { font-size:11px; color:#64748b; margin-top:1px; }
     .tile.off .p { color:#94a3b8; font-size:14px; }
     .badge { position:absolute; top:-7px; right:8px; background:#16a34a; color:#fff; font-size:10px; font-weight:800; border-radius:999px; padding:1px 7px; }
-    .chip { display:grid; place-items:center; width:20px; height:20px; border-radius:6px; color:#fff; font-weight:900; font-size:11px; flex-shrink:0; }
+    .chip { display:grid; place-items:center; width:20px; height:20px; border-radius:6px; color:#fff; font-weight:900; font-size:11px; flex-shrink:0; object-fit:contain; background:#fff; }
     .shim { display:block; height:16px; width:60%; margin-top:6px; border-radius:6px; background:linear-gradient(90deg,#f1f5f9,#e2e8f0,#f1f5f9); background-size:200% 100%; animation:sh 1.2s infinite; }
     @keyframes sh { to { background-position:-200% 0; } }
     .alert { margin-top:12px; border:1px solid #fed7aa; background:#fff7ed; border-radius:12px; padding:10px; }
@@ -208,21 +205,51 @@
     .tick { display:flex; align-items:center; gap:6px; font-size:12px; margin-top:7px; }
     .muted { color:#64748b; font-size:12px; } .err { color:#b91c1c; font-size:12px; margin-top:6px; }
     svg.spark { display:block; width:100%; height:44px; margin-top:6px; }
-    .al { display:flex; align-items:center; gap:8px; padding:8px 0; border-top:1px solid #f1f5f9; }
-    .al:first-child { border-top:0; }
-    .al img { width:38px; height:38px; border-radius:8px; object-fit:contain; border:1px solid #e2e8f0; background:#fff; flex-shrink:0; }
     .grow { flex:1; min-width:0; }
-    .one { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12.5px; }
     .stop { border:0; background:#f1f5f9; color:#475569; border-radius:8px; padding:5px 9px; font-size:11px; font-weight:700; cursor:pointer; }
-    .empty { text-align:center; padding:22px 8px; } .empty svg { width:42px; height:42px; margin:0 auto 6px; display:block; }
   </style><div id="app"></div>`;
   const app = root.getElementById('app');
 
   const COLORS = { Amazon: '#ff9900', Flipkart: '#2874f0', Myntra: '#ff3f6c', AJIO: '#2c4152', Meesho: '#9f2089', Croma: '#12daa8', 'Tata CLiQ': '#da1c5c', 'Reliance Digital': '#e42529', Nykaa: '#fc2779', 'Nykaa Fashion': '#fc2779', JioMart: '#0078ad', Zepto: '#5f259f', Blinkit: '#0c831f', Instamart: '#fc8019', BigBasket: '#84c225', Decathlon: '#0082c3' };
-  const chip = (name) => `<span class="chip" style="background:${COLORS[name] || '#64748b'}">${esc(String(name)[0] || '?')}</span>`;
+  // Each store's own logo, shipped with the extension; a coloured letter for stores without one.
+  const LOGOS = {
+    Amazon: 'amazon.in.png',
+    Flipkart: 'flipkart.com.png',
+    Myntra: 'myntra.com.jpg',
+    AJIO: 'ajio.com.png',
+    Meesho: 'meesho.com.png',
+    Croma: 'croma.com.png',
+    'Tata CLiQ': 'tatacliq.com.jpg',
+    'Reliance Digital': 'reliancedigital.in.png',
+    Nykaa: 'nykaa.com.png',
+    JioMart: 'jiomart.com.png',
+    Zepto: 'zeptonow.com.png',
+    Blinkit: 'blinkit.com.png',
+    Instamart: 'swiggy.com.png',
+    BigBasket: 'bigbasket.com.png',
+    Decathlon: 'decathlon.in.png',
+    boAt: 'boat-lifestyle.com.jpg',
+    Noise: 'gonoise.com.png',
+    Boult: 'boultaudio.com.png',
+    'Fire-Boltt': 'fireboltt.com.jpg',
+    pTron: 'ptron.in.png',
+    Zebronics: 'zebronics.com.png',
+    Plum: 'plumgoodness.com.png',
+    'SUGAR Cosmetics': 'in.sugarcosmetics.com.png',
+    Mamaearth: 'mamaearth.in.png',
+    mCaffeine: 'mcaffeine.com.png',
+    'Bombay Shaving Company': 'bombayshavingcompany.com.png',
+    Beardo: 'beardo.in.png',
+    'Nykaa Fashion': 'nykaafashion.com.jpg',
+    Miraggio: 'miraggiolife.com.png',
+  };
+  const chip = (name) =>
+    LOGOS[name]
+      ? `<img class="chip" src="${chrome.runtime.getURL('logos/' + LOGOS[name])}" alt="" />`
+      : `<span class="chip" style="background:${COLORS[name] || '#64748b'}">${esc(String(name)[0] || '?')}</span>`;
   const QUICK = ['Zepto', 'Blinkit', 'Instamart', 'BigBasket', 'JioMart'];
 
-  const state = { open: false, tab: 'compare', product: null, data: null, offers: null, error: '', quick: null, quickBusy: false, quickFor: '' };
+  const state = { open: false, product: null, data: null, offers: null, error: '', quick: null, quickBusy: false, quickFor: '' };
   // The delivery location is DealRadar's, shared with the website; from tells which store it was read from.
   const loc = { pin: null, area: null, from: null, editing: false, busy: false, err: '', draft: undefined };
   // Price alerts: the shopper's list, and where their last alert went (so the next one takes one tap).
@@ -306,6 +333,22 @@
     }</div>`;
   }
 
+  // Only stores that have the product near the shopper; stores without it are left out.
+  function nearHtml(near, low) {
+    if (!loc.pin) return '';
+    const found = near.filter((t) => t.price);
+    const checking = near.some((t) => t.status === 'busy');
+    if (!found.length && !checking) return '';
+    return `<div class="lbl">Near you · ${esc(loc.pin)}</div>${found.length ? `<div class="grid">${found.map((t) => tileHtml(t, low)).join('')}</div>` : ''}${
+      checking
+        ? `<div class="muted" style="display:flex;align-items:center;gap:6px;margin-top:6px"><span class="shim" style="width:40px;height:10px;margin:0"></span>Checking ${near
+            .filter((t) => t.status === 'busy')
+            .map((t) => esc(t.store))
+            .join(', ')}…</div>`
+        : ''
+    }`;
+  }
+
   function compareHtml() {
     const p = state.product;
     const d = state.data;
@@ -327,30 +370,9 @@
       <div class="grid">${online.map((t) => tileHtml(t, low)).join('')}${
         state.offers === null ? '<div class="tile off"><div class="top">More stores</div><span class="shim"></span><div class="s">Checking…</div></div>' : ''
       }</div>
-      <div class="lbl">Near you${loc.pin ? ' · ' + esc(loc.pin) : ''}</div>
-      <div class="grid">${near.filter((t) => t.status !== 'none').map((t) => tileHtml(t, low)).join('')}</div>${
-        near.some((t) => t.status === 'none')
-          ? `<div class="muted" style="margin-top:7px">Not available near you: ${near.filter((t) => t.status === 'none').map((t) => esc(t.store)).join(' · ')}</div>`
-          : ''
-      }
+      ${nearHtml(near, low)}
       ${alertHtml()}
       ${spark(d.history || [], p.price)}`;
-  }
-
-  // ---------- alerts tab ----------
-  const BELL = '<svg viewBox="0 0 24 24" fill="#ea580c"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg>';
-  function alertsTabHtml() {
-    if (!al.list) return '<span class="shim"></span><span class="shim"></span>';
-    const active = al.list.filter((a) => a.status === 'active');
-    if (!active.length) return `<div class="empty">${BELL}<b>No price alerts yet</b><div class="muted">Set one from the Compare tab and we will message you when the price drops.</div></div>`;
-    return active
-      .map(
-        (a) => `<div class="al">${a.product?.image ? `<img src="${esc(a.product.image)}" alt="" />` : ''}<div class="grow">
-          <div class="one">${esc(a.product?.title || 'Product')}</div>
-          <div class="muted">${a.product ? inr(a.product.price) + ' · ' + esc(a.product.store) + ' · ' : ''}till ${new Date(a.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div></div>
-          <button class="stop" data-stop="${esc(a.id)}">Stop</button></div>`,
-      )
-      .join('');
   }
 
   // ---------- frame ----------
@@ -377,19 +399,11 @@
       root.getElementById('open').onclick = () => openPanel();
       return;
     }
-    const active = (al.list || []).filter((a) => a.status === 'active').length;
     app.innerHTML = `<div class="card">
       <div class="head"><div class="logo"><b>₹</b>DealRadar</div><span class="site">${chip(store.name)}${esc(store.name)}</span><button class="x" id="close" title="Minimise">–</button></div>
       ${locHtml()}
-      <div class="tabs"><button id="tab-compare" class="${state.tab === 'compare' ? 'on' : ''}">Compare</button><button id="tab-alerts" class="${state.tab === 'alerts' ? 'on' : ''}">Alerts${active ? ` (${active})` : ''}</button></div>
       <div class="body">${
-        state.error
-          ? `<div class="err">${esc(state.error)}</div>`
-          : !state.data
-            ? '<span class="shim"></span><span class="shim" style="width:80%"></span>'
-            : state.tab === 'compare'
-              ? compareHtml()
-              : alertsTabHtml()
+        state.error ? `<div class="err">${esc(state.error)}</div>` : !state.data ? '<span class="shim"></span><span class="shim" style="width:80%"></span>' : compareHtml()
       }</div>
     </div>`;
     bind();
@@ -404,14 +418,6 @@
     };
     on('close', () => {
       state.open = false;
-      render();
-    });
-    on('tab-compare', () => {
-      state.tab = 'compare';
-      render();
-    });
-    on('tab-alerts', () => {
-      state.tab = 'alerts';
       render();
     });
     on('loc-change', () => {

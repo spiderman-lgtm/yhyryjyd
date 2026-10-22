@@ -67,5 +67,15 @@
       ],
       "run_at": "document_idle"
     }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "logos/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
   ]
 }

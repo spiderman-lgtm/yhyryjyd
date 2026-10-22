@@ -9,6 +9,7 @@ export default function HeaderLocation({ pin, area }: { pin: string | null; area
   const [value, setValue] = useState(pin ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [locating, setLocating] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -18,17 +19,37 @@ export default function HeaderLocation({ pin, area }: { pin: string | null; area
     return () => document.removeEventListener('mousedown', close);
   }, [open]);
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
+  async function send(body: object) {
     setError('');
-    const res = await fetch('/api/pincode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: value }) });
+    const res = await fetch('/api/pincode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setBusy(false);
-      return setError(data.error || 'Could not save that pincode.');
+      setLocating(false);
+      return setError(data.error || 'Could not save that location.');
     }
     window.location.reload(); // prices on the page are re-read for the new location
+  }
+
+  function save(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    send({ pin: value });
+  }
+
+  // The browser asks the shopper first; DealRadar only keeps the pincode and the map point.
+  function useCurrent() {
+    if (!navigator.geolocation) return setError('This browser cannot share your location. Type your pincode.');
+    setLocating(true);
+    setError('');
+    navigator.geolocation.getCurrentPosition(
+      (p) => send({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      (err) => {
+        setLocating(false);
+        setError(err.code === err.PERMISSION_DENIED ? 'Location access is blocked. Allow it for this site, or type your pincode.' : 'Could not get your location. Type your pincode.');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5 * 60_000 },
+    );
   }
 
   const city = area?.split(',')[0];
@@ -54,9 +75,18 @@ export default function HeaderLocation({ pin, area }: { pin: string | null; area
         <form onSubmit={save} className="fixed inset-x-4 top-16 z-40 whitespace-normal rounded-2xl border border-slate-200 bg-white p-4 shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-72">
           <div className="text-sm font-bold">Your delivery location</div>
           <p className="mt-1 text-xs font-normal text-ink-mute">Prices and stock are checked at this pincode, on this site and in the DealRadar extension.</p>
-          <div className="mt-3 flex gap-2">
+          <button
+            type="button"
+            onClick={useCurrent}
+            disabled={locating || busy}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-brand/40 bg-brand-light py-2 text-sm font-semibold text-brand-dark hover:bg-orange-100 disabled:opacity-60"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /><circle cx="12" cy="12" r="7" /></svg>
+            {locating ? 'Finding you…' : 'Use my current location'}
+          </button>
+          <div className="my-2 flex items-center gap-2 text-[11px] font-normal text-ink-mute"><span className="h-px flex-1 bg-slate-200" />or type a pincode<span className="h-px flex-1 bg-slate-200" /></div>
+          <div className="flex gap-2">
             <input
-              autoFocus
               inputMode="numeric"
               maxLength={6}
               value={value}
