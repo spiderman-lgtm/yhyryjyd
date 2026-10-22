@@ -86,6 +86,7 @@ export default function AdminConsole(props: {
   stats: { products: number; activeAlerts: number; byTier: number[]; clicks7d: number; cartItems: number };
   enquiries: (Enquiry & { product: string })[];
   deliveries: DeliveryLog[];
+  children?: React.ReactNode;
 }) {
   const router = useRouter();
   const { apps, settings } = props;
@@ -304,6 +305,8 @@ export default function AdminConsole(props: {
         </div>
         {embedOpen && <div id="vs-embed" ref={embedBox} style={{ height: 680 }} className="overflow-hidden rounded-xl border border-slate-200" />}
       </section>
+
+      {props.children}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card p-5">

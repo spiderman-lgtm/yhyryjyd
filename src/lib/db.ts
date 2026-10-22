@@ -120,6 +120,29 @@ export interface CompareCache {
 // Each store's price for a product over time, from comparisons and the extension.
 export type OfferHistory = Record<string, { price: number; at: string }[]>;
 
+export const COUPON_CATEGORIES = ['fashion', 'beauty', 'electronics', 'travel', 'food', 'grocery', 'recharge', 'ott', 'education', 'health', 'other'] as const;
+export type CouponCategory = (typeof COUPON_CATEGORIES)[number];
+
+// A coupon or offer the owner adds in Admin (by hand or from a CSV), shown on the Coupons page.
+export interface StoreCoupon {
+  id: string;
+  store: string;
+  url: string;
+  logo_url: string | null;
+  title: string;
+  discount_text: string;
+  code: string | null;
+  description: string;
+  category: CouponCategory;
+  expires_at: string | null;
+  exclusive: boolean;
+  featured: boolean;
+  active: boolean;
+  clicks: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CouponCache {
   key: string;
   coupons: Coupon[];
@@ -157,6 +180,7 @@ interface Data {
   cart: Record<string, CartItem>;
   enquiries: Enquiry[];
   coupons: Record<string, CouponCache>;
+  store_coupons: Record<string, StoreCoupon>;
   compare: Record<string, CompareCache>;
   offer_history: Record<string, OfferHistory>;
   related: Record<string, RelatedCache>;
@@ -177,6 +201,7 @@ function empty(): Data {
     cart: {},
     enquiries: [],
     coupons: {},
+    store_coupons: {},
     compare: {},
     offer_history: {},
     related: {},

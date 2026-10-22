@@ -2,6 +2,7 @@ import 'server-only';
 import { read, write, type Coupon, type Product } from './db';
 import { PLATFORM_NAMES } from './scraper';
 import { askAI } from './viasocket';
+import { couponsForPlatform } from './storecoupons';
 
 const TTL_MS = 6 * 3600_000;
 
@@ -66,6 +67,8 @@ async function searchCoupons(product: Product, key: string): Promise<Coupon[]> {
 }
 
 export function cachedCoupon(product: Product): Coupon | null {
+  const own = couponsForPlatform(product.platform);
+  if (own.length) return own.find((c) => c.code) ?? own[0];
   const hit = read((d) => d.coupons[`${product.platform}:${product.id}`]);
   return hit?.coupons.find((c) => c.code) ?? hit?.coupons[0] ?? null;
 }

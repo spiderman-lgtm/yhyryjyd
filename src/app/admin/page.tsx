@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import AdminConsole from '@/components/admin/AdminConsole';
+import CouponManager from '@/components/admin/CouponManager';
 import { read, type Tier } from '@/lib/db';
 import { currentUser } from '@/lib/auth';
 import { TIER_INFO } from '@/lib/alerts';
@@ -33,6 +34,7 @@ export default async function AdminPage() {
     },
     enquiries: d.enquiries.slice(-20).reverse().map((e) => ({ ...e, product: d.products[e.product_id]?.title ?? e.product_id })),
     deliveries: d.deliveries.slice(-10).reverse(),
+    coupons: Object.values(d.store_coupons),
   }));
 
   let connError = '';
@@ -62,6 +64,8 @@ export default async function AdminPage() {
       stats={data.stats}
       enquiries={data.enquiries}
       deliveries={data.deliveries}
-    />
+    >
+      <CouponManager initial={data.coupons} />
+    </AdminConsole>
   );
 }
