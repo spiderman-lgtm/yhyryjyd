@@ -61,6 +61,9 @@ export const STORE_DOMAINS: Record<string, string> = {
   snitch: 'snitch.co.in',
   'nykaa fashion': 'nykaafashion.com',
   miraggio: 'miraggiolife.com',
+  snapdeal: 'snapdeal.com',
+  'shoppers stop': 'shoppersstop.com',
+  lifestyle: 'lifestylestores.com',
 };
 
 export const storeDomain = (name: string) => STORE_DOMAINS[name.toLowerCase()] ?? null;

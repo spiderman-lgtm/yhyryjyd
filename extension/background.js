@@ -42,6 +42,18 @@ const SEARCH = {
     }
     return out;
   },
+  async Croma(q, pin) {
+    const res = await fetch(
+      'https://api.croma.com/searchservices/v1/search?currentPage=0&query=' + encodeURIComponent(q) + '%3Arelevance&fields=FULL&channel=WEB&channelCode=' + (pin || '400049') + '&spellOpt=DEFAULT',
+    );
+    const json = await res.json();
+    return (json.products || []).slice(0, 12).map((p) => ({
+      store: 'Croma',
+      title: p.name,
+      price: price(p.pincodePrice?.value ?? p.pincodePrice) || price(p.price?.value),
+      url: p.url ? 'https://www.croma.com' + p.url : 'https://www.croma.com/p/' + p.code,
+    }));
+  },
   async Myntra(q) {
     const slug = q.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const html = await (await fetch('https://www.myntra.com/' + slug + '?rawQuery=' + encodeURIComponent(q), { credentials: 'include' })).text();
@@ -163,10 +175,11 @@ async function compare({ id, title, price: p, store }) {
   const source = { title, price: p };
   const q = DRMatch.query(title);
   const stores = Object.keys(SEARCH).filter((s) => s !== store);
+  const { pin } = await api('/api/pincode').catch(() => ({}));
   const [server, ...found] = await Promise.all([
     api('/api/product/' + id + '/compare').catch(() => ({ offers: [] })),
     ...stores.map((s) =>
-      SEARCH[s](q)
+      SEARCH[s](q, pin)
         .then((list) => DRMatch.best(source, list))
         .catch(() => null),
     ),
@@ -212,7 +225,18 @@ async function quick({ id, title, price: p, store, fresh }) {
   return data;
 }
 
+// "Use current location": read in a hidden extension page, then turned into a pincode by DealRadar.
+async function currentLocation() {
+  if (!(await chrome.offscreen.hasDocument()))
+    await chrome.offscreen.createDocument({ url: 'offscreen.html', reasons: ['GEOLOCATION'], justification: 'Find the delivery pincode for nearby prices' });
+  const geo = await chrome.runtime.sendMessage({ type: 'offscreen-geo' });
+  await chrome.offscreen.closeDocument().catch(() => {});
+  if (!geo || !geo.ok) throw new Error(geo && geo.denied ? 'Location access is blocked for DealRadar. Type your pincode instead.' : 'Could not get your location. Type your pincode instead.');
+  return api('/api/pincode', { lat: geo.lat, lng: geo.lng });
+}
+
 const HANDLERS = {
+  currentLocation,
   lookup: (msg) => api('/api/ext/lookup', msg.page),
   compare,
   quick,

@@ -172,6 +172,7 @@
     .loc b { color:#0f172a; } .loc .grow { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .loc input { flex:1; min-width:0; border:1px solid #cbd5e1; border-radius:8px; padding:5px 8px; font-size:12px; outline:none; }
     .loc input:focus { border-color:#ea580c; }
+    .gps { display:grid; place-items:center; width:26px; height:26px; border-radius:8px; background:#fff7ed !important; color:#ea580c; }
     a.lk, button.lk { color:#ea580c; font-weight:700; font-size:12px; text-decoration:none; background:none; border:0; cursor:pointer; padding:0; }
     .body { overflow:auto; padding:12px; }
     .prod { display:flex; gap:10px; align-items:center; }
@@ -254,7 +255,7 @@
 
   const state = { open: false, product: null, data: null, offers: null, error: '', quick: null, quickBusy: false, quickFor: '' };
   // The delivery location is DealRadar's, shared with the website; from tells which store it was read from.
-  const loc = { pin: null, area: null, from: null, editing: false, busy: false, err: '', draft: undefined };
+  const loc = { pin: null, area: null, from: null, editing: false, busy: false, locating: false, err: '', draft: undefined };
   // Price alerts: the shopper's list, and where their last alert went (so the next one takes one tap).
   const al = { list: null, contact: null, form: false, busy: false, err: '', tg: null, draft: null };
 
@@ -264,8 +265,8 @@
     const online = [{ store: store.name, price: p.price, url: null, here: true }].concat(
       (state.offers || [])
         .map((o, i) => ({ ...o, i }))
-        .filter((o) => o.in_stock && o.store !== store.name && !QUICK.includes(o.store))
-        .map((o) => ({ store: o.store, price: o.price, url: `${DEALRADAR_API}/api/buy/${state.data.id}?o=${o.i}`, variant: !o.same_variant })),
+        .filter((o) => o.in_stock && o.store !== store.name && !QUICK.includes(o.store) && o.delivery?.ok !== false)
+        .map((o) => ({ store: o.store, price: o.price, url: `${DEALRADAR_API}/api/buy/${state.data.id}?o=${o.i}`, variant: !o.same_variant, delivers: o.delivery?.ok ? o.delivery : null })),
     );
     const near = QUICK.filter((s) => s !== store.name).map((s) => {
       const x = state.quick?.[s];
@@ -279,7 +280,15 @@
 
   function tileHtml(t, low) {
     const isLow = t === low && low.price;
-    const sub = t.here ? 'You are here' : t.near ? 'In stock near you' : t.variant ? 'Similar variant' : 'In stock';
+    const sub = t.here
+      ? 'You are here'
+      : t.near
+        ? 'In stock near you'
+        : t.delivers
+          ? `Delivers to ${t.delivers.pin}${t.delivers.by ? ' by ' + t.delivers.by : ''}`
+          : t.variant
+            ? 'Similar variant'
+            : 'In stock';
     const body = `<div class="top">${chip(t.store)}${esc(t.store)}</div>${isLow ? '<span class="badge">Lowest</span>' : ''}`;
     if (t.price)
       return t.url
@@ -384,12 +393,16 @@
   }
 
   // ---------- frame ----------
+  const GPS = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>';
   function locHtml() {
+    const gps = `<button class="lk gps" id="loc-gps" title="Use my current location">${loc.locating ? '…' : GPS}</button>`;
     if (loc.editing || !loc.pin)
-      return `<div class="loc"><span>📍</span><input id="loc-pin" inputmode="numeric" maxlength="6" placeholder="Delivery pincode for nearby prices" value="${esc(loc.draft ?? loc.pin ?? '')}" />
-        <button class="btn primary" id="loc-save" style="padding:5px 10px;font-size:12px">${loc.busy ? '…' : 'Save'}</button></div>${loc.err ? `<div class="err" style="padding:0 12px 6px">${esc(loc.err)}</div>` : ''}`;
+      return `<div class="loc"><span>📍</span><input id="loc-pin" inputmode="numeric" maxlength="6" placeholder="Delivery pincode" value="${esc(loc.draft ?? loc.pin ?? '')}" />
+        <button class="btn primary" id="loc-save" style="padding:5px 10px;font-size:12px">${loc.busy ? '…' : 'Save'}</button>${gps}</div>${loc.err ? `<div class="err" style="padding:0 12px 6px">${esc(loc.err)}</div>` : ''}`;
     const city = (loc.area || '').split(',')[0];
-    return `<div class="loc"><span>📍</span><span class="grow">Deliver to <b>${esc(loc.pin)}</b>${city ? ' ' + esc(city) : ''}${loc.from ? ` · from ${esc(loc.from)}` : ''}</span><button class="lk" id="loc-change">Change</button></div>`;
+    return `<div class="loc"><span>📍</span><span class="grow">Deliver to <b>${esc(loc.pin)}</b>${city ? ' ' + esc(city) : ''}${loc.from ? ` · ${esc(loc.from)}` : ''}</span>${gps}<button class="lk" id="loc-change">Change</button></div>${
+      loc.err ? `<div class="err" style="padding:0 12px 6px">${esc(loc.err)}</div>` : ''
+    }`;
   }
 
   function render() {
@@ -433,6 +446,7 @@
       render();
     });
     on('loc-save', () => saveLocation());
+    on('loc-gps', () => useCurrentLocation());
     const pinBox = root.getElementById('loc-pin');
     if (pinBox) pinBox.onkeydown = (e) => e.key === 'Enter' && saveLocation();
     on('al-set', () => setAlert());
@@ -502,12 +516,39 @@
     render();
     const r = await send({ type: 'setLocation', pin });
     loc.busy = false;
-    if (!r.ok) loc.err = r.error;
-    else Object.assign(loc, { pin: r.data.pin, area: r.data.area, from: from || null, editing: false, draft: undefined });
+    if (!r.ok) {
+      loc.err = r.error;
+      return render();
+    }
+    Object.assign(loc, { pin: r.data.pin, area: r.data.area, from: from || null, editing: false, draft: undefined });
+    locationChanged();
+  }
+
+  // The device's location, read by the extension (not by this store's page), turned into a pincode.
+  async function useCurrentLocation() {
+    loc.locating = true;
+    loc.err = '';
+    render();
+    const r = await send({ type: 'currentLocation' });
+    loc.locating = false;
+    if (!r.ok) {
+      loc.err = r.error;
+      return render();
+    }
+    Object.assign(loc, { pin: r.data.pin, area: r.data.area, from: 'your location', editing: false, draft: undefined });
+    locationChanged();
+  }
+
+  // A new pincode: nearby stores and online delivery are checked again for it.
+  async function locationChanged() {
     state.quick = null;
     state.quickFor = '';
     render();
     checkNearby();
+    if (!state.data) return;
+    const c = await send({ type: 'compare', id: state.data.id, title: state.product.title, price: state.product.price, store: store.name });
+    if (c.ok) state.offers = c.data.offers;
+    render();
   }
 
   // Nearby quick-commerce prices are read once per product and pincode, and only while the panel is open.
@@ -558,9 +599,9 @@
       if (l.ok) Object.assign(loc, { pin: l.data.pin, area: l.data.area });
       // The delivery pincode this store shows is where the shopper is ordering to now.
       const here = pagePin();
-      if (here && here !== loc.pin) await saveLocation(here, store.name);
+      if (here && here !== loc.pin) await saveLocation(here, 'from ' + store.name);
       else {
-        if (here) loc.from = store.name;
+        if (here) loc.from = 'from ' + store.name;
         render();
         checkNearby();
       }

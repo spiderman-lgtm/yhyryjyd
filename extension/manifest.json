@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "DealRadar — Price History & Compare",
   "short_name": "DealRadar",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "description": "Compare prices across online and nearby stores at your delivery pincode, and set price-drop alerts — right on the product page.",
   "icons": {
     "16": "icons/16.png",
@@ -25,7 +25,9 @@
     "scripting",
     "tabs",
     "cookies",
-    "activeTab"
+    "activeTab",
+    "geolocation",
+    "offscreen"
   ],
   "host_permissions": [
     "https://dealradar.embarko.app/*",
@@ -35,6 +37,7 @@
     "https://www.ajio.com/*",
     "https://www.meesho.com/*",
     "https://www.croma.com/*",
+    "https://api.croma.com/*",
     "https://www.tatacliq.com/*",
     "https://www.reliancedigital.in/*",
     "https://www.nykaa.com/*",

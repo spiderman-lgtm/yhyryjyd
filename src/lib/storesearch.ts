@@ -358,12 +358,79 @@ SEARCHERS.nykaafashion = async (q) => {
   });
 };
 
-// The big general stores, asked for everything.
-export const SEARCH_STORES = ['flipkart', 'croma', 'reliancedigital', 'tatacliq', 'ajio', 'amazon', 'myntra'];
+// Snapdeal renders its search results on the server as product cards.
+SEARCHERS.snapdeal = async (q) => {
+  const $ = cheerio.load(await get(`https://www.snapdeal.com/search?keyword=${encodeURIComponent(q)}`, {}, 10000));
+  const hits: Hit[] = [];
+  $('.product-tuple-listing').each((_, el) => {
+    const c = $(el);
+    const title = c.find('.product-title').attr('title') || c.find('.product-title').text().trim();
+    const price = num(c.find('.product-price').attr('data-price')) || num(c.find('.product-price').text());
+    const mrp = num(c.find('.product-desc-price.strike').text());
+    const url = c.find('a.dp-widget-link').attr('href') || '';
+    if (title && price && url.startsWith('https://www.snapdeal.com/'))
+      hits.push({ store: 'Snapdeal', platform: 'other', title, price, mrp: mrp > price ? mrp : null, url: url.split('?')[0], image: c.find('img.product-image').attr('src') ?? null, in_stock: !c.find('.sold-out-err').length });
+  });
+  return hits.slice(0, 15);
+};
 
-// Stores that sell one kind of thing: Nykaa for beauty and grooming, Nykaa Fashion for clothes, bags and shoes.
+// Shoppers Stop and Lifestyle are Next.js sites: the search results are in the page's __NEXT_DATA__.
+const nextData = (html: string): any => {
+  const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  return m ? JSON.parse(m[1]) : null;
+};
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+SEARCHERS.shoppersstop = async (q) => {
+  const html = await get(`https://www.shoppersstop.com/search/result?q=${encodeURIComponent(q)}`, {}, 10000);
+  const products = nextData(html)?.props?.pageProps?.dehydratedState?.queries?.[0]?.state?.data?.response?.products ?? [];
+  return products.slice(0, 20).map((p: any): Hit => {
+    const brand = [].concat(p.brand ?? [])[0] ?? '';
+    const title = String(p.title ?? '');
+    const price = num(p.promotionPrice) || num(p.price);
+    const mrp = num(p.price);
+    return {
+      store: 'Shoppers Stop',
+      platform: 'other',
+      title: [brand, title].filter(Boolean).join(' '),
+      name: title,
+      price,
+      mrp: mrp > price ? mrp : null,
+      url: `https://www.shoppersstop.com/${slug(`${brand} ${title}`)}/p-${p.sku}`,
+      image: [].concat(p.imageUrl ?? [])[0] ?? null,
+      in_stock: true,
+    };
+  });
+};
+
+SEARCHERS.lifestyle = async (q) => {
+  const html = await get(`https://www.lifestylestores.com/in/en/search?q=${encodeURIComponent(q)}`, {}, 10000);
+  const products = nextData(html)?.props?.initialState?.unbxdListingPageReducer?.data?.response?.products ?? [];
+  return products.slice(0, 20).map((p: any): Hit => {
+    const price = num(p.price);
+    const mrp = num(p.wasPrice);
+    return {
+      store: 'Lifestyle',
+      platform: 'other',
+      title: String(p.name ?? ''),
+      price,
+      mrp: mrp > price ? mrp : null,
+      url: `https://www.lifestylestores.com/in/en${p.productUrl}`,
+      image: [].concat(p.imageUrl ?? [])[0] ?? null,
+      in_stock: String(p.inStock) !== '0',
+    };
+  });
+};
+
+// The big general stores, asked for everything.
+export const SEARCH_STORES = ['flipkart', 'croma', 'reliancedigital', 'tatacliq', 'ajio', 'amazon', 'myntra', 'snapdeal'];
+
+// Stores that sell one kind of thing: Nykaa for beauty and grooming, Nykaa Fashion and Lifestyle for clothes,
+// bags and shoes, Shoppers Stop for both.
 function categoryStores(text: string) {
-  return [...(CATS.beauty.test(text) || CATS.grooming.test(text) ? ['nykaa'] : []), ...(CATS.style.test(text) ? ['nykaafashion'] : [])];
+  const beauty = CATS.beauty.test(text) || CATS.grooming.test(text);
+  const style = CATS.style.test(text);
+  return [...(beauty ? ['nykaa'] : []), ...(style ? ['nykaafashion', 'lifestyle'] : []), ...(style || beauty ? ['shoppersstop'] : [])];
 }
 
 // General stores, plus brand stores and Decathlon when the text names their brand or category.
