@@ -77,9 +77,14 @@ export function affiliateLink(product: Product): string {
   return affiliateUrl(product.url);
 }
 
+// Links that already carry someone's affiliate tracking (EarnKaro profit links, Cuelinks, store short links)
+// are used as they are; wrapping them again would lose the commission.
+const ALREADY_AFFILIATE = /(^|\.)(ekaro\.in|earnkaro\.com|cashkaro\.com|linksredirect\.com|clnk\.in|amzn\.to|fktr\.in|fkrt\.it|myntr\.it|bitli\.in|bit\.ly)$/i;
+
 export function affiliateUrl(url: string): string {
   const tag = process.env.AMAZON_ASSOCIATE_TAG;
   const u = new URL(url);
+  if (ALREADY_AFFILIATE.test(u.hostname)) return url;
   if (tag && /(^|\.)amazon\.in$/.test(u.hostname)) {
     u.searchParams.set('tag', tag);
     return u.toString();

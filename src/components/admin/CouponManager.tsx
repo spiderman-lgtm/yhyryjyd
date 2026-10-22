@@ -150,7 +150,7 @@ export default function CouponManager({ initial }: { initial: StoreCoupon[] }) {
           <datalist id="coupon-stores">{[...new Set(['Amazon', 'Flipkart', 'Myntra', 'AJIO', 'Nykaa', 'Croma', 'Tata CLiQ', ...storeNames])].map((s) => <option key={s} value={s} />)}</datalist>
         </label>
         <label className="text-sm sm:col-span-1 lg:col-span-2">
-          <span className="label">Offer link * (where the shopper lands)</span>
+          <span className="label">Offer link * — paste your EarnKaro profit link to earn on it</span>
           <input required type="url" value={form.url} onChange={(e) => set('url', e.target.value)} placeholder="https://www.ajio.com/sale" className={input} />
         </label>
         <label className="text-sm lg:col-span-2">
