@@ -1,3 +1,4 @@
+import AlertChannels from './AlertChannels';
 import Hero3D from './Hero3D';
 import LinkInput from './LinkInput';
 import { CountUp, FloatIn } from './Motion';
@@ -12,7 +13,7 @@ export function HomeHero({ greeting }: { greeting?: string }) {
       <div className="relative grid items-center gap-8 lg:grid-cols-[1.1fr_1fr]">
         <FloatIn>
           <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-bold text-brand-dark ring-1 ring-orange-200 backdrop-blur">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-deal" /> {greeting ?? 'Tracking prices across 11 Indian stores'}
+            <span className="h-2 w-2 animate-pulse rounded-full bg-deal" /> {greeting ?? 'Tracking prices across 24 Indian stores'}
           </span>
           <h1 className="mt-4 text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
             Never overpay <span className="bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent">online</span> again.
@@ -39,10 +40,10 @@ export function HomeHero({ greeting }: { greeting?: string }) {
         ) : (
           <>
             <div><div className="text-2xl font-extrabold"><CountUp value={15} /> min</div><div className="text-xs text-ink-mute">fastest price checks</div></div>
-            <div><div className="text-2xl font-extrabold">Email + WA</div><div className="text-xs text-ink-mute">drop alerts</div></div>
+            <AlertChannels />
           </>
         )}
-        <div><div className="text-2xl font-extrabold"><CountUp value={11} /></div><div className="text-xs text-ink-mute">stores compared</div></div>
+        <div><div className="text-2xl font-extrabold"><CountUp value={24} /></div><div className="text-xs text-ink-mute">Indian stores</div></div>
       </div>
     </section>
   );
