@@ -164,20 +164,20 @@ function parseHtml(html: string, platform: Platform): Partial<Scraped> {
       .map((s) => s.replace(/\._[^/]+_\./, '.'));
     if (alt.length) images = alt;
     title = $('#productTitle').text().trim() || title;
-    // Amazon has several price layouts; some leave the first .a-offscreen empty, so take the first that holds a number.
+    // Amazon has several price layouts and some leave the first price element empty. Its own price data is
+    // the most reliable; the visible elements follow, taking the first that holds a number.
     const first = (sel: string) => $(sel).toArray().map((el) => parsePrice($(el).text())).find((n) => n) ?? null;
     const inBox = (inner: string) =>
       ['#corePriceDisplay_desktop_feature_div', '#corePrice_feature_div', '#apex_desktop', '#apex_offerDisplay_desktop'].map((b) => `${b} ${inner}`).join(', ');
     price =
-      first(inBox('.priceToPay .a-offscreen') + ', ' + inBox('.priceToPay .aok-offscreen')) ||
-      first(inBox('.a-price .a-offscreen')) ||
-      first(inBox('.a-price-whole')) ||
       parsePrice($('#twister-plus-price-data-price').attr('value')) ||
+      first(inBox('.priceToPay .a-offscreen') + ', ' + inBox('.priceToPay .aok-offscreen')) ||
+      first(inBox('.a-price-whole')) ||
       parsePrice(html.match(/"priceAmount"\s*:\s*([\d.]+)/)?.[1]) ||
-      first('#priceblock_ourprice, #priceblock_dealprice, #tp_price_block_total_price_ww .a-offscreen') ||
-      first('.a-price .a-offscreen') ||
+      first('#priceblock_ourprice, #priceblock_dealprice') ||
+      first('.a-price:not(.a-text-price) .a-offscreen') ||
       price;
-    mrp = parsePrice($('.basisPrice .a-offscreen').first().text()) || parsePrice($('.a-price.a-text-price .a-offscreen').first().text());
+    mrp = first('.basisPrice .a-offscreen') || first(inBox('.a-price.a-text-price .a-offscreen')) || first('.a-price.a-text-price .a-offscreen');
     image = $('#landingImage').attr('data-old-hires') || $('#landingImage').attr('src') || image;
   }
   if (platform === 'myntra') {
