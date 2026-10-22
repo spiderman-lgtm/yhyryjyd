@@ -95,9 +95,15 @@ export async function handleBotMessage(ev: any): Promise<string> {
     if (linked) {
       queueTelegram(
         chat,
-        `✅ Telegram alerts are on${name ? `, ${name}` : ''}!\n\n` +
-          (linked.length ? `Watching:\n${linked.map((t) => `• ${t}`).join('\n')}\n\n` : '') +
-          'DealRadar checks every 15 minutes and messages you here the moment a price drops. Send /stop to turn Telegram alerts off.',
+        [
+          `🎉 Welcome to DealRadar${name ? `, ${name}` : ''}!`,
+          '',
+          '✅ Telegram alerts are ON',
+          ...(linked.length ? ['', '📦 Watching:', ...linked.map((t) => `• ${t}`)] : []),
+          '',
+          '⏱️ We check prices every 15 minutes and message you here the moment a price drops.',
+          '🛑 Send /stop anytime to turn Telegram alerts off.',
+        ].join('\n'),
         `${appUrl()}/alerts`,
         null,
         '🔔 My alerts',
@@ -106,8 +112,17 @@ export async function handleBotMessage(ev: any): Promise<string> {
       queueTelegram(
         chat,
         code
-          ? '⚠️ That code has expired or was already used. On DealRadar, open the product again, choose Telegram in Price Drop Alert and tap “Open Telegram”.'
-          : '👋 Welcome to DealRadar! To get price-drop alerts here: open a product on DealRadar, choose Telegram in Price Drop Alert, tap “Track price” and then “Open Telegram” — or send the 8-character code shown there.',
+          ? ['⚠️ That code has expired or was already used.', '', '🔁 Open the product on DealRadar again, choose ✈️ Telegram in Price Drop Alert and tap “Open Telegram”.'].join('\n')
+          : [
+              `👋 Hi${name ? ` ${name}` : ''}! Welcome to DealRadar 💸`,
+              '',
+              'Get price-drop alerts right here:',
+              '1️⃣ Open any product on DealRadar',
+              '2️⃣ In “Price Drop Alert”, tick ✈️ Telegram',
+              '3️⃣ Tap “Track price”, then “Open Telegram”',
+              '',
+              '🔑 Or send the 8-character code shown after “Track price”.',
+            ].join('\n'),
         appUrl(),
         null,
         'Open DealRadar',
@@ -127,7 +142,7 @@ export async function handleBotMessage(ev: any): Promise<string> {
         if (!a.channels.length) a.status = 'cancelled';
       }
     });
-    queueTelegram(chat, '🛑 Telegram alerts are off. You can turn them on again from any product page on DealRadar.', appUrl(), null, 'Open DealRadar');
+    queueTelegram(chat, ['🛑 Telegram alerts are OFF', '', '🔔 Turn them on again anytime from a product page on DealRadar.'].join('\n'), appUrl(), null, 'Open DealRadar');
     void sendQueuedMailNow().catch(() => null);
     return 'stopped';
   }

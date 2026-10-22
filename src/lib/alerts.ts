@@ -104,10 +104,19 @@ ${couponHtml}
     alert.channels.includes('telegram') && alert.telegram_chat
       ? {
           chat: alert.telegram_chat,
-          text:
-            `📉 Price dropped${dropPct >= 0.5 ? ` ${dropPct.toFixed(0)}%` : ''} — you can buy it now!\n\n${p.title.slice(0, 150)}\n\n` +
-            `Now ${inr(p.price)} (was ${inr(reference)}) on ${PLATFORM_NAMES[p.platform]}\n${reason}${isLow ? `\nLowest in ${alert.window_days} days` : ''}` +
-            (coupon ? `\n\n🏷 ${coupon.code ? `Code ${coupon.code}: ` : ''}${coupon.discount_text || coupon.title}` : ''),
+          text: [
+            '🔥 PRICE DROP ALERT!',
+            '',
+            `🛍️ ${p.title.slice(0, 120)}`,
+            '',
+            `💰 Now: ${inr(p.price)}   (was ${inr(reference)})`,
+            `📉 You save: ${inr(reference - p.price)}${dropPct >= 0.5 ? ` · ${dropPct.toFixed(0)}% off` : ''}`,
+            `🏪 Store: ${PLATFORM_NAMES[p.platform]}`,
+            ...(isLow ? [`⭐ Lowest price in ${alert.window_days} days`] : []),
+            ...(coupon ? ['', `🏷️ Coupon: ${coupon.code ? `${coupon.code} — ` : ''}${coupon.discount_text || coupon.title}`] : []),
+            '',
+            '⚡ Grab it before the price goes up!',
+          ].join('\n'),
           url: l.buy,
           image: p.image,
           label: `🛒 Buy now at ${inr(p.price)}`,
@@ -157,11 +166,24 @@ ${row('Availability', p.in_stock ? 'In stock' : 'Out of stock right now')}
 
 // The Telegram version of the confirmation.
 export function confirmationTelegram(alert: Alert, p: Product): { text: string; url: string; image: string | null; label: string } {
-  const drops = alert.drop_percent > 0 ? `drops by ${alert.drop_percent}% or more` : 'drops';
+  const rule = alert.drop_percent > 0 ? `drops by ${alert.drop_percent}% or more` : 'any price drop';
+  const until = new Date(alert.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const off = p.mrp && p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
   return {
-    text:
-      `✅ You are now tracking this price\n\n${p.title.slice(0, 150)}\n\nNow ${inr(p.price)} on ${PLATFORM_NAMES[p.platform]}\n` +
-      `We will message you here as soon as it ${drops} (until ${new Date(alert.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}).`,
+    text: [
+      '🎯 Price tracking started!',
+      '',
+      `🛍️ ${p.title.slice(0, 120)}`,
+      '',
+      `💰 Current price: ${inr(p.price)}${off ? `  (${off}% off MRP ${inr(p.mrp!)})` : ''}`,
+      `🏪 Store: ${PLATFORM_NAMES[p.platform]}`,
+      `📉 Alert on: ${rule}`,
+      `📅 Watching till: ${until}`,
+      '',
+      '🔔 We check every 15 minutes and message you here the moment the price drops.',
+      '',
+      '— Team DealRadar 💸',
+    ].join('\n'),
     url: links(alert, p).page,
     image: p.image,
     label: '📈 See price history',
@@ -264,7 +286,22 @@ function expiryNotification(alert: Alert, p: Product): Notification {
     whatsapp_vars: null,
     telegram:
       alert.channels.includes('telegram') && alert.telegram_chat
-        ? { chat: alert.telegram_chat, text: `⏰ Your ${alert.window_days}-day price watch has ended.\n\n${p.title.slice(0, 150)}\n\nPrice now ${inr(p.price)}${low ? ` · lowest we saw ${inr(low)}` : ''}.\nTap below to keep watching.`, url: l.extend, image: p.image, label: '🔔 Keep watching' }
+        ? {
+            chat: alert.telegram_chat,
+            text: [
+              '⏰ Price watch ended',
+              '',
+              `🛍️ ${p.title.slice(0, 120)}`,
+              '',
+              `💰 Price now: ${inr(p.price)}`,
+              ...(low ? [`📉 Lowest we saw: ${inr(low)}`] : []),
+              `🏪 Store: ${PLATFORM_NAMES[p.platform]}`,
+              '',
+              `🔔 Want us to keep watching for ${alert.window_days} more days? Tap below.`,
+            ].join('\n'),
+            url: l.extend,
+            image: p.image,
+            label: '🔔 Keep watching' }
         : null,
   };
 }
