@@ -1,7 +1,5 @@
-import Link from 'next/link';
 import GiftCardGrid, { type GiftCardView } from '@/components/GiftCardGrid';
 import { Reveal, Stagger, StaggerItem } from '@/components/Motion';
-import { isOwner } from '@/lib/auth';
 import { couponDomain, liveGiftCards } from '@/lib/storecoupons';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +16,6 @@ const STEPS = [
 
 export default function GiftCardsPage() {
   const cards: GiftCardView[] = liveGiftCards().map((c) => ({ id: c.id, store: c.store, title: c.title, discount_text: c.discount_text, description: c.description, logo_url: c.logo_url, domain: couponDomain(c) }));
-  const owner = isOwner();
   return (
     <div className="relative space-y-10">
       <div aria-hidden className="pointer-events-none absolute -top-10 left-1/4 -z-10 h-80 w-80 rounded-full bg-violet-300/30 blur-3xl" />
@@ -41,12 +38,6 @@ export default function GiftCardsPage() {
       ) : (
         <div className="rounded-3xl border border-white/70 bg-white/70 p-10 text-center text-ink-soft backdrop-blur-md">
           Gift card deals are coming soon.
-          {owner && (
-            <>
-              {' '}
-              <Link href="/admin#coupons" className="font-semibold text-indigo-700 underline">Add them in Automation → Coupons</Link> with the category “Gift card”.
-            </>
-          )}
         </div>
       )}
 
