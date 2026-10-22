@@ -206,6 +206,9 @@
     .muted { color:#64748b; font-size:12px; } .err { color:#b91c1c; font-size:12px; margin-top:6px; }
     svg.spark { display:block; width:100%; height:44px; margin-top:6px; }
     .grow { flex:1; min-width:0; }
+    .setup { display:flex; align-items:center; gap:8px; margin-top:8px; padding:7px 9px; border-radius:10px; background:#f8fafc; font-size:12px; color:#475569; }
+    .setup a { display:inline-block; margin-right:4px; vertical-align:middle; }
+    .setup .chip { width:22px; height:22px; }
     .stop { border:0; background:#f1f5f9; color:#475569; border-radius:8px; padding:5px 9px; font-size:11px; font-weight:700; cursor:pointer; }
   </style><div id="app"></div>`;
   const app = root.getElementById('app');
@@ -337,14 +340,19 @@
   function nearHtml(near, low) {
     if (!loc.pin) return '';
     const found = near.filter((t) => t.price);
-    const checking = near.some((t) => t.status === 'busy');
-    if (!found.length && !checking) return '';
+    const checking = near.filter((t) => t.status === 'busy');
+    // Apps that showed no products have no delivery address yet; each keeps its own, set once in that app.
+    const setup = near.filter((t) => t.status === 'empty' || t.status === 'location');
+    if (!found.length && !checking.length && !setup.length) return '';
     return `<div class="lbl">Near you · ${esc(loc.pin)}</div>${found.length ? `<div class="grid">${found.map((t) => tileHtml(t, low)).join('')}</div>` : ''}${
-      checking
-        ? `<div class="muted" style="display:flex;align-items:center;gap:6px;margin-top:6px"><span class="shim" style="width:40px;height:10px;margin:0"></span>Checking ${near
-            .filter((t) => t.status === 'busy')
-            .map((t) => esc(t.store))
-            .join(', ')}…</div>`
+      checking.length
+        ? `<div class="muted" style="display:flex;align-items:center;gap:6px;margin-top:6px"><span class="shim" style="width:40px;height:10px;margin:0"></span>Checking ${checking.map((t) => esc(t.store)).join(', ')}…</div>`
+        : ''
+    }${
+      setup.length
+        ? `<div class="setup"><span>Add address in</span><span class="grow" style="white-space:nowrap">${setup
+            .map((t) => `<a href="${esc(t.url)}" target="_blank" rel="noopener" title="Set your address in ${esc(t.store)}">${chip(t.store)}</a>`)
+            .join('')}</span><button class="lk" id="near-again">Check again</button></div>`
         : ''
     }`;
   }
@@ -428,6 +436,11 @@
     const pinBox = root.getElementById('loc-pin');
     if (pinBox) pinBox.onkeydown = (e) => e.key === 'Enter' && saveLocation();
     on('al-set', () => setAlert());
+    on('near-again', () => {
+      state.quick = null;
+      state.quickFor = '';
+      checkNearby(true);
+    });
     on('al-change', () => {
       al.form = true;
       render();
@@ -498,14 +511,14 @@
   }
 
   // Nearby quick-commerce prices are read once per product and pincode, and only while the panel is open.
-  async function checkNearby() {
+  async function checkNearby(fresh = false) {
     if (!state.open || !state.data || !loc.pin || state.quickBusy) return;
     const key = state.data.id + '@' + loc.pin;
     if (state.quickFor === key) return;
     state.quickFor = key;
     state.quickBusy = true;
     render();
-    const r = await send({ type: 'quick', id: state.data.id, title: state.product.title, price: state.product.price, store: store.name });
+    const r = await send({ type: 'quick', id: state.data.id, title: state.product.title, price: state.product.price, store: store.name, fresh });
     state.quickBusy = false;
     state.quick = r.ok ? r.data.status : Object.fromEntries(QUICK.map((s) => [s, { state: 'error' }]));
     if (r.ok && r.data.offers) state.offers = r.data.offers;

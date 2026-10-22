@@ -179,14 +179,14 @@ async function compare({ id, title, price: p, store }) {
 // Nearby results per product and pincode, so reopening the panel does not open the stores again.
 const nearby = new Map();
 
-async function quick({ id, title, price: p, store }) {
+async function quick({ id, title, price: p, store, fresh }) {
   const source = { title, price: p };
   const q = DRMatch.query(title);
   const status = {};
   const loc = await api('/api/pincode').catch(() => ({}));
   const key = id + '@' + (loc.pin || '');
   const cached = nearby.get(key);
-  if (cached && Date.now() - cached.at < 30 * 60_000) return cached.data;
+  if (cached && !fresh && Date.now() - cached.at < 30 * 60_000) return cached.data;
   const results = await Promise.all(
     QUICK.filter((s) => s.store !== store).map(async (s) => {
       try {
