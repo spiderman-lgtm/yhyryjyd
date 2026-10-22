@@ -24,6 +24,8 @@ const NAV = [
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const user = currentUser();
+  // Signed-in shoppers find Gift cards in their account menu.
+  const nav = user ? NAV.filter((n) => n.href !== '/gift-cards') : NAV;
   const pin = cookies().get('dr_pin')?.value ?? null;
   const area = cookies().get('dr_area')?.value || null;
   return (
@@ -37,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 Deal<span className="text-brand">Radar</span>
               </Link>
               <div className="hidden items-center gap-1 text-sm font-medium md:flex">
-                {NAV.map((n) => <Link key={n.href} href={n.href} className="rounded-lg px-3 py-1.5 hover:bg-slate-100">{n.label}</Link>)}
+                {nav.map((n) => <Link key={n.href} href={n.href} className="rounded-lg px-3 py-1.5 hover:bg-slate-100">{n.label}</Link>)}
               </div>
             </div>
             <div className="flex items-center gap-1 whitespace-nowrap text-sm font-medium sm:gap-3">
@@ -56,7 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </nav>
           <div className="flex gap-1 overflow-x-auto whitespace-nowrap border-t border-slate-100 px-4 py-1.5 text-sm font-medium md:hidden">
-            {NAV.map((n) => <Link key={n.href} href={n.href} className="rounded-lg px-3 py-1 hover:bg-slate-100">{n.label}</Link>)}
+            {nav.map((n) => <Link key={n.href} href={n.href} className="rounded-lg px-3 py-1 hover:bg-slate-100">{n.label}</Link>)}
             {!user && <Link href="/alerts" className="rounded-lg px-3 py-1 hover:bg-slate-100 sm:hidden">My alerts</Link>}
             {!user && <Link href="/cart" className="rounded-lg px-3 py-1 hover:bg-slate-100 sm:hidden">My cart</Link>}
           </div>
