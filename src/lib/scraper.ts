@@ -164,8 +164,19 @@ function parseHtml(html: string, platform: Platform): Partial<Scraped> {
       .map((s) => s.replace(/\._[^/]+_\./, '.'));
     if (alt.length) images = alt;
     title = $('#productTitle').text().trim() || title;
-    price = parsePrice($('#corePriceDisplay_desktop_feature_div .a-price .a-offscreen').first().text()) ||
-      parsePrice($('.a-price .a-offscreen').first().text()) || price;
+    // Amazon has several price layouts; some leave the first .a-offscreen empty, so take the first that holds a number.
+    const first = (sel: string) => $(sel).toArray().map((el) => parsePrice($(el).text())).find((n) => n) ?? null;
+    const inBox = (inner: string) =>
+      ['#corePriceDisplay_desktop_feature_div', '#corePrice_feature_div', '#apex_desktop', '#apex_offerDisplay_desktop'].map((b) => `${b} ${inner}`).join(', ');
+    price =
+      first(inBox('.priceToPay .a-offscreen') + ', ' + inBox('.priceToPay .aok-offscreen')) ||
+      first(inBox('.a-price .a-offscreen')) ||
+      first(inBox('.a-price-whole')) ||
+      parsePrice($('#twister-plus-price-data-price').attr('value')) ||
+      parsePrice(html.match(/"priceAmount"\s*:\s*([\d.]+)/)?.[1]) ||
+      first('#priceblock_ourprice, #priceblock_dealprice, #tp_price_block_total_price_ww .a-offscreen') ||
+      first('.a-price .a-offscreen') ||
+      price;
     mrp = parsePrice($('.basisPrice .a-offscreen').first().text()) || parsePrice($('.a-price.a-text-price .a-offscreen').first().text());
     image = $('#landingImage').attr('data-old-hires') || $('#landingImage').attr('src') || image;
   }
@@ -250,6 +261,14 @@ async function aiExtract(url: string, productId: string, useBrowser: boolean): P
   };
 }
 
+// Names what the store sent back when a page has no price, so the shopper sees the real reason.
+function whyNoPrice(html: string) {
+  if (/captcha|Type the characters you see|To discuss automated access/i.test(html)) return 'the store showed a robot check instead of the product';
+  if (/buybox-see-all-buying-choices|See All Buying Options/i.test(html)) return 'no seller has a buy button on it right now';
+  if (/Currently unavailable/i.test(html)) return 'it is currently unavailable';
+  return 'price not found on the page';
+}
+
 export async function scrapeProduct(url: string, platform: Platform, productId: string, opts: { allowAi?: boolean; allowBrowser?: boolean } = {}): Promise<Scraped> {
   let pageError = '';
   try {
@@ -269,7 +288,8 @@ export async function scrapeProduct(url: string, platform: Platform, productId: 
         reviews: p.reviews ?? null,
       };
     }
-    pageError = 'price not found on the page';
+    pageError = whyNoPrice(html);
+    console.log(`[scrape] no price on ${platform} ${url}: ${pageError} | title="${(p.title || '').slice(0, 80)}" len=${html.length}`);
   } catch (e) {
     pageError = e instanceof Error ? e.message : String(e);
   }
