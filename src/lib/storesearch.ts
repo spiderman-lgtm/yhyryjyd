@@ -245,6 +245,7 @@ export const BRAND_STORES: BrandStore[] = [
   { key: 'bsc', name: 'Bombay Shaving Company', domain: 'www.bombayshavingcompany.com', brands: ['bombay'], cats: ['grooming'] },
   { key: 'beardo', name: 'Beardo', domain: 'www.beardo.in', brands: ['beardo'], cats: ['grooming'] },
   { key: 'snitch', name: 'Snitch', domain: 'www.snitch.co.in', brands: ['snitch'], cats: ['fashion'] },
+  { key: 'miraggio', name: 'Miraggio', domain: 'miraggiolife.com', brands: ['miraggio'], cats: ['bags'] },
 ];
 
 const CATS: Record<string, RegExp> = {
@@ -254,6 +255,8 @@ const CATS: Record<string, RegExp> = {
   beauty: /face ?wash|serum|cream|moisturi|sunscreen|lipstick|kajal|foundation|shampoo|conditioner|cleanser|lotion|toner|body ?wash|lip balm|makeup|skin ?care/i,
   grooming: /beard|trimmer|razor|shaving|shave|perfume|deodorant|face ?wash/i,
   fashion: /shirt|t-shirt|tshirt|jeans|trouser|cargo|jacket|hoodie|polo|chinos|shorts/i,
+  bags: /\b(hand ?bag|tote|sling ?bag|shoulder bag|backpack|wallet|clutch|purse)/i,
+  style: /\b(hand ?bag|tote|sling|backpack|wallet|clutch|purse|kurta|kurti|saree|dress|shirt|t-shirt|tshirt|jeans|trouser|jacket|hoodie|shoes?|sneaker|sandal|heels|flats|slipper|sunglass|earring|necklace|jewel)/i,
   sports: /running|cycling|\bcycle\b|\bgym\b|yoga|football|cricket|badminton|trekking|hiking|camping|swim|fitness|dumbbell|sports? shoe/i,
 };
 const DECATHLON_BRANDS = /\b(decathlon|kiprun|kalenji|quechua|forclaz|btwin|domyos|nabaiji|artengo|kipsta|tribord|inesis|wedze|perfly|tarmak|corength|rockrider|triban|simond|olaian)\b/i;
@@ -307,8 +310,61 @@ SEARCHERS.decathlon = async (q) => {
   return hits.slice(0, 12);
 };
 
+// Nykaa and Nykaa Fashion render their search results into a JSON state block on the page.
+const preloaded = (html: string, pattern: RegExp): any => {
+  const m = html.match(pattern);
+  return m ? JSON.parse(m[1]) : null;
+};
+
+SEARCHERS.nykaa = async (q) => {
+  const st = preloaded(await get(`https://www.nykaa.com/search/result/?q=${encodeURIComponent(q)}`, {}, 10000), /window\.__PRELOADED_STATE__\s*=\s*(\{[\s\S]*?\})\s*<\/script>/);
+  return (st?.searchListingPage?.listingData?.products ?? []).slice(0, 20).map((p: any): Hit => {
+    const price = num(p.price);
+    const mrp = num(p.mrp);
+    const slug = String(p.slug ?? '');
+    return {
+      store: 'Nykaa',
+      platform: 'nykaa',
+      title: String(p.name ?? p.title ?? ''),
+      price,
+      mrp: mrp > price ? mrp : null,
+      url: `https://www.nykaa.com/${slug.includes('/p/') ? slug.replace(/^\//, '') : `${slug}/p/${p.productId ?? p.id}`}`,
+      image: p.imageUrl ?? null,
+      in_stock: p.inStock !== false,
+      rating: typeof p.rating === 'number' ? p.rating : null,
+      reviews: typeof p.ratingCount === 'number' ? p.ratingCount : null,
+    };
+  });
+};
+
+SEARCHERS.nykaafashion = async (q) => {
+  const st = preloaded(await get(`https://www.nykaafashion.com/catalogsearch/result/?q=${encodeURIComponent(q)}`, {}, 10000), /<script[^>]*id="__PRELOADED_STATE__"[^>]*>([\s\S]*?)<\/script>/);
+  return (st?.listingV2?.products ?? []).slice(0, 20).map((p: any): Hit => {
+    const price = num(p.discountedPrice) || num(p.price);
+    const mrp = num(p.price);
+    // title is the brand, subTitle the product name.
+    const name = String(p.subTitle ?? '').trim();
+    return {
+      store: 'Nykaa Fashion',
+      platform: 'other',
+      title: [p.title, name].filter(Boolean).join(' '),
+      name,
+      price,
+      mrp: mrp > price ? mrp : null,
+      url: `https://www.nykaafashion.com${String(p.actionUrl ?? '').split('?')[0]}`,
+      image: p.imageUrl ?? null,
+      in_stock: String(p.isOutOfStock) !== '1',
+    };
+  });
+};
+
 // The big general stores, asked for everything.
 export const SEARCH_STORES = ['flipkart', 'croma', 'reliancedigital', 'tatacliq', 'ajio', 'amazon', 'myntra'];
+
+// Stores that sell one kind of thing: Nykaa for beauty and grooming, Nykaa Fashion for clothes, bags and shoes.
+function categoryStores(text: string) {
+  return [...(CATS.beauty.test(text) || CATS.grooming.test(text) ? ['nykaa'] : []), ...(CATS.style.test(text) ? ['nykaafashion'] : [])];
+}
 
 // General stores, plus brand stores and Decathlon when the text names their brand or category.
 export function storesForText(text: string, maxBrandStores = 6): string[] {
@@ -318,7 +374,7 @@ export function storesForText(text: string, maxBrandStores = 6): string[] {
   const byCat = BRAND_STORES.filter((b) => !byBrand.includes(b) && b.cats.some((c) => CATS[c]?.test(t)));
   const extra = [...byBrand, ...byCat].slice(0, maxBrandStores).map((b) => `brand:${b.key}`);
   if (DECATHLON_BRANDS.test(t) || CATS.sports.test(t)) extra.push('decathlon');
-  return [...SEARCH_STORES, ...extra];
+  return [...SEARCH_STORES, ...extra, ...categoryStores(t)];
 }
 
 // Every store we can search for this product, except the one the shopper is already on. Stores that do
@@ -328,7 +384,7 @@ function storesFor(p: Product) {
   const brand = tokens(p.title)[0] ?? '';
   const own = BRAND_STORES.filter((b) => b.brands.includes(brand)).map((b) => `brand:${b.key}`);
   const extra = DECATHLON_BRANDS.test(p.title) || CATS.sports.test(p.title) ? ['decathlon'] : [];
-  return [...SEARCH_STORES, ...own, ...extra].filter((s) => s !== p.platform);
+  return [...SEARCH_STORES, ...own, ...extra, ...categoryStores(p.title)].filter((s) => s !== p.platform);
 }
 
 export const searchTokens = (s: string) => tokens(s);

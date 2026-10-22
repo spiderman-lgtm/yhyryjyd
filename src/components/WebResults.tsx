@@ -77,7 +77,7 @@ export default function WebResults({ q }: { q: string }) {
       <div className="space-y-3">
         <p className="flex items-center gap-2 text-sm text-ink-mute">
           <motion.span animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }} className="inline-block">✦</motion.span>
-          Searching Flipkart, Amazon, Croma, Reliance Digital, Tata CLiQ, AJIO, Myntra, Decathlon and brand stores…
+          Searching Flipkart, Amazon, Myntra, AJIO, Nykaa, Croma, Reliance Digital, Tata CLiQ, Decathlon and brand stores…
         </p>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-80 animate-pulse rounded-2xl bg-white/70 ring-1 ring-slate-100" />)}
