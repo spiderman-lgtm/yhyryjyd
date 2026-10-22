@@ -19,10 +19,12 @@ export async function POST(req: NextRequest) {
   const b = await req.json().catch(() => ({}));
   const url = httpUrl(b.url);
   if (!url) return NextResponse.json({ error: 'A product page URL is required.' }, { status: 400 });
-  if (detectPlatform(new URL(url)) === 'other') return NextResponse.json({ error: 'This store is not supported yet.' }, { status: 422 });
-
   const title = str(b.title, 300);
   const price = num(b.price);
+  // Stores DealRadar has no reader for are taken from what the extension saw on the page; the server
+  // never fetches those sites itself.
+  const known = detectPlatform(new URL(url)) !== 'other';
+  if (!known && !(title.length >= 3 && price)) return NextResponse.json({ error: 'Open a product page to compare its price.' }, { status: 422 });
   let product;
   try {
     product =
@@ -54,7 +56,7 @@ export async function POST(req: NextRequest) {
     id: product.id,
     title: product.title,
     price: product.price,
-    store: PLATFORM_NAMES[product.platform],
+    store: known ? PLATFORM_NAMES[product.platform] : str(b.store, 40) || PLATFORM_NAMES.other,
     deal: dealScore(product.id, product.price),
     history,
     watchers,

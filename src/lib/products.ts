@@ -172,6 +172,8 @@ export interface PageReport {
 
 // What a shopper's own browser saw on a product page (the DealRadar extension). It lets us track
 // stores that block our server, so a reported price is accepted only when it is plausible.
+const verifying = new Set<string>();
+
 export function upsertFromPage(r: PageReport): Product {
   const url = new URL(r.url);
   const platform = detectPlatform(url);
@@ -182,7 +184,14 @@ export function upsertFromPage(r: PageReport): Product {
   const plausible = !existing || (r.price >= existing.price * 0.3 && r.price <= existing.price * 3);
   const changed = !existing || existing.price !== r.price;
   const recentlyRecorded = existing && Date.now() - Date.parse(existing.last_checked_at) < 30 * 60_000;
-  if (existing && !plausible) return existing;
+  if (existing && !plausible) {
+    // One of the two prices is wrong; a store the server can read settles it, in the background.
+    if (platform !== 'other' && !verifying.has(id)) {
+      verifying.add(id);
+      refreshProduct(existing, { allowAi: false }).finally(() => verifying.delete(id));
+    }
+    return existing;
+  }
   const product: Product = {
     ...(existing ?? ({} as Product)),
     id,

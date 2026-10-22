@@ -176,13 +176,19 @@ async function compare({ id, title, price: p, store }) {
   return { offers: merged?.offers || server.offers || [] };
 }
 
-async function quick({ id, title, price: p }) {
+// Nearby results per product and pincode, so reopening the panel does not open the stores again.
+const nearby = new Map();
+
+async function quick({ id, title, price: p, store }) {
   const source = { title, price: p };
   const q = DRMatch.query(title);
   const status = {};
   const loc = await api('/api/pincode').catch(() => ({}));
+  const key = id + '@' + (loc.pin || '');
+  const cached = nearby.get(key);
+  if (cached && Date.now() - cached.at < 30 * 60_000) return cached.data;
   const results = await Promise.all(
-    QUICK.map(async (s) => {
+    QUICK.filter((s) => s.store !== store).map(async (s) => {
       try {
         let { cards, needsLocation } = await readQuickStore(s, q);
         if (!DRMatch.best(source, cards) && (needsLocation || !cards.length) && loc.pin && LOCATE[s.store] && (await LOCATE[s.store](loc).catch(() => false)))
@@ -200,7 +206,10 @@ async function quick({ id, title, price: p }) {
     }),
   );
   const merged = await contribute(id, results.filter(Boolean)).catch(() => null);
-  return { status, offers: merged?.offers };
+  const data = { status, offers: merged?.offers };
+  nearby.set(key, { at: Date.now(), data });
+  if (nearby.size > 200) nearby.delete(nearby.keys().next().value);
+  return data;
 }
 
 const HANDLERS = {
