@@ -161,7 +161,8 @@
     :host { all: initial; }
     * { box-sizing: border-box; font-family: Inter, Segoe UI, Arial, sans-serif; }
     .pill { display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#f97316,#ec4899); color:#fff; border:0; border-radius:999px; padding:10px 14px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 10px 30px rgba(234,88,12,.35); }
-    .card { width:360px; max-height:82vh; display:flex; flex-direction:column; background:#fff; color:#0f172a; border-radius:18px; box-shadow:0 20px 50px rgba(15,23,42,.25); border:1px solid #e2e8f0; overflow:hidden; animation:in .3s cubic-bezier(.22,1,.36,1); }
+    .card { width:360px; max-height:82vh; display:flex; flex-direction:column; background:#fff; color:#0f172a; border-radius:18px; box-shadow:0 20px 50px rgba(15,23,42,.25); border:1px solid #e2e8f0; overflow:hidden; }
+    .card.in { animation:in .3s cubic-bezier(.22,1,.36,1); }
     @keyframes in { from { opacity:0; transform:translateY(16px) scale(.97);} to { opacity:1; transform:none; } }
     .head { display:flex; align-items:center; gap:8px; padding:10px 12px; background:linear-gradient(135deg,#fff7ed,#fdf2f8); }
     .logo { display:flex; align-items:center; gap:7px; font-weight:900; font-size:15px; flex:1; }
@@ -256,6 +257,7 @@
       : `<span class="chip" style="background:${COLORS[name] || '#64748b'}">${esc(String(name)[0] || '?')}</span>`;
   const QUICK = ['Zepto', 'Blinkit', 'Instamart', 'BigBasket', 'JioMart'];
 
+  let shown = false;
   const state = { open: false, product: null, data: null, offers: null, error: '', quick: null, quickBusy: false, quickFor: '' };
   // The delivery location is DealRadar's, shared with the website; from tells which store it was read from.
   const loc = { pin: null, area: null, from: null, editing: false, busy: false, locating: false, err: '', draft: undefined };
@@ -424,19 +426,22 @@
     const focused = root.activeElement && root.activeElement.id;
 
     if (!state.open) {
+      shown = false;
       const t = state.data && state.offers ? tiles() : null;
       const save = t && !t.low.here && t.low.price < state.product.price ? ` · save ${inr(state.product.price - t.low.price)}` : '';
       app.innerHTML = `<button class="pill" id="open">₹ Compare prices${save}</button>`;
       root.getElementById('open').onclick = () => openPanel();
       return;
     }
-    app.innerHTML = `<div class="card">
+    // Slide in when the panel opens, not on every redraw as results arrive.
+    app.innerHTML = `<div class="card${shown ? '' : ' in'}">
       <div class="head"><div class="logo"><b>₹</b>DealRadar</div><span class="site">${chip(store.name)}${esc(store.name)}</span><button class="x" id="close" title="Minimise">–</button></div>
       ${locHtml()}
       <div class="body">${
         state.error ? `<div class="err">${esc(state.error)}</div>` : !state.data ? '<span class="shim"></span><span class="shim" style="width:80%"></span>' : compareHtml()
       }</div>
     </div>`;
+    shown = true;
     bind();
     const again = focused && root.getElementById(focused);
     if (again && again.focus) again.focus();
