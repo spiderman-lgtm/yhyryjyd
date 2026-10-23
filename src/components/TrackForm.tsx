@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { callApi } from '@/lib/api-client';
 
 const DROPS = [
   { v: 0, t: 'Any drop' },
@@ -29,14 +30,12 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
     e.preventDefault();
     setBusy(true);
     setError('');
-    const res = await fetch('/api/alerts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product_id: productId, email, phone, telegram, tier: 'urgent', drop_percent: drop, window_days: days }),
+    const { ok, data } = await callApi<Record<string, any>>('/api/alerts', {
+      body: { product_id: productId, email, phone, telegram, tier: 'urgent', drop_percent: drop, window_days: days },
+      timeoutMs: 25_000,
     });
-    const data = await res.json();
     setBusy(false);
-    if (!res.ok) return setError(data.error || 'Could not save.');
+    if (!ok) return setError(data.error || 'Could not save.');
     if (data.confirmation) setSentTo(email);
     setTgLink(data.telegram_link ?? null);
     setTgCode(data.telegram_code ?? null);

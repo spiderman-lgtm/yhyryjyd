@@ -39,6 +39,22 @@ async function get(url: string, headers: Record<string, string> = {}, timeoutMs 
   return res.text();
 }
 
+// At most this many store searches run at once across the server. Each reads and parses a large page; letting
+// every comparison run all of its stores together starved the server's memory and stalled other requests.
+const MAX_SEARCHES = 6;
+let running = 0;
+const queue: (() => void)[] = [];
+async function inTurn<T>(fn: () => Promise<T>): Promise<T> {
+  if (running >= MAX_SEARCHES) await new Promise<void>((go) => queue.push(go));
+  running++;
+  try {
+    return await fn();
+  } finally {
+    running--;
+    queue.shift()?.();
+  }
+}
+
 const num = (v: unknown) => (typeof v === 'number' && v > 0 ? v : typeof v === 'string' ? Number(v.replace(/[^\d.]/g, '')) || 0 : 0);
 
 const SEARCHERS: Record<string, (q: string, pin: string | null) => Promise<Hit[]>> = {
@@ -225,7 +241,7 @@ async function cromaDelivery(code: string, pin: string): Promise<StoreOffer['del
 export function searchStore(store: string, q: string, pin: string | null = null): Promise<Hit[]> {
   const fn = SEARCHERS[store];
   if (!fn) return Promise.resolve([]);
-  return fn(q, pin);
+  return inTurn(() => fn(q, pin));
 }
 
 // Brand stores on Shopify: each one's public storefront search (/search/suggest.json). A brand store only
@@ -539,7 +555,7 @@ export async function searchStores(product: Product, pin: string | null = null):
   const results = await Promise.all(
     stores.map(async (s) => {
       try {
-        const hits = await SEARCHERS[s](q, pin);
+        const hits = await inTurn(() => SEARCHERS[s](q, pin));
         const scored = hits.filter((h) => h.price > 0 && h.title).map((h) => ({ h, m: match(product, h) }));
         const best = scored.filter((x) => x.m.ok).sort((a, b) => b.m.score - a.m.score || a.h.price - b.h.price)[0];
         seen.push(`${s}:${hits.length}${best ? '✓' : ''}`);

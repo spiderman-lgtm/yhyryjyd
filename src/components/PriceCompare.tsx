@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import type { StoreOffer } from '@/lib/db';
 import { deliveryText, inr } from '@/lib/format';
 import { fetchOnce } from '@/lib/fetch-once';
+import { callApi } from '@/lib/api-client';
 
 type Row = StoreOffer & { index: number | null; here?: boolean };
 
@@ -38,9 +39,9 @@ export default function PriceCompare({ productId, store, price, url }: { product
 
   async function trackThere(row: Row) {
     setOpening(row.index);
-    const res = await fetch('/api/product', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: row.url }) });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok && data.id) router.push(`/p/${data.id}`);
+    const { ok, data: d0 } = await callApi<{ id: string }>('/api/product', { body: { url: row.url }, timeoutMs: 150_000 });
+    const data = d0;
+    if (ok && data.id) router.push(`/p/${data.id}`);
     else {
       setOpening(null);
       setNote(data.error || 'Could not open that store’s page.');

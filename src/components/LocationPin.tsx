@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { callApi } from '@/lib/api-client';
 
 // The shopper's delivery pincode. Comparisons use it where a store prices or stocks by location.
 export default function LocationPin({ pin, area }: { pin: string | null; area: string | null }) {
@@ -13,9 +14,8 @@ export default function LocationPin({ pin, area }: { pin: string | null; area: s
     e.preventDefault();
     setBusy(true);
     setError('');
-    const res = await fetch('/api/pincode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: value }) });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
+    const { ok, data } = await callApi('/api/pincode', { body: { pin: value } });
+    if (!ok) {
       setBusy(false);
       return setError(data.error || 'Could not save that pincode.');
     }
@@ -24,7 +24,7 @@ export default function LocationPin({ pin, area }: { pin: string | null; area: s
 
   async function clear() {
     setBusy(true);
-    await fetch('/api/pincode', { method: 'DELETE' });
+    await callApi('/api/pincode', { method: 'DELETE' });
     window.location.reload();
   }
 

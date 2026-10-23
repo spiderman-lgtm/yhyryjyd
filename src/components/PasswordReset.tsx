@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { callApi } from '@/lib/api-client';
 
 // "Forgot password?" (ask for the email) and the page the emailed link opens (choose a new password).
 export default function PasswordReset({ mode, token }: { mode: 'forgot' | 'reset'; token?: string }) {
@@ -20,10 +21,9 @@ export default function PasswordReset({ mode, token }: { mode: 'forgot' | 'reset
       setBusy(false);
       return setError('The two passwords do not match.');
     }
-    const res = await fetch(`/api/auth/${mode}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, token }) });
-    const data = await res.json().catch(() => ({}));
+    const { ok, data } = await callApi(`/api/auth/${mode}`, { body: { ...body, token } });
     setBusy(false);
-    if (!res.ok) return setError(data.error || 'Something went wrong.');
+    if (!ok) return setError(data.error || 'Something went wrong.');
     if (mode === 'forgot') return setSentTo(String(body.email));
     router.push('/dashboard');
     router.refresh();

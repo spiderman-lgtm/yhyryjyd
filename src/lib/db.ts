@@ -286,22 +286,60 @@ function empty(): Data {
 
 let cache: Data | null = null;
 
+const SAME_PRICE_GAP_MS = 6 * 3600_000;
+const COMPARE_KEEP_MS = 7 * 86400_000;
+
+// Keeps the file small: a check that found the same price as the last point within 6 hours adds nothing to the
+// chart, and comparisons older than a week are searched again when someone opens the product.
+function compact(d: Data) {
+  const last = new Map<string, PricePoint>();
+  d.history = d.history.filter((h) => {
+    const prev = last.get(h.product_id);
+    if (prev && prev.price === h.price && Date.parse(h.at) - Date.parse(prev.at) < SAME_PRICE_GAP_MS) return false;
+    last.set(h.product_id, h);
+    return true;
+  });
+  const old = Date.now() - COMPARE_KEEP_MS;
+  for (const [k, v] of Object.entries(d.compare)) if (Date.parse(v.fetched_at) < old) delete d.compare[k];
+}
+
 function load(): Data {
   if (cache) return cache;
   try {
     cache = { ...empty(), ...JSON.parse(fs.readFileSync(FILE, 'utf8')) } as Data;
+    compact(cache);
   } catch {
     cache = empty();
   }
   return cache;
 }
 
-function save(data: Data) {
+// Changes live in memory at once; the file is rewritten at most every 2 seconds, so a burst of updates (a price
+// check, a comparison, a click) costs one write instead of one per change.
+let flushTimer: NodeJS.Timeout | null = null;
+
+function flush() {
+  if (flushTimer) clearTimeout(flushTimer);
+  flushTimer = null;
+  if (!cache) return;
   fs.mkdirSync(DIR, { recursive: true });
   const tmp = `${FILE}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(data));
+  fs.writeFileSync(tmp, JSON.stringify(cache));
   fs.renameSync(tmp, FILE);
 }
+
+function save() {
+  if (!flushTimer) flushTimer = setTimeout(flush, 2000);
+}
+
+for (const signal of ['SIGTERM', 'SIGINT'] as const)
+  process.once(signal, () => {
+    try {
+      flush();
+    } finally {
+      process.exit(0);
+    }
+  });
 
 export function read<T>(fn: (d: Data) => T): T {
   return fn(load());
@@ -313,7 +351,7 @@ export function write<T>(fn: (d: Data) => T): T {
   if (data.deliveries.length > 200) data.deliveries = data.deliveries.slice(-200);
   if (data.clicks.length > 5000) data.clicks = data.clicks.slice(-5000);
   if (data.outbox.length > 300) data.outbox = data.outbox.filter((m) => !m.sent_at).slice(-300);
-  save(data);
+  save();
   return result;
 }
 
@@ -328,7 +366,15 @@ export function historyFor(productId: string, days?: number): PricePoint[] {
 
 export function recordPrice(productId: string, price: number) {
   write((d) => {
-    d.history.push({ product_id: productId, price, at: new Date().toISOString() });
+    const now = new Date();
+    for (let i = d.history.length - 1; i >= 0; i--) {
+      const h = d.history[i];
+      if (h.product_id !== productId) continue;
+      // The same price as the last point, recently: nothing new for the chart.
+      if (h.price === price && now.getTime() - Date.parse(h.at) < SAME_PRICE_GAP_MS) return;
+      break;
+    }
+    d.history.push({ product_id: productId, price, at: now.toISOString() });
   });
 }
 

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 import Modal from './Modal';
+import { callApi } from '@/lib/api-client';
 
 export default function CartAndEnquire({ productId, inCart: initial }: { productId: string; inCart: boolean }) {
   const router = useRouter();
@@ -14,8 +15,8 @@ export default function CartAndEnquire({ productId, inCart: initial }: { product
   const close = useCallback(() => setOpen(false), []);
 
   async function toggleCart() {
-    const res = await fetch('/api/cart', { method: inCart ? 'DELETE' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: productId }) });
-    if (res.ok) {
+    const { ok } = await callApi('/api/cart', { method: inCart ? 'DELETE' : 'POST', body: { product_id: productId } });
+    if (ok) {
       setInCart(!inCart);
       router.refresh(); // so My cart and the dashboard show the change right away
     }
@@ -26,10 +27,9 @@ export default function CartAndEnquire({ productId, inCart: initial }: { product
     setBusy(true);
     setError('');
     const body = Object.fromEntries(new FormData(e.currentTarget));
-    const res = await fetch('/api/enquiry', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, product_id: productId }) });
-    const data = await res.json();
+    const { ok, data } = await callApi('/api/enquiry', { body: { ...body, product_id: productId } });
     setBusy(false);
-    if (!res.ok) return setError(data.error || 'Could not send.');
+    if (!ok) return setError(data.error || 'Could not send.');
     setSent(true);
   }
 

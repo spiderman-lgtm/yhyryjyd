@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { callApi } from '@/lib/api-client';
 
 const looksLikeLink = (s: string) => /^https?:\/\//i.test(s) || /^[\w-]+(\.[\w-]+)+\/\S*$/.test(s);
 
@@ -21,9 +22,8 @@ export default function LinkInput({ compact = false, initial = '' }: { compact?:
     setBusy(true);
     try {
       const url = /^https?:\/\//i.test(v) ? v : `https://${v}`;
-      const res = await fetch('/api/product', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+      const { ok, data } = await callApi<{ id: string }>('/api/product', { body: { url }, timeoutMs: 150_000 });
+      if (!ok) throw new Error(data.error || 'Something went wrong.');
       router.push(`/p/${data.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

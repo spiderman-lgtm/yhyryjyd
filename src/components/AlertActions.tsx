@@ -1,11 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { callApi } from '@/lib/api-client';
 
 export default function AlertActions({ id, status }: { id: string; status: string }) {
   const router = useRouter();
   const act = async (op: 'cancel' | 'extend') => {
-    await fetch(`/api/alerts/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op }) });
+    await callApi(`/api/alerts/${id}`, { body: { op } });
     router.refresh();
   };
   return (

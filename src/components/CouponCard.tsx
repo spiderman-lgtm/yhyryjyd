@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import StoreLogo from './StoreLogo';
+import { callApi } from '@/lib/api-client';
 
 export type CouponView = {
   id: string;
@@ -55,8 +56,8 @@ export default function CouponCard({ c, showStoreLink = true }: { c: CouponView;
   const failing = total >= 5 && success !== null && success < 30;
 
   async function vote(v: 'up' | 'down') {
-    const res = await fetch(`/api/coupon/${c.id}/vote`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vote: v }) });
-    if (res.ok) setVotes(await res.json());
+    const { ok, data } = await callApi<typeof votes>(`/api/coupon/${c.id}/vote`, { body: { vote: v } });
+    if (ok) setVotes(data);
   }
 
   return (

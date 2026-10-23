@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { inr } from '@/lib/format';
 import { fetchOnce } from '@/lib/fetch-once';
+import { callApi } from '@/lib/api-client';
 
 type Item = { title: string; store: string; price: number; url: string; image: string | null; product_id?: string; buy: string | null };
 
@@ -21,9 +22,8 @@ export default function LookAlike({ productId }: { productId: string }) {
   async function open(item: Item) {
     if (item.product_id) return router.push(`/p/${item.product_id}`);
     setOpening(item.url);
-    const res = await fetch('/api/product', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: item.url }) });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok && data.id) router.push(`/p/${data.id}`);
+    const { ok, data } = await callApi<{ id: string }>('/api/product', { body: { url: item.url }, timeoutMs: 150_000 });
+    if (ok && data.id) router.push(`/p/${data.id}`);
     else setOpening(null);
   }
 

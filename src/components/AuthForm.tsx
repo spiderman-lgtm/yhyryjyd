@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { callApi } from '@/lib/api-client';
 
 const ERRORS: Record<string, string> = {
   google_off: 'Google sign-in is not switched on yet. Use your email and password.',
@@ -33,9 +34,8 @@ export default function AuthForm({ mode, next, google, error: initialError }: { 
     setBusy(true);
     setError('');
     const body = Object.fromEntries(new FormData(e.currentTarget));
-    const res = await fetch(`/api/auth/${isSignup ? 'signup' : 'login'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
+    const { ok, data } = await callApi(`/api/auth/${isSignup ? 'signup' : 'login'}`, { body });
+    if (!ok) {
       setBusy(false);
       return setError(data.error || 'Something went wrong.');
     }

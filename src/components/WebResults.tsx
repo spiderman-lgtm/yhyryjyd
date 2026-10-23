@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { inr } from '@/lib/format';
 import StoreIcon from './StoreIcon';
+import { callApi } from '@/lib/api-client';
 
 type Hit = {
   title: string;
@@ -63,9 +64,9 @@ export default function WebResults({ q }: { q: string }) {
 
   async function open(h: Hit) {
     setOpening(h.url);
-    const res = await fetch('/api/product', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: h.url }) });
-    const d = await res.json().catch(() => ({}));
-    if (res.ok && d.id) router.push(`/p/${d.id}`);
+    const { ok, data: d0 } = await callApi<{ id: string }>('/api/product', { body: { url: h.url }, timeoutMs: 150_000 });
+    const d = d0;
+    if (ok && d.id) router.push(`/p/${d.id}`);
     else {
       setOpening(null);
       setNote(d.error || 'Could not open that product — try its Buy now link.');

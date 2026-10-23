@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { callApi } from '@/lib/api-client';
 
 // The delivery pincode in the top bar, on every page. The same location is used by store comparisons
 // and by the DealRadar extension's nearby check on Zepto, Blinkit, Instamart, BigBasket and JioMart.
@@ -21,9 +22,8 @@ export default function HeaderLocation({ pin, area }: { pin: string | null; area
 
   async function send(body: object) {
     setError('');
-    const res = await fetch('/api/pincode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
+    const { ok, data } = await callApi('/api/pincode', { body });
+    if (!ok) {
       setBusy(false);
       setLocating(false);
       return setError(data.error || 'Could not save that location.');

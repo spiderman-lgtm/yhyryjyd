@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { callApi } from '@/lib/api-client';
 
 export default function RemoveFromCart({ productId }: { productId: string }) {
   const router = useRouter();
@@ -8,7 +9,7 @@ export default function RemoveFromCart({ productId }: { productId: string }) {
     <button
       className="text-sm text-ink-mute underline hover:text-red-600"
       onClick={async () => {
-        await fetch('/api/cart', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: productId }) });
+        await callApi('/api/cart', { method: 'DELETE', body: { product_id: productId } });
         router.refresh();
       }}
     >

@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import Modal from './Modal';
+import { callApi } from '@/lib/api-client';
 
 const CATEGORIES = [
   ['fashion', 'Fashion'],
@@ -30,10 +31,9 @@ export default function SubmitCoupon({ stores }: { stores: string[] }) {
     setBusy(true);
     setError('');
     const body = Object.fromEntries(new FormData(e.currentTarget));
-    const res = await fetch('/api/coupons/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const data = await res.json().catch(() => ({}));
+    const { ok, data } = await callApi('/api/coupons/submit', { body });
     setBusy(false);
-    if (!res.ok) return setError(data.error || 'Could not send it.');
+    if (!ok) return setError(data.error || 'Could not send it.');
     setDone(true);
   }
 
