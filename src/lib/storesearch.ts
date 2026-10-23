@@ -181,7 +181,10 @@ const SEARCHERS: Record<string, (q: string, pin: string | null) => Promise<Hit[]
       $('div[data-component-type="s-search-result"]').each((_, el) => {
         const c = $(el);
         if (c.find('.puis-sponsored-label-text').length) return;
-        const title = c.find('h2').text().trim();
+        // Amazon now shows the brand and the product name as two headings: join them with a space, not glued
+        // ("SamsungGalaxy S24"), and without the brand twice when the name already starts with it.
+        const parts = c.find('h2').map((_, h) => $(h).text().replace(/\s+/g, ' ').trim()).get().filter(Boolean);
+        const title = parts.length > 1 && parts[1].toLowerCase().startsWith(parts[0].toLowerCase()) ? parts.slice(1).join(' ') : parts.join(' ');
         const href = c.find('a.a-link-normal[href*="/dp/"]').first().attr('href') || '';
         const asin = c.attr('data-asin') || href.match(/\/dp\/([A-Z0-9]{10})/)?.[1];
         const price =
