@@ -1,0 +1,10 @@
+{
+ "s1_home": "Hi, this is DealRadar, a price tracker for Indian shoppers. Paste any product link, or just type a product name, and DealRadar compares prices across Amazon, Flipkart, Myntra, Croma and twenty plus stores, shows the full price history, finds working coupons, and alerts you on email, WhatsApp or Telegram the moment the price drops.",
+ "s2_product": "Let's see it live. I'll paste an Amazon link, and in seconds we get the price history, a Deal Score, and the same product on other stores. Here, it's cheaper on Flipkart.",
+ "s3_alert": "I'll set a price drop alert and choose Telegram. The confirmation is already on Telegram, sent through viaSocket.",
+ "s4_extension": "And you don't even have to come to DealRadar. With the DealRadar browser extension, the moment you open a product on Amazon, Flipkart, or any supported store, it opens by itself and fetches the price you are looking at, the same product on other stores, and the lowest it has ever been. If the price is right, go ahead and buy. If you'd rather wait, set a price alert right there with one click, and DealRadar will message you when it drops.",
+ "s5_automation": "All the messaging runs on viaSocket. Gmail, WhatsApp Business, and our Telegram bot are each connected with one click through the viaSocket Connect popup. No API keys, no OAuth code, no webhook servers to build.",
+ "s6_code": "In the code, it's the viaSocket SDK. These few lines describe the apps we use. This one function creates the automation that checks prices every fifteen minutes, and sends the alerts through the connected Gmail, WhatsApp and Telegram.",
+ "s7_deploy": "Hosting is on Embarko. We upload the project, Embarko builds it, and puts it live in a couple of minutes. Every change you see here is one deploy. No servers to set up.",
+ "s8_outro": "DealRadar. Built with viaSocket for the integrations, hosted on Embarko. Never overpay online again."
+}
