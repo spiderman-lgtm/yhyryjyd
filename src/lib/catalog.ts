@@ -1,6 +1,7 @@
 import 'server-only';
 import { read, write, type CatalogItem } from './db';
 import { ACCESSORY, searchStore } from './storesearch';
+import { liveCoupons } from './storecoupons';
 
 // The Trending page's categories. Each is filled by searching the stores we can reach and keeping
 // the biggest genuine discounts (selling price below the listed MRP).
@@ -59,4 +60,25 @@ export function catalog(): { category: Category; items: CatalogItem[]; fetched_a
 
 export function catalogStale() {
   return read((d) => CATEGORIES.some((c) => !d.catalog[c.slug] || Date.now() - Date.parse(d.catalog[c.slug].fetched_at) > TTL_MS));
+}
+
+export type FlashDeal = CatalogItem & { category: string; extra: string | null };
+
+// The Coupons page's flash deals: the deepest genuine discounts across the Trending categories, taking turns by
+// category so one kind of product does not fill the grid, each with the store's best live coupon on top.
+export function flashDeals(limit = 12): { deals: FlashDeal[]; fetched_at: string | null } {
+  const rows = catalog();
+  const coupons = liveCoupons();
+  const extraFor = (store: string) => {
+    const c = coupons.filter((x) => x.store.toLowerCase() === store.toLowerCase()).sort((a, b) => Number(b.featured) - Number(a.featured) || b.clicks - a.clicks)[0];
+    return c ? `${c.discount_text || c.title}${c.code ? ` · code ${c.code}` : ''}` : null;
+  };
+  const deals: FlashDeal[] = [];
+  for (let i = 0; deals.length < limit && i < 18; i++)
+    for (const r of rows) {
+      const item = r.items[i];
+      if (item && deals.length < limit) deals.push({ ...item, category: r.category.title, extra: extraFor(item.store) });
+    }
+  const times = rows.map((r) => r.fetched_at).filter((x): x is string => !!x).sort();
+  return { deals: deals.sort((a, b) => b.off - a.off), fetched_at: times[times.length - 1] ?? null };
 }

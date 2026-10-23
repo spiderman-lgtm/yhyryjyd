@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import CouponCard, { type CouponView } from '@/components/CouponCard';
+import FlashDeals from '@/components/FlashDeals';
+import { flashDeals } from '@/lib/catalog';
 import { Reveal, Stagger, StaggerItem } from '@/components/Motion';
 import StoreLogo from '@/components/StoreLogo';
 import SubmitCoupon from '@/components/SubmitCoupon';
@@ -59,6 +61,7 @@ export default function CouponsPage({ searchParams }: { searchParams: { store?: 
   const shown = matches.filter((c) => !cat || c.category === cat).sort(rank);
   const top = stores[0];
   const productOffers = store || q || cat ? [] : couponDirectory();
+  const flash = store || q || cat ? null : flashDeals(12);
   const href = (p: Record<string, string | null>) => {
     const sp = new URLSearchParams();
     for (const [k, v] of Object.entries({ store: store?.slug ?? null, q: q || null, cat, ...p })) if (v) sp.set(k, v);
@@ -103,6 +106,8 @@ export default function CouponsPage({ searchParams }: { searchParams: { store?: 
           </div>
         </section>
       </Reveal>
+
+      {flash && <FlashDeals deals={flash.deals} updated={flash.fetched_at} />}
 
       {!store && !q && gifts > 0 && (
         <Link href="/gift-cards" className="group flex items-center gap-4 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 text-white shadow-lg shadow-indigo-900/20 transition hover:-translate-y-0.5">
