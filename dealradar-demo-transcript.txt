@@ -1,0 +1,64 @@
+DealRadar demo - transcript (cleaned)
+Source: 465a5a13-dealradar-demo_1.mp3 (3 min 50 s)
+Note: transcribed offline with PocketSphinx (low accuracy). Names and numbers were
+corrected from context. Words marked [?] are uncertain.
+
+Hi, this is DealRadar, a price tracker built for Indian shoppers.
+
+Paste a product link, or just type what you're looking for, and DealRadar compares
+prices across Amazon, Flipkart, Croma and more than twenty other stores.
+
+Let me search for boAt Airdopes 141 [?].
+
+In a few seconds DealRadar brings back the same earbuds from Flipkart, Amazon,
+Myntra and boAt's own store, with ratings, key features and the lowest price
+marked.
+
+Opening one shows the full comparison. The same earbuds are 799 rupees on Amazon,
+899 on Flipkart and boAt, and 1,099 on Myntra. So you know exactly where to buy.
+
+Not ready to buy yet? Set a price-drop alert. DealRadar checks the price every
+fifteen minutes and messages you on email, WhatsApp or Telegram the moment it
+drops.
+
+Seconds later the confirmation arrives: an email in Gmail with the product,
+today's price and how long we will watch it, and a message on Telegram from our
+DealRadar bot, all sent through viaSocket.
+
+Already shopping on a store? The DealRadar browser extension opens by itself on
+the product page. Here on Flipkart the earbuds are 1,099 rupees, and the
+extension instantly shows they're 799 on Amazon and boAt. That is 300 rupees
+saved.
+
+Not buying today? Set a price-drop alert right inside the extension with one tap.
+
+All of that messaging runs on viaSocket. Gmail, WhatsApp Business and our
+Telegram bot are connected in a single click through the viaSocket Connect
+pop-up. No OAuth IDs to manage, no [?] code, and no webhook servers to build.
+
+To get the viaSocket skill we logged into viaSocket [?], opened the Embarko [?]
+project. The skills page has a "Copy AI skill" button. One click copies the skill
+and we pasted it straight into Claude Code.
+
+In Claude Code we pasted the skill and asked it to build DealRadar. A skill, in
+Claude Code, is a set of plain-text instructions [?]. It describes the viaSocket
+architecture, packages the Gmail, WhatsApp and Telegram integrations, and the
+viaSocket check script [?]. Every app action and trigger passed.
+
+In the code is the viaSocket SDK. A few lines describe each app, and one call
+creates the automation that checks prices every fifteen minutes and sends the
+alerts to the connected accounts.
+
+For hosting we opened the Embarko site and clicked "Copy deployment prompt".
+That prompt tells any AI agent how to ship an app to Embarko. We pasted it into
+Claude Code along with our Embarko token. Claude Code packaged DealRadar and
+uploaded it to Embarko. Two minutes later it was live at dealradar.embarko [?].
+
+Every update since is one more pull: seventy-three releases with zero servers to
+manage.
+
+And DealRadar keeps growing: flash deals with live store prices, coupons, gift
+cards and a browser extension.
+
+DealRadar: integrated with viaSocket and hosted on Embarko. Never overpay online
+again.
