@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { read, write } from './db';
 import { appUrl } from './config';
 import { automationKey, sendQueuedMailNow } from './flows';
-import { queueTelegram } from './alerts';
+import { emoji, queueTelegram } from './alerts';
 import { TELEGRAM, endSubscription, listFlows, readFlow, subscribeTelegramMessages } from './viasocket';
 
 // The operator's bot username once Telegram is connected and listening, else null.
@@ -142,7 +142,7 @@ export async function handleBotMessage(ev: any): Promise<string> {
               '2️⃣ In “Price Drop Alert”, tick ✈️ Telegram',
               '3️⃣ Tap “Track price”, then “Open Telegram”',
               '',
-              '🔑 Or send the 8-character code shown after “Track price”.',
+              `${emoji(0x1f511)} Or send the 8-character code shown after “Track price”.`,
             ].join('\n'),
         appUrl(),
         null,

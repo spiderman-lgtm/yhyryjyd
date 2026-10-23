@@ -50,6 +50,10 @@ function telegramChatFor(alert: Alert): string | null {
   return alert.telegram_chat || read((d) => d.telegram.chats[alert.uid]?.chat ?? null);
 }
 
+// Emoji built when the message is sent. Written as plain text in a line on its own, the build's minifier
+// turned some of them into the literal characters "\\uD83C\\uDFAF" in the Telegram message.
+export const emoji = (codePoint: number) => String.fromCodePoint(codePoint);
+
 function shell(body: string, footer: string) {
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:auto;color:#0f172a">
 <div style="font-size:20px;font-weight:bold;color:#ea580c;margin-bottom:12px">DealRadar</div>${body}
@@ -189,7 +193,7 @@ export function confirmationTelegram(alert: Alert, p: Product): { text: string; 
   const off = p.mrp && p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
   return {
     text: [
-      '🎯 Price tracking started!',
+      `${emoji(0x1f3af)} Price tracking started!`,
       '',
       `🛍️ ${p.title.slice(0, 120)}`,
       '',
@@ -198,9 +202,9 @@ export function confirmationTelegram(alert: Alert, p: Product): { text: string; 
       `📉 Alert on: ${rule}`,
       `📅 Watching till: ${until}`,
       '',
-      '🔔 We check every 15 minutes and message you here the moment the price drops.',
+      `${emoji(0x1f514)} We check every 15 minutes and message you here the moment the price drops.`,
       '',
-      '— Team DealRadar 💸',
+      `— Team DealRadar ${emoji(0x1f4b8)}`,
     ].join('\n'),
     url: links(alert, p).page,
     image: p.image,
