@@ -35,7 +35,9 @@ function relevance(q: string[], hit: Hit) {
   const otherModel = [...MODEL].some((m) => words.has(m) && !q.includes(m));
   // A listing without the model number typed (Galaxy Buds for "galaxy s24") is a different product.
   const missingNumber = q.some((t) => /\d/.test(t) && !words.has(t));
-  return (got / total) * (otherModel ? 0.8 : 1) * (missingNumber ? 0.5 : 1);
+  // Without the brand (the first word typed), a listing is most likely another brand's product.
+  const otherBrand = !words.has(q[0]);
+  return (got / total) * (otherModel ? 0.8 : 1) * (missingNumber ? 0.5 : 1) * (otherBrand ? 0.6 : 1);
 }
 
 // Searches every store we can reach for a product name, best matches first.

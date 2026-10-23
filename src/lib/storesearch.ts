@@ -60,6 +60,8 @@ async function inTurn<T>(fn: () => Promise<T>): Promise<T> {
 
 const num = (v: unknown) => (typeof v === 'number' && v > 0 ? v : typeof v === 'string' ? Number(v.replace(/[^\d.]/g, '')) || 0 : 0);
 
+const amazonLast = new Map<string, { at: number; hits: Hit[] }>();
+
 const SEARCHERS: Record<string, (q: string, pin: string | null) => Promise<Hit[]>> = {
   async flipkart(q) {
     const html = await get(`https://www.flipkart.com/search?q=${encodeURIComponent(q)}`);
@@ -173,29 +175,47 @@ const SEARCHERS: Record<string, (q: string, pin: string | null) => Promise<Hit[]
   },
 
   async amazon(q) {
-    const $ = cheerio.load(await get(`https://www.amazon.in/s?k=${encodeURIComponent(q)}`));
-    const hits: Hit[] = [];
-    $('div[data-component-type="s-search-result"]').each((_, el) => {
-      const c = $(el);
-      if (c.find('.puis-sponsored-label-text').length) return;
-      const title = c.find('h2').text().trim();
-      const href = c.find('a.a-link-normal[href*="/dp/"]').first().attr('href') || '';
-      const asin = c.attr('data-asin') || href.match(/\/dp\/([A-Z0-9]{10})/)?.[1];
-      const price = num(c.find('.a-price:not(.a-text-price) .a-offscreen').first().text());
-      if (title && asin && price) {
-        hits.push({
-          store: 'Amazon',
-          platform: 'amazon',
-          title,
-          price,
-          mrp: num(c.find('.a-price.a-text-price .a-offscreen').first().text()) || null,
-          url: `https://www.amazon.in/dp/${asin}`,
-          image: c.find('img.s-image').attr('src') || null,
-          in_stock: true,
-        });
-      }
-    });
-    return hits.slice(0, 12);
+    const read = async () => {
+      const $ = cheerio.load(await get(`https://www.amazon.in/s?k=${encodeURIComponent(q)}`));
+      const hits: Hit[] = [];
+      $('div[data-component-type="s-search-result"]').each((_, el) => {
+        const c = $(el);
+        if (c.find('.puis-sponsored-label-text').length) return;
+        const title = c.find('h2').text().trim();
+        const href = c.find('a.a-link-normal[href*="/dp/"]').first().attr('href') || '';
+        const asin = c.attr('data-asin') || href.match(/\/dp\/([A-Z0-9]{10})/)?.[1];
+        const price =
+          c.find('.a-price:not(.a-text-price) .a-offscreen').toArray().map((x) => num($(x).text())).find((n) => n) || num(c.find('.a-price-whole').first().text());
+        if (title && asin && price) {
+          hits.push({
+            store: 'Amazon',
+            platform: 'amazon',
+            title,
+            price,
+            mrp: num(c.find('.a-price.a-text-price .a-offscreen').first().text()) || null,
+            url: `https://www.amazon.in/dp/${asin}`,
+            image: c.find('img.s-image').attr('src') || null,
+            in_stock: true,
+          });
+        }
+      });
+      return hits.slice(0, 12);
+    };
+    // Amazon sometimes answers a server with a robot-check page instead of results. An empty answer is asked
+    // once more, and the last good results for the same search are used when it stays empty.
+    let hits = await read();
+    if (!hits.length) {
+      await new Promise((r) => setTimeout(r, 1500));
+      hits = await read().catch(() => []);
+    }
+    const key = q.toLowerCase();
+    if (hits.length) {
+      amazonLast.set(key, { at: Date.now(), hits });
+      if (amazonLast.size > 500) amazonLast.delete(amazonLast.keys().next().value!);
+      return hits;
+    }
+    const last = amazonLast.get(key);
+    return last && Date.now() - last.at < 6 * 3600_000 ? last.hits : [];
   },
 
   async myntra(q) {
