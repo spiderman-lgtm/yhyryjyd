@@ -41,7 +41,18 @@ export async function keywordSearch(raw: string): Promise<SearchItem[]> {
   if (hit && Date.now() - hit.at < 3600_000) return hit.items;
 
   const qTokens = [...new Set(searchTokens(q))];
-  const found = (await Promise.all(storesForText(q).map((s) => searchStore(s, q).catch(() => [] as Hit[])))).flat();
+  const seenStores: string[] = [];
+  const found = (
+    await Promise.all(
+      storesForText(q).map((s) =>
+        searchStore(s, q)
+          .then((hits) => (seenStores.push(`${s}:${hits.length}`), hits))
+          .catch((e) => (seenStores.push(`${s}:${e instanceof Error ? e.message.slice(0, 30) : 'error'}`), [] as Hit[])),
+      ),
+    )
+  ).flat();
+  // One line per search: how many results each store sent back.
+  console.log(`[search] "${q}" ${seenStores.join(' ')}`);
   const perStore = new Map<string, number>();
   const seen = new Set<string>();
   const items = found
