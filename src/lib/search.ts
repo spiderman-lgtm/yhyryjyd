@@ -33,7 +33,9 @@ function relevance(q: string[], hit: Hit) {
   });
   // A different model of the line (iPhone 15 Plus for "iPhone 15") ranks below the one asked for.
   const otherModel = [...MODEL].some((m) => words.has(m) && !q.includes(m));
-  return (got / total) * (otherModel ? 0.8 : 1);
+  // A listing without the model number typed (Galaxy Buds for "galaxy s24") is a different product.
+  const missingNumber = q.some((t) => /\d/.test(t) && !words.has(t));
+  return (got / total) * (otherModel ? 0.8 : 1) * (missingNumber ? 0.5 : 1);
 }
 
 // Searches every store we can reach for a product name, best matches first.
