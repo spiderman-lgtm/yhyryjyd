@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "DealRadar — Price History & Compare",
   "short_name": "DealRadar",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Compare prices across online and nearby stores at your delivery pincode, and set price-drop alerts — right on the product page.",
   "icons": {
     "16": "icons/16.png",

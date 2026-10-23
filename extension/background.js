@@ -192,7 +192,9 @@ async function compare({ id, title, price: p, store }) {
 // Nearby results per product and pincode, so reopening the panel does not open the stores again.
 const nearby = new Map();
 
-async function quick({ id, title, price: p, store, fresh }) {
+async function quick({ id, title, price: p, store, fresh }, sender) {
+  // Each app's result goes to the panel as soon as it is in, instead of after the slowest one.
+  const tell = (name, st) => sender?.tab?.id && chrome.tabs.sendMessage(sender.tab.id, { type: 'quickOne', store: name, status: st }).catch(() => {});
   const source = { title, price: p };
   const q = DRMatch.query(title);
   const status = {};
@@ -202,6 +204,8 @@ async function quick({ id, title, price: p, store, fresh }) {
   if (cached && !fresh && Date.now() - cached.at < 30 * 60_000) return cached.data;
   const results = await Promise.all(
     QUICK.filter((s) => s.store !== store).map(async (s) => {
+      // An app that is still loading after 45 seconds is shown as not checked; its result still counts if it comes.
+      const slow = setTimeout(() => tell(s.store, { state: 'error', url: s.home }), 45_000);
       try {
         let { cards, needsLocation } = await readQuickStore(s, q);
         if (!DRMatch.best(source, cards) && (needsLocation || !cards.length) && loc.pin && LOCATE[s.store] && (await LOCATE[s.store](loc).catch(() => false)))
@@ -211,10 +215,14 @@ async function quick({ id, title, price: p, store, fresh }) {
         status[s.store] = hit
           ? { state: 'found', price: hit.price, url: hit.url }
           : { state: needsLocation ? 'location' : cards.length ? 'none' : 'empty', url: s.home, seen: cards.length };
+        tell(s.store, status[s.store]);
         return hit ? { store: s.store, price: hit.price, url: hit.url, in_stock: true, same_variant: hit.same_variant } : null;
       } catch (e) {
         status[s.store] = { state: 'error', url: s.home };
+        tell(s.store, status[s.store]);
         return null;
+      } finally {
+        clearTimeout(slow);
       }
     }),
   );
@@ -250,7 +258,7 @@ const HANDLERS = {
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   const handler = HANDLERS[msg.type];
   if (!handler) return false;
-  handler(msg)
+  handler(msg, _sender)
     .then((data) => reply({ ok: true, data }))
     .catch((e) => reply({ ok: false, error: String(e.message || e) }));
   return true; // keeps the channel open for the async reply

@@ -622,6 +622,14 @@
     return true;
   }
 
+  // Nearby apps report one by one while the check runs.
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type !== 'quickOne' || !state.quickBusy) return false;
+    state.quick = { ...(state.quick || {}), [msg.store]: msg.status };
+    render();
+    return false;
+  });
+
   // Clicking the DealRadar toolbar icon on a product page opens the panel here.
   chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg.type !== 'openPanel') return false;
