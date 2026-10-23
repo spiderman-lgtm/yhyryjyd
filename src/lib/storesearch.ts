@@ -30,11 +30,14 @@ const tidy = (list: string[]) =>
   list.map((x) => x.replace(/&amp;/g, '&').replace(/&nbsp;|&#160;/g, ' ').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/\s+/g, ' ').trim()).filter((x) => x.length > 1 && x.length < 90).slice(0, 5);
 
 async function get(url: string, headers: Record<string, string> = {}, timeoutMs = 12000) {
-  const res = await fetch(url, {
-    headers: { 'User-Agent': UA, 'Accept-Language': 'en-IN,en;q=0.9', Accept: 'text/html,application/json,*/*', ...headers },
-    signal: AbortSignal.timeout(timeoutMs),
-    cache: 'no-store',
-  });
+  const once = () =>
+    fetch(url, {
+      headers: { 'User-Agent': UA, 'Accept-Language': 'en-IN,en;q=0.9', Accept: 'text/html,application/json,*/*', ...headers },
+      signal: AbortSignal.timeout(timeoutMs),
+      cache: 'no-store',
+    });
+  // A dropped connection ("fetch failed") is tried once more; a store that answers with an error is not.
+  const res = await once().catch((e) => (e instanceof TypeError ? once() : Promise.reject(e)));
   if (!res.ok) throw new Error(`${res.status}`);
   return res.text();
 }
@@ -488,9 +491,9 @@ const tokens = (s: string) =>
 const COLORS = new Set(
   'black white blue green red yellow pink purple grey gray silver gold orange brown beige navy maroon teal olive cream violet titanium graphite midnight starlight natural desert ultramarine'.split(' '),
 );
-export const ACCESSORY = /\b(case|cover|protector|tempered|glass|guard|charger|cable|adapter|stand|holder|strap|pouch|refurbished|renewed)\b/i;
+export const ACCESSORY = /\b(cases?|covers?|protectors?|tempered|glass|guards?|chargers?|cables?|adapters?|stands?|holders?|straps?|pouch(es)?|refurbished|renewed|compatible (for|with))\b/i;
 // Words that name a different model of the same line: an iPhone 15 is not an iPhone 15 Pro.
-const MODEL = new Set(['plus', 'pro', 'max', 'mini', 'ultra', 'lite', 'fe', 'neo', 'prime', 'air']);
+export const MODEL = new Set(['plus', 'pro', 'max', 'mini', 'ultra', 'lite', 'fe', 'neo', 'prime', 'air']);
 // Pack sizes: a different size is the same product in another variant, not a different product.
 const SIZE = /^\d+(\.\d+)?(ml|g|kg|l|ltr|inch|cm)$/;
 

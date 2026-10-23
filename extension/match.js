@@ -6,7 +6,7 @@ var DRMatch = (function () {
   var COLORS = new Set(
     'black white blue green red yellow pink purple grey gray silver gold orange brown beige navy maroon teal olive cream violet titanium graphite midnight starlight natural desert ultramarine'.split(' '),
   );
-  var ACCESSORY = /\b(case|cover|protector|tempered|glass|guard|charger|cable|adapter|stand|holder|strap|pouch|refurbished|renewed)\b/i;
+  var ACCESSORY = /\b(cases?|covers?|protectors?|tempered|glass|guards?|chargers?|cables?|adapters?|stands?|holders?|straps?|pouch(es)?|refurbished|renewed|compatible (for|with))\b/i;
   var MODEL = ['plus', 'pro', 'max', 'mini', 'ultra', 'lite', 'fe', 'neo', 'prime', 'air'];
   var SIZE = /^\d+(\.\d+)?(ml|g|kg|l|ltr|inch|cm)$/;
 

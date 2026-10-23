@@ -1,6 +1,6 @@
 import 'server-only';
 import { affiliateUrl } from './coupons';
-import { ACCESSORY, queryFor, searchStore, searchTokens, storesForText, type Hit } from './storesearch';
+import { ACCESSORY, MODEL, queryFor, searchStore, searchTokens, storesForText, type Hit } from './storesearch';
 
 export type SearchItem = {
   title: string;
@@ -17,7 +17,7 @@ export type SearchItem = {
   buy: string;
 };
 
-const cache = new Map<string, { at: number; items: SearchItem[] }>();
+const cache = new Map<string, { at: number; items: SearchItem[]; ttl: number }>();
 
 // How much of what the shopper typed a listing contains, with the brand (first word) and model numbers
 // (s24, 141, 4000) counting double.
@@ -31,7 +31,9 @@ function relevance(q: string[], hit: Hit) {
     total += w;
     if (words.has(t)) got += w;
   });
-  return got / total;
+  // A different model of the line (iPhone 15 Plus for "iPhone 15") ranks below the one asked for.
+  const otherModel = [...MODEL].some((m) => words.has(m) && !q.includes(m));
+  return (got / total) * (otherModel ? 0.8 : 1);
 }
 
 // Searches every store we can reach for a product name, best matches first.
@@ -39,7 +41,7 @@ export async function keywordSearch(raw: string): Promise<SearchItem[]> {
   const q = queryFor(raw.trim()).slice(0, 100);
   const key = q.toLowerCase();
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < 3600_000) return hit.items;
+  if (hit && Date.now() - hit.at < hit.ttl) return hit.items;
 
   const qTokens = [...new Set(searchTokens(q))];
   const seenStores: string[] = [];
@@ -54,6 +56,7 @@ export async function keywordSearch(raw: string): Promise<SearchItem[]> {
   ).flat();
   // One line per search: how many results each store sent back.
   console.log(`[search] "${q}" ${seenStores.join(' ')}`);
+  const incomplete = seenStores.some((x) => !/:\d+$/.test(x));
   const wantsAccessory = ACCESSORY.test(q);
   const seen = new Set<string>();
   const ranked = found
@@ -94,7 +97,8 @@ export async function keywordSearch(raw: string): Promise<SearchItem[]> {
       buy: affiliateUrl(h.url),
     }));
   if (cache.size > 500) cache.clear();
-  if (items.length) cache.set(key, { at: Date.now(), items });
+  // A result with a store missing (it failed this time) is kept briefly, so a retry soon includes it.
+  if (items.length) cache.set(key, { at: Date.now(), items, ttl: incomplete ? 10 * 60_000 : 3600_000 });
   return items;
 }
 
