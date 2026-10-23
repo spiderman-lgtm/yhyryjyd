@@ -103,8 +103,10 @@ export async function handleBotMessage(ev: any): Promise<string> {
           d.telegram.chats[c.uid] = { chat, name: name ? String(name).slice(0, 60) : null, at: new Date().toISOString() };
           const titles: string[] = [];
           for (const a of Object.values(d.alerts)) {
-            if (a.uid !== c.uid || a.status !== 'active' || !a.channels.includes('telegram')) continue;
+            if (a.uid !== c.uid || a.status !== 'active') continue;
+            // Linking Telegram turns it on for every active alert of this shopper.
             a.telegram_chat = chat;
+            if (!a.channels.includes('telegram')) a.channels.push('telegram');
             const p = d.products[a.product_id];
             if (p) titles.push(p.title.slice(0, 70));
           }

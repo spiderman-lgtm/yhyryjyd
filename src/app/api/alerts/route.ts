@@ -23,7 +23,9 @@ export async function POST(req: Request) {
   const channels: Channel[] = [];
   if (email) channels.push('email');
   if (phone) channels.push('whatsapp');
-  const wantTelegram = b.telegram === true && !!telegramBot();
+  // A shopper who already linked Telegram gets every alert there; ticking the box links it for the first time.
+  const linkedChat = telegramBot() ? chatFor(uid) : null;
+  const wantTelegram = (b.telegram === true || !!linkedChat) && !!telegramBot();
   if (wantTelegram) channels.push('telegram');
 
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return NextResponse.json({ error: 'That email address does not look right.' }, { status: 400 });
@@ -52,7 +54,7 @@ export async function POST(req: Request) {
     target_price: Number.isFinite(target) && target > 0 && target < product.price ? target : null,
     window_days,
     baseline_price: product.price,
-    telegram_chat: wantTelegram ? chatFor(uid) : null,
+    telegram_chat: wantTelegram ? linkedChat : null,
   });
   // Confirm straight away by email and on Telegram (when the shopper's chat is already linked);
   // the reply does not wait for the messages to be sent.

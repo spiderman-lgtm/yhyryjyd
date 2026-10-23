@@ -110,6 +110,10 @@ export function findUserByGoogle(sub: string): User | null {
 export function mergeAnonymous(anonUid: string | undefined, userId: string) {
   if (!anonUid || anonUid === userId) return;
   write((d) => {
+    // A Telegram chat linked while signed out belongs to the account now, unless it already has one.
+    const tg = d.telegram.chats[anonUid];
+    if (tg && !d.telegram.chats[userId]) d.telegram.chats[userId] = tg;
+    if (tg) delete d.telegram.chats[anonUid];
     for (const a of Object.values(d.alerts)) if (a.uid === anonUid) a.uid = userId;
     for (const e of d.enquiries) if (e.uid === anonUid) e.uid = userId;
     const owned = new Set(Object.values(d.cart).filter((c) => c.uid === userId).map((c) => c.product_id));

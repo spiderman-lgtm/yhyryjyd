@@ -44,6 +44,12 @@ function links(alert: Alert, product: Product) {
   };
 }
 
+// The Telegram chat an alert goes to: the one saved on it, or the chat its owner linked to DealRadar since.
+// Someone who linked Telegram gets every alert there, including ones set before they linked it.
+function telegramChatFor(alert: Alert): string | null {
+  return alert.telegram_chat || read((d) => d.telegram.chats[alert.uid]?.chat ?? null);
+}
+
 function shell(body: string, footer: string) {
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:auto;color:#0f172a">
 <div style="font-size:20px;font-weight:bold;color:#ea580c;margin-bottom:12px">DealRadar</div>${body}
@@ -100,10 +106,10 @@ ${couponHtml}
     whatsapp_vars = Object.fromEntries(Object.entries(wa.variable_map).map(([key, src]) => [key, values[src] ?? '']));
   }
 
-  const telegram =
-    alert.channels.includes('telegram') && alert.telegram_chat
+  const tgChat = telegramChatFor(alert);
+  const telegram = tgChat
       ? {
-          chat: alert.telegram_chat,
+          chat: tgChat,
           text: [
             '🔥 PRICE DROP ALERT!',
             '',
@@ -296,10 +302,9 @@ function expiryNotification(alert: Alert, p: Product): Notification {
       'This is the last email about this product unless you extend.',
     ),
     whatsapp_vars: null,
-    telegram:
-      alert.channels.includes('telegram') && alert.telegram_chat
+    telegram: telegramChatFor(alert)
         ? {
-            chat: alert.telegram_chat,
+            chat: telegramChatFor(alert)!,
             text: [
               '⏰ Price watch ended',
               '',
