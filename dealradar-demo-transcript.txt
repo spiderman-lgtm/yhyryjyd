@@ -1,64 +1,76 @@
-DealRadar demo - transcript (cleaned)
-Source: 465a5a13-dealradar-demo_1.mp3 (3 min 50 s)
-Note: transcribed offline with PocketSphinx (low accuracy). Names and numbers were
-corrected from context. Words marked [?] are uncertain.
+DealRadar demo - exact narration script
+Source: https://app.trupeer.ai/view/6Rdq2uG2s/build-deal-radar-price-tracker
+Extracted from the Trupeer project data (timings are video positions).
 
-Hi, this is DealRadar, a price tracker built for Indian shoppers.
+[00:03.28 - 00:23.64] Step 1
+Hi, this is Deal Radar, a price tracker built for Indian shoppers. Paste any product link or just type what you are looking for and Deal Radar compares prices across Amazon, Flipkart, Myntra, Croma, and more than 20 other stores. Let me search for Boat Airdopes 141
 
-Paste a product link, or just type what you're looking for, and DealRadar compares
-prices across Amazon, Flipkart, Croma and more than twenty other stores.
+[00:23.64 - 00:52.48] Step 2
+In a few seconds, Deal Radar brings back the same earbuds from Flipkart, Amazon, Myntra, Reliance Digital, and BoAt's own store with ratings, key features, and the lowest price marked. Opening one shows the full comparison. The same earbuds are ₹799 on Amazon and Flipkart, eight ninety-nine on BoAt, and ₹1,099 on Myntra, so you know exactly where to buy
 
-Let me search for boAt Airdopes 141 [?].
+[00:52.48 - 01:05.22] Step 3
+Not ready to buy yet? Set a price drop alert. Deal Radar checks the price every 15 minutes and messages you on email, WhatsApp, or Telegram the moment it drops
 
-In a few seconds DealRadar brings back the same earbuds from Flipkart, Amazon,
-Myntra and boAt's own store, with ratings, key features and the lowest price
-marked.
+[01:05.22 - 01:20.92] Step 4
+Seconds later, the confirmation arrives. An email in Gmail with the product, today's price, and how long we will watch it, and a message on Telegram from our Deal Radar bot. Both are sent through via socket
 
-Opening one shows the full comparison. The same earbuds are 799 rupees on Amazon,
-899 on Flipkart and boAt, and 1,099 on Myntra. So you know exactly where to buy.
+[01:20.92 - 01:38.30] Step 5
+Already shopping on a store? The Deal Radar browser extension opens by itself on the product page. Here on Nyntra, the earbuds are 1099 rupees, and the extension instantly shows they are 799 on Amazon and Flipkart
 
-Not ready to buy yet? Set a price-drop alert. DealRadar checks the price every
-fifteen minutes and messages you on email, WhatsApp or Telegram the moment it
-drops.
+[01:38.30 - 01:47.56] Step 6
+That is ₹300 saved. Not buying today? Set a price drop alert right inside the extension with one tap
 
-Seconds later the confirmation arrives: an email in Gmail with the product,
-today's price and how long we will watch it, and a message on Telegram from our
-DealRadar bot, all sent through viaSocket.
+[01:47.56 - 02:05.14] Step 7
+All of that messaging runs on ViaSocket. Gmail, WhatsApp Business, and our Telegram bot each connect with a single click through the ViaSocket connect popup. No API keys to manage, no OAuth code, and no webhook servers to build
 
-Already shopping on a store? The DealRadar browser extension opens by itself on
-the product page. Here on Flipkart the earbuds are 1,099 rupees, and the
-extension instantly shows they're 799 on Amazon and boAt. That is 300 rupees
-saved.
+[02:05.14 - 02:20.94] Step 8
+To get the ViaSocket skill, we logged into ViaSocket, opened Embed, and picked our project. The setup page has a Copy AI skill button. One click copies the skill, and we paste it straight into Claude Code
 
-Not buying today? Set a price-drop alert right inside the extension with one tap.
+[02:20.94 - 02:40.72] Step 9
+In Claude Code, we pasted the skill and asked it to build Deal Radar. The skill points Claude Code to VS Socket's live instructions. It installed the VS Socket apps package, wrote the Gmail, WhatsApp, and Telegram integrations, and ran VS Socket's check script
 
-All of that messaging runs on viaSocket. Gmail, WhatsApp Business and our
-Telegram bot are connected in a single click through the viaSocket Connect
-pop-up. No OAuth IDs to manage, no [?] code, and no webhook servers to build.
+[02:40.72 - 02:57.58] Step 10
+Every app, action and trigger passed. In the code, it is the Via Socket SDK. A few lines describe each app, and one call creates the automation that checks prices every 15 minutes and sends the alerts through the connected accounts
 
-To get the viaSocket skill we logged into viaSocket [?], opened the Embarko [?]
-project. The skills page has a "Copy AI skill" button. One click copies the skill
-and we pasted it straight into Claude Code.
+[02:57.58 - 03:13.28] Step 11
+For hosting, we opened Embarco.ai and clicked Copy Deployment Prompt. That one prompt tells any AI agent how to ship an app to Embarco. We pasted it into Claude Code along with our Embarco token
 
-In Claude Code we pasted the skill and asked it to build DealRadar. A skill, in
-Claude Code, is a set of plain-text instructions [?]. It describes the viaSocket
-architecture, packages the Gmail, WhatsApp and Telegram integrations, and the
-viaSocket check script [?]. Every app action and trigger passed.
+[03:13.28 - 03:28.28] Step 12
+Cloud Code packaged Deal Radar, uploaded it to Embarco, and two minutes later it was live at dealradar.embarco.app. Every update since is one more deploy, 73 releases with zero servers to manage
 
-In the code is the viaSocket SDK. A few lines describe each app, and one call
-creates the automation that checks prices every fifteen minutes and sends the
-alerts to the connected accounts.
+[03:28.28 - 03:43.10] Step 13
+And Deal Radar keeps growing. Flash deals with live store prices, coupons, gift cards, and a browser extension. Deal Radar integrated with ViaSocket and hosted on Embargo
 
-For hosting we opened the Embarko site and clicked "Copy deployment prompt".
-That prompt tells any AI agent how to ship an app to Embarko. We pasted it into
-Claude Code along with our Embarko token. Claude Code packaged DealRadar and
-uploaded it to Embarko. Two minutes later it was live at dealradar.embarko [?].
+[03:43.10 - 03:45.82] Step 14
+Never overpay online again
 
-Every update since is one more pull: seventy-three releases with zero servers to
-manage.
 
-And DealRadar keeps growing: flash deals with live store prices, coupons, gift
-cards and a browser extension.
+=== Plain script (for recording your own voice) ===
 
-DealRadar: integrated with viaSocket and hosted on Embarko. Never overpay online
-again.
+Hi, this is Deal Radar, a price tracker built for Indian shoppers. Paste any product link or just type what you are looking for and Deal Radar compares prices across Amazon, Flipkart, Myntra, Croma, and more than 20 other stores. Let me search for Boat Airdopes 141
+
+In a few seconds, Deal Radar brings back the same earbuds from Flipkart, Amazon, Myntra, Reliance Digital, and BoAt's own store with ratings, key features, and the lowest price marked. Opening one shows the full comparison. The same earbuds are ₹799 on Amazon and Flipkart, eight ninety-nine on BoAt, and ₹1,099 on Myntra, so you know exactly where to buy
+
+Not ready to buy yet? Set a price drop alert. Deal Radar checks the price every 15 minutes and messages you on email, WhatsApp, or Telegram the moment it drops
+
+Seconds later, the confirmation arrives. An email in Gmail with the product, today's price, and how long we will watch it, and a message on Telegram from our Deal Radar bot. Both are sent through via socket
+
+Already shopping on a store? The Deal Radar browser extension opens by itself on the product page. Here on Nyntra, the earbuds are 1099 rupees, and the extension instantly shows they are 799 on Amazon and Flipkart
+
+That is ₹300 saved. Not buying today? Set a price drop alert right inside the extension with one tap
+
+All of that messaging runs on ViaSocket. Gmail, WhatsApp Business, and our Telegram bot each connect with a single click through the ViaSocket connect popup. No API keys to manage, no OAuth code, and no webhook servers to build
+
+To get the ViaSocket skill, we logged into ViaSocket, opened Embed, and picked our project. The setup page has a Copy AI skill button. One click copies the skill, and we paste it straight into Claude Code
+
+In Claude Code, we pasted the skill and asked it to build Deal Radar. The skill points Claude Code to VS Socket's live instructions. It installed the VS Socket apps package, wrote the Gmail, WhatsApp, and Telegram integrations, and ran VS Socket's check script
+
+Every app, action and trigger passed. In the code, it is the Via Socket SDK. A few lines describe each app, and one call creates the automation that checks prices every 15 minutes and sends the alerts through the connected accounts
+
+For hosting, we opened Embarco.ai and clicked Copy Deployment Prompt. That one prompt tells any AI agent how to ship an app to Embarco. We pasted it into Claude Code along with our Embarco token
+
+Cloud Code packaged Deal Radar, uploaded it to Embarco, and two minutes later it was live at dealradar.embarco.app. Every update since is one more deploy, 73 releases with zero servers to manage
+
+And Deal Radar keeps growing. Flash deals with live store prices, coupons, gift cards, and a browser extension. Deal Radar integrated with ViaSocket and hosted on Embargo
+
+Never overpay online again

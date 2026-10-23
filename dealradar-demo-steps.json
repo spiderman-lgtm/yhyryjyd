@@ -1,0 +1,158 @@
+{
+ "videoUrl": "https://cdn.trupeer.ai/trupeerstoragein-blob/trupeer-container1/6adb50aa7fd57e81df62715f/input.mp4",
+ "steps": [
+  {
+   "step": 1,
+   "startMs": 0,
+   "endMs": 2065,
+   "playbackSpeed": 1,
+   "audioDurationMs": 0,
+   "audioUrl": "",
+   "script": ""
+  },
+  {
+   "step": 2,
+   "startMs": 2065,
+   "endMs": 3279,
+   "playbackSpeed": 1,
+   "audioDurationMs": 0,
+   "audioUrl": "",
+   "script": ""
+  },
+  {
+   "step": 3,
+   "startMs": 3280,
+   "endMs": 23640,
+   "playbackSpeed": 1.0019685039370079,
+   "audioDurationMs": 20320,
+   "audioUrl": "https://trupeerstoragein.blob.core.windows.net/trupeer-container1/6adb50aa7fd57e81df62715f-mp3%2F2_e3f15016.mp3?t=1792758130",
+   "script": "Hi, this is Deal Radar, a price tracker built for Indian shoppers. Paste any product link or just type what you are looking for and Deal Radar compares prices across Amazon, Flipkart, Myntra, Croma, and more than 20 other stores. Let me search for Boat Airdopes 141"
+  },
+  {
+   "step": 4,
+   "startMs": 23641,
+   "endMs": 52480,
+   "playbackSpeed": 0.8542357819905213,
+   "audioDurationMs": 33760,
+   "audioUrl": "https://trupeerstoragein.blob.core.windows.net/trupeer-container1/6adb50aa7fd57e81df62715f-mp3%2F3_e3f15016.mp3?t=1792758131",
+   "script": "In a few seconds, Deal Radar brings back the same earbuds from Flipkart, Amazon, Myntra, Reliance Digital, and BoAt's own store with ratings, key features, and the lowest price marked. Opening one shows the full comparison. The same earbuds are \u20b9799 on Amazon and Flipkart, eight ninety-nine on BoAt, and \u20b91,099 on Myntra, so you know exactly where to buy"
+  },
+  {
+   "step": 5,
+   "startMs": 52480,
+   "endMs": 65220,
+   "playbackSpeed": 0.9769938650306749,
+   "audioDurationMs": 13040,
+   "audioUrl": "https://trupeerstoragein.blob.core.windows.net/trupeer-container1/6adb50aa7fd57e81df62715f-mp3%2F4_e3f15016.mp3?t=1792758131",
+   "script": "Not ready to buy yet? Set a price drop alert. Deal Radar checks the price every 15 minutes and messages you on email, WhatsApp, or Telegram the moment it drops"
+  },
+  {
+   "step": 6,
+   "startMs": 65221,
+   "endMs": 80920,
+   "playbackSpeed": 1.0274214659685863,
+   "audioDurationMs": 15280,
+   "audioUrl": "https://trupeerstoragein.blob.core.windows.net/trupeer-container1/6adb50aa7fd57e81df62715f-mp3%2F5_e3f15016.mp3?t=1792758131",
+   "script": "Seconds later, the confirmation arrives. An email in Gmail with the product, today's price, and how long we will watch it, and a message on Telegram from our Deal Radar bot. Both are sent through via socket"
+  },
+  {
+   "step": 7,
+   "startMs": 80921,
+   "endMs": 98300,
+   "playbackSpeed": 0.9166139240506329,
+   "audioDurationMs": 18960,
+   "audioUrl": "https://trupeerstoragein.blob.core.windows.net/trupeer-container1/6adb50aa7fd57e81df62715f-mp3%2F6_e3f15016.mp3?t=1792758131",
+   "script": "Already shopping on a store? The Deal Radar browser extension opens by itself on the product page. Here on Nyntra, the earbuds are 1099 rupees, and the extension instantly shows they are 799 on Amazon and Flipkart"
+  },
+  {
+   "step": 8,
+   "startMs": 98301,
+   "endMs": 107560,
+   "playbackSpeed": 1.0064130434782608,
+   "audioDurationMs": 9200,
+   "audioUrl": "https://trupeerstoragein.blob.core.windows.net/trupeer-container1/6adb50aa7fd57e81df62715f-mp3%2F7_e3f15016.mp3?t=1792758131",
+   "script": "That is \u20b9300 saved. Not buying today? Set a price drop alert right inside the extension with one tap"
+  },
+  {
+   "step": 9,
+   "startMs": 107561,
+   "endMs": 125140,
+   "playbackSpeed": 0.9942873303167421,
+   "audioDurationMs": 17680,
+   "audioUrl": "https://trupeerstoragein.blob.core.windows.net/trupeer-container1/6adb50aa7fd57e81df62715f-mp3%2F8_e3f15016.mp3?t=1792758130",
+   "script": "All of that messaging runs on ViaSocket. Gmail, WhatsApp Business, and our Telegram bot each connect with a single click through the ViaSocket connect popup. No API keys to manage, no OAuth code, and no webhook servers to build"
+  },
+  {
+   "step": 10,
+   "startMs": 125141,
+   "endMs": 140940,
+   "playbackSpeed": 1.0339659685863873,
+   "audioDurationMs": 15280,
+   "audioUrl": "https://trupeerstoragein.blob.core.windows.net/trupeer-container1/6adb50aa7fd57e81df62715f-mp3%2F9_e3f15016.mp3?t=1792758130",
+   "script": "To get the ViaSocket skill, we logged into ViaSocket, opened Embed, and picked our project. The setup page has a Copy AI skill button. One click copies the skill, and we paste it straight into Claude Code"
+  },
+  {
+   "step": 11,
+   "startMs": 140941,
+   "endMs": 160720,
+   "playbackSpeed": 0.9190985130111524,
+   "audioDurationMs": 21520,
+   "audioUrl": "https://trupeerstoragein.blob.core.windows.net/trupeer-container1/6adb50aa7fd57e81df62715f-mp3%2F10_e3f15016.mp3?t=1792758131",
+   "script": "In Claude Code, we pasted the skill and asked it to build Deal Radar. The skill points Claude Code to VS Socket's live instructions. It installed the VS Socket apps package, wrote the Gmail, WhatsApp, and Telegram integrations, and ran VS Socket's check script"
+  },
+  {
+   "step": 12,
+   "startMs": 160721,
+   "endMs": 177580,
+   "playbackSpeed": 0.8497479838709677,
+   "audioDurationMs": 19840,
+   "audioUrl": "https://trupeerstoragein.blob.core.windows.net/trupeer-container1/6adb50aa7fd57e81df62715f-mp3%2F11_e3f15016.mp3?t=1792758130",
+   "script": "Every app, action and trigger passed. In the code, it is the Via Socket SDK. A few lines describe each app, and one call creates the automation that checks prices every 15 minutes and sends the alerts through the connected accounts"
+  },
+  {
+   "step": 13,
+   "startMs": 177581,
+   "endMs": 193280,
+   "playbackSpeed": 0.9667467208571956,
+   "audioDurationMs": 16239,
+   "audioUrl": "https://trupeerstoragein.blob.core.windows.net/trupeer-container1/6adb50aa7fd57e81df62715f-mp3%2F12_e3f15016.mp3?t=1792758131",
+   "script": "For hosting, we opened Embarco.ai and clicked Copy Deployment Prompt. That one prompt tells any AI agent how to ship an app to Embarco. We pasted it into Claude Code along with our Embarco token"
+  },
+  {
+   "step": 14,
+   "startMs": 193281,
+   "endMs": 208280,
+   "playbackSpeed": 0.8483597285067873,
+   "audioDurationMs": 17680,
+   "audioUrl": "https://trupeerstoragein.blob.core.windows.net/trupeer-container1/6adb50aa7fd57e81df62715f-mp3%2F13_e3f15016.mp3?t=1792758131",
+   "script": "Cloud Code packaged Deal Radar, uploaded it to Embarco, and two minutes later it was live at dealradar.embarco.app. Every update since is one more deploy, 73 releases with zero servers to manage"
+  },
+  {
+   "step": 15,
+   "startMs": 208281,
+   "endMs": 223100,
+   "playbackSpeed": 1.0769622093023257,
+   "audioDurationMs": 13760,
+   "audioUrl": "https://trupeerstoragein.blob.core.windows.net/trupeer-container1/6adb50aa7fd57e81df62715f-mp3%2F14_e3f15016.mp3?t=1792758130",
+   "script": "And Deal Radar keeps growing. Flash deals with live store prices, coupons, gift cards, and a browser extension. Deal Radar integrated with ViaSocket and hosted on Embargo"
+  },
+  {
+   "step": 16,
+   "startMs": 223101,
+   "endMs": 225820,
+   "playbackSpeed": 1.2138392857142857,
+   "audioDurationMs": 2240,
+   "audioUrl": "https://trupeerstoragein.blob.core.windows.net/trupeer-container1/6adb50aa7fd57e81df62715f-mp3%2F15_e3f15016.mp3?t=1792758130",
+   "script": "Never overpay online again"
+  },
+  {
+   "step": 17,
+   "startMs": 225821,
+   "endMs": 230600,
+   "playbackSpeed": 1,
+   "audioDurationMs": 0,
+   "audioUrl": "",
+   "script": ""
+  }
+ ]
+}
