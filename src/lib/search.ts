@@ -1,6 +1,6 @@
 import 'server-only';
 import { affiliateUrl } from './coupons';
-import { queryFor, searchStore, searchTokens, storesForText, type Hit } from './storesearch';
+import { ACCESSORY, queryFor, searchStore, searchTokens, storesForText, type Hit } from './storesearch';
 
 export type SearchItem = {
   title: string;
@@ -19,14 +19,15 @@ export type SearchItem = {
 
 const cache = new Map<string, { at: number; items: SearchItem[] }>();
 
-// How much of what the shopper typed a listing contains, with the brand (first word) counting double.
+// How much of what the shopper typed a listing contains, with the brand (first word) and model numbers
+// (s24, 141, 4000) counting double.
 function relevance(q: string[], hit: Hit) {
   const words = new Set(searchTokens(`${hit.title} ${(hit.features ?? []).join(' ')}`));
   if (!q.length) return 0;
   let got = 0;
   let total = 0;
   q.forEach((t, i) => {
-    const w = i === 0 ? 2 : 1;
+    const w = i === 0 || /\d/.test(t) ? 2 : 1;
     total += w;
     if (words.has(t)) got += w;
   });
@@ -53,22 +54,31 @@ export async function keywordSearch(raw: string): Promise<SearchItem[]> {
   ).flat();
   // One line per search: how many results each store sent back.
   console.log(`[search] "${q}" ${seenStores.join(' ')}`);
-  const perStore = new Map<string, number>();
+  const wantsAccessory = ACCESSORY.test(q);
   const seen = new Set<string>();
-  const items = found
+  const ranked = found
     .filter((h) => h.price > 0 && h.title && h.url)
+    // A search for a phone should not fill up with its cases and chargers.
+    .filter((h) => wantsAccessory || !ACCESSORY.test(h.title))
     .map((h) => ({ h, match: relevance(qTokens, h) }))
     .filter((x) => x.match >= 0.35)
     .sort((a, b) => b.match - a.match || a.h.price - b.h.price)
     .filter(({ h }) => {
       const k = `${h.store}|${(h.name || h.title).toLowerCase().slice(0, 60)}`;
-      const n = perStore.get(h.store) ?? 0;
-      if (seen.has(k) || n >= 6) return false;
+      if (seen.has(k)) return false;
       seen.add(k);
-      perStore.set(h.store, n + 1);
       return true;
-    })
-    .slice(0, 20)
+    });
+  // Stores take turns, best result of each first, so every store that has the product shows up
+  // instead of the first few stores filling the page.
+  const byStore = new Map<string, typeof ranked>();
+  for (const x of ranked) byStore.set(x.h.store, [...(byStore.get(x.h.store) ?? []), x]);
+  const queues = [...byStore.values()].sort((a, b) => b[0].match - a[0].match);
+  const picked: typeof ranked = [];
+  for (let round = 0; round < 5 && picked.length < 24; round++)
+    for (const list of queues) if (list[round] && picked.length < 24) picked.push(list[round]);
+  const items = picked
+    .sort((a, b) => b.match - a.match || a.h.price - b.h.price)
     .map(({ h, match }) => ({
       title: (h.name || h.title).slice(0, 160),
       store: h.store,
