@@ -7,7 +7,7 @@ import { deliveryText, inr } from '@/lib/format';
 import { fetchOnce } from '@/lib/fetch-once';
 import StoreIcon from './StoreIcon';
 
-type Row = { store: string; price: number; href: string; here: boolean; variant?: boolean; delivery?: StoreOffer['delivery'] };
+type Row = { store: string; price: number; href: string; here: boolean; variant?: boolean; title?: string; delivery?: StoreOffer['delivery'] };
 
 
 export default function CompareList({ productId, store, price }: { productId: string; store: string; price: number }) {
@@ -18,35 +18,38 @@ export default function CompareList({ productId, store, price }: { productId: st
       .catch(() => setOffers([]));
   }, [productId]);
 
-  // The same item ranks above other sizes or colours, which are not a like-for-like price.
+  // Cheapest first. "Lowest price" is only ever the same item: another size or colour can be cheaper, and says so.
   const rows: Row[] = [
     { store, price, href: `/api/buy/${productId}`, here: true },
     ...(offers || [])
       .map((o, i) => ({ ...o, i }))
       .filter((o) => o.in_stock && o.delivery?.ok !== false)
-      .map((o) => ({ store: o.store, price: o.price, href: `/api/buy/${productId}?o=${o.i}`, here: false, variant: !o.same_variant, delivery: o.delivery })),
+      .map((o) => ({ store: o.store, price: o.price, href: `/api/buy/${productId}?o=${o.i}`, here: false, variant: !o.same_variant, title: o.title, delivery: o.delivery })),
   ];
-  const all = rows.sort((a, b) => Number(!!a.variant) - Number(!!b.variant) || a.price - b.price);
+  const all = rows.sort((a, b) => a.price - b.price || Number(!!a.variant) - Number(!!b.variant));
   const top = all.slice(0, 5);
   const hereRow = top.some((r) => r.here) ? null : all.find((r) => r.here)!;
-  const lowest = all[0];
+  const lowest = all.find((r) => !r.variant) ?? all[0];
+  const diff = (r: Row) => (r.price === lowest.price ? 'Same lowest price' : r.price > lowest.price ? `${inr(r.price - lowest.price)} more than lowest` : `${inr(lowest.price - r.price)} less`);
   const notHere = (offers || []).filter((o) => o.delivery?.ok === false);
 
   const Item = ({ r, i }: { r: Row; i: number }) => {
     const isLowest = r === lowest && all.length > 1;
+    const cheaperVariant = !!r.variant && r.price < lowest.price;
     return (
       <motion.li initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}>
-        <a href={r.href} target="_blank" rel="noopener" className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition hover:-translate-y-0.5 hover:shadow-md ${isLowest ? 'border-deal/40 bg-deal-light' : 'border-slate-200 bg-white'}`}>
+        <a href={r.href} target="_blank" rel="noopener" className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition hover:-translate-y-0.5 hover:shadow-md ${isLowest ? 'border-deal/40 bg-deal-light' : cheaperVariant ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'}`}>
           <StoreIcon store={r.store} className="h-8 w-8 rounded-lg text-sm" />
           <span className="min-w-0 flex-1">
             <span className="block font-semibold">{r.store}</span>
             <span className="block text-xs text-ink-mute">
-              {isLowest ? 'Lowest price' : r.here ? 'You are here' : `${inr(r.price - lowest.price)} more than lowest`}
-              {r.variant && ' · other colour/variant'}
+              {isLowest ? (all.some((x) => x.variant && x.price < r.price) ? 'Lowest for this exact item' : 'Lowest price') : cheaperVariant ? <b className="text-amber-700">Cheapest · other size/colour — check before buying</b> : r.here ? 'You are here' : diff(r)}
+              {r.variant && !cheaperVariant && ' · other size/colour'}
+              {r.variant && r.title && <span className="block truncate text-ink-soft">{r.title}</span>}
               {r.delivery && <span className="text-deal"> · {deliveryText(r.delivery)}</span>}
             </span>
           </span>
-          <span className={`font-bold ${isLowest ? 'text-deal' : ''}`}>{inr(r.price)} ›</span>
+          <span className={`font-bold ${isLowest ? 'text-deal' : cheaperVariant ? 'text-amber-700' : ''}`}>{inr(r.price)} ›</span>
         </a>
       </motion.li>
     );

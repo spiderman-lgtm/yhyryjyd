@@ -586,7 +586,7 @@ export async function searchStores(product: Product, pin: string | null = null):
         const best = scored.filter((x) => x.m.ok).sort((a, b) => b.m.score - a.m.score || a.h.price - b.h.price)[0];
         seen.push(`${s}:${hits.length}${best ? '✓' : ''}`);
         if (!best) return null;
-        const offer: StoreOffer = { store: best.h.store, price: Math.round(best.h.price), url: best.h.url, in_stock: best.h.in_stock, same_variant: best.m.same };
+        const offer: StoreOffer = { store: best.h.store, price: Math.round(best.h.price), url: best.h.url, in_stock: best.h.in_stock, same_variant: best.m.same, ...(best.m.same ? {} : { title: best.h.title.replace(/\s+/g, ' ').slice(0, 120) }) };
         if (pin && s === 'croma' && best.h.ref) offer.delivery = await cromaDelivery(best.h.ref, pin).catch(() => undefined);
         return offer;
       } catch (e) {

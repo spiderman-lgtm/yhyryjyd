@@ -103,6 +103,8 @@ export interface StoreOffer {
   url: string;
   in_stock: boolean;
   same_variant: boolean;
+  // The store's own name for a different size or colour, so the shopper can see what it is.
+  title?: string;
   // Whether the store delivers to the shopper's pincode, where the store can tell us.
   delivery?: { pin: string; ok: boolean; by: string | null };
 }
