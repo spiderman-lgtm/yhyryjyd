@@ -326,7 +326,7 @@ export default function AdminConsole(props: {
                       const tone = t.status === 'APPROVED' ? 'text-emerald-700' : t.status === 'REJECTED' ? 'text-red-600' : 'text-amber-700';
                       return (
                         <li key={k}>
-                          {k === 'confirm' ? '🎯 Tracking started' : '🔥 Price drop'} · <span className="font-mono text-xs">{t.name}</span> · <b className={tone}>{t.status}</b>
+                          {k === 'confirm' ? '🎯 Tracking started' : '🔥 Price drop'} · <span className="font-mono text-xs">{t.name}</span> · <b className={tone}>{t.status}</b>{t.category ? <span className="text-ink-mute"> · {t.category.toLowerCase()}</span> : null}{t.reason ? <span className="text-red-600"> · {t.reason}</span> : null}
                         </li>
                       );
                     })}

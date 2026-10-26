@@ -55,7 +55,8 @@ export async function POST(req: Request) {
           // Made on an earlier click: keep going and read its status below. Anything else (Meta refusing the
           // number's account, say) is shown in Admin.
           const msg = e instanceof Error ? e.message : String(e);
-          if (!/already exists|duplicate/i.test(msg)) throw new Error(`Creating “${t.name}” failed: ${msg}`);
+          // Meta answers a second creation of the same name with a category or language clash.
+          if (!/already exists|duplicate|already associated with this template|already .* content for this template/i.test(msg)) throw new Error(`Creating “${t.name}” failed: ${msg}`);
         }
         made[k] = { name: t.name, status: 'PENDING' };
       }
@@ -72,8 +73,12 @@ export async function POST(req: Request) {
         const r: any = await runOperatorAction(MSG91.service_id, m.auth_id, MSG91.list_templates.action_version_id, { number: m.number, template_name: name });
         const list: any[] = Array.isArray(r) ? r : Array.isArray(r?.data) ? r.data : Array.isArray(r?.templates) ? r.templates : r?.name ? [r] : [];
         const found = list.find((x) => x?.name === name);
-        const status = String(found?.languages?.[0]?.status ?? found?.status ?? (found ? 'PENDING' : 'NOT CREATED')).toUpperCase();
-        out[k] = { name, status, fields: status === 'APPROVED' ? await sendFields(m.auth_id, m.number, name) : undefined };
+        const lang = found?.languages?.find((l: any) => l?.language === 'en') ?? found?.languages?.[0];
+        const status = String(lang?.status ?? found?.status ?? (found ? 'PENDING' : 'NOT CREATED')).toUpperCase();
+        // MSG91 lists each template's variables as the send action's field names (body_1, body_2, …).
+        const listed: string[] = Array.isArray(lang?.variables) ? lang.variables.map(String) : [];
+        const fields = status === 'APPROVED' ? (listed.length ? listed : await sendFields(m.auth_id, m.number, name)) : undefined;
+        out[k] = { name, status, fields, category: found?.category, reason: lang?.rejection_reason && lang.rejection_reason !== 'NONE' ? String(lang.rejection_reason) : undefined };
       }
       write((d) => {
         d.settings.msg91 = { ...d.settings.msg91!, templates: out as { confirm: Msg91Template; drop: Msg91Template } };

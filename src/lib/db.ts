@@ -230,6 +230,8 @@ export interface Msg91Template {
   status: string; // APPROVED, PENDING, REJECTED, or what MSG91 answers
   // The send action's field for each {{n}} variable, in order, read from MSG91 once the template is approved.
   fields?: string[];
+  category?: string;
+  reason?: string;
 }
 
 // A WhatsApp template message through the operator's MSG91 number; vars fill {{1}}, {{2}}, … in order.
