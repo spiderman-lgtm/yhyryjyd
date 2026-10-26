@@ -52,8 +52,10 @@ export async function POST(req: Request) {
             body: { text: t.body, variable_examples: JSON.stringify(t.examples) },
           });
         } catch (e) {
-          // Made on an earlier click: keep going and read its status below.
-          if (!/already|exist|duplicate/i.test(e instanceof Error ? e.message : String(e))) throw e;
+          // Made on an earlier click: keep going and read its status below. Anything else (Meta refusing the
+          // number's account, say) is shown in Admin.
+          const msg = e instanceof Error ? e.message : String(e);
+          if (!/already exists|duplicate/i.test(msg)) throw new Error(`Creating “${t.name}” failed: ${msg}`);
         }
         made[k] = { name: t.name, status: 'PENDING' };
       }
