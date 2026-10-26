@@ -3,7 +3,7 @@ import path from 'path';
 
 export type Platform = 'amazon' | 'flipkart' | 'myntra' | 'ajio' | 'meesho' | 'croma' | 'tatacliq' | 'reliancedigital' | 'vijaysales' | 'nykaa' | 'jiomart' | 'other';
 export type Tier = 'urgent' | 'normal' | 'digest';
-export type Channel = 'email' | 'whatsapp' | 'telegram';
+export type Channel = 'email' | 'whatsapp' | 'telegram' | 'm91';
 
 export interface Product {
   id: string;
@@ -223,6 +223,14 @@ export interface Settings {
   // Which version of the automations' steps viaSocket has; an older one is rebuilt (see ensureFlowsCurrent).
   flows_steps?: number;
   flow_status?: Record<string, string>;
+  // What the owner's M91 alerts watch: when each schedule last ran, failed deliveries in a row per channel,
+  // since when a store has refused every price read, and which conditions are ringing now.
+  ops?: {
+    last_run?: Partial<Record<Tier, string>>;
+    delivery_streak?: Record<string, number>;
+    store_failing_since?: Record<string, string>;
+    open?: string[];
+  };
   offers_checked_at?: string;
 }
 

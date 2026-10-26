@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { write, type Tier } from '@/lib/db';
 import { automationKey } from '@/lib/flows';
 import { safeEqual } from '@/lib/viasocket';
+import { noteDeliveries } from '@/lib/ops-alerts';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,5 +22,7 @@ export async function POST(req: Request) {
     const sent = new Set([...email, ...telegram, ...whatsapp].filter((e) => e.ok).map((e) => e.id));
     for (const m of d.outbox) if (sent.has(m.id)) m.sent_at = new Date().toISOString();
   });
+  // Wakes the owner when one channel keeps failing (3 reports in a row with nothing delivered).
+  await noteDeliveries({ email, whatsapp, telegram });
   return NextResponse.json({ ok: true });
 }

@@ -1,6 +1,8 @@
 import 'server-only';
 import { historyFor, newId, read, write, type Alert, type OutboxMail, type Product, type Settings, type Tier, type WhatsAppNote, type Msg91Message } from './db';
 import { msg91Confirmation, msg91Drop, msg91Ready } from './msg91';
+import { noteRun, noteStoreReads } from './ops-alerts';
+import { alertShopper, shopperAlertsOn } from './m91';
 import { refreshProduct } from './products';
 import { compareStores } from './compare';
 import { catalogStale, refreshCatalog } from './catalog';
@@ -417,6 +419,7 @@ function digestNotification(email: string, items: { alert: Alert; product: Produ
 export async function runTier(tier: Tier) {
   const started = Date.now();
   const nowIso = () => new Date().toISOString();
+  noteRun(tier);
   const settings = read((d) => d.settings);
   const notifications: Notification[] = [];
 
@@ -444,12 +447,19 @@ export async function runTier(tier: Tier) {
     .filter((p): p is Product => !!p)
     .sort((a, b) => Date.parse(a.last_checked_at) - Date.parse(b.last_checked_at));
   let checked = 0;
+  // Per store: price reads that worked and that failed this run (a store refusing every one wakes the owner).
+  const reads: Record<string, { ok: number; failed: number }> = {};
   for (const p of productIds) {
     if (Date.now() - started > CHECK_BUDGET_MS) break;
     if (Date.now() - Date.parse(p.last_checked_at) < TIER_INFO[tier].minAgeMs) continue;
     await refreshProduct(p);
     checked++;
+    const store = PLATFORM_NAMES[p.platform];
+    const r = (reads[store] ??= { ok: 0, failed: 0 });
+    if (read((d) => d.products[p.id]?.last_error)) r.failed++;
+    else r.ok++;
   }
+  await noteStoreReads(reads);
 
   // Products people looked at in the last 2 weeks are re-checked every 6 hours too, so their
   // price graph keeps filling in. Page reads only: no AI credits are spent on these.
@@ -513,6 +523,7 @@ export async function runTier(tier: Tier) {
       const hit = evaluate(a, p);
       if (!hit) continue;
       notifications.push(dropNotification(a, p, hit.reference, hit.reason, settings));
+      if (a.channels.includes('m91') && a.phone) await ringShopper(a, p, hit.reference);
       write((d) => {
         d.alerts[a.id].last_notified_price = p.price;
         d.alerts[a.id].last_notified_at = nowIso();
@@ -524,6 +535,31 @@ export async function runTier(tier: Tier) {
   notifications.push(...claimOutbox(2 * 60_000));
 
   return { tier, checked, products: productIds.length, notifications, at: nowIso() };
+}
+
+// The shopper's phone rings on M91 (they accepted DealRadar's invite in the M91 app). One alert per price, so a
+// further drop rings again; either answer closes it.
+async function ringShopper(alert: Alert, p: Product, reference: number) {
+  if (!shopperAlertsOn()) return;
+  const l = links(alert, p);
+  const pct = Math.round(((reference - p.price) / reference) * 100);
+  try {
+    const sent = await alertShopper(alert.phone!, {
+      title: `Price drop: ${p.title.slice(0, 80)} is now ${inr(p.price)} (was ${inr(reference)})`,
+      description: `You save ${inr(reference - p.price)}${pct > 0 ? ` (${pct}% off)` : ''} on ${PLATFORM_NAMES[p.platform]}. Open the deal: ${l.buy}`,
+      severity: 'LOW',
+      customId: `drop-${alert.id}-${Math.round(p.price)}`,
+      responseOptions: [
+        { label: 'Open the deal', effect: 'SHARED' },
+        { label: 'Not now', effect: 'PERSONAL' },
+      ],
+      isAutoClose: true,
+      attachments: [l.buy],
+    });
+    if (!sent.delivered && !sent.deduplicated) console.error(`[m91] price drop for alert ${alert.id} reached nobody: the shopper has not accepted the M91 invite yet`);
+  } catch (e) {
+    console.error(`[m91] price drop for alert ${alert.id} not sent:`, e instanceof Error ? e.message : e);
+  }
 }
 
 export function createAlert(input: Omit<Alert, 'id' | 'created_at' | 'expires_at' | 'status' | 'last_notified_at' | 'last_notified_price'> & { id: string }): Alert {

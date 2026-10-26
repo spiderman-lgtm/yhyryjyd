@@ -5,6 +5,7 @@ import HeaderLocation from '@/components/HeaderLocation';
 import UserMenu from '@/components/UserMenu';
 import { currentUser } from '@/lib/auth';
 import { STORES } from '@/lib/stores';
+import { startOpsWatchdog } from '@/lib/ops-alerts';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -23,6 +24,7 @@ const NAV = [
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  startOpsWatchdog();
   const user = currentUser();
   // Signed-in shoppers find Gift cards in their account menu.
   const nav = user ? NAV.filter((n) => n.href !== '/gift-cards') : NAV;

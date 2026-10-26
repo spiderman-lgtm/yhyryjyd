@@ -7,6 +7,7 @@ import { sendQueuedMailNow } from '@/lib/flows';
 import { currentUid, currentUser } from '@/lib/auth';
 import { PLATFORM_NAMES } from '@/lib/scraper';
 import { appUrl } from '@/lib/config';
+import { inviteShopper, shopperAlertsOn } from '@/lib/m91';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,10 @@ export async function POST(req: Request) {
   const linkedChat = telegramBot() ? chatFor(uid) : null;
   const wantTelegram = (b.telegram === true || !!linkedChat) && !!telegramBot();
   if (wantTelegram) channels.push('telegram');
+  // "Ring my phone": M91 alerts the shopper's own number once they accept DealRadar's invite in the M91 app.
+  const wantM91 = b.m91 === true && shopperAlertsOn();
+  if (wantM91 && !phone) return NextResponse.json({ error: 'Enter your phone number to get a ring on M91.' }, { status: 400 });
+  if (wantM91) channels.push('m91');
 
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return NextResponse.json({ error: 'That email address does not look right.' }, { status: 400 });
   if (phone && (phone.length < 11 || phone.length > 15)) return NextResponse.json({ error: 'Enter the WhatsApp number with country code.' }, { status: 400 });
@@ -68,8 +73,11 @@ export async function POST(req: Request) {
     queueTelegram(alert.telegram_chat, t.text, t.url, t.image, t.label);
   } else if (wantTelegram) telegram = codeAndLink(uid);
   const whatsappConfirm = phone ? queueWhatsAppConfirmation(alert, product, read((d) => d.settings)) : false;
+  // The invite is what lets M91 reach this number; asking again for a number already invited is harmless.
+  let m91: { state: string; reachable: boolean } | null = null;
+  if (wantM91) m91 = await inviteShopper(phone).catch((e) => (console.error('[m91] invite failed:', e instanceof Error ? e.message : e), null));
   if (email || alert.telegram_chat || whatsappConfirm) sendQueuedMailNow().catch((e) => console.error('confirmation:', e instanceof Error ? e.message : e));
-  return NextResponse.json({ alert, confirmation: !!email, whatsapp_confirmation: whatsappConfirm, telegram_link: telegram?.link ?? null, telegram_code: telegram?.code ?? null, telegram_linked: !!alert.telegram_chat });
+  return NextResponse.json({ alert, confirmation: !!email, whatsapp_confirmation: whatsappConfirm, m91: m91 ? { reachable: m91.reachable, state: m91.state } : wantM91 ? { reachable: false, state: 'error' } : null, telegram_link: telegram?.link ?? null, telegram_code: telegram?.code ?? null, telegram_linked: !!alert.telegram_chat });
 }
 
 // The shopper's alerts with the product each one watches, and the contact they used last, so the

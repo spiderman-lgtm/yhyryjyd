@@ -3,6 +3,7 @@
 import Script from 'next/script';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import M91Setup from './M91Setup';
 import type { DeliveryLog, Enquiry, Settings, WhatsAppVarSource } from '@/lib/db';
 
 type AppKey = 'gmail' | 'whatsapp' | 'telegram' | 'msg91';
@@ -293,6 +294,8 @@ export default function AdminConsole(props: {
           </div>
         )}
       </section>
+
+      <M91Setup />
 
       <section className="card space-y-4 p-5">
         <div>

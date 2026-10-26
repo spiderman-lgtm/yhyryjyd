@@ -3,6 +3,7 @@ import type { Tier } from '@/lib/db';
 import { runTier } from '@/lib/alerts';
 import { automationKey, ensureFlowsCurrent } from '@/lib/flows';
 import { checkPendingMsg91 } from '@/lib/msg91-status';
+import { startOpsWatchdog } from '@/lib/ops-alerts';
 import { safeEqual } from '@/lib/viasocket';
 
 export const dynamic = 'force-dynamic';
@@ -19,5 +20,6 @@ export async function POST(req: Request) {
   void ensureFlowsCurrent();
   // WhatsApp switches to MSG91 by itself once Meta approves the templates.
   void checkPendingMsg91();
+  startOpsWatchdog();
   return NextResponse.json(await runTier(tier as Tier));
 }

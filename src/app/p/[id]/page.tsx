@@ -20,6 +20,7 @@ import { storeColor } from '@/lib/stores';
 import { isPin } from '@/lib/compare';
 import { giftCardFor } from '@/lib/storecoupons';
 import { telegramBot } from '@/lib/telegram';
+import { shopperAlertsOn } from '@/lib/m91';
 import { dateShort, inr } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -113,6 +114,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
           tracking={tracking}
           userEmail={user?.email ?? null}
           telegram={!!telegramBot()}
+          m91={shopperAlertsOn()}
         />
       </div>
 
