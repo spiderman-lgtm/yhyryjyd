@@ -2,6 +2,7 @@ import 'server-only';
 import { newId, read, write, type CouponCategory, type CouponSuggestion } from './db';
 import { PLATFORM_NAMES } from './scraper';
 import { cleanCoupon } from './storecoupons';
+import { askOffers } from './ops-alerts';
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
@@ -139,6 +140,7 @@ export function checkStoreOffers(force = false) {
     drafts.push(...productOffers());
     const added = addSuggestions(drafts);
     write((d) => void (d.settings.offers_checked_at = new Date().toISOString()));
+    if (added > 0) await askOffers(added, read((d) => Object.values(d.coupon_suggestions).filter((s) => s.status === 'pending').length));
     return { added, errors };
   })().finally(() => (running = null));
   return running;

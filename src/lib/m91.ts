@@ -22,6 +22,7 @@ export interface M91Alert {
   responseOptions: Option[];
   isAutoClose?: boolean;
   attachments?: string[];
+  callbackUrl?: string;
 }
 export interface M91Sent {
   _id: string;
@@ -87,6 +88,13 @@ export async function closeTeam(customId: string): Promise<void> {
     if (e instanceof M91Error && (e.status === 404 || e.status === 403)) return;
     throw e;
   }
+}
+
+// What was answered: decision is set only by a SHARED answer (Approve, Reject, I'll reply…).
+export async function readTeamAlert(id: string): Promise<{ status: string; decision: { label: string } | null }> {
+  const link = sendLink();
+  if (!link) throw new Error('M91 is not set up.');
+  return call(`${link}/alerts/${encodeURIComponent(id)}`);
 }
 
 // --- Shoppers, by their own phone number (API key) ---

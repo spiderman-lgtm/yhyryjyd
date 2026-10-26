@@ -49,9 +49,12 @@ export default function M91Setup() {
       <div className="rounded-xl border border-slate-200 p-4 text-sm">
         <p className="font-semibold">Your team gets a ring when…</p>
         <ul className="mt-1 list-disc space-y-0.5 pl-5 text-ink-soft">
-          <li>price checks stop running (shoppers stop getting alerts) → <i>I'll handle it · Seen</i></li>
-          <li>Email, WhatsApp or Telegram alerts keep failing to send → <i>I'll handle it · Seen</i></li>
-          <li>a store blocks DealRadar's price checks for 2 hours → <i>I'll handle it · Seen</i></li>
+          <li>price checks stop running for 45 minutes (shoppers stop getting alerts) → <i>I'll handle it · Seen</i></li>
+          <li>Email, WhatsApp or Telegram alerts fail to send 3 times in a row → <i>I'll reconnect · Seen</i></li>
+          <li>a store blocks DealRadar's price checks for 2 hours → <i>I'll look · Seen</i></li>
+          <li>a shopper sends an enquiry about a product → <i>I'll reply · Seen</i></li>
+          <li>a shopper suggests a coupon → <i>Approve · Reject</i> (your answer publishes or drops it)</li>
+          <li>new store offers are waiting for approval → <i>Review now · Later</i></li>
         </ul>
         <p className="mt-3 font-semibold">Shoppers get a ring when…</p>
         <ul className="mt-1 list-disc pl-5 text-ink-soft">

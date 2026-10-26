@@ -4,6 +4,8 @@ import { rateLimited } from '@/lib/ext';
 import { addSuggestions } from '@/lib/offerfeed';
 import { cleanCoupon } from '@/lib/storecoupons';
 import { storeDomain } from '@/lib/stores';
+import { read } from '@/lib/db';
+import { askCoupon } from '@/lib/ops-alerts';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,9 +29,10 @@ export async function POST(req: NextRequest) {
   });
   if ('error' in c) return NextResponse.json({ error: c.error.replace('Offer link must be', 'Add the offer link — it must be') }, { status: 400 });
   if (!c.code && !b.url) return NextResponse.json({ error: 'Add the coupon code, or a link to the offer.' }, { status: 400 });
-  addSuggestions([
+  const key = `shopper:${c.store.toLowerCase()}:${(c.code || c.title).toLowerCase()}`;
+  const added = addSuggestions([
     {
-      key: `shopper:${c.store.toLowerCase()}:${(c.code || c.title).toLowerCase()}`,
+      key,
       source: 'shopper',
       store: c.store,
       title: c.title,
@@ -43,5 +46,8 @@ export async function POST(req: NextRequest) {
       submitted_by: viewerUid() || null,
     },
   ]);
+  // The owner can approve or reject it straight from the phone (M91).
+  const s = added ? read((d) => Object.values(d.coupon_suggestions).find((x) => x.key === key && x.status === 'pending')) : null;
+  if (s) void askCoupon({ id: s.id, store: s.store, title: s.title, code: s.code, discount_text: s.discount_text, url: s.url });
   return NextResponse.json({ ok: true });
 }
