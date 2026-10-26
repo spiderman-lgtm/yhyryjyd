@@ -1,7 +1,7 @@
 import 'server-only';
 import { read, write, type Settings, type Tier } from './db';
 import { TIER_INFO } from './alerts';
-import { MSG91_TEMPLATES, msg91Ready } from './msg91';
+import { msg91Ready } from './msg91';
 import { appUrl } from './config';
 import { GMAIL, MSG91, TELEGRAM, WHATSAPP, WHATSAPP_NOTIFY, derivedKey, listConnections, listFlows, runFlow, upsertCronFlow, upsertWebhookFlow, type FlowStep } from './viasocket';
 
@@ -106,8 +106,8 @@ return { sent };`,
   if (tier !== 'digest' && m91?.number && msg91Ready(s)) {
     // Each template's {{n}} variables go into the send action's field for that variable, in order.
     const templates = {
-      confirm: { name: MSG91_TEMPLATES.confirm.name, fields: m91.templates!.confirm.fields },
-      drop: { name: MSG91_TEMPLATES.drop.name, fields: m91.templates!.drop.fields },
+      confirm: { name: m91.templates!.confirm.name, fields: m91.templates!.confirm.fields },
+      drop: { name: m91.templates!.drop.name, fields: m91.templates!.drop.fields },
     };
     list.push({
       stepname: 'send_msg91',

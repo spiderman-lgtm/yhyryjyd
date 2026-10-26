@@ -22,16 +22,26 @@ export async function refreshMsg91Templates() {
   if (!m?.number) throw new Error('Choose your MSG91 WhatsApp number first.');
   const out: Record<string, Msg91Template> = {};
   for (const k of KEYS) {
-    const name = MSG91_TEMPLATES[k].name;
-    const r: any = await runOperatorAction(MSG91.service_id, m.auth_id, MSG91.list_templates.action_version_id, { number: m.number, template_name: name });
-    const list: any[] = Array.isArray(r) ? r : Array.isArray(r?.data) ? r.data : r?.name ? [r] : [];
-    const found = list.find((x) => x?.name === name);
-    const lang = found?.languages?.find((l: any) => l?.language === 'en') ?? found?.languages?.[0];
-    const status = String(lang?.status ?? found?.status ?? (found ? 'PENDING' : 'NOT CREATED')).toUpperCase();
-    // MSG91 lists each template's variables as the send action's field names (body_1, body_2, …).
-    const listed: string[] = Array.isArray(lang?.variables) ? lang.variables.map(String) : [];
-    const fields = status === 'APPROVED' ? (listed.length ? listed : await sendFields(m.auth_id, m.number, name)) : undefined;
-    out[k] = { name, status, fields, category: found?.category, reason: lang?.rejection_reason && lang.rejection_reason !== 'NONE' ? String(lang.rejection_reason) : undefined };
+    // The current name first, then earlier versions: the first one Meta approved is used.
+    let best: Msg91Template | null = null;
+    for (const name of [MSG91_TEMPLATES[k].name, ...MSG91_TEMPLATES[k].also]) {
+      const r: any = await runOperatorAction(MSG91.service_id, m.auth_id, MSG91.list_templates.action_version_id, { number: m.number, template_name: name });
+      const list: any[] = Array.isArray(r) ? r : Array.isArray(r?.data) ? r.data : r?.name ? [r] : [];
+      const found = list.find((x) => x?.name === name);
+      if (!found) continue;
+      const lang = found.languages?.find((l: any) => l?.language === 'en') ?? found.languages?.[0];
+      const status = String(lang?.status ?? found.status ?? 'PENDING').toUpperCase();
+      // MSG91 lists each template's variables as the send action's field names (body_1, body_2, …).
+      const listed: string[] = Array.isArray(lang?.variables) ? lang.variables.map(String) : [];
+      const fields = status === 'APPROVED' ? (listed.length ? listed : await sendFields(m.auth_id, m.number, name)) : undefined;
+      const t: Msg91Template = { name, status, fields, category: found.category, reason: lang?.rejection_reason && lang.rejection_reason !== 'NONE' ? String(lang.rejection_reason) : undefined };
+      if (status === 'APPROVED') {
+        best = t;
+        break;
+      }
+      best ??= t;
+    }
+    out[k] = best ?? { name: MSG91_TEMPLATES[k].name, status: 'NOT CREATED' };
   }
   const wasReady = msg91Ready();
   write((d) => {
