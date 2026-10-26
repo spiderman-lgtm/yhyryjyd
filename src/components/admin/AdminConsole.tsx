@@ -248,6 +248,11 @@ export default function AdminConsole(props: {
       <section className="card space-y-4 p-5">
         <div>
           <h2 className="font-bold">2 · WhatsApp Business — sends price-drop WhatsApp messages</h2>
+          <p className="my-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            {settings.whatsapp?.message_template_id
+              ? 'WhatsApp alerts go out from your own WhatsApp Business number.'
+              : 'WhatsApp alerts already work without this: shoppers get the confirmation and price drops through viaSocket’s own WhatsApp (15 viaSocket credits per message). Connect WhatsApp Business only to send from your own number.'}
+          </p>
           <p className="text-sm text-ink-soft">
             Meta only lets a business start a WhatsApp chat with an approved template. Create a “price drop” template in WhatsApp Manager first, then pick it here and map its variables.
           </p>

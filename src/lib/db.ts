@@ -210,16 +210,26 @@ export interface Settings {
   // Why instant emails are not going out, when they are not (shown in Admin).
   mail_flow_error?: string | null;
   flows_activated_at: string | null;
+  // Which version of the automations' steps viaSocket has; an older one is rebuilt (see ensureFlowsCurrent).
+  flows_steps?: number;
   flow_status?: Record<string, string>;
   offers_checked_at?: string;
 }
 
 // A one-off email waiting to be sent through the operator's Gmail.
+export interface WhatsAppNote {
+  to: string;
+  title: string;
+  summary: string;
+}
+
 export interface OutboxMail {
   id: string;
   email: string | null;
   telegram?: { chat: string; text: string; url: string | null; image?: string | null; label?: string } | null;
   whatsapp?: { phone: string; template_id: string; vars: Record<string, string> } | null;
+  // Sent through viaSocket's own WhatsApp (no WhatsApp Business setup): a headline and one line of text.
+  whatsapp_note?: WhatsAppNote | null;
   subject: string;
   html: string;
   created_at: string;

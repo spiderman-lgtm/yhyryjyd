@@ -24,6 +24,14 @@ export const WHATSAPP = {
   send_template: { action_id: 'rowsd70emhii', action_version_id: 'rowj80xxlox1' },
 };
 
+// viaSocket's own WhatsApp: sends a headline and a line of text to any number, with no connection and no
+// WhatsApp Business account of ours. Each message costs viaSocket credits.
+export const WHATSAPP_NOTIFY = {
+  service_id: 'rowfgty2478l',
+  name: 'WhatsApp',
+  send_notification: { action_id: 'rowmpdudwfpw', action_version_id: 'rowi4rw7mtij' },
+};
+
 // The operator's own Telegram bot: sends alerts, and hears "/start" from shoppers to link their chat.
 export const TELEGRAM = {
   service_id: 'rows0luvn',

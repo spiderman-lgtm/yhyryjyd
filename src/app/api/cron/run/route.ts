@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { Tier } from '@/lib/db';
 import { runTier } from '@/lib/alerts';
-import { automationKey } from '@/lib/flows';
+import { automationKey, ensureFlowsCurrent } from '@/lib/flows';
 import { safeEqual } from '@/lib/viasocket';
 
 export const dynamic = 'force-dynamic';
@@ -14,5 +14,7 @@ export async function POST(req: Request) {
   }
   const { tier } = await req.json().catch(() => ({}));
   if (!['urgent', 'normal', 'digest'].includes(tier)) return NextResponse.json({ error: 'bad tier' }, { status: 400 });
+  // The first scheduled run after a release that changed the automations' steps rebuilds them.
+  void ensureFlowsCurrent();
   return NextResponse.json(await runTier(tier as Tier));
 }

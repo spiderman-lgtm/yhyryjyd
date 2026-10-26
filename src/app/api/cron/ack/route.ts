@@ -14,10 +14,11 @@ export async function POST(req: Request) {
     (Array.isArray(list) ? list : []).slice(0, 100).map((x: any) => ({ id: String(x?.id || ''), ok: !!x?.ok, ...(x?.error ? { error: String(x.error).slice(0, 300) } : {}) }));
   const email = clean(b.email);
   const telegram = clean(b.telegram);
+  const whatsapp = clean(b.whatsapp);
   write((d) => {
-    d.deliveries.push({ at: new Date().toISOString(), tier: b.tier === 'mail' ? 'mail' : (b.tier as Tier), email, whatsapp: clean(b.whatsapp), telegram });
-    // Queued one-off emails that went out are done; failed ones are retried on a later run.
-    const sent = new Set([...email, ...telegram].filter((e) => e.ok).map((e) => e.id));
+    d.deliveries.push({ at: new Date().toISOString(), tier: b.tier === 'mail' ? 'mail' : (b.tier as Tier), email, whatsapp, telegram });
+    // Queued one-off messages that went out are done; failed ones are retried on a later run.
+    const sent = new Set([...email, ...telegram, ...whatsapp].filter((e) => e.ok).map((e) => e.id));
     for (const m of d.outbox) if (sent.has(m.id)) m.sent_at = new Date().toISOString();
   });
   return NextResponse.json({ ok: true });

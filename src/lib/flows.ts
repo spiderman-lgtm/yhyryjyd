@@ -2,9 +2,12 @@ import 'server-only';
 import { read, write, type Settings, type Tier } from './db';
 import { TIER_INFO } from './alerts';
 import { appUrl } from './config';
-import { GMAIL, TELEGRAM, WHATSAPP, derivedKey, listConnections, listFlows, runFlow, upsertCronFlow, upsertWebhookFlow, type FlowStep } from './viasocket';
+import { GMAIL, TELEGRAM, WHATSAPP, WHATSAPP_NOTIFY, derivedKey, listConnections, listFlows, runFlow, upsertCronFlow, upsertWebhookFlow, type FlowStep } from './viasocket';
 
 export const automationKey = () => derivedKey('automation');
+
+// Bumped whenever buildSteps changes, so automations created by an older release are rebuilt once.
+const STEPS_VERSION = 2; // 2: WhatsApp through viaSocket's own WhatsApp
 
 // Each step is code that runs in viaSocket's VM. Values fixed for the operator are baked in with
 // JSON.stringify; values that change per run come from context.res of the earlier step.
@@ -75,6 +78,29 @@ return { sent };`,
     });
   }
 
+  if (tier !== 'digest') {
+    list.push({
+      stepname: 'send_whatsapp_note',
+      service_action_functions: [{ name: 'notifyWhatsApp', auth_id: 'NoAuth', action_id: WHATSAPP_NOTIFY.send_notification.action_id }],
+      code: `
+const d = context?.res?.check_prices;
+const due = (d && !d.error && Array.isArray(d.notifications)) ? d.notifications.filter((n) => n.whatsapp_note && n.whatsapp_note.to) : [];
+const sent = [];
+for (const n of due) {
+  try {
+    // The link is part of the text: the action's own link field breaks the message.
+    const r = await notifyWhatsApp({ inputData: { to: n.whatsapp_note.to, title: n.whatsapp_note.title, summary: n.whatsapp_note.summary } });
+    const failed = r && (r.error || r.hasError || (r.status && r.status >= 400));
+    sent.push(failed ? { id: n.id, ok: false, error: JSON.stringify(r.error || r).slice(0, 300) } : { id: n.id, ok: true });
+  } catch (e) {
+    sent.push({ id: n.id, ok: false, error: String((e && e.message) || e).slice(0, 300) });
+  }
+}
+console.log("### WhatsApp (viaSocket) sent: " + sent.filter((x) => x.ok).length + "/" + sent.length);
+return { sent };`,
+    });
+  }
+
   if (s.telegram) {
     list.push({
       stepname: 'send_telegram',
@@ -107,7 +133,7 @@ return { sent };`,
     service_action_functions: [],
     code: `
 const email = (context?.res?.send_emails && context.res.send_emails.sent) || [];
-const whatsapp = (context?.res?.send_whatsapp && context.res.send_whatsapp.sent) || [];
+const whatsapp = ((context?.res?.send_whatsapp && context.res.send_whatsapp.sent) || []).concat((context?.res?.send_whatsapp_note && context.res.send_whatsapp_note.sent) || []);
 const telegram = (context?.res?.send_telegram && context.res.send_telegram.sent) || [];
 if (!email.length && !whatsapp.length && !telegram.length) { console.log("### Nothing was sent this run"); return { reported: false }; }
 await axios.post(${base} + "/api/cron/ack", { tier: ${JSON.stringify(tier)}, email, whatsapp, telegram }, { headers: { "x-automation-key": ${key} }, timeout: 8000 });
@@ -148,8 +174,21 @@ export async function activateFlows() {
   if (s.gmail || s.telegram || s.whatsapp?.confirm_template_id) await ensureMailFlow(true);
   write((d) => {
     d.settings.flows_activated_at = new Date().toISOString();
+    d.settings.flows_steps = STEPS_VERSION;
   });
   return ids;
+}
+
+let updatingFlows: Promise<unknown> | null = null;
+
+// Rebuilds the automations once when they were made by an older release. A failure is retried on the next call.
+export async function ensureFlowsCurrent() {
+  const s = read((d) => d.settings);
+  if (s.flows_steps === STEPS_VERSION || !s.flows_activated_at) return;
+  updatingFlows ??= syncFlows()
+    .then((r) => r && !r.ok && console.error('[flows] update failed:', r.error))
+    .finally(() => (updatingFlows = null));
+  await updatingFlows;
 }
 
 let creatingMailFlow: Promise<string | null> | null = null;
@@ -210,6 +249,7 @@ async function buildMailFlow(): Promise<string | null> {
 
 // Asks viaSocket to send the queued emails now. If this fails, the next scheduled check sends them.
 export async function sendQueuedMailNow() {
+  await ensureFlowsCurrent();
   let id = await ensureMailFlow();
   if (!id) return false;
   try {
