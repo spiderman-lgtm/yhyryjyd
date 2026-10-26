@@ -335,7 +335,7 @@ export default function AdminConsole(props: {
                   <p className="mb-3 text-sm text-ink-mute">Not created yet.</p>
                 )}
                 <div className="flex flex-wrap gap-3">
-                  {!m91.templates && (
+                  {(!m91.templates || (['confirm', 'drop'] as const).some((k) => ['NOT CREATED', 'REJECTED'].includes(m91.templates![k].status))) && (
                     <button className="btn-dark" disabled={busy === 'm91t'} onClick={() => run('m91t', () => post('/api/admin/msg91', { op: 'templates' }), 'Templates sent to Meta for approval. Check their status in a few minutes.')}>Create the 2 templates</button>
                   )}
                   {m91.templates && (
