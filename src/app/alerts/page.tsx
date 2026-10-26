@@ -1,11 +1,24 @@
 import Link from 'next/link';
 import { currentUser, viewerUid } from '@/lib/auth';
 import AlertActions from '@/components/AlertActions';
+import AlertChannelChips, { type Chip, type ChannelKey } from '@/components/AlertChannelChips';
+import type { Alert } from '@/lib/db';
 import { read } from '@/lib/db';
 import { dateShort, inr } from '@/lib/format';
 import { linkFor } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
+
+// "+91 98765 43210" for an Indian number saved as 919876543210.
+const showPhone = (p: string) => (/^91\d{10}$/.test(p) ? `+91 ${p.slice(2, 7)} ${p.slice(7)}` : `+${p}`);
+
+// One chip per channel this alert has used, on or stopped, in a fixed order.
+function chipsFor(a: Alert): Chip[] {
+  const order: ChannelKey[] = ['email', 'whatsapp', 'telegram', 'm91'];
+  const used = new Set<string>([...a.channels, ...(a.stopped ?? [])]);
+  const detail = { email: a.email, whatsapp: a.phone ? showPhone(a.phone) : null, telegram: null, m91: a.m91_phone || a.phone ? showPhone((a.m91_phone || a.phone)!) : null };
+  return order.filter((c) => used.has(c)).map((c) => ({ channel: c, detail: detail[c], on: a.channels.includes(c) }));
+}
 
 const STATUS_STYLE = { active: 'bg-deal-light text-deal', expired: 'bg-slate-100 text-ink-mute', cancelled: 'bg-red-50 text-red-600' };
 
@@ -56,8 +69,9 @@ export default function AlertsPage({ searchParams }: { searchParams: { msg?: str
                   Now <b className="text-ink">{inr(p.price)}</b> · was {inr(a.baseline_price)}
                   {change !== 0 && <span className={change < 0 ? 'text-deal' : 'text-red-600'}> ({change < 0 ? '▼' : '▲'} {inr(Math.abs(change))})</span>}
                   {' · '}alert on {a.target_price ? `≤ ${inr(a.target_price)} or ` : ''}{a.drop_percent ? `${a.drop_percent}%+ drop` : 'any drop'}
-                  {' · '}via {a.channels.join(' + ')}
+                  {a.status !== 'active' && <>{' · '}via {a.channels.join(' + ')}</>}
                 </div>
+                {a.status === 'active' && <AlertChannelChips id={a.id} chips={chipsFor(a)} />}
                 {tgLink && a.status === 'active' && a.channels.includes('telegram') && !a.telegram_chat && (
                   <a href={tgLink} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#229ED9] hover:underline">✈️ Connect Telegram — press Start in the bot</a>
                 )}

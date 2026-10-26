@@ -76,7 +76,7 @@ export async function POST(req: Request) {
   let telegram: { code: string; link: string } | null = null;
   if (wantTelegram && alert.telegram_chat) {
     const t = confirmationTelegram(alert, product);
-    queueTelegram(alert.telegram_chat, t.text, t.url, t.image, t.label);
+    queueTelegram(alert.telegram_chat, t.text, t.url, t.image, t.label, t.stop);
   } else if (wantTelegram) telegram = codeAndLink(uid);
   const whatsappConfirm = phone ? queueWhatsAppConfirmation(alert, product, read((d) => d.settings)) : false;
   // The invite is what lets M91 reach this number; asking again for a number already invited is harmless.

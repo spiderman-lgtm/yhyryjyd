@@ -51,6 +51,8 @@ export interface Alert {
   telegram_chat?: string | null;
   // The number M91 rings for the "most urgent" alert (may differ from the WhatsApp number).
   m91_phone?: string | null;
+  // Channels the shopper stopped for this alert on My alerts (moved out of channels, kept to turn back on).
+  stopped?: Channel[];
   last_notified_price: number | null;
   last_notified_at: string | null;
   created_at: string;
@@ -262,7 +264,7 @@ export interface WhatsAppNote {
 export interface OutboxMail {
   id: string;
   email: string | null;
-  telegram?: { chat: string; text: string; url: string | null; image?: string | null; label?: string } | null;
+  telegram?: { chat: string; text: string; url: string | null; image?: string | null; label?: string; stop?: string | null } | null;
   whatsapp?: { phone: string; template_id: string; vars: Record<string, string> } | null;
   // Sent through viaSocket's own WhatsApp (no WhatsApp Business setup): a headline and one line of text.
   whatsapp_note?: WhatsAppNote | null;

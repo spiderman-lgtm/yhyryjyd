@@ -8,7 +8,7 @@ import { GMAIL, MSG91, TELEGRAM, WHATSAPP, WHATSAPP_NOTIFY, derivedKey, listConn
 export const automationKey = () => derivedKey('automation');
 
 // Bumped whenever buildSteps changes, so automations created by an older release are rebuilt once.
-const STEPS_VERSION = 3; // 2: WhatsApp through viaSocket's own WhatsApp; 3: through the operator's MSG91
+const STEPS_VERSION = 4; // 2: WhatsApp through viaSocket's own WhatsApp; 3: through the operator's MSG91; 4: Telegram stop button
 
 // Each step is code that runs in viaSocket's VM. Values fixed for the operator are baked in with
 // JSON.stringify; values that change per run come from context.res of the earlier step.
@@ -143,7 +143,11 @@ const due = (d && !d.error && Array.isArray(d.notifications)) ? d.notifications.
 const sent = [];
 for (const n of due) {
   try {
-    const buttons = n.telegram.url ? { inline_buttons: { [n.telegram.label || "Open in DealRadar"]: n.telegram.url } } : {};
+    // One button per link; a price alert's messages also carry "Stop this alert".
+    const links = {};
+    if (n.telegram.url) links[n.telegram.label || "Open in DealRadar"] = n.telegram.url;
+    if (n.telegram.stop) links["🔕 Stop this alert"] = n.telegram.stop;
+    const buttons = Object.keys(links).length ? { inline_buttons: links } : {};
     // With a product photo the message is a picture with the text as its caption (Telegram allows 1,024 characters).
     const photo = n.telegram.image && /^https:/.test(n.telegram.image) && n.telegram.text.length <= 1000;
     const r = await sendTelegram({ inputData: photo

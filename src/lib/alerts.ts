@@ -1,5 +1,5 @@
 import 'server-only';
-import { historyFor, newId, read, write, type Alert, type OutboxMail, type Product, type Settings, type Tier, type WhatsAppNote, type Msg91Message } from './db';
+import { historyFor, newId, read, write, type Alert, type OutboxMail, type Product, type Settings, type Tier, type WhatsAppNote, type Msg91Message, type Channel } from './db';
 import { msg91Confirmation, msg91Drop, msg91Ready } from './msg91';
 import { noteRun, noteStoreReads } from './ops-alerts';
 import { alertShopper, shopperAlertsOn } from './m91';
@@ -33,7 +33,7 @@ export interface Notification {
   whatsapp_vars: Record<string, string> | null;
   // Set for a template other than the price-drop one (the confirmation).
   whatsapp_template?: string | null;
-  telegram: { chat: string; text: string; url: string | null; image?: string | null; label?: string } | null;
+  telegram: { chat: string; text: string; url: string | null; image?: string | null; label?: string; stop?: string | null } | null;
   whatsapp_note?: WhatsAppNote | null;
   msg91?: Msg91Message | null;
 }
@@ -58,8 +58,40 @@ function links(alert: Alert, product: Product) {
 
 // The Telegram chat an alert goes to: the one saved on it, or the chat its owner linked to DealRadar since.
 // Someone who linked Telegram gets every alert there, including ones set before they linked it.
+// Telegram the shopper stopped for this alert on My alerts stays stopped.
 function telegramChatFor(alert: Alert): string | null {
-  return alert.telegram_chat || read((d) => d.telegram.chats[alert.uid]?.chat ?? null);
+  if (alert.stopped?.includes('telegram')) return null;
+  return linkedTelegram(alert);
+}
+
+const linkedTelegram = (alert: Alert) => alert.telegram_chat || read((d) => d.telegram.chats[alert.uid]?.chat ?? null);
+
+// Stops one channel of an alert, or turns it back on (when its address is still known). Stopping the last one
+// stops the alert. Returns an error message when a channel cannot be turned on.
+export function setAlertChannel(id: string, channel: Channel, on: boolean): { alert: Alert } | { error: string } {
+  const a = read((d) => d.alerts[id]);
+  if (!a || a.status !== 'active') return { error: 'This alert is not active.' };
+  if (on) {
+    const reachable = { email: !!a.email, whatsapp: !!a.phone, telegram: !!linkedTelegram(a), m91: !!(a.m91_phone || a.phone) }[channel];
+    if (!reachable) return { error: channel === 'telegram' ? 'Connect Telegram again from a new alert first.' : 'That address is not saved for this alert.' };
+  }
+  const alert = write((d) => {
+    const x = d.alerts[id];
+    const channels = new Set(x.channels);
+    const stopped = new Set(x.stopped ?? []);
+    if (on) {
+      channels.add(channel);
+      stopped.delete(channel);
+    } else {
+      channels.delete(channel);
+      stopped.add(channel);
+    }
+    x.channels = [...channels];
+    x.stopped = [...stopped];
+    if (!x.channels.length) x.status = 'cancelled';
+    return x;
+  });
+  return { alert };
 }
 
 // Emoji built when the message is sent. Written as plain text in a line on its own, the build's minifier
@@ -142,6 +174,7 @@ ${couponHtml}
           url: l.buy,
           image: p.image,
           label: `🛒 Buy now at ${inr(p.price)}`,
+          stop: l.stop,
         }
       : null;
 
@@ -226,7 +259,7 @@ export function resetEmail(name: string, link: string): { subject: string; html:
 }
 
 // The Telegram version of the confirmation.
-export function confirmationTelegram(alert: Alert, p: Product): { text: string; url: string; image: string | null; label: string } {
+export function confirmationTelegram(alert: Alert, p: Product): { text: string; url: string; image: string | null; label: string; stop: string } {
   const rule = alert.drop_percent > 0 ? `drops by ${alert.drop_percent}% or more` : 'any price drop';
   const until = new Date(alert.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   const off = p.mrp && p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
@@ -248,6 +281,7 @@ export function confirmationTelegram(alert: Alert, p: Product): { text: string; 
     url: links(alert, p).page,
     image: p.image,
     label: '📈 See price history',
+    stop: links(alert, p).stop,
   };
 }
 
@@ -298,8 +332,8 @@ export function queueWhatsAppConfirmation(alert: Alert, p: Product, settings: Se
   return true;
 }
 
-export function queueTelegram(chat: string, text: string, url: string | null, image: string | null = null, label?: string): OutboxMail {
-  const m: OutboxMail = { id: newId('m'), email: null, telegram: { chat, text, url, image, label }, subject: '', html: '', created_at: new Date().toISOString(), claimed_at: null, sent_at: null, tries: 0 };
+export function queueTelegram(chat: string, text: string, url: string | null, image: string | null = null, label?: string, stop?: string): OutboxMail {
+  const m: OutboxMail = { id: newId('m'), email: null, telegram: { chat, text, url, image, label, stop: stop ?? null }, subject: '', html: '', created_at: new Date().toISOString(), claimed_at: null, sent_at: null, tries: 0 };
   write((d) => {
     d.outbox.push(m);
   });
@@ -432,7 +466,7 @@ export async function runTier(tier: Tier) {
     write((d) => {
       d.alerts[a.id].status = 'expired';
     });
-    if (p && a.email) notifications.push(expiryNotification(a, p));
+    if (p && a.email && a.channels.includes('email')) notifications.push(expiryNotification(a, p));
   }
 
   // Alerts made on the 2-hour setting moved to the 15-minute check, which now covers every price alert.
