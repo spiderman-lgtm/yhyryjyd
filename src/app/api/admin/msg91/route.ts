@@ -1,23 +1,14 @@
 import { NextResponse } from 'next/server';
 import { guard, errorJson } from '@/lib/admin-guard';
 import { read, write, type Msg91Template } from '@/lib/db';
-import { MSG91, listOptions, runOperatorAction } from '@/lib/viasocket';
-import { MSG91_TEMPLATES, msg91Ready, type Msg91TemplateKey } from '@/lib/msg91';
-import { syncFlows } from '@/lib/flows';
+import { MSG91, runOperatorAction } from '@/lib/viasocket';
+import { MSG91_TEMPLATES, type Msg91TemplateKey } from '@/lib/msg91';
+import { refreshMsg91Templates } from '@/lib/msg91-status';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const KEYS: Msg91TemplateKey[] = ['confirm', 'drop'];
-
-// The send action's field for each {{n}} of a template, in order. MSG91 builds these fields from the
-// approved template, so they can only be read once Meta has approved it.
-async function sendFields(authId: string, number: string, name: string): Promise<string[]> {
-  const opts: any[] = await listOptions(MSG91.send_template.action_version_id, 'components', { integrated_number: number, name }, authId);
-  const keys = opts.map((o) => String(o?.key ?? o?.value ?? '')).filter(Boolean);
-  const n = (k: string) => Number((k.match(/(\d+)(?!.*\d)/) || [])[1] ?? 0);
-  return keys.sort((a, b) => n(a) - n(b));
-}
 
 // Admin's MSG91 setup: pick the WhatsApp number, create the two templates, check Meta's approval, send a test.
 export async function POST(req: Request) {
@@ -67,25 +58,8 @@ export async function POST(req: Request) {
     }
 
     if (b.op === 'status') {
-      const out: Record<string, Msg91Template> = {};
-      for (const k of KEYS) {
-        const name = MSG91_TEMPLATES[k].name;
-        const r: any = await runOperatorAction(MSG91.service_id, m.auth_id, MSG91.list_templates.action_version_id, { number: m.number, template_name: name });
-        const list: any[] = Array.isArray(r) ? r : Array.isArray(r?.data) ? r.data : Array.isArray(r?.templates) ? r.templates : r?.name ? [r] : [];
-        const found = list.find((x) => x?.name === name);
-        const lang = found?.languages?.find((l: any) => l?.language === 'en') ?? found?.languages?.[0];
-        const status = String(lang?.status ?? found?.status ?? (found ? 'PENDING' : 'NOT CREATED')).toUpperCase();
-        // MSG91 lists each template's variables as the send action's field names (body_1, body_2, …).
-        const listed: string[] = Array.isArray(lang?.variables) ? lang.variables.map(String) : [];
-        const fields = status === 'APPROVED' ? (listed.length ? listed : await sendFields(m.auth_id, m.number, name)) : undefined;
-        out[k] = { name, status, fields, category: found?.category, reason: lang?.rejection_reason && lang.rejection_reason !== 'NONE' ? String(lang.rejection_reason) : undefined };
-      }
-      write((d) => {
-        d.settings.msg91 = { ...d.settings.msg91!, templates: out as { confirm: Msg91Template; drop: Msg91Template } };
-      });
-      // Both approved: the automations start sending through MSG91.
-      const schedules = msg91Ready() ? await syncFlows() : null;
-      return NextResponse.json({ ok: true, templates: out, ready: msg91Ready(), schedules });
+      const r = await refreshMsg91Templates();
+      return NextResponse.json({ ok: true, ...r });
     }
 
     if (b.op === 'test') {

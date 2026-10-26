@@ -210,6 +210,8 @@ export interface Settings {
     auth_id: string;
     number: string | null;
     templates?: { confirm: Msg91Template; drop: Msg91Template } | null;
+    // When Meta's verdict on the templates was last read (looked at again every 10 minutes while pending).
+    checked_at?: string;
     error?: string | null;
   } | null;
   flows: Partial<Record<Tier, string>>;
