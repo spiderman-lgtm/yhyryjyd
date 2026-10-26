@@ -3,6 +3,8 @@ import { historyFor, newId, read, write, type Alert, type OutboxMail, type Produ
 import { msg91Confirmation, msg91Drop, msg91Ready } from './msg91';
 import { noteRun, noteStoreReads } from './ops-alerts';
 import { alertShopper, shopperAlertsOn } from './m91';
+import { appUrl as appBase } from './config';
+import { derivedKey } from './viasocket';
 import { refreshProduct } from './products';
 import { compareStores } from './compare';
 import { catalogStale, refreshCatalog } from './catalog';
@@ -538,7 +540,8 @@ export async function runTier(tier: Tier) {
 }
 
 // The shopper's phone rings on M91 (they accepted DealRadar's invite in the M91 app). One alert per price, so a
-// further drop rings again; either answer closes it.
+// further drop rings again; any answer closes it. "Stop this alert" ends the DealRadar alert (see /api/m91/callback).
+export const STOP_LABEL = 'Stop this alert';
 async function ringShopper(alert: Alert, p: Product, reference: number) {
   if (!shopperAlertsOn()) return;
   const l = links(alert, p);
@@ -552,9 +555,11 @@ async function ringShopper(alert: Alert, p: Product, reference: number) {
       responseOptions: [
         { label: 'Open the deal', effect: 'SHARED' },
         { label: 'Not now', effect: 'PERSONAL' },
+        { label: STOP_LABEL, effect: 'SHARED' },
       ],
       isAutoClose: true,
       attachments: [l.buy],
+      callbackUrl: `${appBase()}/api/m91/callback?k=${derivedKey('m91-callback')}`,
     });
     if (!sent.delivered && !sent.deduplicated) console.error(`[m91] price drop for alert ${alert.id} reached nobody: the shopper has not accepted the M91 invite yet`);
   } catch (e) {

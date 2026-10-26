@@ -58,7 +58,7 @@ export default function M91Setup() {
         </ul>
         <p className="mt-3 font-semibold">Shoppers get a ring when…</p>
         <ul className="mt-1 list-disc pl-5 text-ink-soft">
-          <li>a product they track drops in price, if they ticked “Ring my phone when it drops” → <i>Open the deal · Not now</i></li>
+          <li>a product they track drops in price, if they turned on the most urgent alert → <i>Open the deal · Not now · Stop this alert</i></li>
         </ul>
       </div>
 

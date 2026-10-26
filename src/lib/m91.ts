@@ -109,6 +109,10 @@ export async function alertShopper(phone: string, a: M91Alert): Promise<M91Sent>
   return post<M91Sent>(`${API}/alerts`, { ...a, phone }, auth());
 }
 
+export async function readShopperAlert(phone: string, id: string): Promise<{ status: string; decision: { label: string } | null }> {
+  return call(`${API}/alerts/${encodeURIComponent(id)}?phone=${encodeURIComponent(phone)}`, { headers: auth() });
+}
+
 export async function apiKeyOwner(): Promise<{ phone: string }> {
   const d = await call<{ owner: { phone: string } }>(`${API}/me`, { headers: auth() });
   return d.owner;
