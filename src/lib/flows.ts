@@ -1,13 +1,14 @@
 import 'server-only';
 import { read, write, type Settings, type Tier } from './db';
 import { TIER_INFO } from './alerts';
+import { MSG91_TEMPLATES, msg91Ready } from './msg91';
 import { appUrl } from './config';
-import { GMAIL, TELEGRAM, WHATSAPP, WHATSAPP_NOTIFY, derivedKey, listConnections, listFlows, runFlow, upsertCronFlow, upsertWebhookFlow, type FlowStep } from './viasocket';
+import { GMAIL, MSG91, TELEGRAM, WHATSAPP, WHATSAPP_NOTIFY, derivedKey, listConnections, listFlows, runFlow, upsertCronFlow, upsertWebhookFlow, type FlowStep } from './viasocket';
 
 export const automationKey = () => derivedKey('automation');
 
 // Bumped whenever buildSteps changes, so automations created by an older release are rebuilt once.
-const STEPS_VERSION = 2; // 2: WhatsApp through viaSocket's own WhatsApp
+const STEPS_VERSION = 3; // 2: WhatsApp through viaSocket's own WhatsApp; 3: through the operator's MSG91
 
 // Each step is code that runs in viaSocket's VM. Values fixed for the operator are baked in with
 // JSON.stringify; values that change per run come from context.res of the earlier step.
@@ -101,6 +102,37 @@ return { sent };`,
     });
   }
 
+  const m91 = s.msg91;
+  if (tier !== 'digest' && m91?.number && msg91Ready(s)) {
+    // Each template's {{n}} variables go into the send action's field for that variable, in order.
+    const templates = {
+      confirm: { name: MSG91_TEMPLATES.confirm.name, fields: m91.templates!.confirm.fields },
+      drop: { name: MSG91_TEMPLATES.drop.name, fields: m91.templates!.drop.fields },
+    };
+    list.push({
+      stepname: 'send_msg91',
+      service_action_functions: [{ name: 'sendMsg91', auth_id: m91.auth_id, action_id: MSG91.send_template.action_id }],
+      code: `
+const d = context?.res?.check_prices;
+const due = (d && !d.error && Array.isArray(d.notifications)) ? d.notifications.filter((n) => n.msg91 && n.msg91.to) : [];
+const TEMPLATES = ${JSON.stringify(templates)};
+const sent = [];
+for (const n of due) {
+  try {
+    const t = TEMPLATES[n.msg91.template];
+    const components = Object.fromEntries(t.fields.map((key, i) => [key, n.msg91.vars[i] ?? "-"]));
+    const r = await sendMsg91({ inputData: { integrated_number: ${JSON.stringify(m91.number)}, name: t.name, components, to: n.msg91.to } });
+    const failed = r && (r.hasError || r.error || (r.status && Number(r.status) >= 400));
+    sent.push(failed ? { id: n.id, ok: false, error: JSON.stringify(r.errors || r.error || r).slice(0, 300) } : { id: n.id, ok: true });
+  } catch (e) {
+    sent.push({ id: n.id, ok: false, error: String((e && e.message) || e).slice(0, 300) });
+  }
+}
+console.log("### WhatsApp (MSG91) sent: " + sent.filter((x) => x.ok).length + "/" + sent.length);
+return { sent };`,
+    });
+  }
+
   if (s.telegram) {
     list.push({
       stepname: 'send_telegram',
@@ -133,7 +165,7 @@ return { sent };`,
     service_action_functions: [],
     code: `
 const email = (context?.res?.send_emails && context.res.send_emails.sent) || [];
-const whatsapp = ((context?.res?.send_whatsapp && context.res.send_whatsapp.sent) || []).concat((context?.res?.send_whatsapp_note && context.res.send_whatsapp_note.sent) || []);
+const whatsapp = ["send_whatsapp", "send_whatsapp_note", "send_msg91"].flatMap((k) => (context?.res?.[k] && context.res[k].sent) || []);
 const telegram = (context?.res?.send_telegram && context.res.send_telegram.sent) || [];
 if (!email.length && !whatsapp.length && !telegram.length) { console.log("### Nothing was sent this run"); return { reported: false }; }
 await axios.post(${base} + "/api/cron/ack", { tier: ${JSON.stringify(tier)}, email, whatsapp, telegram }, { headers: { "x-automation-key": ${key} }, timeout: 8000 });

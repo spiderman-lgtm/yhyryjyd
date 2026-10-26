@@ -25,6 +25,7 @@ export async function POST(req: Request) {
   }
   write((d) => {
     if (app === 'gmail') d.settings.gmail = { auth_id: authId, from: d.settings.gmail?.from ?? null };
+    else if (app === 'msg91') d.settings.msg91 = d.settings.msg91?.auth_id === authId ? d.settings.msg91 : { auth_id: authId, number: null, templates: null };
     else if (app === 'telegram')
       d.settings.telegram = { auth_id: authId, bot: d.settings.telegram?.bot ?? null, subscription: d.settings.telegram?.subscription ?? null, error: null };
     else

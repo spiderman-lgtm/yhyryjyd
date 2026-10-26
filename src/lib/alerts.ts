@@ -1,5 +1,6 @@
 import 'server-only';
-import { historyFor, newId, read, write, type Alert, type OutboxMail, type Product, type Settings, type Tier, type WhatsAppNote } from './db';
+import { historyFor, newId, read, write, type Alert, type OutboxMail, type Product, type Settings, type Tier, type WhatsAppNote, type Msg91Message } from './db';
+import { msg91Confirmation, msg91Drop, msg91Ready } from './msg91';
 import { refreshProduct } from './products';
 import { compareStores } from './compare';
 import { catalogStale, refreshCatalog } from './catalog';
@@ -30,6 +31,7 @@ export interface Notification {
   whatsapp_template?: string | null;
   telegram: { chat: string; text: string; url: string | null; image?: string | null; label?: string } | null;
   whatsapp_note?: WhatsAppNote | null;
+  msg91?: Msg91Message | null;
 }
 
 // viaSocket's WhatsApp sends the text inside a WhatsApp template, which rejects line breaks.
@@ -139,10 +141,21 @@ ${couponHtml}
         }
       : null;
 
+  const wantsWhatsApp = alert.channels.includes('whatsapp') && !!alert.phone && !whatsapp_vars;
+  const viaMsg91 = wantsWhatsApp && msg91Ready(settings);
+  const msg91 = viaMsg91
+    ? msg91Drop(
+        alert,
+        p,
+        reference,
+        coupon ? `Coupon: ${coupon.code ? `${coupon.code} — ` : ''}${coupon.discount_text || coupon.title}` : isLow ? `Lowest price in ${alert.window_days} days` : 'Checked every 15 minutes by DealRadar',
+        l.buy,
+      )
+    : null;
   const whatsapp_note: WhatsAppNote | null =
-    alert.channels.includes('whatsapp') && alert.phone && !whatsapp_vars
+    wantsWhatsApp && !viaMsg91
       ? {
-          to: alert.phone,
+          to: alert.phone!,
           title: '🔥 Price drop alert!',
           summary: oneLine(
             `${shortTitle(p.title)} is now ${inr(p.price)} (was ${inr(reference)}), you save ${inr(reference - p.price)} on ${PLATFORM_NAMES[p.platform]}.` +
@@ -159,6 +172,7 @@ ${couponHtml}
     email: alert.channels.includes('email') ? alert.email : null,
     phone: whatsapp_vars ? alert.phone : null,
     whatsapp_note,
+    msg91,
     subject: `Price dropped! ${p.title.slice(0, 55)} is now ${inr(p.price)} — buy now`,
     html,
     whatsapp_vars,
@@ -239,6 +253,13 @@ export function queueWhatsAppConfirmation(alert: Alert, p: Product, settings: Se
   const wa = settings.whatsapp;
   if (!alert.phone || !alert.channels.includes('whatsapp')) return false;
   const l = links(alert, p);
+  if (!wa?.confirm_template_id && msg91Ready(settings)) {
+    const m: OutboxMail = { id: newId('m'), email: null, msg91: msg91Confirmation(alert, p, l.page), subject: '', html: '', created_at: new Date().toISOString(), claimed_at: null, sent_at: null, tries: 0 };
+    write((d) => {
+      d.outbox.push(m);
+    });
+    return true;
+  }
   if (!wa?.confirm_template_id) {
     const rule = alert.drop_percent > 0 ? `a drop of ${alert.drop_percent}% or more` : 'any price drop';
     const until = new Date(alert.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -314,6 +335,7 @@ export function claimOutbox(minAgeMs = 0): Notification[] {
         whatsapp_template: m.whatsapp?.template_id ?? null,
         telegram: m.telegram ?? null,
         whatsapp_note: m.whatsapp_note ?? null,
+        msg91: m.msg91 ?? null,
       }));
   });
 }

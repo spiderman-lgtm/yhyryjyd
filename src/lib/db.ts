@@ -204,6 +204,14 @@ export interface Settings {
     confirm_variable_map?: Record<string, WhatsAppVarSource>;
   } | null;
   telegram?: { auth_id: string; bot: string | null; subscription: string | null; error?: string | null } | null;
+  // WhatsApp through the operator's MSG91 account: their MSG91 WhatsApp number (the "bot" shoppers hear from)
+  // and the two templates DealRadar created there, with what Meta said about them and their send fields.
+  msg91?: {
+    auth_id: string;
+    number: string | null;
+    templates?: { confirm: Msg91Template; drop: Msg91Template } | null;
+    error?: string | null;
+  } | null;
   flows: Partial<Record<Tier, string>>;
   // The on-demand flow that sends one-off emails (alert confirmations) as soon as they are queued.
   mail_flow?: string;
@@ -217,6 +225,20 @@ export interface Settings {
 }
 
 // A one-off email waiting to be sent through the operator's Gmail.
+export interface Msg91Template {
+  name: string;
+  status: string; // APPROVED, PENDING, REJECTED, or what MSG91 answers
+  // The send action's field for each {{n}} variable, in order, read from MSG91 once the template is approved.
+  fields?: string[];
+}
+
+// A WhatsApp template message through the operator's MSG91 number; vars fill {{1}}, {{2}}, … in order.
+export interface Msg91Message {
+  to: string;
+  template: 'confirm' | 'drop';
+  vars: string[];
+}
+
 export interface WhatsAppNote {
   to: string;
   title: string;
@@ -230,6 +252,7 @@ export interface OutboxMail {
   whatsapp?: { phone: string; template_id: string; vars: Record<string, string> } | null;
   // Sent through viaSocket's own WhatsApp (no WhatsApp Business setup): a headline and one line of text.
   whatsapp_note?: WhatsAppNote | null;
+  msg91?: Msg91Message | null;
   subject: string;
   html: string;
   created_at: string;

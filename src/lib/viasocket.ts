@@ -24,6 +24,17 @@ export const WHATSAPP = {
   send_template: { action_id: 'rowsd70emhii', action_version_id: 'rowj80xxlox1' },
 };
 
+// MSG91 (the operator's own MSG91 account, connected in Admin): sends WhatsApp messages from the operator's
+// MSG91 WhatsApp number with approved templates, which DealRadar creates in the operator's MSG91 account.
+export const MSG91 = {
+  service_id: 'row73khsf',
+  name: 'MSG91',
+  icon: 'https://stuff.thingsofbrand.com/msg91.com/images/img69c1735b65_msg91.jpg',
+  send_template: { action_id: 'rowi00w0dtkm', action_version_id: 'rowuq6g6qmu7' },
+  create_template: { action_id: 'rowubq91yxtm', action_version_id: 'rowks2xocyoy' },
+  list_templates: { action_id: 'row1k7nvk337', action_version_id: 'row1gvxazzsy' },
+};
+
 // viaSocket's own WhatsApp: sends a headline and a line of text to any number, with no connection and no
 // WhatsApp Business account of ours. Each message costs viaSocket credits.
 export const WHATSAPP_NOTIFY = {
@@ -42,7 +53,7 @@ export const TELEGRAM = {
   new_message: { trigger_id: 'row75zh5gf76', version: 'V13', version_id: 'row7z8fsm3ca' },
 };
 
-export const APPS = { gmail: GMAIL, whatsapp: WHATSAPP, telegram: TELEGRAM } as const;
+export const APPS = { gmail: GMAIL, whatsapp: WHATSAPP, telegram: TELEGRAM, msg91: MSG91 } as const;
 export type AppKey = keyof typeof APPS;
 
 function env(name: string) {
@@ -61,6 +72,24 @@ export async function subscribeTelegramMessages(authId: string, handler: string)
   const triggerVersionId = await vs.catalog.versionIdFor(TELEGRAM.service_id, TELEGRAM.new_message.trigger_id, TELEGRAM.new_message.version);
   const sub = await vs.user(OPERATOR_UID).subscribe(triggerVersionId, { authId, inputData: {}, code: handler });
   return sub.scriptId;
+}
+
+// Runs one action on the operator's connection, from the server. viaSocket answers an app's error as a value
+// with a 4xx status rather than throwing, so that is turned into an error here.
+const enabledScripts = new Map<string, string>();
+export async function runOperatorAction<T = any>(serviceId: string, authId: string, actionVersionId: string, inputData: Record<string, unknown>): Promise<T> {
+  const vs = viasocket();
+  let scriptId = enabledScripts.get(authId);
+  if (!scriptId) {
+    scriptId = (await vs.user(OPERATOR_UID).enable(serviceId, authId)).scriptId;
+    enabledScripts.set(authId, scriptId);
+  }
+  const out: any = await vs.runAction(scriptId, actionVersionId, inputData);
+  if (out && (out.hasError === true || Number(out.status) >= 400)) {
+    const e = out.originalError?.errors ?? out.originalError?.message ?? out.errors ?? out.message ?? out;
+    throw new Error(typeof e === 'string' ? e : JSON.stringify(e).slice(0, 300));
+  }
+  return out as T;
 }
 
 export async function endSubscription(scriptId: string) {

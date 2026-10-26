@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DeliveryLog, Enquiry, Settings, WhatsAppVarSource } from '@/lib/db';
 
-type AppKey = 'gmail' | 'whatsapp' | 'telegram';
+type AppKey = 'gmail' | 'whatsapp' | 'telegram' | 'msg91';
 interface AppInfo {
   service_id: string;
   name: string;
@@ -105,6 +105,9 @@ export default function AdminConsole(props: {
   const [confirmTemplateId, setConfirmTemplateId] = useState<string | null>(wa0?.confirm_template_id ?? null);
   const [confirmVarMap, setConfirmVarMap] = useState<Record<string, WhatsAppVarSource>>(wa0?.confirm_variable_map ?? {});
   const [bot, setBot] = useState(settings.telegram?.bot ?? '');
+  const m91 = settings.msg91 ?? null;
+  const [m91Number, setM91Number] = useState<string | null>(m91?.number ?? null);
+  const [testTo, setTestTo] = useState('');
 
   const embedBox = useRef<HTMLDivElement>(null);
   const [embedOpen, setEmbedOpen] = useState<null | { flowId?: string }>(null);
@@ -251,7 +254,7 @@ export default function AdminConsole(props: {
           <p className="my-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
             {settings.whatsapp?.message_template_id
               ? 'WhatsApp alerts go out from your own WhatsApp Business number.'
-              : 'WhatsApp alerts already work without this: shoppers get the confirmation and price drops through viaSocket’s own WhatsApp (15 viaSocket credits per message). Connect WhatsApp Business only to send from your own number.'}
+              : settings.msg91 ? 'Your MSG91 WhatsApp number (set up below) sends WhatsApp alerts; this is only needed to send through your own Meta WhatsApp Business account instead.' : 'Not needed: set up “WhatsApp via MSG91” below to send WhatsApp alerts from your MSG91 number. Until then they go through viaSocket’s own WhatsApp (15 viaSocket credits per message).'}
           </p>
           <p className="text-sm text-ink-soft">
             Meta only lets a business start a WhatsApp chat with an approved template. Create a “price drop” template in WhatsApp Manager first, then pick it here and map its variables.
@@ -287,6 +290,73 @@ export default function AdminConsole(props: {
               onClick={() => run('wa', () => post('/api/admin/settings', { whatsapp: { wba_id: wbaId, phone_id: phoneId, message_template_id: templateId, variable_map: varMap, confirm_template_id: confirmTemplateId, confirm_variable_map: confirmVarMap } }), 'Saved — price alerts use this from the next check.')}>
               Save WhatsApp setup
             </button>
+          </div>
+        )}
+      </section>
+
+      <section className="card space-y-4 p-5">
+        <div>
+          <h2 className="font-bold">WhatsApp via MSG91 — your DealRadar WhatsApp bot number</h2>
+          <p className="text-sm text-ink-soft">
+            Shoppers get the “🎯 Price tracking started!” message and every price drop on WhatsApp from your MSG91 WhatsApp number, in the same format as Telegram.
+            Needs an MSG91 account with a WhatsApp number added (msg91.com → WhatsApp). DealRadar creates the two message templates there for you; Meta approves them, usually within minutes, at most 24 hours.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button className={m91 && !props.expired.msg91 ? 'btn-ghost' : 'btn-dark'} onClick={() => connect('msg91')}>
+            <img src={apps.msg91.icon} alt="" className="h-5 w-5 rounded" />
+            {m91 ? (props.expired.msg91 ? 'Reconnect MSG91 (expired)' : 'MSG91 connected · switch account') : 'Connect MSG91'}
+          </button>
+        </div>
+        {m91 && (
+          <div className="space-y-4 rounded-xl border border-slate-200 p-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-64 flex-1">
+                <Picker id="m91-num" label="1 · Your MSG91 WhatsApp number" hint="The number shoppers get the messages from." app="msg91" fieldKey="integrated_number" existing={{}} enabled value={m91Number} onChange={setM91Number} />
+              </div>
+              <button className="btn-ghost mb-5" disabled={!m91Number || busy === 'm91n'} onClick={() => run('m91n', () => post('/api/admin/msg91', { op: 'number', number: m91Number }), 'Number saved.')}>Save number</button>
+            </div>
+            {m91.number && (
+              <div>
+                <p className="label">2 · Message templates</p>
+                {m91.templates ? (
+                  <ul className="mb-3 space-y-1 text-sm">
+                    {(['confirm', 'drop'] as const).map((k) => {
+                      const t = m91.templates![k];
+                      const tone = t.status === 'APPROVED' ? 'text-emerald-700' : t.status === 'REJECTED' ? 'text-red-600' : 'text-amber-700';
+                      return (
+                        <li key={k}>
+                          {k === 'confirm' ? '🎯 Tracking started' : '🔥 Price drop'} · <span className="font-mono text-xs">{t.name}</span> · <b className={tone}>{t.status}</b>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="mb-3 text-sm text-ink-mute">Not created yet.</p>
+                )}
+                <div className="flex flex-wrap gap-3">
+                  {!m91.templates && (
+                    <button className="btn-dark" disabled={busy === 'm91t'} onClick={() => run('m91t', () => post('/api/admin/msg91', { op: 'templates' }), 'Templates sent to Meta for approval. Check their status in a few minutes.')}>Create the 2 templates</button>
+                  )}
+                  {m91.templates && (
+                    <button className="btn-ghost" disabled={busy === 'm91s'} onClick={() => run('m91s', () => post('/api/admin/msg91', { op: 'status' }), 'Status updated.')}>Check approval</button>
+                  )}
+                </div>
+              </div>
+            )}
+            {m91.templates?.confirm.status === 'APPROVED' && (
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="min-w-64 flex-1">
+                  <label className="label" htmlFor="m91-test">3 · Send a test to your WhatsApp</label>
+                  <input id="m91-test" className="input" placeholder="+91 98765 43210" inputMode="tel" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
+                </div>
+                <button className="btn-ghost" disabled={!testTo || busy === 'm91x'} onClick={() => run('m91x', () => post('/api/admin/msg91', { op: 'test', to: testTo }), 'Test sent — check WhatsApp.')}>Send test</button>
+              </div>
+            )}
+            {m91.error && <p className="text-sm text-red-600">MSG91: {m91.error}</p>}
+            {m91.templates?.confirm.status === 'APPROVED' && m91.templates?.drop.status === 'APPROVED' && (
+              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">✓ Live — WhatsApp confirmations and price drops now go out from your MSG91 number.</p>
+            )}
           </div>
         )}
       </section>
