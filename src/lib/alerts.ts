@@ -523,7 +523,7 @@ export async function runTier(tier: Tier) {
       const hit = evaluate(a, p);
       if (!hit) continue;
       notifications.push(dropNotification(a, p, hit.reference, hit.reason, settings));
-      if (a.channels.includes('m91') && a.phone) await ringShopper(a, p, hit.reference);
+      if (a.channels.includes('m91') && (a.m91_phone || a.phone)) await ringShopper(a, p, hit.reference);
       write((d) => {
         d.alerts[a.id].last_notified_price = p.price;
         d.alerts[a.id].last_notified_at = nowIso();
@@ -544,7 +544,7 @@ async function ringShopper(alert: Alert, p: Product, reference: number) {
   const l = links(alert, p);
   const pct = Math.round(((reference - p.price) / reference) * 100);
   try {
-    const sent = await alertShopper(alert.phone!, {
+    const sent = await alertShopper((alert.m91_phone || alert.phone)!, {
       title: `Price drop: ${p.title.slice(0, 80)} is now ${inr(p.price)} (was ${inr(reference)})`,
       description: `You save ${inr(reference - p.price)}${pct > 0 ? ` (${pct}% off)` : ''} on ${PLATFORM_NAMES[p.platform]}. Open the deal: ${l.buy}`,
       severity: 'LOW',

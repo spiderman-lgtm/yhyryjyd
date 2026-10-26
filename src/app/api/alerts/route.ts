@@ -29,8 +29,13 @@ export async function POST(req: Request) {
   const wantTelegram = (b.telegram === true || !!linkedChat) && !!telegramBot();
   if (wantTelegram) channels.push('telegram');
   // "Ring my phone": M91 alerts the shopper's own number once they accept DealRadar's invite in the M91 app.
+  // Its own number: the "most urgent" ring need not go to the WhatsApp number.
+  let m91Phone = typeof b.m91_phone === 'string' ? b.m91_phone.replace(/\D/g, '') : '';
+  if (m91Phone.length === 10) m91Phone = '91' + m91Phone;
   const wantM91 = b.m91 === true && shopperAlertsOn();
-  if (wantM91 && !phone) return NextResponse.json({ error: 'Enter your phone number to get a ring on M91.' }, { status: 400 });
+  if (wantM91 && !m91Phone) m91Phone = phone;
+  if (wantM91 && !m91Phone) return NextResponse.json({ error: 'Enter the mobile number to ring for the most urgent alert.' }, { status: 400 });
+  if (wantM91 && (m91Phone.length < 11 || m91Phone.length > 15)) return NextResponse.json({ error: 'Enter the mobile number with country code.' }, { status: 400 });
   if (wantM91) channels.push('m91');
 
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return NextResponse.json({ error: 'That email address does not look right.' }, { status: 400 });
@@ -60,6 +65,7 @@ export async function POST(req: Request) {
     window_days,
     baseline_price: product.price,
     telegram_chat: wantTelegram ? linkedChat : null,
+    m91_phone: wantM91 ? m91Phone : null,
   });
   // Confirm straight away by email and on Telegram (when the shopper's chat is already linked);
   // the reply does not wait for the messages to be sent.
@@ -75,7 +81,7 @@ export async function POST(req: Request) {
   const whatsappConfirm = phone ? queueWhatsAppConfirmation(alert, product, read((d) => d.settings)) : false;
   // The invite is what lets M91 reach this number; asking again for a number already invited is harmless.
   let m91: { state: string; reachable: boolean } | null = null;
-  if (wantM91) m91 = await inviteShopper(phone).catch((e) => (console.error('[m91] invite failed:', e instanceof Error ? e.message : e), null));
+  if (wantM91) m91 = await inviteShopper(m91Phone).catch((e) => (console.error('[m91] invite failed:', e instanceof Error ? e.message : e), null));
   if (email || alert.telegram_chat || whatsappConfirm) sendQueuedMailNow().catch((e) => console.error('confirmation:', e instanceof Error ? e.message : e));
   return NextResponse.json({ alert, confirmation: !!email, whatsapp_confirmation: whatsappConfirm, m91: m91 ? { reachable: m91.reachable, state: m91.state } : wantM91 ? { reachable: false, state: 'error' } : null, telegram_link: telegram?.link ?? null, telegram_code: telegram?.code ?? null, telegram_linked: !!alert.telegram_chat });
 }
@@ -95,6 +101,7 @@ export async function GET() {
     return { ...a, product: p ? { title: p.title, image: p.image, price: p.price, store: PLATFORM_NAMES[p.platform], page: `${appUrl()}/p/${p.id}` } : null };
   });
   const last = alerts[0];
-  const contact = { email: last?.email ?? currentUser()?.email ?? null, phone: last?.phone ?? null, telegram: !!last?.channels.includes('telegram') };
-  return NextResponse.json({ alerts: items, contact });
+  const contact = { email: last?.email ?? currentUser()?.email ?? null, phone: last?.phone ?? null, telegram: !!last?.channels.includes('telegram'), m91_phone: last?.m91_phone ?? null };
+  // Whether the "most urgent" ring is on, so the extension can offer it.
+  return NextResponse.json({ alerts: items, contact, m91: shopperAlertsOn() });
 }

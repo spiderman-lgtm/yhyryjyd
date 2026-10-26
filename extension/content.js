@@ -205,6 +205,9 @@
     .field { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:7px 9px; font-size:13px; margin-top:6px; outline:none; background:#fff; }
     .field:focus { border-color:#ea580c; }
     .tick { display:flex; align-items:center; gap:6px; font-size:12px; margin-top:7px; }
+    .urgent { margin-top:9px; border:1px solid #fca5a5; background:#fef2f2; border-radius:10px; padding:8px; }
+    .urgent .ulbl { font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#b91c1c; }
+    .urgent .tick { margin-top:4px; align-items:flex-start; }
     .muted { color:#64748b; font-size:12px; } .err { color:#b91c1c; font-size:12px; margin-top:6px; }
     svg.spark { display:block; width:100%; height:44px; margin-top:6px; }
     .grow { flex:1; min-width:0; }
@@ -262,7 +265,7 @@
   // The delivery location is DealRadar's, shared with the website; from tells which store it was read from.
   const loc = { pin: null, area: null, from: null, editing: false, busy: false, locating: false, err: '', draft: undefined };
   // Price alerts: the shopper's list, and where their last alert went (so the next one takes one tap).
-  const al = { list: null, contact: null, form: false, busy: false, err: '', tg: null, draft: null };
+  const al = { list: null, contact: null, m91: false, ringNote: false, form: false, busy: false, err: '', tg: null, draft: null };
 
   // ---------- compare tab ----------
   function tiles() {
@@ -335,19 +338,26 @@
     return `<div class="lbl">Price history · low ${inr(min)} · high ${inr(max)}</div><svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${d} V${H} H0 Z" fill="#fed7aa" opacity=".5"/><path d="${d}" fill="none" stroke="#ea580c" stroke-width="2"/></svg>`;
   }
 
-  const where = (c) => [c?.email && 'Email', c?.phone && 'WhatsApp', c?.telegram && 'Telegram'].filter(Boolean).join(' · ');
+  const where = (c) => [c?.email && 'Email', c?.phone && 'WhatsApp', c?.telegram && 'Telegram', c?.m91_phone && '🚨 Phone ring'].filter(Boolean).join(' · ');
 
   function alertHtml() {
     const mine = (al.list || []).find((a) => a.status === 'active' && a.product_id === state.data.id);
     if (mine) {
-      const to = where({ email: mine.email, phone: mine.phone, telegram: (mine.channels || []).includes('telegram') });
-      return `<div class="alert"><div class="row"><span>🔔</span><span class="grow">Alert on${to ? ` · ${esc(to)}` : ''}</span><button class="stop" data-stop="${esc(mine.id)}">Stop</button></div>${al.tg ? `<a class="btn ghost" style="display:block;margin-top:8px" href="${esc(al.tg)}" target="_blank" rel="noopener">Open Telegram and press Start</a>` : ''}</div>`;
+      const to = where({ email: mine.email, phone: mine.phone, telegram: (mine.channels || []).includes('telegram'), m91_phone: (mine.channels || []).includes('m91') ? mine.m91_phone || mine.phone : null });
+      return `<div class="alert"><div class="row"><span>🔔</span><span class="grow">Alert on${to ? ` · ${esc(to)}` : ''}</span><button class="stop" data-stop="${esc(mine.id)}">Stop</button></div>${
+        al.ringNote
+          ? `<div class="muted" style="margin-top:6px">🚨 To get the phone ring: install M91 (<a href="https://apps.apple.com/app/id6759090472" target="_blank" rel="noopener">iOS</a> · <a href="https://play.google.com/store/apps/details?id=com.msg91.m91" target="_blank" rel="noopener">Android</a>), sign in with your number and accept the invite from DealRadar price alerts.</div>`
+          : ''
+      }${al.tg ? `<a class="btn ghost" style="display:block;margin-top:8px" href="${esc(al.tg)}" target="_blank" rel="noopener">Open Telegram and press Start</a>` : ''}</div>`;
     }
     const c = al.draft || al.contact || {};
     const form = al.form
       ? `<input class="field" id="al-email" type="email" placeholder="Email" value="${esc(c.email || '')}" />
          <input class="field" id="al-phone" type="tel" placeholder="WhatsApp number (optional)" value="${esc(c.phone || '')}" />
          <label class="tick"><input type="checkbox" id="al-tg" ${c.telegram ? 'checked' : ''} /> Also on Telegram</label>
+         ${al.m91 ? `<div class="urgent"><div class="ulbl">🚨 Most urgent alert</div>
+           <label class="tick"><input type="checkbox" id="al-m91" ${c.m91 || c.m91_phone ? 'checked' : ''} /> Ring my phone the moment it drops — full volume, even on silent (free M91 app)</label>
+           <input class="field" id="al-m91-phone" type="tel" placeholder="Mobile number to ring" value="${esc(c.m91_phone || '')}" /></div>` : ''}
          <button class="btn primary" id="al-set" style="width:100%;margin-top:8px" ${al.busy ? 'disabled' : ''}>${al.busy ? 'Setting…' : 'Set alert'}</button>`
       : '';
     const known = !al.form && where(al.contact);
@@ -420,7 +430,7 @@
   function render() {
     // The panel is redrawn as results arrive; keep what the shopper is typing.
     const e = root.getElementById('al-email');
-    if (e) al.draft = { email: e.value, phone: root.getElementById('al-phone').value, telegram: root.getElementById('al-tg').checked };
+    if (e) al.draft = { email: e.value, phone: root.getElementById('al-phone').value, telegram: root.getElementById('al-tg').checked, m91: !!root.getElementById('al-m91')?.checked, m91_phone: root.getElementById('al-m91-phone')?.value || '' };
     const pinBox = root.getElementById('loc-pin');
     if (pinBox) loc.draft = pinBox.value;
     const focused = root.activeElement && root.activeElement.id;
@@ -489,24 +499,38 @@
     const r = await send({ type: 'alerts' });
     al.list = r.ok ? r.data.alerts || [] : [];
     if (r.ok && r.data.contact) al.contact = r.data.contact;
+    // The "most urgent" phone ring is offered once DealRadar has M91 switched on.
+    al.m91 = !!(r.ok && r.data.m91);
     render();
   }
 
   async function setAlert() {
     let c = al.contact;
-    if (al.form) c = { email: root.getElementById('al-email').value.trim(), phone: root.getElementById('al-phone').value.trim(), telegram: root.getElementById('al-tg').checked };
-    else if (!where(c)) {
+    if (al.form) {
+      const ring = !!root.getElementById('al-m91')?.checked;
+      c = {
+        email: root.getElementById('al-email').value.trim(),
+        phone: root.getElementById('al-phone').value.trim(),
+        telegram: root.getElementById('al-tg').checked,
+        m91: ring,
+        m91_phone: ring ? (root.getElementById('al-m91-phone')?.value || '').trim() : '',
+      };
+    } else if (!where(c)) {
       al.form = true;
       return render();
+    } else c = { ...c, m91: !!(al.m91 && c.m91_phone) };
+    if (c.m91 && !c.m91_phone) {
+      al.err = 'Enter the mobile number to ring.';
+      return render();
     }
-    if (!c.email && !c.phone && !c.telegram) {
+    if (!c.email && !c.phone && !c.telegram && !c.m91) {
       al.err = 'Add an email or WhatsApp number, or tick Telegram.';
       return render();
     }
     al.busy = true;
     al.err = '';
     render();
-    const r = await send({ type: 'setAlert', alert: { product_id: state.data.id, email: c.email || '', phone: c.phone || '', telegram: !!c.telegram, drop_percent: 0, window_days: 7 } });
+    const r = await send({ type: 'setAlert', alert: { product_id: state.data.id, email: c.email || '', phone: c.phone || '', telegram: !!c.telegram, m91: !!c.m91, m91_phone: c.m91_phone || '', drop_percent: 0, window_days: 7 } });
     al.busy = false;
     if (!r.ok && !/already tracking/i.test(r.error)) {
       al.err = r.error;
@@ -517,6 +541,8 @@
     al.draft = null;
     al.form = false;
     al.tg = r.ok ? r.data.telegram_link || null : null;
+    // Invited but not yet in the M91 app: say what is left for the ring.
+    al.ringNote = !!(r.ok && r.data.m91 && !r.data.m91.reachable);
     await loadAlerts();
   }
 

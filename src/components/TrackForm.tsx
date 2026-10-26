@@ -26,6 +26,7 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
   const [tgLinked, setTgLinked] = useState(false);
   const [waSent, setWaSent] = useState(false);
   const [ring, setRing] = useState(false);
+  const [ringPhone, setRingPhone] = useState('');
   const [ringState, setRingState] = useState<null | { reachable: boolean; state: string }>(null);
 
   async function submit(e: React.FormEvent) {
@@ -33,7 +34,7 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
     setBusy(true);
     setError('');
     const { ok, data } = await callApi<Record<string, any>>('/api/alerts', {
-      body: { product_id: productId, email, phone, telegram, m91: ring, tier: 'urgent', drop_percent: drop, window_days: days },
+      body: { product_id: productId, email, phone, telegram, m91: ring, m91_phone: ring ? ringPhone : '', tier: 'urgent', drop_percent: drop, window_days: days },
       timeoutMs: 25_000,
     });
     setBusy(false);
@@ -68,12 +69,12 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
             {tgCode && <> No Start button? Send this code to the bot: <b className="select-all font-mono text-sm text-ink">{tgCode}</b></>}
           </p>
         )}
-        {ringState?.reachable && <p className="mt-2 text-ink-soft">📳 Your phone will ring on M91 the moment the price drops.</p>}
+        {ringState?.reachable && <p className="mt-2 text-ink-soft">🚨 <b>{ringPhone}</b> will ring the moment the price drops.</p>}
         {ringState && !ringState.reachable && (
           <div className="mt-3 rounded-xl border border-orange-200 bg-white p-3">
             <p className="font-semibold">📳 One step left for the phone ring</p>
             <p className="mt-1 text-ink-soft">
-              Install the M91 app, sign in with <b>{phone}</b>, and accept the invite from <b>DealRadar price alerts</b>. Until then your phone stays silent.
+              Install the M91 app, sign in with <b>{ringPhone}</b>, and accept the invite from <b>DealRadar price alerts</b>. Until then your phone stays silent.
             </p>
             <div className="mt-2 flex gap-2">
               <a href="https://apps.apple.com/app/id6759090472" target="_blank" rel="noopener noreferrer" className="btn-ghost px-3 py-1.5 text-xs">App Store</a>
@@ -108,17 +109,29 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
           </span>
         </label>
       )}
-      {m91On && (
-        <label className={`-mt-1 flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition ${ring ? 'border-orange-400 bg-orange-50' : 'border-slate-300 bg-white hover:border-slate-400'}`}>
-          <input type="checkbox" checked={ring} onChange={(e) => setRing(e.target.checked)} />
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-orange-500 text-sm text-white" aria-hidden="true">📳</span>
-          <span className="flex-1">
-            <b>Ring my phone when it drops</b>
-            <span className="block text-xs text-ink-mute">Your phone rings even on silent, with the M91 app — uses the number above.</span>
-          </span>
-        </label>
-      )}
       <p className="-mt-3 text-xs text-ink-mute">{telegramOn ? 'Use any of these.' : 'Fill one or both.'} We only use them for this price alert.</p>
+
+      {m91On && (
+        <div>
+          <p className="label">🚨 Most urgent alert</p>
+          <div className={`rounded-xl border p-3 text-sm transition ${ring ? 'border-red-400 bg-red-50' : 'border-slate-300 bg-white'}`}>
+            <label className="flex cursor-pointer items-center gap-3">
+              <input type="checkbox" checked={ring} onChange={(e) => setRing(e.target.checked)} />
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-red-500 text-base text-white" aria-hidden="true">📳</span>
+              <span className="flex-1">
+                <b>Ring my phone the moment it drops</b>
+                <span className="block text-xs text-ink-mute">For a deal you can't miss: your phone rings at full volume, even on silent, until you answer. Uses the free M91 app.</span>
+              </span>
+            </label>
+            {ring && (
+              <div className="mt-3">
+                <label className="label" htmlFor="tf-m91">Mobile number to ring</label>
+                <input id="tf-m91" className="input" placeholder="+91 98765 43210" inputMode="tel" value={ringPhone} onChange={(e) => setRingPhone(e.target.value)} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <fieldset>
         <legend className="label">Alert me when the price drops by</legend>
@@ -139,7 +152,7 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
       </fieldset>
 
       {error && <p className="text-sm font-medium text-red-600">{error}</p>}
-      <button className="btn-dark w-full py-3" disabled={busy || (!email && !phone && !telegram) || (ring && !phone)}>{busy ? 'Saving…' : 'Track price'}</button>
+      <button className="btn-dark w-full py-3" disabled={busy || (!email && !phone && !telegram && !ring) || (ring && !ringPhone)}>{busy ? 'Saving…' : 'Track price'}</button>
     </form>
   );
 }

@@ -49,6 +49,8 @@ export interface Alert {
   baseline_price: number;
   // The shopper's Telegram chat, once they have pressed Start on the bot.
   telegram_chat?: string | null;
+  // The number M91 rings for the "most urgent" alert (may differ from the WhatsApp number).
+  m91_phone?: string | null;
   last_notified_price: number | null;
   last_notified_at: string | null;
   created_at: string;
