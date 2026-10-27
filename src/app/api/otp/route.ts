@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { currentUser } from '@/lib/auth';
-import { checkPhoneCode, isVerified, normPhone, sendPhoneCode, validPhone } from '@/lib/contacts';
+import { checkPhoneCode, isVerified, normPhone, sendPhoneCode, validPhone, verifiedList } from '@/lib/contacts';
+import { startWaVerify } from '@/lib/wa-session';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,13 @@ export async function POST(req: NextRequest) {
     const r = await sendPhoneCode(user.id, phone, ip).catch((e) => ({ error: `Could not send the code: ${e instanceof Error ? e.message : e}` }));
     return 'error' in r ? NextResponse.json(r, { status: 429 }) : NextResponse.json({ sent: true });
   }
+  // "Verify on WhatsApp": a wa.me link with a code the shopper sends to DealRadar's number; the page then asks
+  // for "status" until the message has arrived.
+  if (b.op === 'wa_start') {
+    const r = startWaVerify(user.id, phone);
+    return 'error' in r ? NextResponse.json(r, { status: 429 }) : NextResponse.json(r);
+  }
+  if (b.op === 'status') return NextResponse.json({ verified: verifiedList(user.id).phones });
   if (b.op === 'check') {
     const r = checkPhoneCode(user.id, phone, String(b.code || ''));
     return 'error' in r ? NextResponse.json(r, { status: 400 }) : NextResponse.json({ verified: true });

@@ -8,6 +8,7 @@ import { TIER_INFO } from '@/lib/alerts';
 import { GMAIL, MSG91, TELEGRAM, WHATSAPP, flowRunCounts, listConnections } from '@/lib/viasocket';
 import { ensureMailFlow } from '@/lib/flows';
 import { syncBotFromListener } from '@/lib/telegram';
+import { inboundUrl } from '@/lib/wa-session';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'DealRadar admin', robots: { index: false } };
@@ -70,6 +71,7 @@ export default async function AdminPage() {
       settings={data.settings}
       expired={{ gmail: !!(data.settings.gmail && expired[data.settings.gmail.auth_id]), whatsapp: !!(data.settings.whatsapp && expired[data.settings.whatsapp.auth_id]), telegram: !!(data.settings.telegram && expired[data.settings.telegram.auth_id]), msg91: !!(data.settings.msg91 && expired[data.settings.msg91.auth_id]) }}
       connError={connError}
+      waInboundUrl={inboundUrl()}
       flows={flows}
       stats={data.stats}
       enquiries={data.enquiries}

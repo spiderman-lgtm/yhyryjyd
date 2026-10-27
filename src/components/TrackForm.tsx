@@ -12,7 +12,7 @@ const DROPS = [
   { v: 20, t: '20% or more' },
 ];
 
-export default function TrackForm({ productId, existing, defaultEmail = '', telegram: telegramOn = false, m91: m91On = false, verified: verified0 = { emails: [], phones: [] } }: { productId: string; existing: boolean; defaultEmail?: string; telegram?: boolean; m91?: boolean; verified?: { emails: string[]; phones: string[] } }) {
+export default function TrackForm({ productId, existing, defaultEmail = '', telegram: telegramOn = false, m91: m91On = false, verified: verified0 = { emails: [], phones: [] }, waVerify = false }: { productId: string; existing: boolean; defaultEmail?: string; telegram?: boolean; m91?: boolean; verified?: { emails: string[]; phones: string[] }; waVerify?: boolean }) {
   const [drop, setDrop] = useState(0);
   const [days, setDays] = useState<7 | 15>(7);
   const [email, setEmail] = useState(defaultEmail);
@@ -105,7 +105,7 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
           <label className="label" htmlFor="tf-email">Email</label>
           <input id="tf-email" type="email" className="input" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
-        <VerifyPhone id="tf-phone" label="WhatsApp number" value={phone} onChange={setPhone} verified={verifiedPhones} onVerified={(p) => setVerifiedPhones((v) => [...new Set([...v, p])])} />
+        <VerifyPhone id="tf-phone" label="WhatsApp number" value={phone} onChange={setPhone} verified={verifiedPhones} onVerified={(p) => setVerifiedPhones((v) => [...new Set([...v, p])])} waVerify={waVerify} />
       </div>
       {telegramOn && (
         <label className={`-mt-1 flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition ${telegram ? 'border-[#229ED9] bg-sky-50' : 'border-slate-300 bg-white hover:border-slate-400'}`}>
@@ -133,7 +133,7 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
             </label>
             {ring && (
               <div className="mt-3">
-                <VerifyPhone id="tf-m91" label="Mobile number to ring" value={ringPhone} onChange={setRingPhone} verified={verifiedPhones} onVerified={(p) => setVerifiedPhones((v) => [...new Set([...v, p])])} />
+                <VerifyPhone id="tf-m91" label="Mobile number to ring" value={ringPhone} onChange={setRingPhone} verified={verifiedPhones} onVerified={(p) => setVerifiedPhones((v) => [...new Set([...v, p])])} waVerify={waVerify} />
               </div>
             )}
           </div>

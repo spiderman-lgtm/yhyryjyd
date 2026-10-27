@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 // /login first (and back afterwards), and the API answers 401. Open without signing in: what messages link to
 // (stop, manage, confirm, buy), what viaSocket, M91 and Telegram call, and static files.
 const OPEN_PAGES = ['/', '/login', '/signup', '/forgot', '/reset', '/manage', '/manage/done'];
-const OPEN_API = ['/api/auth/', '/api/cron/', '/api/telegram/', '/api/m91/', '/api/buy/', '/api/alerts/action', '/api/logo/', '/api/manage', '/api/verify/'];
+const OPEN_API = ['/api/auth/', '/api/cron/', '/api/telegram/', '/api/m91/', '/api/buy/', '/api/alerts/action', '/api/logo/', '/api/manage', '/api/verify/', '/api/whatsapp/'];
 const isOpen = (path: string) => OPEN_PAGES.includes(path) || OPEN_API.some((p) => path.startsWith(p)) || /\.(png|jpe?g|svg|ico|webp|zip|txt|xml|webmanifest)$/.test(path);
 
 const enc = new TextEncoder();

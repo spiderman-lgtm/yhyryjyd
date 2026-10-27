@@ -84,6 +84,7 @@ export default function AdminConsole(props: {
   settings: Settings;
   expired: Record<AppKey, boolean>;
   connError: string;
+  waInboundUrl?: string;
   flows: FlowRow[];
   stats: { products: number; activeAlerts: number; byTier: number[]; clicks7d: number; cartItems: number };
   enquiries: (Enquiry & { product: string })[];
@@ -354,6 +355,18 @@ export default function AdminConsole(props: {
                   <input id="m91-test" className="input" placeholder="+91 98765 43210" inputMode="tel" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
                 </div>
                 <button className="btn-ghost" disabled={!testTo || busy === 'm91x'} onClick={() => run('m91x', () => post('/api/admin/msg91', { op: 'test', to: testTo }), 'Test sent — check WhatsApp.')}>Send test</button>
+              </div>
+            )}
+            {m91.number && props.waInboundUrl && (
+              <div className="rounded-lg border border-slate-200 p-3 text-sm">
+                <p className="font-semibold">Let shoppers verify on WhatsApp (messages in DealRadar's full format)</p>
+                <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-ink-soft">
+                  <li>In MSG91 → WhatsApp → <b>Webhook (New)</b> → <b>Create Webhook</b>.</li>
+                  <li>Event: <b>On Inbound Request Received</b>, for this number. Content type: <b>JSON</b>.</li>
+                  <li>Webhook URL — paste this:</li>
+                </ol>
+                <input readOnly className="input mt-2 font-mono text-xs" value={props.waInboundUrl} onFocus={(e) => e.currentTarget.select()} />
+                <p className="mt-1 text-xs text-ink-mute">Shoppers then tap “Verify on WhatsApp”; their message proves the number, and for the next 24 hours DealRadar's messages go out from your number in full format. Replying STOP stops them.</p>
               </div>
             )}
             {m91.error && <p className="text-sm text-red-600">MSG91: {m91.error}</p>}

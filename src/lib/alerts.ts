@@ -4,6 +4,7 @@ import { msg91Confirmation, msg91Drop, msg91Ready } from './msg91';
 import { noteRun, noteStoreReads } from './ops-alerts';
 import { alertShopper, shopperAlertsOn } from './m91';
 import { manageLink, underDailyCap } from './contacts';
+import { dropText, inWindow, sendFree } from './wa-session';
 import { appUrl as appBase } from './config';
 import { derivedKey } from './viasocket';
 import { refreshProduct } from './products';
@@ -597,7 +598,20 @@ export async function runTier(tier: Tier) {
       if (!p) continue;
       const hit = evaluate(a, p);
       if (!hit) continue;
-      notifications.push(capped(dropNotification(a, p, hit.reference, hit.reason, settings)));
+      const n = capped(dropNotification(a, p, hit.reference, hit.reason, settings));
+      // Inside the 24-hour WhatsApp window the drop goes straight from DealRadar's number in its own format.
+      const waTo = n.whatsapp_note?.to || n.msg91?.to;
+      if (waTo && inWindow(waTo)) {
+        const coupon = cachedCoupon(p);
+        const l = links(a, p);
+        const extra = coupon ? `Coupon: ${coupon.code ? `${coupon.code} — ` : ''}${coupon.discount_text || coupon.title}` : '';
+        const sent = await sendFree(waTo, dropText(a, p, hit.reference, extra, l.buy)).then(() => true, (e) => (console.error('[wa] drop failed:', e instanceof Error ? e.message : e), false));
+        if (sent) {
+          n.whatsapp_note = null;
+          n.msg91 = null;
+        }
+      }
+      notifications.push(n);
       if (a.channels.includes('m91') && (a.m91_phone || a.phone) && underDailyCap(`phone:${a.m91_phone || a.phone}:ring`)) await ringShopper(a, p, hit.reference);
       write((d) => {
         d.alerts[a.id].last_notified_price = p.price;

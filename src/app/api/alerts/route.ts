@@ -9,6 +9,7 @@ import { currentUid, currentUser } from '@/lib/auth';
 import { PLATFORM_NAMES } from '@/lib/scraper';
 import { appUrl } from '@/lib/config';
 import { inviteShopper, shopperAlertsOn } from '@/lib/m91';
+import { confirmText, inWindow, sendFree } from '@/lib/wa-session';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,7 +93,13 @@ export async function POST(req: Request) {
     const t = confirmationTelegram(alert, product);
     queueTelegram(alert.telegram_chat, t.text, t.url, t.image, t.label, t.stop);
   } else if (wantTelegram) telegram = codeAndLink(uid);
-  const whatsappConfirm = phone ? queueWhatsAppConfirmation(alert, product, read((d) => d.settings)) : false;
+  // Inside WhatsApp's 24-hour window (the shopper messaged DealRadar's number), the confirmation goes out at once in
+  // DealRadar's own format; otherwise through the template or viaSocket's WhatsApp.
+  let whatsappConfirm = false;
+  if (phone && inWindow(phone)) {
+    whatsappConfirm = true;
+    sendFree(phone, confirmText(alert, product)).catch((e) => console.error('[wa] confirmation failed:', e instanceof Error ? e.message : e));
+  } else if (phone) whatsappConfirm = queueWhatsAppConfirmation(alert, product, read((d) => d.settings));
   // The invite is what lets M91 reach this number; asking again for a number already invited is harmless.
   let m91: { state: string; reachable: boolean } | null = null;
   if (wantM91) m91 = await inviteShopper(m91Phone).catch((e) => (console.error('[m91] invite failed:', e instanceof Error ? e.message : e), null));
