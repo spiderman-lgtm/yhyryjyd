@@ -350,11 +350,14 @@ export function queueMail(email: string, subject: string, html: string): OutboxM
 
 // Hands out queued emails for sending. A claimed email is not handed out again for 10 minutes,
 // so the instant flow and a scheduled run never both send it.
+// A confirmation that could not go out within an hour is dropped: a late "tracking started" is worse than none.
+const CONFIRM_MAX_AGE_MS = 60 * 60_000;
+
 export function claimOutbox(minAgeMs = 0): Notification[] {
   return write((d) => {
     const now = Date.now();
     const due = d.outbox.filter(
-      (m) => !m.sent_at && m.tries < 5 && now - Date.parse(m.created_at) >= minAgeMs && now - Date.parse(m.created_at) < 2 * 86400_000 && (!m.claimed_at || now - Date.parse(m.claimed_at) > 10 * 60_000),
+      (m) => !m.sent_at && m.tries < 5 && now - Date.parse(m.created_at) >= minAgeMs && now - Date.parse(m.created_at) < CONFIRM_MAX_AGE_MS && (!m.claimed_at || now - Date.parse(m.claimed_at) > 10 * 60_000),
     );
     for (const m of due.slice(0, MAX_NOTIFICATIONS_PER_RUN)) {
       m.claimed_at = new Date(now).toISOString();

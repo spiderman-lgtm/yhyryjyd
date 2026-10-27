@@ -8,7 +8,7 @@ import { GMAIL, MSG91, TELEGRAM, WHATSAPP, WHATSAPP_NOTIFY, derivedKey, listConn
 export const automationKey = () => derivedKey('automation');
 
 // Bumped whenever buildSteps changes, so automations created by an older release are rebuilt once.
-const STEPS_VERSION = 4; // 2: WhatsApp through viaSocket's own WhatsApp; 3: through the operator's MSG91; 4: Telegram stop button
+const STEPS_VERSION = 5; // 2: WhatsApp through viaSocket's own WhatsApp; 3: through the operator's MSG91; 4: Telegram stop button; 5: WhatsApp sends reported again
 
 // Each step is code that runs in viaSocket's VM. Values fixed for the operator are baked in with
 // JSON.stringify; values that change per run come from context.res of the earlier step.
@@ -169,7 +169,8 @@ return { sent };`,
     service_action_functions: [],
     code: `
 const email = (context?.res?.send_emails && context.res.send_emails.sent) || [];
-const whatsapp = ["send_whatsapp", "send_whatsapp_note", "send_msg91"].flatMap((k) => (context?.res?.[k] && context.res[k].sent) || []);
+// Each step is named outright: viaSocket hands a step only the results it names (a computed name gets nothing).
+const whatsapp = [].concat((context?.res?.send_whatsapp && context.res.send_whatsapp.sent) || [], (context?.res?.send_whatsapp_note && context.res.send_whatsapp_note.sent) || [], (context?.res?.send_msg91 && context.res.send_msg91.sent) || []);
 const telegram = (context?.res?.send_telegram && context.res.send_telegram.sent) || [];
 if (!email.length && !whatsapp.length && !telegram.length) { console.log("### Nothing was sent this run"); return { reported: false }; }
 await axios.post(${base} + "/api/cron/ack", { tier: ${JSON.stringify(tier)}, email, whatsapp, telegram }, { headers: { "x-automation-key": ${key} }, timeout: 8000 });
