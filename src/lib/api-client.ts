@@ -17,6 +17,8 @@ export async function callApi<T = Record<string, any>>(path: string, init: { met
       signal: ctrl.signal,
     });
     const data = await res.json().catch(() => ({ error: res.ok ? undefined : 'DealRadar is busy right now. Please try again in a minute.' }));
+    // Signed out (or the session ran out) and the shopper did something: sign in, then come back here.
+    if (res.status === 401 && data?.login && hasBody) window.location.href = `${data.login}?next=${encodeURIComponent(location.pathname + location.search)}`;
     return { ok: res.ok, status: res.status, data };
   } catch {
     const error = ctrl.signal.aborted ? 'This is taking longer than usual. Please try again.' : 'Could not reach DealRadar. Check your connection and try again.';

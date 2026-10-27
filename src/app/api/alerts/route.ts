@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { newId, read, type Channel, type Tier } from '@/lib/db';
 import { getProduct } from '@/lib/products';
-import { confirmationEmail, confirmationTelegram, createAlert, queueMail, queueTelegram, queueWhatsAppConfirmation } from '@/lib/alerts';
+import { confirmEmailRequest, confirmationEmail, confirmationTelegram, createAlert, queueMail, queueTelegram, queueWhatsAppConfirmation } from '@/lib/alerts';
+import { emailConfirmLink, isBlocked, isVerified, limited, verifiedList } from '@/lib/contacts';
 import { chatFor, codeAndLink, telegramBot } from '@/lib/telegram';
 import { sendQueuedMailNow } from '@/lib/flows';
 import { currentUid, currentUser } from '@/lib/auth';
@@ -40,7 +41,19 @@ export async function POST(req: Request) {
 
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return NextResponse.json({ error: 'That email address does not look right.' }, { status: 400 });
   if (phone && (phone.length < 11 || phone.length > 15)) return NextResponse.json({ error: 'Enter the WhatsApp number with country code.' }, { status: 400 });
-  if (!channels.length) return NextResponse.json({ error: 'Add an email, a WhatsApp number or choose Telegram to be alerted.' }, { status: 400 });
+  // Alerts only go to addresses this account proved it owns. A phone needs its WhatsApp code first; an email new
+  // to the account waits (pending) until the link in its confirmation email is clicked.
+  if (phone && !isVerified(uid, 'phone', phone)) return NextResponse.json({ error: 'Verify this WhatsApp number first: tap “Send code” next to it on DealRadar.', verify: 'phone' }, { status: 400 });
+  if (wantM91 && !isVerified(uid, 'phone', m91Phone)) return NextResponse.json({ error: 'Verify the number to ring first: tap “Send code” next to it on DealRadar.', verify: 'm91' }, { status: 400 });
+  let emailPending = false;
+  if (email && !isVerified(uid, 'email', email)) {
+    // An address that said "stop" or "this wasn't me" can only be added back by its owner.
+    if (isBlocked('email', email) && currentUser()?.email !== email) return NextResponse.json({ error: 'This email has turned off DealRadar alerts. Its owner can turn them back on by signing in with it.' }, { status: 400 });
+    if (limited(`confirm:${email}`)) return NextResponse.json({ error: 'We just sent a confirmation link to this email — open it, or try again in an hour.' }, { status: 429 });
+    channels.splice(channels.indexOf('email'), 1);
+    emailPending = true;
+  }
+  if (!channels.length && !emailPending) return NextResponse.json({ error: 'Add an email, a WhatsApp number or choose Telegram to be alerted.' }, { status: 400 });
 
   // Every alert is checked every 15 minutes; only the daily digest is kept as a separate choice.
   const tier: Tier = b.tier === 'digest' ? 'digest' : 'urgent';
@@ -66,11 +79,12 @@ export async function POST(req: Request) {
     baseline_price: product.price,
     telegram_chat: wantTelegram ? linkedChat : null,
     m91_phone: wantM91 ? m91Phone : null,
+    ...(emailPending ? { pending: ['email' as Channel] } : {}),
   });
   // Confirm straight away by email and on Telegram (when the shopper's chat is already linked);
   // the reply does not wait for the messages to be sent.
   if (email) {
-    const { subject, html } = confirmationEmail(alert, product);
+    const { subject, html } = emailPending ? confirmEmailRequest(alert, product, emailConfirmLink(uid, email)) : confirmationEmail(alert, product);
     queueMail(email, subject, html);
   }
   let telegram: { code: string; link: string } | null = null;
@@ -83,7 +97,7 @@ export async function POST(req: Request) {
   let m91: { state: string; reachable: boolean } | null = null;
   if (wantM91) m91 = await inviteShopper(m91Phone).catch((e) => (console.error('[m91] invite failed:', e instanceof Error ? e.message : e), null));
   if (email || alert.telegram_chat || whatsappConfirm) sendQueuedMailNow().catch((e) => console.error('confirmation:', e instanceof Error ? e.message : e));
-  return NextResponse.json({ alert, confirmation: !!email, whatsapp_confirmation: whatsappConfirm, m91: m91 ? { reachable: m91.reachable, state: m91.state } : wantM91 ? { reachable: false, state: 'error' } : null, telegram_link: telegram?.link ?? null, telegram_code: telegram?.code ?? null, telegram_linked: !!alert.telegram_chat });
+  return NextResponse.json({ alert, confirmation: !!email && !emailPending, email_pending: emailPending, whatsapp_confirmation: whatsappConfirm, m91: m91 ? { reachable: m91.reachable, state: m91.state } : wantM91 ? { reachable: false, state: 'error' } : null, telegram_link: telegram?.link ?? null, telegram_code: telegram?.code ?? null, telegram_linked: !!alert.telegram_chat });
 }
 
 // The shopper's alerts with the product each one watches, and the contact they used last, so the
@@ -103,5 +117,5 @@ export async function GET() {
   const last = alerts[0];
   const contact = { email: last?.email ?? currentUser()?.email ?? null, phone: last?.phone ?? null, telegram: !!last?.channels.includes('telegram'), m91_phone: last?.m91_phone ?? null };
   // Whether the "most urgent" ring is on, so the extension can offer it.
-  return NextResponse.json({ alerts: items, contact, m91: shopperAlertsOn() });
+  return NextResponse.json({ alerts: items, contact, m91: shopperAlertsOn(), verified: verifiedList(uid) });
 }

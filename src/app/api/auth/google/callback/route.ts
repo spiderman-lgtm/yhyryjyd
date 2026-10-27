@@ -14,6 +14,7 @@ import {
   setSession,
 } from '@/lib/auth';
 import { safeEqual } from '@/lib/viasocket';
+import { markVerified } from '@/lib/contacts';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,6 +75,8 @@ export async function GET(req: NextRequest) {
     }
   }
   mergeAnonymous(req.cookies.get(ANON_COOKIE)?.value, user.id);
+  // Google has proved the inbox (email_verified above), so alerts can go to it without a confirmation link.
+  markVerified(user.id, 'email', email);
   const res = NextResponse.redirect(absolute(next === '/' ? '/dashboard' : next));
   res.cookies.delete('dr_oauth');
   setSession(res, user.id, secureCookies());

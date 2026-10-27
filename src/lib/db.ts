@@ -53,6 +53,8 @@ export interface Alert {
   m91_phone?: string | null;
   // Channels the shopper stopped for this alert on My alerts (moved out of channels, kept to turn back on).
   stopped?: Channel[];
+  // Channels waiting for the shopper to confirm the address (email: the link in the confirmation email).
+  pending?: Channel[];
   last_notified_price: number | null;
   last_notified_at: string | null;
   created_at: string;
@@ -68,6 +70,8 @@ export interface User {
   google_sub: string | null;
   role: 'owner' | 'user';
   created_at: string;
+  // Emails and phone numbers this account proved it owns (a confirm link, a WhatsApp code); alerts only go to these.
+  verified?: { emails?: string[]; phones?: string[] };
 }
 
 export interface CartItem {
@@ -306,6 +310,14 @@ interface Data {
   catalog: Record<string, { items: CatalogItem[]; fetched_at: string }>;
   // Shoppers' linked Telegram chats (by browser/account id) and the one-time codes that link them.
   telegram: { chats: Record<string, { chat: string; name: string | null; at: string }>; codes: Record<string, { uid: string; at: string }> };
+  // Who proved each email/phone (one account at a time), addresses that asked for no more alerts, open codes,
+  // and how many alert messages each address got today.
+  contacts?: {
+    owner?: Record<string, string>;
+    blocked?: Record<string, { at: string; reason: string }>;
+    codes?: Record<string, { hash: string; uid: string; exp: number; tries: number }>;
+    sent?: Record<string, { day: string; n: number }>;
+  };
   settings: Settings;
 }
 

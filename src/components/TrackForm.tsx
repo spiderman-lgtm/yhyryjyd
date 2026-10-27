@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { callApi } from '@/lib/api-client';
+import VerifyPhone from './VerifyPhone';
 
 const DROPS = [
   { v: 0, t: 'Any drop' },
@@ -11,11 +12,14 @@ const DROPS = [
   { v: 20, t: '20% or more' },
 ];
 
-export default function TrackForm({ productId, existing, defaultEmail = '', telegram: telegramOn = false, m91: m91On = false }: { productId: string; existing: boolean; defaultEmail?: string; telegram?: boolean; m91?: boolean }) {
+export default function TrackForm({ productId, existing, defaultEmail = '', telegram: telegramOn = false, m91: m91On = false, verified: verified0 = { emails: [], phones: [] } }: { productId: string; existing: boolean; defaultEmail?: string; telegram?: boolean; m91?: boolean; verified?: { emails: string[]; phones: string[] } }) {
   const [drop, setDrop] = useState(0);
   const [days, setDays] = useState<7 | 15>(7);
   const [email, setEmail] = useState(defaultEmail);
-  const [phone, setPhone] = useState('');
+  // Numbers this account already verified come pre-filled, so a returning shopper sees no code.
+  const [verifiedPhones, setVerifiedPhones] = useState(verified0.phones);
+  const [phone, setPhone] = useState(verified0.phones[0] ? `+${verified0.phones[0]}` : '');
+  const [emailPending, setEmailPending] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(existing);
@@ -26,8 +30,13 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
   const [tgLinked, setTgLinked] = useState(false);
   const [waSent, setWaSent] = useState(false);
   const [ring, setRing] = useState(false);
-  const [ringPhone, setRingPhone] = useState('');
+  const [ringPhone, setRingPhone] = useState(verified0.phones[0] ? `+${verified0.phones[0]}` : '');
   const [ringState, setRingState] = useState<null | { reachable: boolean; state: string }>(null);
+
+  const isVerifiedNum = (v: string) => {
+    const d = v.replace(/\D/g, '');
+    return verifiedPhones.includes(d.length === 10 ? '91' + d : d);
+  };
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,6 +54,7 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
     setTgLinked(!!data.telegram_linked);
     setWaSent(!!data.whatsapp_confirmation);
     setRingState(data.m91 ?? null);
+    setEmailPending(!!data.email_pending);
     setDone(true);
   }
 
@@ -54,6 +64,7 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
         <div className="text-base font-bold text-deal">You are tracking this price ✓</div>
         <p className="mt-1 text-ink-soft">
           {sentTo ? <>A confirmation with the product details is on its way to <b>{sentTo}</b>. </> : null}
+          {emailPending ? <>📩 Open the email we sent to <b>{email}</b> and tap “Yes, send me price alerts” — email alerts start after that. </> : null}
           {waSent ? <>We sent a confirmation to your WhatsApp too. </> : null}
           {tgLinked ? <>Your Telegram has the confirmation. </> : null}
           We will message you as soon as it drops. You can change or stop it any time.
@@ -89,15 +100,12 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
 
   return (
     <form onSubmit={submit} className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3">
         <div>
           <label className="label" htmlFor="tf-email">Email</label>
           <input id="tf-email" type="email" className="input" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
-        <div>
-          <label className="label" htmlFor="tf-phone">WhatsApp number</label>
-          <input id="tf-phone" className="input" placeholder="+91 98765 43210" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-        </div>
+        <VerifyPhone id="tf-phone" label="WhatsApp number" value={phone} onChange={setPhone} verified={verifiedPhones} onVerified={(p) => setVerifiedPhones((v) => [...new Set([...v, p])])} />
       </div>
       {telegramOn && (
         <label className={`-mt-1 flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition ${telegram ? 'border-[#229ED9] bg-sky-50' : 'border-slate-300 bg-white hover:border-slate-400'}`}>
@@ -125,8 +133,7 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
             </label>
             {ring && (
               <div className="mt-3">
-                <label className="label" htmlFor="tf-m91">Mobile number to ring</label>
-                <input id="tf-m91" className="input" placeholder="+91 98765 43210" inputMode="tel" value={ringPhone} onChange={(e) => setRingPhone(e.target.value)} />
+                <VerifyPhone id="tf-m91" label="Mobile number to ring" value={ringPhone} onChange={setRingPhone} verified={verifiedPhones} onVerified={(p) => setVerifiedPhones((v) => [...new Set([...v, p])])} />
               </div>
             )}
           </div>
@@ -152,7 +159,8 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
       </fieldset>
 
       {error && <p className="text-sm font-medium text-red-600">{error}</p>}
-      <button className="btn-dark w-full py-3" disabled={busy || (!email && !phone && !telegram && !ring) || (ring && !ringPhone)}>{busy ? 'Saving…' : 'Track price'}</button>
+      {email && !verified0.emails.includes(email.trim().toLowerCase()) && <p className="-mt-2 text-xs text-ink-mute">We'll email {email.trim()} a link to confirm it's yours before any alert goes there.</p>}
+      <button className="btn-dark w-full py-3" disabled={busy || (!email && !phone && !telegram && !ring) || (ring && !ringPhone) || (!!phone && !isVerifiedNum(phone)) || (ring && !isVerifiedNum(ringPhone))}>{busy ? 'Saving…' : 'Track price'}</button>
     </form>
   );
 }

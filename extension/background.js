@@ -8,6 +8,8 @@ async function api(path, body) {
     ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
   });
   const data = await res.json().catch(() => ({}));
+  // Signed out of DealRadar: the panel offers to sign in.
+  if (res.status === 401) throw new Error('SIGN_IN');
   if (!res.ok) throw new Error(data.error || 'DealRadar is not reachable right now.');
   return data;
 }

@@ -265,7 +265,7 @@
   // The delivery location is DealRadar's, shared with the website; from tells which store it was read from.
   const loc = { pin: null, area: null, from: null, editing: false, busy: false, locating: false, err: '', draft: undefined };
   // Price alerts: the shopper's list, and where their last alert went (so the next one takes one tap).
-  const al = { list: null, contact: null, m91: false, ringNote: false, form: false, busy: false, err: '', tg: null, draft: null };
+  const al = { list: null, contact: null, verified: [], m91: false, ringNote: false, form: false, busy: false, err: '', tg: null, draft: null };
 
   // ---------- compare tab ----------
   function tiles() {
@@ -353,17 +353,17 @@
     const c = al.draft || al.contact || {};
     const form = al.form
       ? `<input class="field" id="al-email" type="email" placeholder="Email" value="${esc(c.email || '')}" />
-         <input class="field" id="al-phone" type="tel" placeholder="WhatsApp number (optional)" value="${esc(c.phone || '')}" />
+         <input class="field" id="al-phone" type="tel" placeholder="WhatsApp number (optional)" value="${esc(c.phone || (al.verified[0] ? '+' + al.verified[0] : ''))}" />
          <label class="tick"><input type="checkbox" id="al-tg" ${c.telegram ? 'checked' : ''} /> Also on Telegram</label>
          ${al.m91 ? `<div class="urgent"><div class="ulbl">🚨 Most urgent alert</div>
            <label class="tick"><input type="checkbox" id="al-m91" ${c.m91 || c.m91_phone ? 'checked' : ''} /> Ring my phone the moment it drops — full volume, even on silent (free M91 app)</label>
-           <input class="field" id="al-m91-phone" type="tel" placeholder="Mobile number to ring" value="${esc(c.m91_phone || '')}" /></div>` : ''}
+           <input class="field" id="al-m91-phone" type="tel" placeholder="Mobile number to ring" value="${esc(c.m91_phone || (al.verified[0] ? '+' + al.verified[0] : ''))}" /></div>` : ''}
          <button class="btn primary" id="al-set" style="width:100%;margin-top:8px" ${al.busy ? 'disabled' : ''}>${al.busy ? 'Setting…' : 'Set alert'}</button>`
       : '';
     const known = !al.form && where(al.contact);
     return `<div class="alert"><div class="row"><span>🔔</span><span class="grow">Alert me when the price drops</span>${
       al.form ? '' : `<button class="btn primary" id="al-set" ${al.busy ? 'disabled' : ''}>${al.busy ? '…' : 'Set alert'}</button>`
-    }</div>${form}${al.err ? `<div class="err">${esc(al.err)}</div>` : ''}${
+    }</div>${form}${al.err ? `<div class="err">${esc(al.err)}${/verify/i.test(al.err) ? ` <a href="${DEALRADAR_API}/p/${esc(state.data.id)}" target="_blank" rel="noopener">Verify it on DealRadar ›</a>` : ''}</div>` : ''}${
       known ? `<div class="muted" style="margin-top:6px">To ${esc(known)} · <button class="lk" id="al-change">change</button></div>` : ''
     }</div>`;
   }
@@ -448,7 +448,7 @@
       <div class="head"><div class="logo"><b>₹</b>DealRadar</div><span class="site">${chip(store.name)}${esc(store.name)}</span><button class="x" id="close" title="Minimise">–</button></div>
       ${locHtml()}
       <div class="body">${
-        state.error ? `<div class="err">${esc(state.error)}</div>` : !state.data ? '<span class="shim"></span><span class="shim" style="width:80%"></span>' : compareHtml()
+        state.error === 'SIGN_IN' ? `<div class="muted" style="margin-bottom:8px">Sign in to DealRadar to compare prices and set alerts.</div><a class="btn primary" style="display:block;text-align:center" href="${DEALRADAR_API}/login" target="_blank" rel="noopener">Sign in to DealRadar</a>` : state.error ? `<div class="err">${esc(state.error)}</div>` : !state.data ? '<span class="shim"></span><span class="shim" style="width:80%"></span>' : compareHtml()
       }</div>
     </div>`;
     shown = true;
@@ -501,6 +501,8 @@
     if (r.ok && r.data.contact) al.contact = r.data.contact;
     // The "most urgent" phone ring is offered once DealRadar has M91 switched on.
     al.m91 = !!(r.ok && r.data.m91);
+    // Numbers verified on DealRadar come pre-filled; a new one is verified once on the site.
+    al.verified = (r.ok && r.data.verified?.phones) || [];
     render();
   }
 

@@ -3,6 +3,7 @@ import { historyFor, newId, read, write, type Alert, type OutboxMail, type Produ
 import { msg91Confirmation, msg91Drop, msg91Ready } from './msg91';
 import { noteRun, noteStoreReads } from './ops-alerts';
 import { alertShopper, shopperAlertsOn } from './m91';
+import { manageLink, underDailyCap } from './contacts';
 import { appUrl as appBase } from './config';
 import { derivedKey } from './viasocket';
 import { refreshProduct } from './products';
@@ -98,6 +99,12 @@ export function setAlertChannel(id: string, channel: Channel, on: boolean): { al
 // turned some of them into the literal characters "\\uD83C\\uDFAF" in the Telegram message.
 export const emoji = (codePoint: number) => String.fromCodePoint(codePoint);
 
+// Every alert email ends with why it came and how to stop it: this alert, or everything to this address.
+function emailFooter(alert: Alert, p: Product, stop: string) {
+  const manage = alert.email ? manageLink('email', alert.email) : stop;
+  return `You're getting this because a price alert was set on DealRadar for “${esc(p.title.slice(0, 80))}”. Not you? <a href="${manage}">This wasn't me</a>. · <a href="${stop}">Stop this alert</a> · <a href="${manage}">Manage my alerts</a>`;
+}
+
 function shell(body: string, footer: string) {
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:auto;color:#0f172a">
 <div style="font-size:20px;font-weight:bold;color:#ea580c;margin-bottom:12px">DealRadar</div>${body}
@@ -137,7 +144,7 @@ ${productBlock(p)}
 ${couponHtml}
 <a href="${l.buy}" style="display:inline-block;background:#ea580c;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:8px">Buy now at ${inr(p.price)}</a>
 <p style="font-size:13px"><a href="${l.page}">See price history${coupon ? '' : ' and coupons'}</a></p>`,
-    `You asked DealRadar to watch this price until ${new Date(alert.expires_at).toDateString()}. <a href="${l.stop}">Stop these alerts</a>.`,
+    emailFooter(alert, p, l.stop),
   );
 
   let whatsapp_vars: Record<string, string> | null = null;
@@ -193,12 +200,20 @@ ${couponHtml}
     wantsWhatsApp && !viaMsg91
       ? {
           to: alert.phone!,
-          title: '🔥 Price drop alert!',
+          // The shape of the WhatsApp template, on one line: viaSocket's WhatsApp does not take line breaks.
+          title: '🔔 Price update for your DealRadar alert',
           summary: oneLine(
-            `${shortTitle(p.title)} is now ${inr(p.price)} (was ${inr(reference)}), you save ${inr(reference - p.price)} on ${PLATFORM_NAMES[p.platform]}.` +
-              (isLow ? ` Lowest price in ${alert.window_days} days.` : '') +
-              (coupon ? ` Coupon: ${coupon.code ? `${coupon.code} — ` : ''}${coupon.discount_text || coupon.title}.` : '') +
-              ` Buy now: ${l.buy}`,
+            [
+              `🛍️ Product: ${shortTitle(p.title)}`,
+              `💰 Price now: ${inr(p.price)} (was ${inr(reference)})`,
+              `📉 Lower by: ${inr(reference - p.price)}${dropPct >= 0.5 ? ` · ${dropPct.toFixed(0)}% off` : ''}`,
+              `🏪 Store: ${PLATFORM_NAMES[p.platform]}`,
+              coupon ? `🏷️ Coupon: ${coupon.code ? `${coupon.code} — ` : ''}${coupon.discount_text || coupon.title}` : isLow ? `🏷️ Lowest price in ${alert.window_days} days` : '',
+              `🔗 Product link: ${l.buy}`,
+              `You get this message because you set a price alert on DealRadar. Not you? Stop: ${manageLink('phone', alert.phone!)}`,
+            ]
+              .filter(Boolean)
+              .join(' · '),
           ),
         }
       : null;
@@ -241,9 +256,22 @@ ${row('Availability', p.in_stock ? 'In stock' : 'Out of stock right now')}
 </table>
 <a href="${l.page}" style="display:inline-block;background:#ea580c;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">See price history & compare</a>
 <a href="${l.buy}" style="display:inline-block;margin-left:8px;border:1px solid #cbd5e1;color:#0f172a;padding:11px 18px;border-radius:8px;text-decoration:none">Open on ${esc(PLATFORM_NAMES[p.platform])}</a>`,
-    `You (or someone using this address) asked DealRadar to watch this product. <a href="${l.stop}">Stop this alert</a>.`,
+    emailFooter(alert, p, l.stop),
   );
   return { subject: `Tracking started: ${p.title.slice(0, 60)} at ${inr(p.price)}`, html };
+}
+
+// Sent instead of the confirmation when the address is new to this account: nothing else goes to it until clicked.
+export function confirmEmailRequest(alert: Alert, p: Product, link: string): { subject: string; html: string } {
+  const html = shell(
+    `<p style="font-size:16px"><b>Confirm your DealRadar price alerts</b></p>
+<p style="font-size:14px;color:#334155">A price alert was set on DealRadar for this product, to be sent to this email. Click below to confirm it is you — until then we send nothing here.</p>
+${productBlock(p)}
+<a href="${link}" style="display:inline-block;background:#ea580c;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Yes, send me price alerts</a>
+<p style="font-size:12px;color:#64748b;margin-top:16px">The link works for 3 days.</p>`,
+    `Not you? Ignore this email — no alerts will be sent here. Or <a href="${manageLink('email', alert.email!)}">block DealRadar alerts to this address</a>.`,
+  );
+  return { subject: `Confirm price alerts for ${p.title.slice(0, 60)}`, html };
 }
 
 // The link to choose a new password, from "Forgot password?".
@@ -303,10 +331,18 @@ export function queueWhatsAppConfirmation(alert: Alert, p: Product, settings: Se
     const until = new Date(alert.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
     const whatsapp_note: WhatsAppNote = {
       to: alert.phone,
-      title: '🎯 Price tracking started!',
+      title: '🎯 Your DealRadar price alert is set',
       summary: oneLine(
-        `${shortTitle(p.title)} at ${inr(p.price)} on ${PLATFORM_NAMES[p.platform]}. Alert on: ${rule}, watching till ${until}. ` +
-          `We check every 15 minutes and message you here the moment the price drops. Price history: ${l.page}`,
+        [
+          `🛍️ Product: ${shortTitle(p.title)}`,
+          `💰 Current price: ${inr(p.price)}${p.mrp && p.mrp > p.price ? ` (${Math.round(((p.mrp - p.price) / p.mrp) * 100)}% off MRP ${inr(p.mrp)})` : ''}`,
+          `🏪 Store: ${PLATFORM_NAMES[p.platform]}`,
+          `📉 Alert on: ${rule}`,
+          `📅 Watching till: ${until}`,
+          `🔔 We check the price every 15 minutes and will message you here when it drops.`,
+          `📈 Price history: ${l.page}`,
+          `Team DealRadar. Not you? Stop: ${manageLink('phone', alert.phone)}`,
+        ].join(' · '),
       ),
     };
     const m: OutboxMail = { id: newId('m'), email: null, whatsapp_note, subject: '', html: '', created_at: new Date().toISOString(), claimed_at: null, sent_at: null, tries: 0 };
@@ -561,8 +597,8 @@ export async function runTier(tier: Tier) {
       if (!p) continue;
       const hit = evaluate(a, p);
       if (!hit) continue;
-      notifications.push(dropNotification(a, p, hit.reference, hit.reason, settings));
-      if (a.channels.includes('m91') && (a.m91_phone || a.phone)) await ringShopper(a, p, hit.reference);
+      notifications.push(capped(dropNotification(a, p, hit.reference, hit.reason, settings)));
+      if (a.channels.includes('m91') && (a.m91_phone || a.phone) && underDailyCap(`phone:${a.m91_phone || a.phone}:ring`)) await ringShopper(a, p, hit.reference);
       write((d) => {
         d.alerts[a.id].last_notified_price = p.price;
         d.alerts[a.id].last_notified_at = nowIso();
@@ -579,6 +615,19 @@ export async function runTier(tier: Tier) {
 // The shopper's phone rings on M91 (they accepted DealRadar's invite in the M91 app). One alert per price, so a
 // further drop rings again; any answer closes it. "Stop this alert" ends the DealRadar alert (see /api/m91/callback).
 export const STOP_LABEL = 'Stop this alert';
+
+// At most 10 alert messages a day to one email or number: past that, that address is left out of this one.
+function capped(n: Notification): Notification {
+  if (n.email && !underDailyCap(`email:${n.email}`)) n.email = null;
+  const phone = n.whatsapp_note?.to || n.msg91?.to || (n.whatsapp_vars ? n.phone : null);
+  if (phone && !underDailyCap(`phone:${phone}`)) {
+    n.whatsapp_note = null;
+    n.msg91 = null;
+    n.whatsapp_vars = null;
+    n.phone = null;
+  }
+  return n;
+}
 async function ringShopper(alert: Alert, p: Product, reference: number) {
   if (!shopperAlertsOn()) return;
   const l = links(alert, p);
@@ -586,7 +635,7 @@ async function ringShopper(alert: Alert, p: Product, reference: number) {
   try {
     const sent = await alertShopper((alert.m91_phone || alert.phone)!, {
       title: `Price drop: ${p.title.slice(0, 80)} is now ${inr(p.price)} (was ${inr(reference)})`,
-      description: `You save ${inr(reference - p.price)}${pct > 0 ? ` (${pct}% off)` : ''} on ${PLATFORM_NAMES[p.platform]}. Open the deal: ${l.buy}`,
+      description: `You save ${inr(reference - p.price)}${pct > 0 ? ` (${pct}% off)` : ''} on ${PLATFORM_NAMES[p.platform]}. Open the deal: ${l.buy}\nYou get this because a price alert was set on DealRadar for this number. Not you? Stop: ${manageLink('phone', (alert.m91_phone || alert.phone)!)}`,
       severity: 'LOW',
       customId: `drop-${alert.id}-${Math.round(p.price)}`,
       responseOptions: [

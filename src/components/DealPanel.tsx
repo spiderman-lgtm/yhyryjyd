@@ -62,6 +62,7 @@ export default function DealPanel(props: {
   userEmail: string | null;
   telegram?: boolean;
   m91?: boolean;
+  verified?: { emails: string[]; phones: string[] };
 }) {
   const { productId, price, store, deal, userEmail } = props;
   const [tab, setTab] = useState<'scan' | 'drop'>('scan');
@@ -176,7 +177,7 @@ export default function DealPanel(props: {
               {cheaper && <span className="ml-1 font-semibold text-amber-700">· {inr(price - cheaper.price)} cheaper on {cheaper.store}</span>}
             </span>
           </button>
-          <TrackForm productId={productId} existing={props.tracking} defaultEmail={userEmail ?? ''} telegram={props.telegram} m91={props.m91} />
+          <TrackForm productId={productId} existing={props.tracking} defaultEmail={userEmail ?? ''} telegram={props.telegram} m91={props.m91} verified={props.verified} />
         </div>
       )}
     </div>

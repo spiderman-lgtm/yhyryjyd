@@ -21,6 +21,7 @@ import { isPin } from '@/lib/compare';
 import { giftCardFor } from '@/lib/storecoupons';
 import { telegramBot } from '@/lib/telegram';
 import { shopperAlertsOn } from '@/lib/m91';
+import { verifiedList } from '@/lib/contacts';
 import { dateShort, inr } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -115,6 +116,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
           userEmail={user?.email ?? null}
           telegram={!!telegramBot()}
           m91={shopperAlertsOn()}
+          verified={user ? verifiedList(user.id) : undefined}
         />
       </div>
 
