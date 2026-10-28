@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     const trip = await route(a, b);
     if (trip.km < 0.3) return NextResponse.json({ error: 'Start and destination are the same place.' }, { status: 400 });
     if (trip.km > 150) return NextResponse.json({ error: 'These places are more than 150 km apart — check the city.' }, { status: 400 });
-    return NextResponse.json({ from: a, to: b, km: Math.round(trip.km * 10) / 10, min: Math.round(trip.min), road: trip.road, maps: trip.google ? 'google' : 'osm', line: trip.line ?? [], ...fares(a, b, trip, city) });
+    return NextResponse.json({ from: a, to: b, km: Math.round(trip.km * 10) / 10, min: Math.round(trip.min), road: trip.road, maps: trip.google ? 'google' : trip.ola ? 'ola' : 'osm', line: trip.line ?? [], ...fares(a, b, trip, city) });
   } catch (e) {
     console.error('[rides]', e instanceof Error ? e.message : e);
     return NextResponse.json({ error: 'Could not look up these places right now. Please try again.' }, { status: 502 });

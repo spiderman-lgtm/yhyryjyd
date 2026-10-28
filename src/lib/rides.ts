@@ -1,6 +1,7 @@
 import 'server-only';
 import { read, write } from './db';
 import { googleMapsOn, route as googleRoute } from './gmaps';
+import { olaMapsOn, route as olaRoute } from './olamaps';
 
 // Ride fares across Rapido, Ola, Uber, Namma Yatri and inDrive for a trip. None of them publishes live fares, so
 // the fare is estimated from the trip's road distance and time with each service's published rate card; the
@@ -66,7 +67,7 @@ function straightKm(a: Place, b: Place) {
 }
 
 // Road distance and time from the OSRM route service; a straight line × 1.35 at city speed if it can't answer.
-export async function route(a: Place, b: Place, mode: 'DRIVE' | 'TWO_WHEELER' = 'DRIVE'): Promise<{ km: number; min: number; road: boolean; line?: [number, number][]; google?: boolean }> {
+export async function route(a: Place, b: Place, mode: 'DRIVE' | 'TWO_WHEELER' = 'DRIVE'): Promise<{ km: number; min: number; road: boolean; line?: [number, number][]; google?: boolean; ola?: boolean }> {
   // Google Maps with live traffic, the same routing the ride apps price on, when its key is set.
   if (googleMapsOn()) {
     try {
@@ -74,6 +75,14 @@ export async function route(a: Place, b: Place, mode: 'DRIVE' | 'TWO_WHEELER' = 
       if (g) return { ...g, road: true, google: true };
     } catch (e) {
       console.error('[rides] google route:', e instanceof Error ? e.message : e);
+    }
+  }
+  if (olaMapsOn()) {
+    try {
+      const o = await olaRoute(a, b);
+      if (o) return { ...o, road: true, ola: true };
+    } catch (e) {
+      console.error('[rides] ola route:', e instanceof Error ? e.message : e);
     }
   }
   try {

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { CITIES, findCity, liveFares, ownOffers, sites, withCoupons, type Mode } from '@/lib/travel';
 import { rateLimited } from '@/lib/ext';
+import { amadeusOn, flightOffers } from '@/lib/amadeus';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -22,12 +23,13 @@ export async function GET(req: NextRequest) {
   const links = sites(mode, from, to, date);
   // Coupons the owner added for these sites are always shown; the web search adds what it finds.
   const own = ownOffers(links.map((l) => l.name));
-  try {
-    const live = await liveFares(mode, from, to, date);
-    const offers = [...own, ...live.offers.filter((w) => !own.some((o) => o.code && o.code === w.code))];
-    return NextResponse.json({ from, to, date, links, offers, options: withCoupons(live.options, offers) });
-  } catch (e) {
-    console.error('[travel]', e instanceof Error ? e.message : e);
-    return NextResponse.json({ from, to, date, links, offers: own, options: [] });
-  }
+  // Flights: airline fares from Amadeus when its keys are set, alongside the web search.
+  const [air, live] = await Promise.all([
+    mode === 'flight' && amadeusOn()
+      ? flightOffers(from.air!, to.air!, date, links[0].url).catch((e) => (console.error('[travel] amadeus:', e instanceof Error ? e.message : e), []))
+      : Promise.resolve([]),
+    liveFares(mode, from, to, date).catch((e) => (console.error('[travel]', e instanceof Error ? e.message : e), { options: [], offers: [] })),
+  ]);
+  const offers = [...own, ...live.offers.filter((w) => !own.some((o) => o.code && o.code === w.code))];
+  return NextResponse.json({ from, to, date, links, offers, options: withCoupons([...air, ...live.options], offers) });
 }

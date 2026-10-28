@@ -8,7 +8,7 @@ import 'leaflet/dist/leaflet.css';
 
 type Kind = 'Bike' | 'Auto' | 'Cab' | 'Cab XL';
 type Fare = { app: string; domain: string; kind: Kind; label: string; low: number; high: number; ref?: number; note?: string; link: string };
-type Result = { from: Place; to: Place; km: number; min: number; road: boolean; line: [number, number][]; fares: Fare[]; map: string; city: string; maps?: 'google' | 'osm' };
+type Result = { from: Place; to: Place; km: number; min: number; road: boolean; line: [number, number][]; fares: Fare[]; map: string; city: string; maps?: 'google' | 'ola' | 'osm' };
 type Place = { id?: string; name: string; area?: string; lat: number; lng: number };
 
 const VEHICLES: { k: Kind; icon: string; t: string; sub: string }[] = [
@@ -93,23 +93,6 @@ function PlaceInput({ id, label, dot, value, onPick, near, extra }: { id: string
           ))}
         </ul>
       )}
-    </div>
-  );
-}
-
-// The trip on Google Maps (its standard embed, no key needed): the route once pickup and drop are set,
-// otherwise the one point chosen.
-function GoogleMap({ from, to }: { from: Place | null; to: Place | null }) {
-  const ll = (p: Place) => `${p.lat},${p.lng}`;
-  const src =
-    from && to
-      ? `https://maps.google.com/maps?saddr=${ll(from)}&daddr=${ll(to)}&output=embed`
-      : from || to
-        ? `https://maps.google.com/maps?q=${ll((from || to)!)}&z=15&output=embed`
-        : 'https://maps.google.com/maps?q=India&z=5&output=embed';
-  return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200">
-      <iframe title="Trip on Google Maps" src={src} className="h-80 w-full border-0" loading="lazy" allowFullScreen referrerPolicy="no-referrer-when-downgrade" />
     </div>
   );
 }
@@ -217,7 +200,6 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
   const [kind, setKind] = useState<Kind>((VEHICLES.find((v) => v.k === initial.vehicle)?.k as Kind) || 'Bike');
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
-  const [pinning, setPinning] = useState(false);
   const [error, setError] = useState('');
   const [res, setRes] = useState<Result | null>(null);
 
@@ -332,12 +314,11 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
           {error && <p className="text-sm font-medium text-red-600">{error}</p>}
           <p className="text-xs text-ink-mute">Pick from the suggestions, use your location, or tap the map. Free, no sign-in needed.</p>
         </div>
-        <GoogleMap from={from} to={to} />
-        {/* Google's embed can't take a tap, so the exact spot is set on a pin map when needed. */}
-        <button type="button" onClick={() => setPinning((v) => !v)} className="text-xs font-semibold text-brand">
-          {pinning ? 'Hide pin map' : '📍 Set the exact spot by dragging a pin'}
-        </button>
-        {pinning && <TripMap from={from} to={to} line={res?.line ?? []} onMove={(w, p) => (w === 'from' ? setFrom(p) : setTo(p))} />}
+        {/* Leaflet with OpenStreetMap (open source): tap or drag a pin to set the exact spot. */}
+        <TripMap from={from} to={to} line={res?.line ?? []} onMove={(w, p) => (w === 'from' ? setFrom(p) : setTo(p))} />
+        {res && (
+          <a href={res.map} target="_blank" rel="noopener" className="text-xs font-semibold text-brand">Open this route in Google Maps ›</a>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -357,7 +338,7 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
               </span>
               <span className="text-right font-semibold">
                 {res.km} km · ~{res.min} min
-                <span className="block text-[11px] font-normal text-ink-mute">{res.maps === 'google' ? 'Route & traffic from Google Maps' : 'Route from OpenStreetMap'}</span>
+                <span className="block text-[11px] font-normal text-ink-mute">{res.maps === 'google' ? 'Route & traffic from Google Maps' : res.maps === 'ola' ? 'Route from Ola Maps' : 'Route from OpenStreetMap'}</span>
               </span>
             </div>
             <h2 className="pt-1 text-lg font-extrabold">

@@ -7,7 +7,9 @@ import 'server-only';
 export type GPlace = { id?: string; name: string; area?: string; lat: number; lng: number };
 
 const key = () => (process.env.GOOGLE_MAPS_API_KEY || '').trim() || null;
-export const googleMapsOn = () => !!key();
+// A key Google refuses (API off, restricted, no billing) is skipped for 10 minutes instead of slowing every search.
+let refusedUntil = 0;
+export const googleMapsOn = () => !!key() && Date.now() > refusedUntil;
 
 async function call<T>(url: string, init: RequestInit & { mask?: string } = {}): Promise<T> {
   const res = await fetch(url, {
@@ -17,6 +19,7 @@ async function call<T>(url: string, init: RequestInit & { mask?: string } = {}):
     cache: 'no-store',
   });
   const body: any = await res.json().catch(() => ({}));
+  if (res.status === 403 || res.status === 401) refusedUntil = Date.now() + 10 * 60_000;
   if (!res.ok) throw new Error(`Google Maps ${res.status}: ${body?.error?.message || body?.error_message || 'error'}`);
   return body as T;
 }

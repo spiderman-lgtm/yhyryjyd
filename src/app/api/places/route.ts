@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { rateLimited } from '@/lib/ext';
 import * as gmaps from '@/lib/gmaps';
+import * as ola from '@/lib/olamaps';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ places: await gmaps.suggest(q, near ? { lat, lng } : null), provider: 'google' });
     } catch (e) {
       console.error('[places] google:', e instanceof Error ? e.message : e);
-      // Falls through to OpenStreetMap so the search keeps working.
+      // Falls through to Ola Maps / OpenStreetMap so the search keeps working.
+    }
+  }
+  // Ola Maps: Indian place data, when its key is set.
+  if (ola.olaMapsOn()) {
+    try {
+      if (reverse) {
+        const p = await ola.reverse(lat, lng);
+        return NextResponse.json({ places: p ? [p] : [] });
+      }
+      if (q.length >= 2) {
+        const places = await ola.suggest(q, near ? { lat, lng } : null);
+        if (places.length) return NextResponse.json({ places, provider: 'ola' });
+      }
+    } catch (e) {
+      console.error('[places] ola:', e instanceof Error ? e.message : e);
     }
   }
   if (!reverse && q.length < 2) return NextResponse.json({ places: [] });
