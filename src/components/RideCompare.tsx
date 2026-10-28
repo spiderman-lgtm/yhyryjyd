@@ -97,6 +97,23 @@ function PlaceInput({ id, label, dot, value, onPick, near, extra }: { id: string
   );
 }
 
+// The trip on Google Maps (its standard embed, no key needed): the route once pickup and drop are set,
+// otherwise the one point chosen.
+function GoogleMap({ from, to }: { from: Place | null; to: Place | null }) {
+  const ll = (p: Place) => `${p.lat},${p.lng}`;
+  const src =
+    from && to
+      ? `https://maps.google.com/maps?saddr=${ll(from)}&daddr=${ll(to)}&output=embed`
+      : from || to
+        ? `https://maps.google.com/maps?q=${ll((from || to)!)}&z=15&output=embed`
+        : 'https://maps.google.com/maps?q=India&z=5&output=embed';
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200">
+      <iframe title="Trip on Google Maps" src={src} className="h-80 w-full border-0" loading="lazy" allowFullScreen referrerPolicy="no-referrer-when-downgrade" />
+    </div>
+  );
+}
+
 function TripMap({ from, to, line, onMove }: { from: Place | null; to: Place | null; line: [number, number][]; onMove: (which: 'from' | 'to', p: Place) => void }) {
   const box = useRef<HTMLDivElement>(null);
   const m = useRef<{ map: any; a: any; b: any; line: any; L: any } | null>(null);
@@ -197,6 +214,7 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
   const [kind, setKind] = useState<Kind>((VEHICLES.find((v) => v.k === initial.vehicle)?.k as Kind) || 'Bike');
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [pinning, setPinning] = useState(false);
   const [error, setError] = useState('');
   const [res, setRes] = useState<Result | null>(null);
 
@@ -293,7 +311,12 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
           {error && <p className="text-sm font-medium text-red-600">{error}</p>}
           <p className="text-xs text-ink-mute">Pick from the suggestions, use your location, or tap the map. Free, no sign-in needed.</p>
         </div>
-        <TripMap from={from} to={to} line={res?.line ?? []} onMove={(w, p) => (w === 'from' ? setFrom(p) : setTo(p))} />
+        <GoogleMap from={from} to={to} />
+        {/* Google's embed can't take a tap, so the exact spot is set on a pin map when needed. */}
+        <button type="button" onClick={() => setPinning((v) => !v)} className="text-xs font-semibold text-brand">
+          {pinning ? 'Hide pin map' : '📍 Set the exact spot by dragging a pin'}
+        </button>
+        {pinning && <TripMap from={from} to={to} line={res?.line ?? []} onMove={(w, p) => (w === 'from' ? setFrom(p) : setTo(p))} />}
       </div>
 
       <div className="space-y-3">
