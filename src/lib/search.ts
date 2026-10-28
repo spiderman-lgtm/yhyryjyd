@@ -15,15 +15,24 @@ export type SearchItem = {
   reviews: number | null;
   match: number;
   buy: string;
+  // 'exact': the model typed (iPhone 13); 'related': other models of the line (iPhone 13 Pro, iPhone 14).
+  group: 'exact' | 'related';
+  // How many colour versions of this listing the store has (merged into this one, the cheapest).
+  colours: number;
 };
+
+// Colour names, so the same phone in five colours is one result (its cheapest) instead of five.
+const COLOURS =
+  /\b(?:jet |space |deep |sierra |alpine |pacific |midnight |starlight |rose |sky |light |dark |cosmic |phantom |mint |ocean |forest |natural |desert |product\s*)?(?:black|white|blue|red|green|pink|purple|gold|silver|graphite|midnight|starlight|yellow|grey|gray|titanium|orange|violet|lavender|mint|cream|beige|brown|navy|teal|coral|rose|bronze|copper|cyan|lime|peach|maroon|olive|charcoal|ivory|aqua|ultramarine|sage)\b/gi;
+const sansColour = (t: string) => t.toLowerCase().replace(/\(.*?\)/g, ' ').replace(COLOURS, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
 
 const cache = new Map<string, { at: number; items: SearchItem[]; ttl: number }>();
 
 // How much of what the shopper typed a listing contains, with the brand (first word) and model numbers
 // (s24, 141, 4000) counting double.
-function relevance(q: string[], hit: Hit) {
+function relevance(q: string[], hit: Hit): { score: number; exact: boolean; brand: boolean } {
   const words = new Set(searchTokens(`${hit.title} ${(hit.features ?? []).join(' ')}`));
-  if (!q.length) return 0;
+  if (!q.length) return { score: 0, exact: false, brand: false };
   let got = 0;
   let total = 0;
   q.forEach((t, i) => {
@@ -37,7 +46,8 @@ function relevance(q: string[], hit: Hit) {
   const missingNumber = q.some((t) => /\d/.test(t) && !words.has(t));
   // Without the brand (the first word typed), a listing is most likely another brand's product.
   const otherBrand = !words.has(q[0]);
-  return (got / total) * (otherModel ? 0.8 : 1) * (missingNumber ? 0.5 : 1) * (otherBrand ? 0.6 : 1);
+  const score = (got / total) * (otherModel ? 0.8 : 1) * (missingNumber ? 0.5 : 1) * (otherBrand ? 0.6 : 1);
+  return { score, exact: got === total && !otherModel, brand: !otherBrand };
 }
 
 // Searches every store we can reach for a product name, best matches first.
@@ -62,44 +72,51 @@ export async function keywordSearch(raw: string): Promise<SearchItem[]> {
   console.log(`[search] "${q}" ${seenStores.join(' ')}`);
   const incomplete = seenStores.some((x) => !/:\d+$/.test(x));
   const wantsAccessory = ACCESSORY.test(q);
-  const seen = new Set<string>();
-  const ranked = found
+  const scored = found
     .filter((h) => h.price > 0 && h.title && h.url)
     // A search for a phone should not fill up with its cases and chargers.
     .filter((h) => wantsAccessory || !ACCESSORY.test(h.title))
-    .map((h) => ({ h, match: relevance(qTokens, h) }))
-    .filter((x) => x.match >= 0.35)
-    .sort((a, b) => b.match - a.match || a.h.price - b.h.price)
-    .filter(({ h }) => {
-      const k = `${h.store}|${(h.name || h.title).toLowerCase().slice(0, 60)}`;
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-  // Stores take turns, best result of each first, so every store that has the product shows up
-  // instead of the first few stores filling the page.
-  const byStore = new Map<string, typeof ranked>();
-  for (const x of ranked) byStore.set(x.h.store, [...(byStore.get(x.h.store) ?? []), x]);
-  const queues = [...byStore.values()].sort((a, b) => b[0].match - a[0].match);
-  const picked: typeof ranked = [];
-  for (let round = 0; round < 5 && picked.length < 24; round++)
-    for (const list of queues) if (list[round] && picked.length < 24) picked.push(list[round]);
-  const items = picked
-    .sort((a, b) => b.match - a.match || a.h.price - b.h.price)
-    .map(({ h, match }) => ({
-      title: (h.name || h.title).slice(0, 160),
-      store: h.store,
-      price: Math.round(h.price),
-      mrp: h.mrp && h.mrp > h.price ? Math.round(h.mrp) : null,
-      off: h.mrp && h.mrp > h.price ? Math.round(((h.mrp - h.price) / h.mrp) * 100) : 0,
-      url: h.url,
-      image: h.image,
-      features: h.features ?? [],
-      rating: h.rating ?? null,
-      reviews: h.reviews ?? null,
-      match: Math.round(match * 100),
-      buy: affiliateUrl(h.url),
-    }));
+    .map((h) => ({ h, r: relevance(qTokens, h) }))
+    // Related models of the same brand stay (iPhone 14 for "iPhone 13"); other brands need a close match.
+    .filter((x) => x.r.exact || (x.r.brand ? x.r.score >= 0.2 : x.r.score >= 0.35));
+
+  // One result per store and product, whatever its colour: the cheapest colour, with how many there are.
+  const merge = (list: typeof scored, key: (h: Hit) => string) => {
+    const best = new Map<string, { x: (typeof scored)[number]; n: number }>();
+    for (const x of list) {
+      const k = key(x.h);
+      const cur = best.get(k);
+      if (!cur) best.set(k, { x, n: 1 });
+      else best.set(k, { x: x.h.price < cur.x.h.price ? x : cur.x, n: cur.n + 1 });
+    }
+    return [...best.values()];
+  };
+  // The model typed: one per store, lowest price first.
+  const exact = merge(scored.filter((x) => x.r.exact), (h) => h.store).sort((a, b) => a.x.h.price - b.x.h.price);
+  const exactUrls = new Set(exact.map((e) => e.x.h.url));
+  // Related models: colours merged per store, closest match first, then lowest price.
+  const related = merge(
+    scored.filter((x) => !exactUrls.has(x.h.url) && !(x.r.exact && exact.some((e) => e.x.h.store === x.h.store))),
+    (h) => `${h.store}|${sansColour(h.name || h.title).slice(0, 70)}`,
+  )
+    .sort((a, b) => Math.round(b.x.r.score * 5) - Math.round(a.x.r.score * 5) || a.x.h.price - b.x.h.price)
+    .slice(0, 24);
+  const items: SearchItem[] = [...exact.map((e) => ({ ...e, group: 'exact' as const })), ...related.map((e) => ({ ...e, group: 'related' as const }))].map(({ x: { h, r }, n, group }) => ({
+    title: (h.name || h.title).slice(0, 160),
+    store: h.store,
+    price: Math.round(h.price),
+    mrp: h.mrp && h.mrp > h.price ? Math.round(h.mrp) : null,
+    off: h.mrp && h.mrp > h.price ? Math.round(((h.mrp - h.price) / h.mrp) * 100) : 0,
+    url: h.url,
+    image: h.image,
+    features: h.features ?? [],
+    rating: h.rating ?? null,
+    reviews: h.reviews ?? null,
+    match: Math.round(r.score * 100),
+    buy: affiliateUrl(h.url),
+    group,
+    colours: n,
+  }));
   if (cache.size > 500) cache.clear();
   // A result with a store missing (it failed this time) is kept briefly, so a retry soon includes it.
   if (items.length) cache.set(key, { at: Date.now(), items, ttl: incomplete ? 10 * 60_000 : 3600_000 });

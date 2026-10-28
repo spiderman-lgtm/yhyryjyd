@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 }
 
 async function aiSearch(req: NextRequest, q: string): Promise<SearchItem[]> {
-  const toItem = (i: Hit): SearchItem => ({ ...i, mrp: null, off: 0, features: [], rating: null, reviews: null, match: 0, buy: affiliateUrl(i.url) });
+  const toItem = (i: Hit): SearchItem => ({ ...i, mrp: null, off: 0, features: [], rating: null, reviews: null, match: 0, buy: affiliateUrl(i.url), group: 'related', colours: 1 });
   const key = q.toLowerCase();
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < 6 * 3600_000) return hit.items.map(toItem);
