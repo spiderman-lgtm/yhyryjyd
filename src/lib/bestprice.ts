@@ -1,5 +1,6 @@
 import 'server-only';
 import { read, write, type BestPrice, type Product } from './db';
+import type { BankOffer } from './offer-text';
 import { PLATFORM_NAMES } from './scraper';
 import { askAI } from './viasocket';
 import { compareStores } from './compare';
@@ -20,11 +21,17 @@ const SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['store', 'best_price', 'offer', 'source_url'],
+        required: ['store', 'best_price', 'offer', 'offers', 'source_url'],
         properties: {
           store: { type: 'string', description: 'store name exactly as given in the list' },
           best_price: { type: ['number', 'null'], description: 'price in INR after the single best offer, or null if no current offer applies' },
           offer: { type: 'string', description: 'the offer, e.g. "₹787 off with HDFC Bank credit card EMI" or "Coupon SAVE10: 10% off up to ₹500"' },
+          offers: {
+            type: 'array',
+            maxItems: 3,
+            description: 'the bank/card offers on this store for this product, biggest saving first',
+            items: { type: 'object', additionalProperties: false, required: ['amount', 'text'], properties: { amount: { type: 'number' }, text: { type: 'string', description: 'e.g. "₹56 off · Flipkart Axis Credit Card"' } } },
+          },
           source_url: { type: 'string', description: 'page where you saw the offer' },
         },
       },
@@ -47,7 +54,7 @@ async function find(product: Product): Promise<BestPrice[]> {
     { store: PLATFORM_NAMES[product.platform], price: product.price, url: product.url },
     ...compared.offers.filter((o) => o.same_variant && o.in_stock).slice(0, 5),
   ];
-  const r = await askAI<{ stores: { store: string; best_price: number | null; offer: string; source_url: string }[] }>({
+  const r = await askAI<{ stores: { store: string; best_price: number | null; offer: string; offers: BankOffer[]; source_url: string }[] }>({
     thread_id: `best-${product.id}-${Date.now()}`,
     prompt: PROMPT,
     message: `Product: ${product.title}\nToday: ${new Date().toISOString().slice(0, 10)}\nStores:\n${list.map((s) => `- ${s.store}: ₹${s.price} — ${s.url}`).join('\n')}`,
@@ -58,12 +65,28 @@ async function find(product: Product): Promise<BestPrice[]> {
     const hit = (r?.stores || []).find((x) => x.store.toLowerCase() === s.store.toLowerCase());
     // An offer must lower the price, and by no more than half: anything else is a misread.
     const ok = hit && hit.best_price && hit.best_price < s.price && hit.best_price >= s.price * 0.5 && hit.offer && /^https?:\/\//.test(hit.source_url);
-    return { store: s.store, price: s.price, best: ok ? Math.round(hit!.best_price!) : s.price, offer: ok ? hit!.offer.slice(0, 120) : '', source_url: ok ? hit!.source_url : '' };
+    const offers = (hit?.offers || []).filter((o) => o.amount > 0 && o.amount <= s.price * 0.5 && o.text).map((o) => ({ amount: Math.round(o.amount), text: o.text.slice(0, 90) }));
+    return { store: s.store, price: s.price, best: ok ? Math.round(hit!.best_price!) : s.price, offer: ok ? hit!.offer.slice(0, 120) : '', offers: ok ? offers : [], source_url: ok ? hit!.source_url : '', from: 'ai' as const };
   });
   write((d) => {
     (d.best_price ??= {})[product.id] = { stores, fetched_at: new Date().toISOString() };
   });
   return stores;
+}
+
+// What the store's own page shows ("Buy at ₹1,057" and its bank offers) beats a web search for that store.
+function withOwnPage(stores: BestPrice[], product: Product): BestPrice[] {
+  const name = PLATFORM_NAMES[product.platform];
+  const offers = product.bank_offers ?? [];
+  const best = product.offer_price && product.offer_price < product.price ? product.offer_price : offers[0] ? product.price - offers[0].amount : null;
+  const rest = stores.filter((s) => s.store.toLowerCase() !== name.toLowerCase());
+  const ai = stores.find((s) => s.store.toLowerCase() === name.toLowerCase());
+  const own: BestPrice = best
+    ? { store: name, price: product.price, best, offer: offers[0]?.text ?? 'Price after bank offers on the store page', offers, source_url: product.url, from: 'page' }
+    : ai && ai.price === product.price
+      ? ai
+      : { store: name, price: product.price, best: product.price, offer: '', offers: [], source_url: '', from: 'page' };
+  return [own, ...rest];
 }
 
 export function cachedBestPrices(productId: string): BestPrice[] | null {
@@ -73,12 +96,13 @@ export function cachedBestPrices(productId: string): BestPrice[] | null {
 export async function bestPrices(product: Product): Promise<{ stores: BestPrice[]; fetched_at: string; cached: boolean }> {
   const hit = read((d) => d.best_price?.[product.id]);
   // The shopper's own store price may have changed since: then it is looked up again.
-  const fresh = hit && Date.now() - Date.parse(hit.fetched_at) < TTL_MS && hit.stores[0]?.price === product.price;
-  if (fresh) return { ...hit!, cached: true };
+  // Other stores' prices are compared afresh every 6 hours, so their offers are too.
+  const fresh = hit && Date.now() - Date.parse(hit.fetched_at) < TTL_MS;
+  if (fresh) return { ...hit!, stores: withOwnPage(hit!.stores, product), cached: true };
   let p = inFlight.get(product.id);
   if (!p) {
     p = find(product).finally(() => inFlight.delete(product.id));
     inFlight.set(product.id, p);
   }
-  return { stores: await p, fetched_at: new Date().toISOString(), cached: false };
+  return { stores: withOwnPage(await p, product), fetched_at: new Date().toISOString(), cached: false };
 }

@@ -1,5 +1,6 @@
 import 'server-only';
 import { read, write, recordPrice, historyFor, type Product } from './db';
+import type { BankOffer } from './offer-text';
 import { canonicalUrl, detectPlatform, productIdFor, resolveUrl, scrapeProduct } from './scraper';
 
 export async function addProduct(rawUrl: string): Promise<Product> {
@@ -27,6 +28,8 @@ export async function addProduct(rawUrl: string): Promise<Product> {
     images: s.images.length ? s.images : existing?.images,
     rating: s.rating ?? existing?.rating ?? null,
     reviews: s.reviews ?? existing?.reviews ?? null,
+    offer_price: s.offer_price,
+    bank_offers: s.bank_offers,
     last_viewed_at: existing?.last_viewed_at,
     created_at: existing?.created_at ?? now,
     last_checked_at: now,
@@ -53,6 +56,9 @@ export async function refreshProduct(product: Product, opts: { allowAi?: boolean
       images: s.images.length ? s.images : product.images,
       rating: s.rating ?? product.rating ?? null,
       reviews: s.reviews ?? product.reviews ?? null,
+      // A page read without offers (the AI fallback often misses them) keeps the last ones while the price holds.
+      offer_price: s.offer_price ?? (s.price === product.price ? product.offer_price : null),
+      bank_offers: s.bank_offers.length ? s.bank_offers : s.price === product.price ? product.bank_offers : [],
       last_checked_at: new Date().toISOString(),
       last_error: undefined,
     };
@@ -168,6 +174,8 @@ export interface PageReport {
   rating?: number | null;
   reviews?: number | null;
   in_stock?: boolean;
+  offer_price?: number | null;
+  bank_offers?: BankOffer[];
 }
 
 // What a shopper's own browser saw on a product page (the DealRadar extension). It lets us track
@@ -207,6 +215,8 @@ export function upsertFromPage(r: PageReport): Product {
     source: existing?.source === 'page' ? 'page' : 'extension',
     rating: r.rating ?? existing?.rating ?? null,
     reviews: r.reviews ?? existing?.reviews ?? null,
+    offer_price: r.offer_price && r.offer_price < r.price && r.offer_price >= r.price * 0.5 ? Math.round(r.offer_price) : r.price === existing?.price ? existing?.offer_price ?? null : null,
+    bank_offers: r.bank_offers?.length ? r.bank_offers : r.price === existing?.price ? existing?.bank_offers ?? [] : [],
     created_at: existing?.created_at ?? now,
     last_checked_at: changed || !recentlyRecorded ? now : existing!.last_checked_at,
     last_error: undefined,

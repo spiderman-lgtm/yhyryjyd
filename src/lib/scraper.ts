@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import * as cheerio from 'cheerio';
 import type { Platform } from './db';
 import { askAI, askAIWithBrowser } from './viasocket';
+import { offersFromText, pageText, type BankOffer } from './offer-text';
 
 export interface Scraped {
   title: string;
@@ -15,6 +16,8 @@ export interface Scraped {
   images: string[];
   rating: number | null;
   reviews: number | null;
+  offer_price: number | null;
+  bank_offers: BankOffer[];
 }
 
 const absUrl = (u: unknown): string | null => (typeof u === 'string' && /^https?:\/\//.test(u) ? u : typeof u === 'object' && u && typeof (u as any).url === 'string' ? (u as any).url : null);
@@ -186,7 +189,10 @@ function parseHtml(html: string, platform: Platform): Partial<Scraped> {
   }
   if (!mrp) mrp = parsePrice(html.match(/"mrp"\s*:\s*"?(\d[\d,.]*)/i)?.[1]);
 
+  const offers = price ? offersFromText(pageText(html), price) : { offer_price: null, offers: [] };
   return {
+    offer_price: offers.offer_price,
+    bank_offers: offers.offers,
     title: title.replace(/\s+/g, ' ').replace(/\s*[|:-]\s*(Amazon\.in|Flipkart\.com|Myntra).*$/i, '').trim(),
     image,
     price: price ?? undefined,
@@ -202,7 +208,7 @@ function parseHtml(html: string, platform: Platform): Partial<Scraped> {
 const PRODUCT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['found', 'title', 'price', 'mrp', 'image', 'images', 'rating', 'review_count', 'currency', 'in_stock'],
+  required: ['found', 'title', 'price', 'mrp', 'image', 'images', 'rating', 'review_count', 'currency', 'in_stock', 'offer_price', 'bank_offers'],
   properties: {
     images: { type: 'array', maxItems: 6, items: { type: 'string' }, description: 'absolute URLs of the product gallery images' },
     rating: { type: ['number', 'null'], description: 'average star rating out of 5, if shown' },
@@ -214,6 +220,18 @@ const PRODUCT_SCHEMA = {
     image: { type: ['string', 'null'], description: 'absolute URL of the main product image' },
     currency: { type: 'string', description: 'ISO code, e.g. INR' },
     in_stock: { type: 'boolean' },
+    offer_price: { type: ['number', 'null'], description: 'the lower price the page shows after bank/card offers, e.g. Flipkart "Buy at ₹1,057"; null if none shown' },
+    bank_offers: {
+      type: 'array',
+      maxItems: 4,
+      description: 'bank/card offers listed on the page, biggest first',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['amount', 'text'],
+        properties: { amount: { type: 'number', description: 'rupees off this product' }, text: { type: 'string', description: 'e.g. "₹56 off · Flipkart Axis Credit Card"' } },
+      },
+    },
   },
 };
 
@@ -228,11 +246,13 @@ type AiProduct = {
   review_count: number | null;
   currency: string;
   in_stock: boolean;
+  offer_price: number | null;
+  bank_offers: BankOffer[];
 };
 
 const EXTRACT_PROMPT =
   'You read e-commerce product pages. Open the URL you are given and report what the page shows right now: ' +
-  'current selling price, MRP, title, main image and stock. ' +
+  'current selling price, MRP, title, main image, stock, and the bank/card offers with the price after them if the page shows it. ' +
   'Never guess or use remembered prices: if you cannot see a current price on the page, set found=false and price=null.';
 
 export class UnavailableError extends Error {}
@@ -258,6 +278,8 @@ async function aiExtract(url: string, productId: string, useBrowser: boolean): P
     images: [...new Set([r.image, ...(r.images || [])].map(absUrl).filter((x): x is string => !!x))].slice(0, 8),
     rating: r.rating && r.rating <= 5 ? r.rating : null,
     reviews: r.review_count && r.review_count > 0 ? Math.round(r.review_count) : null,
+    offer_price: r.offer_price && r.offer_price < r.price && r.offer_price >= r.price * 0.5 ? Math.round(r.offer_price) : null,
+    bank_offers: (r.bank_offers || []).filter((o) => o.amount > 0 && o.amount <= r!.price! * 0.5 && o.text).map((o) => ({ amount: Math.round(o.amount), text: o.text.slice(0, 90) })).slice(0, 4),
   };
 }
 
@@ -286,6 +308,8 @@ export async function scrapeProduct(url: string, platform: Platform, productId: 
         images: p.images ?? [],
         rating: p.rating ?? null,
         reviews: p.reviews ?? null,
+        offer_price: p.offer_price ?? null,
+        bank_offers: p.bank_offers ?? [],
       };
     }
     pageError = whyNoPrice(html);

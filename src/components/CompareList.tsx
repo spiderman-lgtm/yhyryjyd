@@ -2,29 +2,38 @@
 
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import type { StoreOffer } from '@/lib/db';
+import type { BestPrice, StoreOffer } from '@/lib/db';
 import { deliveryText, inr } from '@/lib/format';
 import { fetchOnce } from '@/lib/fetch-once';
 import StoreIcon from './StoreIcon';
 
-type Row = { store: string; price: number; href: string; here: boolean; variant?: boolean; title?: string; delivery?: StoreOffer['delivery'] };
+type Row = { store: string; price: number; list: number; offer?: string; href: string; here: boolean; variant?: boolean; title?: string; delivery?: StoreOffer['delivery'] };
 
 
 export default function CompareList({ productId, store, price }: { productId: string; store: string; price: number }) {
   const [offers, setOffers] = useState<StoreOffer[] | null>(null);
+  // Each store's price after its best bank/card offer; the list is sorted by what the shopper actually pays.
+  const [best, setBest] = useState<BestPrice[] | null>(null);
   useEffect(() => {
     fetchOnce<{ offers?: StoreOffer[] }>(`/api/product/${productId}/compare`)
       .then((d) => setOffers(d.offers || []))
       .catch(() => setOffers([]));
+    fetchOnce<{ stores?: BestPrice[] }>(`/api/product/${productId}/best`)
+      .then((d) => setBest(d.stores || []))
+      .catch(() => setBest([]));
   }, [productId]);
+  const after = (s: string, p: number) => {
+    const b = best?.find((x) => x.store.toLowerCase() === s.toLowerCase());
+    return b && b.best < p && b.price === p ? { price: b.best, offer: b.offers?.[0]?.text || b.offer } : { price: p, offer: undefined };
+  };
 
   // Cheapest first. "Lowest price" is only ever the same item: another size or colour can be cheaper, and says so.
   const rows: Row[] = [
-    { store, price, href: `/api/buy/${productId}`, here: true },
+    { store, list: price, ...after(store, price), href: `/api/buy/${productId}`, here: true },
     ...(offers || [])
       .map((o, i) => ({ ...o, i }))
       .filter((o) => o.in_stock && o.delivery?.ok !== false)
-      .map((o) => ({ store: o.store, price: o.price, href: `/api/buy/${productId}?o=${o.i}`, here: false, variant: !o.same_variant, title: o.title, delivery: o.delivery })),
+      .map((o) => ({ store: o.store, list: o.price, ...after(o.store, o.price), href: `/api/buy/${productId}?o=${o.i}`, here: false, variant: !o.same_variant, title: o.title, delivery: o.delivery })),
   ];
   const all = rows.sort((a, b) => a.price - b.price || Number(!!a.variant) - Number(!!b.variant));
   const top = all.slice(0, 5);
@@ -43,13 +52,17 @@ export default function CompareList({ productId, store, price }: { productId: st
           <span className="min-w-0 flex-1">
             <span className="block font-semibold">{r.store}</span>
             <span className="block text-xs text-ink-mute">
-              {isLowest ? (all.some((x) => x.variant && x.price < r.price) ? 'Lowest for this exact item' : 'Lowest price') : cheaperVariant ? <b className="text-amber-700">Cheapest · other size/colour — check before buying</b> : r.here ? 'You are here' : diff(r)}
+              {isLowest ? (all.some((x) => x.variant && x.price < r.price) ? 'Lowest for this exact item' : r.price < r.list ? 'Lowest price after offers' : 'Lowest price') : cheaperVariant ? <b className="text-amber-700">Cheapest · other size/colour — check before buying</b> : r.here ? 'You are here' : diff(r)}
               {r.variant && !cheaperVariant && ' · other size/colour'}
               {r.variant && r.title && <span className="block truncate text-ink-soft">{r.title}</span>}
               {r.delivery && <span className="text-deal"> · {deliveryText(r.delivery)}</span>}
+              {r.offer && <span className="block truncate text-blue-700">💳 {r.offer}</span>}
             </span>
           </span>
-          <span className={`font-bold ${isLowest ? 'text-deal' : cheaperVariant ? 'text-amber-700' : ''}`}>{inr(r.price)} ›</span>
+          <span className="shrink-0 text-right">
+            <span className={`block font-bold ${isLowest ? 'text-deal' : cheaperVariant ? 'text-amber-700' : ''}`}>{inr(r.price)} ›</span>
+            {r.price < r.list && <span className="block text-[11px] text-ink-mute"><s>{inr(r.list)}</s> · after offer</span>}
+          </span>
         </a>
       </motion.li>
     );
@@ -58,7 +71,7 @@ export default function CompareList({ productId, store, price }: { productId: st
   return (
     <div>
       <h3 className="mb-2 font-bold">
-        Compare {all.length} available price{all.length > 1 ? 's' : ''}
+        Compare {all.length} price{all.length > 1 ? 's' : ''} after bank offers
         {offers === null && <span className="ml-2 text-xs font-normal text-ink-mute">searching Flipkart, Amazon, Croma, Tata CLiQ, AJIO, brand stores and more…</span>}
       </h3>
       {offers === null ? (

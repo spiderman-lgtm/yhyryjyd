@@ -5,6 +5,8 @@ export type Platform = 'amazon' | 'flipkart' | 'myntra' | 'ajio' | 'meesho' | 'c
 export type Tier = 'urgent' | 'normal' | 'digest';
 export type Channel = 'email' | 'whatsapp' | 'telegram' | 'm91';
 
+import type { BankOffer } from './offer-text';
+
 export interface Product {
   id: string;
   url: string;
@@ -27,6 +29,9 @@ export interface Product {
   // Highlights from the store's own listing (see /api/product/[id]/features).
   features?: string[];
   features_at?: string;
+  // What the store's own page shows after its bank/card offers ("Buy at ₹1,057") and those offers.
+  offer_price?: number | null;
+  bank_offers?: BankOffer[];
 }
 
 export interface PricePoint {
@@ -134,6 +139,10 @@ export interface BestPrice {
   best: number;
   offer: string;
   source_url: string;
+  // Every bank/card offer seen for this store, best first.
+  offers?: BankOffer[];
+  // 'page': read from the store's page itself; 'ai': found by web search.
+  from?: 'page' | 'ai';
 }
 export interface BestPriceCache {
   stores: BestPrice[];

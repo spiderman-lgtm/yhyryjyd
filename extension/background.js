@@ -188,7 +188,9 @@ async function compare({ id, title, price: p, store }) {
   ]);
   const mine = found.filter(Boolean).map((o) => ({ store: o.store, price: o.price, url: o.url, in_stock: true, same_variant: o.same_variant }));
   const merged = await contribute(id, mine).catch(() => null);
-  return { offers: merged?.offers || server.offers || [] };
+  // Each store's price after its bank/card offers (Buy at ₹…), looked up once the stores are known.
+  const best = await api('/api/product/' + id + '/best').catch(() => ({ stores: [] }));
+  return { offers: merged?.offers || server.offers || [], best: best.stores || [] };
 }
 
 // Nearby results per product and pincode, so reopening the panel does not open the stores again.

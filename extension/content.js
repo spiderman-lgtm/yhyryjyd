@@ -80,6 +80,16 @@
     return out;
   }
 
+  // The lines around the page's bank/card offers and its "Buy at ₹…" price; DealRadar reads the offers from them.
+  function offerText() {
+    const lines = (document.body.innerText || '').split('\n').map((l) => l.trim()).filter(Boolean);
+    const keep = new Set();
+    lines.forEach((l, i) => {
+      if (/buy at|get at|with (bank )?offers?|credit card|debit card|bank offer|instant discount/i.test(l)) for (let k = Math.max(0, i - 2); k <= i; k++) keep.add(k);
+    });
+    return [...keep].sort((a, b) => a - b).map((i) => lines[i]).join(' ').slice(0, 6000);
+  }
+
   function extract() {
     const d = fromJsonLd();
     if (store.name === 'Amazon') {
@@ -124,6 +134,7 @@
     }
     d.images = (d.images && d.images.length ? d.images : [abs(meta('og:image'))]).filter(Boolean).slice(0, 8);
     return {
+      offer_text: offerText(),
       url: location.href.split('#')[0],
       store: store.name,
       title: String(d.title || '').replace(/\s+/g, ' ').trim(),
@@ -261,7 +272,7 @@
   const QUICK = ['Zepto', 'Blinkit', 'Instamart', 'BigBasket', 'JioMart'];
 
   let shown = false;
-  const state = { open: false, product: null, data: null, offers: null, error: '', quick: null, quickBusy: false, quickFor: '' };
+  const state = { open: false, product: null, data: null, offers: null, best: null, error: '', quick: null, quickBusy: false, quickFor: '' };
   // The delivery location is DealRadar's, shared with the website; from tells which store it was read from.
   const loc = { pin: null, area: null, from: null, editing: false, busy: false, locating: false, err: '', draft: undefined };
   // Price alerts: the shopper's list, and where their last alert went (so the next one takes one tap).
@@ -271,14 +282,19 @@
   function tiles() {
     const p = state.product;
     // The store the shopper is on goes with its kind: a quick-commerce app under Near you, any other under Online.
-    const hereTile = { store: store.name, price: p.price, url: null, here: true };
+    // A store's price after its best bank/card offer, when DealRadar found one for this exact price.
+    const after = (name, price) => {
+      const b = (state.best || []).find((x) => x.store.toLowerCase() === String(name).toLowerCase());
+      return b && b.best < price && b.price === price ? { price: b.best, list: price, offer: (b.offers && b.offers[0] && b.offers[0].text) || b.offer } : { price };
+    };
+    const hereTile = { store: store.name, ...after(store.name, p.price), url: null, here: true };
     const hereIsNear = QUICK.includes(store.name);
     const online = (hereIsNear ? [] : [hereTile]).concat(
       (state.offers || [])
         .filter((o) => o.in_stock && o.store !== store.name && !QUICK.includes(o.store) && o.delivery?.ok !== false)
         .map((o) => ({
           store: o.store,
-          price: o.price,
+          ...after(o.store, o.price),
           url: `${DEALRADAR_API}/api/buy/${state.data.id}?s=${encodeURIComponent(o.store)}`,
           variant: !o.same_variant,
           delivers: o.delivery?.ok ? o.delivery : null,
@@ -294,6 +310,8 @@
     return { online, near, low, here: hereTile, others: priced.length - 1 };
   }
 
+  const afterHtml = (t) => (t.list ? `<div class="s" style="color:#1d4ed8"><s style="color:#94a3b8">${inr(t.list)}</s> after bank offer</div>` : '');
+
   function tileHtml(t, low) {
     const isLow = t === low && low.price;
     const sub = t.here
@@ -308,8 +326,8 @@
     const body = `<div class="top">${chip(t.store)}${esc(t.store)}</div>${isLow ? '<span class="badge">Lowest</span>' : ''}`;
     if (t.price)
       return t.url
-        ? `<a class="tile ${isLow ? 'low' : ''}" href="${esc(t.url)}" target="_blank" rel="noopener">${body}<div class="p">${inr(t.price)}</div><div class="s">${sub}</div></a>`
-        : `<div class="tile ${isLow ? 'low' : ''}">${body}<div class="p">${inr(t.price)}</div><div class="s">${sub}</div></div>`;
+        ? `<a class="tile ${isLow ? 'low' : ''}" href="${esc(t.url)}" target="_blank" rel="noopener" title="${esc(t.offer || '')}">${body}<div class="p">${inr(t.price)}</div>${afterHtml(t)}<div class="s">${sub}</div></a>`
+        : `<div class="tile ${isLow ? 'low' : ''}" title="${esc(t.offer || '')}">${body}<div class="p">${inr(t.price)}</div>${afterHtml(t)}<div class="s">${sub}</div></div>`;
     const words = {
       busy: ['', 'Checking…'],
       noloc: ['—', 'Add your pincode'],
@@ -590,7 +608,7 @@
     checkNearby();
     if (!state.data) return;
     const c = await send({ type: 'compare', id: state.data.id, title: state.product.title, price: state.product.price, store: store.name });
-    if (c.ok) state.offers = c.data.offers;
+    if (c.ok) (state.offers = c.data.offers), (state.best = c.data.best || []);
     render();
   }
 
@@ -651,6 +669,7 @@
     });
     const c = await send({ type: 'compare', id: r.data.id, title: product.title, price: product.price, store: store.name });
     state.offers = c.ok ? c.data.offers : [];
+    state.best = c.ok ? c.data.best || [] : [];
     render();
     return true;
   }

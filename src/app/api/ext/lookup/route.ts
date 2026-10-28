@@ -4,6 +4,7 @@ import { addProduct, dealScore, markViewed, upsertFromPage } from '@/lib/product
 import { detectPlatform, PLATFORM_NAMES } from '@/lib/scraper';
 import { appUrl } from '@/lib/config';
 import { rateLimited } from '@/lib/ext';
+import { offersFromText } from '@/lib/offer-text';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 90;
@@ -39,6 +40,12 @@ export async function POST(req: NextRequest) {
             rating: num(b.rating) && b.rating <= 5 ? b.rating : null,
             reviews: num(b.reviews),
             in_stock: b.in_stock !== false,
+            // The extension sends the page's offer text; it is read the same way as a page the server fetched.
+            ...(() => {
+              const o = offersFromText(str(b.offer_text, 6000), price);
+              const own = num(b.offer_price);
+              return { offer_price: own && own < price && own >= price * 0.5 ? own : o.offer_price, bank_offers: o.offers };
+            })(),
           })
         : await addProduct(url);
   } catch (e) {
