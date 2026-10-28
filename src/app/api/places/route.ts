@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { rateLimited } from '@/lib/ext';
+import * as gmaps from '@/lib/gmaps';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,22 @@ export async function GET(req: NextRequest) {
   const lng = Number(sp.get('lng'));
   const near = lat >= 6 && lat <= 37 && lng >= 68 && lng <= 98;
   const reverse = !q && near;
+  // Google Maps (what the ride apps use) when its key is set: suggestions, a suggestion's point (?id=), a point's name.
+  if (gmaps.googleMapsOn()) {
+    const id = (sp.get('id') || '').slice(0, 300);
+    try {
+      if (id) return NextResponse.json({ places: [await gmaps.place(id)] });
+      if (reverse) {
+        const p = await gmaps.reverse(lat, lng);
+        return NextResponse.json({ places: p ? [p] : [] });
+      }
+      if (q.length < 2) return NextResponse.json({ places: [] });
+      return NextResponse.json({ places: await gmaps.suggest(q, near ? { lat, lng } : null), provider: 'google' });
+    } catch (e) {
+      console.error('[places] google:', e instanceof Error ? e.message : e);
+      // Falls through to OpenStreetMap so the search keeps working.
+    }
+  }
   if (!reverse && q.length < 2) return NextResponse.json({ places: [] });
   const url = reverse
     ? `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}&lang=en`

@@ -8,8 +8,8 @@ import 'leaflet/dist/leaflet.css';
 
 type Kind = 'Bike' | 'Auto' | 'Cab' | 'Cab XL';
 type Fare = { app: string; domain: string; kind: Kind; label: string; low: number; high: number; ref?: number; note?: string; link: string };
-type Result = { from: Place; to: Place; km: number; min: number; road: boolean; line: [number, number][]; fares: Fare[]; map: string; city: string };
-type Place = { name: string; area?: string; lat: number; lng: number };
+type Result = { from: Place; to: Place; km: number; min: number; road: boolean; line: [number, number][]; fares: Fare[]; map: string; city: string; maps?: 'google' | 'osm' };
+type Place = { id?: string; name: string; area?: string; lat: number; lng: number };
 
 const VEHICLES: { k: Kind; icon: string; t: string; sub: string }[] = [
   { k: 'Bike', icon: '🏍️', t: 'Bike', sub: '1 rider' },
@@ -70,11 +70,16 @@ function PlaceInput({ id, label, dot, value, onPick, near, extra }: { id: string
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
+                onClick={async () => {
                   typed.current = false;
                   setText(p.name);
                   setOpen(false);
-                  onPick(p);
+                  // A Google suggestion carries an id; its point is looked up on pick.
+                  if (p.id && !p.lat) {
+                    const { data } = await callApi<{ places: Place[] }>(`/api/places?id=${encodeURIComponent(p.id)}`);
+                    const hit = data.places?.[0];
+                    if (hit) onPick({ ...hit, name: p.name, area: p.area || hit.area });
+                  } else onPick(p);
                 }}
                 className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
               >
@@ -211,9 +216,12 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
     if (text) setFrom(data.from), setTo(data.to);
   }, []);
 
-  // A shared link (/rides?from=…&to=…) runs straight away.
+  // A shared link (/rides?from=…&to=…) runs straight away; otherwise the pickup starts at where the shopper is,
+  // like the ride apps (the browser asks once; saying no just leaves the box empty).
   useEffect(() => {
     if (initial.from && initial.to) void compare(null, null, { from: initial.from, to: initial.to, city: initial.city });
+    else myLocation(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial, compare]);
 
   // Re-compare whenever both points are set or one moves.
@@ -230,8 +238,8 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
     } catch {}
   }, [kind]);
 
-  function myLocation() {
-    if (!navigator.geolocation) return setError('Your browser cannot share its location. Search for the place instead.');
+  function myLocation(quiet = false) {
+    if (!navigator.geolocation) return quiet ? undefined : setError('Your browser cannot share its location. Search for the place instead.');
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -240,7 +248,7 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
         setFrom({ name: hit ? `${hit.name}${hit.area ? ', ' + hit.area.split(',')[0] : ''}` : 'My location', ...ll });
         setLocating(false);
       },
-      () => (setLocating(false), setError('Location permission was not given. Search for the place instead.')),
+      () => (setLocating(false), quiet ? undefined : setError('Location permission was not given. Search for the place instead.')),
       { enableHighAccuracy: true, timeout: 10_000 },
     );
   }
@@ -273,7 +281,7 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
             onPick={setFrom}
             near={to}
             extra={
-              <button type="button" onClick={myLocation} disabled={locating} className="mt-1.5 text-xs font-semibold text-brand">
+              <button type="button" onClick={() => myLocation()} disabled={locating} className="mt-1.5 text-xs font-semibold text-brand">
                 {locating ? 'Finding you…' : '◎ Use my current location'}
               </button>
             }
@@ -303,7 +311,10 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
                 <b className="block truncate">🟢 {res.from.name}</b>
                 <span className="block truncate text-ink-soft">🔴 {res.to.name}</span>
               </span>
-              <span className="font-semibold">{res.km} km · ~{res.min} min</span>
+              <span className="text-right font-semibold">
+                {res.km} km · ~{res.min} min
+                <span className="block text-[11px] font-normal text-ink-mute">{res.maps === 'google' ? 'Route & traffic from Google Maps' : 'Route from OpenStreetMap'}</span>
+              </span>
             </div>
             <h2 className="pt-1 text-lg font-extrabold">
               {v.icon} {v.t} fares on every app

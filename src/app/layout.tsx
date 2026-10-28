@@ -43,7 +43,7 @@ const NAV = [
   { href: '/deals', label: 'Deals' },
   { href: '/trending', label: 'Trending' },
   { href: '/coupons', label: 'Coupons' },
-  { href: '/rides', label: 'Rides' },
+  { href: '/rides', label: 'Travel' },
   { href: '/gift-cards', label: 'Gift cards' },
   { href: '/extension', label: 'Extension' },
 ];

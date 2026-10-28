@@ -31,7 +31,7 @@ Browsing, searching and comparing need no account. Alerts and ordering ask the s
 - [Live sales and trending deals](${u}/trending): sale events live now on every store, latest price drops, deepest real discounts
 - [Deals below their usual price](${u}/deals)
 - [Coupons and bank offers](${u}/coupons)
-- [Ride fare compare](${u}/rides): bike, auto and cab fares on Rapido, Ola, Uber, Namma Yatri and inDrive for any trip in an Indian city
+- [Travel compare](${u}/rides): bike, auto and cab fares on Rapido, Ola, Uber, Namma Yatri and inDrive for any trip in an Indian city; bus (${u}/rides?mode=bus), train (${u}/rides?mode=train) and flight (${u}/rides?mode=flight) fares between cities across redBus, IRCTC, MakeMyTrip, ixigo, Cleartrip and Google Flights
 - [Gift card deals](${u}/gift-cards)
 - [Browser extension](${u}/extension): shows DealRadar's price history and alerts on the store page itself
 
