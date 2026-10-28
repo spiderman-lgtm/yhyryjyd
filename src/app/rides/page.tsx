@@ -5,7 +5,7 @@ export const metadata = {
   description: 'Enter where you start and where you are going: see bike, auto and cab fares on Rapido, Ola, Uber, Namma Yatri and inDrive side by side, then book on the cheapest.',
 };
 
-export default function RidesPage({ searchParams }: { searchParams: { from?: string; to?: string; city?: string } }) {
+export default function RidesPage({ searchParams }: { searchParams: { from?: string; to?: string; city?: string; vehicle?: string } }) {
   return (
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 px-6 py-10 text-white shadow-2xl shadow-teal-900/20 sm:px-12">
@@ -16,7 +16,7 @@ export default function RidesPage({ searchParams }: { searchParams: { from?: str
           <p className="mt-2 text-white/85">Bike, auto and cab fares on Rapido, Ola, Uber, Namma Yatri and inDrive side by side. Pick the cheapest and book it in that app.</p>
         </div>
       </section>
-      <RideCompare initial={{ from: searchParams.from ?? '', to: searchParams.to ?? '', city: searchParams.city ?? '' }} />
+      <RideCompare initial={{ from: searchParams.from ?? '', to: searchParams.to ?? '', city: searchParams.city ?? '', vehicle: searchParams.vehicle }} />
     </div>
   );
 }

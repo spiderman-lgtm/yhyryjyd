@@ -33,6 +33,17 @@ export async function geocode(text: string, city: string): Promise<Place | null>
   const wait = lastGeo + 1100 - Date.now();
   lastGeo = Math.max(Date.now(), lastGeo + 1100);
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  // Photon (OpenStreetMap search built for type-ahead) copes with short local names like "LIG Square".
+  const photon = await fetch(`https://photon.komoot.io/api/?limit=1&lang=en&bbox=68,6,98,37&q=${encodeURIComponent(q)}`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000), cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null);
+  const f = photon?.features?.[0];
+  if (f) {
+    const pr = f.properties || {};
+    const place = { name: [pr.name, pr.district || pr.locality, pr.city].filter(Boolean).join(', '), lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] };
+    geoCache.set(key, place);
+    return place;
+  }
   const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q=${encodeURIComponent(q)}`;
   const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept-Language': 'en' }, signal: AbortSignal.timeout(10_000), cache: 'no-store' });
   if (!res.ok) throw new Error(`Place search answered ${res.status}`);
@@ -52,14 +63,14 @@ function straightKm(a: Place, b: Place) {
 }
 
 // Road distance and time from the OSRM route service; a straight line × 1.35 at city speed if it can't answer.
-export async function route(a: Place, b: Place): Promise<{ km: number; min: number; road: boolean }> {
+export async function route(a: Place, b: Place): Promise<{ km: number; min: number; road: boolean; line?: [number, number][] }> {
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=false`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=simplified&geometries=geojson`;
     const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10_000), cache: 'no-store' });
-    const r = (await res.json()) as { routes?: { distance: number; duration: number }[] };
+    const r = (await res.json()) as { routes?: { distance: number; duration: number; geometry?: { coordinates: [number, number][] } }[] };
     const best = r.routes?.[0];
-    // OSRM's car times assume empty roads; Indian city traffic is about 1.6× slower.
-    if (best) return { km: best.distance / 1000, min: (best.duration / 60) * 1.6, road: true };
+    // OSRM's car times assume empty roads; Indian city traffic is about 1.6× slower. The line is [lat, lng] for the map.
+    if (best) return { km: best.distance / 1000, min: (best.duration / 60) * 1.6, road: true, line: (best.geometry?.coordinates ?? []).map(([lng, lat]) => [lat, lng] as [number, number]) };
   } catch {}
   const km = straightKm(a, b) * 1.35;
   return { km, min: (km / 20) * 60, road: false };
