@@ -210,6 +210,9 @@ function ReportPrice({ fare, city }: { fare: Fare; city: string }) {
 
 export default function RideCompare({ initial }: { initial: { from: string; to: string; city: string; vehicle?: string } }) {
   const [from, setFrom] = useState<Place | null>(null);
+  // Where the shopper is: fills the pickup and makes searches find places in their own city first.
+  const [here, setHere] = useState<Place | null>(null);
+  const [locNote, setLocNote] = useState('');
   const [to, setTo] = useState<Place | null>(null);
   const [kind, setKind] = useState<Kind>((VEHICLES.find((v) => v.k === initial.vehicle)?.k as Kind) || 'Bike');
   const [busy, setBusy] = useState(false);
@@ -238,7 +241,14 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
   // like the ride apps (the browser asks once; saying no just leaves the box empty).
   useEffect(() => {
     if (initial.from && initial.to) void compare(null, null, { from: initial.from, to: initial.to, city: initial.city });
-    else myLocation(true);
+    else {
+      // The last known position still steers searches to the right city while the browser asks again.
+      try {
+        const last = JSON.parse(localStorage.getItem('dr_here') || 'null');
+        if (last?.lat) setHere(last);
+      } catch {}
+      myLocation(true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial, compare]);
 
@@ -263,11 +273,17 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
       async (pos) => {
         const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         const hit = (await places('', { name: '', ...ll }).catch(() => []))[0];
-        setFrom({ name: hit ? `${hit.name}${hit.area ? ', ' + hit.area.split(',')[0] : ''}` : 'My location', ...ll });
+        const me = { name: hit ? `${hit.name}${hit.area ? ', ' + hit.area.split(',')[0] : ''}` : 'My location', area: hit?.area, ...ll };
+        setHere(me);
+        setFrom(me);
+        setLocNote('');
+        try {
+          localStorage.setItem('dr_here', JSON.stringify(me));
+        } catch {}
         setLocating(false);
       },
-      () => (setLocating(false), quiet ? undefined : setError('Location permission was not given. Search for the place instead.')),
-      { enableHighAccuracy: true, timeout: 10_000 },
+      () => (setLocating(false), quiet ? setLocNote('Allow location access to fill your pickup automatically.') : setError('Location permission was not given. Allow it in the browser’s address bar, or search for the place.')),
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 120_000 },
     );
   }
 
@@ -297,7 +313,7 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
             dot="bg-green-600"
             value={from}
             onPick={setFrom}
-            near={to}
+            near={here ?? to}
             extra={
               <button type="button" onClick={() => myLocation()} disabled={locating} className="mt-1.5 text-xs font-semibold text-brand">
                 {locating ? 'Finding you…' : '◎ Use my current location'}
@@ -307,7 +323,12 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
           <div className="-my-2 flex justify-center">
             <button type="button" onClick={() => (setFrom(to), setTo(from))} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-ink-soft hover:bg-slate-50" aria-label="Swap pickup and drop">⇅ Swap</button>
           </div>
-          <PlaceInput id="r-to" label="Drop" dot="bg-red-600" value={to} onPick={setTo} near={from} />
+          <PlaceInput id="r-to" label="Drop" dot="bg-red-600" value={to} onPick={setTo} near={here ?? from} />
+          {locNote && (
+            <button type="button" onClick={() => myLocation()} className="w-full rounded-xl bg-amber-50 px-3 py-2 text-left text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
+              📍 {locNote} Tap to try again.
+            </button>
+          )}
           {error && <p className="text-sm font-medium text-red-600">{error}</p>}
           <p className="text-xs text-ink-mute">Pick from the suggestions, use your location, or tap the map. Free, no sign-in needed.</p>
         </div>

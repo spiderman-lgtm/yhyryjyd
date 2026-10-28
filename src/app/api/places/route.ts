@@ -44,7 +44,8 @@ export async function GET(req: NextRequest) {
   if (!reverse && q.length < 2) return NextResponse.json({ places: [] });
   const url = reverse
     ? `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}&lang=en`
-    : `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=en&bbox=68,6,98,37${near ? `&lat=${lat}&lon=${lng}` : ''}`;
+    : // Near the shopper: a strong pull towards their area (zoom 13 ≈ a city), more results to re-rank below.
+      `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=12&lang=en&bbox=68,6,98,37${near ? `&lat=${lat}&lon=${lng}&zoom=13&location_bias_scale=0.1` : ''}`;
   const key = url;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < 24 * 3600_000) return NextResponse.json(hit.data);
@@ -52,7 +53,13 @@ export async function GET(req: NextRequest) {
     const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000), cache: 'no-store' });
     if (!res.ok) throw new Error(`Photon answered ${res.status}`);
     const body = (await res.json()) as { features?: Feature[] };
-    const places = (body.features || []).filter((f) => f.properties.countrycode === 'IN' || !f.properties.countrycode).map(toPlace);
+    let places = (body.features || []).filter((f) => f.properties.countrycode === 'IN' || !f.properties.countrycode).map(toPlace);
+    // Places in the shopper's own city first (within 40 km), nearest first; farther ones after, as they came.
+    if (near && !reverse) {
+      const km = (p: { lat: number; lng: number }) => Math.hypot((p.lat - lat) * 111, (p.lng - lng) * 111 * Math.cos((lat * Math.PI) / 180));
+      const local = places.filter((p) => km(p) <= 40).sort((a, b) => km(a) - km(b));
+      places = [...local, ...places.filter((p) => km(p) > 40)].slice(0, 6);
+    } else places = places.slice(0, 6);
     const data = { places };
     cache.set(key, { at: Date.now(), data });
     if (cache.size > 3000) cache.delete(cache.keys().next().value!);
