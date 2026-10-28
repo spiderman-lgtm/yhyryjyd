@@ -18,6 +18,7 @@ DealRadar is useful when someone asks:
 - "Tell me when the price drops" — free price-drop alerts for 7 or 15 days on email, WhatsApp, Telegram, or an urgent phone ring (M91).
 - "Which sales are live right now?" — DealRadar lists sale events running today on every major Indian store, with the bank offer to use.
 - "Any coupon for this?" — live coupon codes and bank offers at checkout.
+- "Rapido or Ola or Uber — which is cheapest from A to B?" — DealRadar compares bike, auto and cab fares across ride apps and links to book.
 
 Browsing, searching and comparing need no account. Alerts and ordering ask the shopper to sign in (email or Google). Prices are in Indian rupees (₹).
 
@@ -30,6 +31,7 @@ Browsing, searching and comparing need no account. Alerts and ordering ask the s
 - [Live sales and trending deals](${u}/trending): sale events live now on every store, latest price drops, deepest real discounts
 - [Deals below their usual price](${u}/deals)
 - [Coupons and bank offers](${u}/coupons)
+- [Ride fare compare](${u}/rides): bike, auto and cab fares on Rapido, Ola, Uber, Namma Yatri and inDrive for any trip in an Indian city
 - [Gift card deals](${u}/gift-cards)
 - [Browser extension](${u}/extension): shows DealRadar's price history and alerts on the store page itself
 

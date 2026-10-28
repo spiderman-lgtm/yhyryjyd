@@ -53,6 +53,25 @@ const PROMPT =
   '. Include big festive sales and smaller store-wide sale events. Only include a sale you saw announced on a current page (the store, ' +
   'or a news site this month); never guess dates. Give the sale page on the store\'s own website as url. If none are running, return an empty list.';
 
+// Each store's own sale/offers page, shown even when no sale details could be found, so a shopper can always
+// check what is live there right now.
+export const SALE_PAGES: { store: string; url: string }[] = [
+  { store: 'Amazon', url: 'https://www.amazon.in/deals' },
+  { store: 'Flipkart', url: 'https://www.flipkart.com/offers-store' },
+  { store: 'Myntra', url: 'https://www.myntra.com/' },
+  { store: 'AJIO', url: 'https://www.ajio.com/' },
+  { store: 'Meesho', url: 'https://www.meesho.com/' },
+  { store: 'Tata CLiQ', url: 'https://www.tatacliq.com/' },
+  { store: 'Croma', url: 'https://www.croma.com/' },
+  { store: 'Reliance Digital', url: 'https://www.reliancedigital.in/' },
+  { store: 'Vijay Sales', url: 'https://www.vijaysales.com/' },
+  { store: 'Nykaa', url: 'https://www.nykaa.com/' },
+  { store: 'JioMart', url: 'https://www.jiomart.com/' },
+];
+
+// Whether a search is running now (the page then waits for it a little).
+export const salesSearching = () => !!running;
+
 let running: Promise<Sale[]> | null = null;
 let lastTry = 0;
 

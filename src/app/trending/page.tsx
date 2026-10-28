@@ -5,7 +5,7 @@ import ProductCard from '@/components/ProductCard';
 import { Reveal, Stagger, StaggerItem } from '@/components/Motion';
 import { catalog, catalogStale, flashDeals, refreshCatalog } from '@/lib/catalog';
 import { latestDrops, trendingFeed } from '@/lib/feeds';
-import { liveSales, refreshSales, salesStale } from '@/lib/sales';
+import { liveSales, refreshSales, SALE_PAGES, salesSearching, salesStale } from '@/lib/sales';
 import { affiliateUrl } from '@/lib/coupons';
 import StoreIcon from '@/components/StoreIcon';
 import { inr } from '@/lib/format';
@@ -87,12 +87,29 @@ export default function TrendingPage() {
               </a>
             ))}
           </div>
-        ) : (
-          <div className="card p-6 text-center text-sm text-ink-soft">
-            <AutoRefresh every={8000} times={15} />
+        ) : salesSearching() ? (
+          <div className="card mb-4 p-4 text-center text-sm text-ink-soft">
+            <AutoRefresh every={8000} times={10} />
             Checking every store for sales running today…
           </div>
-        )}
+        ) : null}
+        {/* Every store's own sale page, so the shopper can always see for themselves what is live there. */}
+        <h3 className="mb-2 mt-5 text-sm font-bold uppercase tracking-wide text-ink-mute">{sales.length ? 'Check every store’s live sale page' : 'See what’s live on each store'}</h3>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {SALE_PAGES.map((p) => {
+            const live = sales.find((s) => s.store === p.store && s.status === 'live');
+            return (
+              <a key={p.store} href={affiliateUrl(live?.url || p.url)} target="_blank" rel="noopener nofollow" className="card flex items-center gap-2 px-3 py-2.5 text-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <StoreIcon store={p.store} className="h-7 w-7 rounded-lg text-xs" />
+                <span className="min-w-0 flex-1">
+                  <b className="block truncate">{p.store}</b>
+                  <span className="block truncate text-xs text-ink-mute">{live ? live.name : 'Today’s sale & offers'}</span>
+                </span>
+                {live ? <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">LIVE</span> : <span className="text-brand">›</span>}
+              </a>
+            );
+          })}
+        </div>
       </section>
 
       {(drops.length > 0 || latest.length > 0) && (
