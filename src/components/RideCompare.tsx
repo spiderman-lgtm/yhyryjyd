@@ -7,8 +7,8 @@ import StoreIcon from './StoreIcon';
 import 'leaflet/dist/leaflet.css';
 
 type Kind = 'Bike' | 'Auto' | 'Cab' | 'Cab XL';
-type Fare = { app: string; domain: string; kind: Kind; label: string; low: number; high: number; note?: string; link: string };
-type Result = { from: Place; to: Place; km: number; min: number; road: boolean; line: [number, number][]; fares: Fare[]; map: string };
+type Fare = { app: string; domain: string; kind: Kind; label: string; low: number; high: number; ref?: number; note?: string; link: string };
+type Result = { from: Place; to: Place; km: number; min: number; road: boolean; line: [number, number][]; fares: Fare[]; map: string; city: string };
 type Place = { name: string; area?: string; lat: number; lng: number };
 
 const VEHICLES: { k: Kind; icon: string; t: string; sub: string }[] = [
@@ -20,6 +20,8 @@ const VEHICLES: { k: Kind; icon: string; t: string; sub: string }[] = [
 
 // Leaflet (OpenStreetMap's map library) is bundled with the app and loaded the first time the map is shown.
 const loadLeaflet = () => import('leaflet').then((m: any) => m.default ?? m);
+
+const full = (p: Place) => (p.area && !p.name.includes(p.area) ? `${p.name}, ${p.area}` : p.name);
 
 async function places(q: string, near?: Place | null): Promise<Place[]> {
   const p = new URLSearchParams(q ? { q } : {});
@@ -151,6 +153,39 @@ function TripMap({ from, to, line, onMove }: { from: Place | null; to: Place | n
   );
 }
 
+// "My app showed ₹X": the shopper's real price corrects this city's estimates for everyone.
+function ReportPrice({ fare, city }: { fare: Fare; city: string }) {
+  const [open, setOpen] = useState(false);
+  const [val, setVal] = useState('');
+  const [msg, setMsg] = useState('');
+  if (!fare.ref || !city) return null;
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    const actual = Number(val.replace(/[^\d.]/g, ''));
+    if (!actual) return setMsg('Enter the price your app showed.');
+    const { ok, data } = await callApi('/api/rides/report', { body: { app: fare.app, label: fare.label, city, estimate: fare.ref, actual } });
+    setMsg(ok ? 'Thanks! Fares here now use real prices like yours.' : data.error || 'Could not send.');
+    if (ok) setOpen(false);
+  }
+  return (
+    <div className="px-3 pb-2 pt-1 text-xs">
+      {!open ? (
+        <button type="button" onClick={() => (setOpen(true), setMsg(''))} className="text-ink-mute underline hover:text-brand">
+          {msg || `${fare.app} showed a different price?`}
+        </button>
+      ) : (
+        <form onSubmit={send} className="flex items-center gap-2">
+          <span className="text-ink-soft">{fare.app} {fare.label} showed ₹</span>
+          <input autoFocus inputMode="numeric" value={val} onChange={(e) => setVal(e.target.value)} className="input w-24 py-1 text-xs" placeholder="e.g. 60" aria-label={`Price ${fare.app} showed`} />
+          <button className="btn-dark px-3 py-1 text-xs">Send</button>
+          <button type="button" onClick={() => setOpen(false)} className="text-ink-mute">✕</button>
+          {msg && <span className="text-red-600">{msg}</span>}
+        </form>
+      )}
+    </div>
+  );
+}
+
 export default function RideCompare({ initial }: { initial: { from: string; to: string; city: string; vehicle?: string } }) {
   const [from, setFrom] = useState<Place | null>(null);
   const [to, setTo] = useState<Place | null>(null);
@@ -167,7 +202,7 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
     const q = new URLSearchParams(
       text
         ? text
-        : { from: a!.name, to: b!.name, from_lat: String(a!.lat), from_lng: String(a!.lng), to_lat: String(b!.lat), to_lng: String(b!.lng) },
+        : { from: full(a!), to: full(b!), from_lat: String(a!.lat), from_lng: String(a!.lng), to_lat: String(b!.lat), to_lng: String(b!.lng) },
     );
     const { ok, data } = await callApi<Result>(`/api/rides?${q}`, { timeoutMs: 40_000 });
     setBusy(false);
@@ -278,8 +313,8 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
               {shown.map((f) => {
                 const best = f === cheapest;
                 return (
-                  <li key={`${f.app}-${f.label}`}>
-                    <a href={f.link} target="_blank" rel="noopener" className={`flex items-center gap-3 rounded-xl border px-3 py-3 transition hover:-translate-y-0.5 hover:shadow-md ${best ? 'border-deal/40 bg-deal-light' : 'border-slate-200 bg-white'}`}>
+                  <li key={`${f.app}-${f.label}`} className={`rounded-xl border ${best ? 'border-deal/40 bg-deal-light' : 'border-slate-200 bg-white'}`}>
+                    <a href={f.link} target="_blank" rel="noopener" className="flex items-center gap-3 rounded-xl px-3 py-3 transition hover:bg-white/60">
                       <StoreIcon store={f.app} domain={f.domain} className="h-10 w-10 rounded-xl text-sm" />
                       <span className="min-w-0 flex-1">
                         <span className="block font-bold">{f.app}</span>
@@ -296,6 +331,7 @@ export default function RideCompare({ initial }: { initial: { from: string; to: 
                         <span className="block text-xs font-semibold text-brand">Book on {f.app} ›</span>
                       </span>
                     </a>
+                    <ReportPrice fare={f} city={res.city} />
                   </li>
                 );
               })}

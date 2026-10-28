@@ -342,6 +342,8 @@ interface Data {
   };
   // Each store's price after its best bank/card/coupon offer, per product (see src/lib/bestprice.ts).
   best_price?: Record<string, BestPriceCache>;
+  // Prices shoppers saw in a ride app, as a ratio to our estimate (see src/lib/rides.ts).
+  ride_reports?: { city: string; app: string; label: string; ratio: number; at: string; who: string }[];
   // Sale events live on the stores now (see src/lib/sales.ts).
   sales?: { items: import('./sales').Sale[]; fetched_at: string };
   settings: Settings;
