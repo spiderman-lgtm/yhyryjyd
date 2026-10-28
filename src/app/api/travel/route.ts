@@ -28,6 +28,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ from, to, date, links, offers, options: withCoupons(live.options, offers) });
   } catch (e) {
     console.error('[travel]', e instanceof Error ? e.message : e);
-    return NextResponse.json({ from, to, date, links, offers: own, options: [], note: 'Live fares could not be fetched right now — compare on each site below.' });
+    return NextResponse.json({ from, to, date, links, offers: own, options: [] });
   }
 }

@@ -113,7 +113,25 @@ export default function TravelCompare({ mode }: { mode: Mode }) {
                 </ul>
               </>
             ) : (
-              <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{res.note || 'No live fares found for this trip right now.'} Each site below opens with your trip.</p>
+              <>
+                {/* No fares found right now: every competitor still listed by name, each opening its own search for this trip. */}
+                <h3 className="font-extrabold">{res.links.length} sites to compare</h3>
+                <ul className="space-y-2">
+                  {res.links.map((s) => (
+                    <li key={s.name}>
+                      <a href={s.url} target="_blank" rel="noopener nofollow" className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 transition hover:-translate-y-0.5 hover:shadow-md">
+                        <StoreIcon store={s.name} domain={s.domain} className="h-9 w-9 rounded-xl text-sm" />
+                        <span className="min-w-0 flex-1">
+                          <b className="block">{s.name}</b>
+                          <span className="block text-xs text-ink-mute">{res.from.name} → {res.to.name}</span>
+                        </span>
+                        <span className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white">See fares ›</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-ink-mute">Live fares will show here, cheapest first, as soon as fare search is back.</p>
+              </>
             )}
             {(res.offers?.length ?? 0) > 0 && (
               <>
@@ -138,7 +156,8 @@ export default function TravelCompare({ mode }: { mode: Mode }) {
                 </ul>
               </>
             )}
-            <h3 className="pt-2 font-extrabold">Compare on every site</h3>
+            {res.options.length > 0 && <h3 className="pt-2 font-extrabold">Compare on every site</h3>}
+            {res.options.length > 0 && (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {res.links.map((s) => (
                 <a key={s.name} href={s.url} target="_blank" rel="noopener nofollow" className="card flex items-center gap-2 px-3 py-2.5 text-sm transition hover:-translate-y-0.5 hover:shadow-md">
@@ -148,6 +167,7 @@ export default function TravelCompare({ mode }: { mode: Mode }) {
                 </a>
               ))}
             </div>
+            )}
             <p className="text-xs text-ink-mute">Fares change fast; the site shows the final price before you pay.</p>
           </>
         )}
