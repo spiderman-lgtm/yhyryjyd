@@ -24,6 +24,7 @@ import { shopperAlertsOn } from '@/lib/m91';
 import { verifiedList } from '@/lib/contacts';
 import { waVerifyOn } from '@/lib/wa-session';
 import { dateShort, inr } from '@/lib/format';
+import { appUrl } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,8 +65,20 @@ export default function ProductPage({ params }: { params: { id: string } }) {
       });
   });
 
+  // Product facts for search engines and AI assistants.
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: p.title,
+    image: images.slice(0, 3),
+    url: `${appUrl()}/p/${p.id}`,
+    offers: { '@type': 'Offer', price: p.price, priceCurrency: 'INR', availability: p.in_stock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', seller: { '@type': 'Organization', name: store }, url: `${appUrl()}/p/${p.id}` },
+    ...(p.rating && p.reviews ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: p.rating, ratingCount: p.reviews } } : {}),
+  };
+
   return (
     <div className="space-y-6">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,4fr)_minmax(0,4fr)_minmax(0,4.5fr)]">
         <Gallery images={images} title={p.title} />
 
@@ -115,6 +128,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
           trackingSince={history[0]?.at ?? null}
           tracking={tracking}
           userEmail={user?.email ?? null}
+          signedIn={!!user}
           telegram={!!telegramBot()}
           m91={shopperAlertsOn()}
           verified={user ? verifiedList(user.id) : undefined}

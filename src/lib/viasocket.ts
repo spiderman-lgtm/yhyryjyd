@@ -33,6 +33,8 @@ export const MSG91 = {
   send_template: { action_id: 'rowi00w0dtkm', action_version_id: 'rowuq6g6qmu7' },
   create_template: { action_id: 'rowubq91yxtm', action_version_id: 'rowks2xocyoy' },
   list_templates: { action_id: 'row1k7nvk337', action_version_id: 'row1gvxazzsy' },
+  // Any text, inside WhatsApp's 24-hour window after the person last messaged the number.
+  send_message: { action_id: 'rowjcpp6iowf', action_version_id: 'row56sr38e4u' },
 };
 
 // viaSocket's own WhatsApp: sends a headline and a line of text to any number, with no connection and no

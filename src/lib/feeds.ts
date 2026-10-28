@@ -116,3 +116,26 @@ export function siteStats() {
     drops: Object.values(d.alerts).filter((a) => a.last_notified_at).length,
   }));
 }
+
+// The newest price cuts DealRadar saw on products it tracks: the last change was a drop, within the last 3 days.
+export function latestDrops(limit = 12): { product: Product; was: number; at: string }[] {
+  return read((d) => {
+    const since = Date.now() - 3 * 86400_000;
+    const last = new Map<string, { price: number; at: string }[]>();
+    for (const h of d.history) {
+      const list = last.get(h.product_id) ?? [];
+      // Only price changes matter, so repeats of the same price are skipped.
+      if (!list.length || list[list.length - 1].price !== h.price) list.push(h);
+      if (list.length > 2) list.shift();
+      last.set(h.product_id, list);
+    }
+    const out: { product: Product; was: number; at: string }[] = [];
+    for (const [id, pts] of last) {
+      const p = d.products[id];
+      if (!p || p.last_error || !p.in_stock || pts.length < 2) continue;
+      const [prev, now] = pts;
+      if (now.price < prev.price && now.price === p.price && Date.parse(now.at) >= since) out.push({ product: p, was: prev.price, at: now.at });
+    }
+    return out.sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, limit);
+  });
+}

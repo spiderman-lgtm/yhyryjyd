@@ -6,12 +6,36 @@ import UserMenu from '@/components/UserMenu';
 import { currentUser } from '@/lib/auth';
 import { STORES } from '@/lib/stores';
 import { startOpsWatchdog } from '@/lib/ops-alerts';
+import { appUrl } from '@/lib/config';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'DealRadar — never overpay online',
-  description: 'Compare prices across Amazon, Flipkart, Myntra and more, see price history, get coupons and price-drop alerts on email and WhatsApp.',
+  description: 'Free Indian price tracker: price history, lowest price after bank offers, live sales on every store, coupons and price-drop alerts on email, WhatsApp and Telegram for Amazon, Flipkart, Myntra, AJIO and more.',
+  keywords: ['price tracker India', 'price history', 'Amazon price tracker', 'Flipkart price tracker', 'price drop alert', 'live sales', 'coupons', 'bank offers', 'deal score'],
+  alternates: { types: { 'text/plain': '/llms.txt' } },
+  openGraph: { siteName: 'DealRadar', type: 'website', title: 'DealRadar — never overpay online', description: 'Price history, lowest price after offers, live sales and price-drop alerts for Indian online stores.' },
 };
+
+// Tells search engines and AI assistants what DealRadar is and how to search it.
+function siteJsonLd() {
+  const u = appUrl();
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      { '@type': 'Organization', '@id': `${u}/#org`, name: 'DealRadar', url: u, logo: `${u}/icon.png` },
+      {
+        '@type': 'WebSite',
+        '@id': `${u}/#site`,
+        name: 'DealRadar',
+        url: u,
+        description: 'Free Indian price tracker with price history, deal score, lowest price after offers, live sales and price-drop alerts.',
+        publisher: { '@id': `${u}/#org` },
+        potentialAction: { '@type': 'SearchAction', target: `${u}/search?q={search_term_string}`, 'query-input': 'required name=search_term_string' },
+      },
+    ],
+  };
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd()) }} />
         <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur-md">
           <nav className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:gap-4">
             <div className="flex items-center gap-6">

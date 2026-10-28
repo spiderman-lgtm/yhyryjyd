@@ -39,7 +39,7 @@ export const inWindow = (phone: string) => read((d) => Date.now() - ((d.contacts
 export async function sendFree(phone: string, text: string) {
   const m = read((d) => d.settings.msg91);
   if (!m?.number) throw new Error('MSG91 is not set up.');
-  return runOperatorAction(MSG91.service_id, m.auth_id, 'row56sr38e4u', { integrated_number: m.number, recipient_number: phone, content_type: 'text', header_type: 'none', caption: text });
+  return runOperatorAction(MSG91.service_id, m.auth_id, MSG91.send_message.action_version_id, { integrated_number: m.number, recipient_number: phone, content_type: 'text', header_type: 'none', caption: text });
 }
 
 // The messages in DealRadar's own format.

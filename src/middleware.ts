@@ -1,11 +1,17 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-// DealRadar is for signed-in shoppers: every page but the home page and the sign-in pages sends a visitor to
-// /login first (and back afterwards), and the API answers 401. Open without signing in: what messages link to
-// (stop, manage, confirm, buy), what viaSocket, M91 and Telegram call, and static files.
-const OPEN_PAGES = ['/', '/login', '/signup', '/forgot', '/reset', '/manage', '/manage/done'];
-const OPEN_API = ['/api/auth/', '/api/cron/', '/api/telegram/', '/api/m91/', '/api/buy/', '/api/alerts/action', '/api/logo/', '/api/manage', '/api/verify/', '/api/whatsapp/'];
-const isOpen = (path: string) => OPEN_PAGES.includes(path) || OPEN_API.some((p) => path.startsWith(p)) || /\.(png|jpe?g|svg|ico|webp|zip|txt|xml|webmanifest)$/.test(path);
+// Anyone can search, browse products, compare prices, read coupons and see trending deals. Signing in is asked for
+// only when the shopper acts: sets an alert, adds to cart, enquires, orders (Buy), or opens their own pages.
+// Buy links inside alert messages carry ?a=<alert> and open straight to the store.
+const PROTECTED_PAGES = ['/alerts', '/cart', '/dashboard', '/admin'];
+const PROTECTED_API = ['/api/alerts', '/api/cart', '/api/enquiry', '/api/admin/', '/api/otp', '/api/coupons/submit', '/api/buy/'];
+const OPEN_EXCEPTIONS = ['/api/alerts/action'];
+const isProtected = (req: NextRequest, path: string) => {
+  if (OPEN_EXCEPTIONS.some((p) => path.startsWith(p))) return false;
+  if (path.startsWith('/api/buy/') && req.nextUrl.searchParams.get('a')) return false;
+  if (/^\/api\/product\/[^/]+\/coupons/.test(path)) return true;
+  return PROTECTED_PAGES.some((p) => path === p || path.startsWith(p + '/')) || PROTECTED_API.some((p) => path === p || path.startsWith(p.endsWith('/') ? p : p + '/'));
+};
 
 const enc = new TextEncoder();
 async function hmac(key: string, msg: string) {
@@ -39,8 +45,9 @@ function withVisitorId(req: NextRequest) {
 
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
-  if (!isOpen(path) && !(await signedIn(req))) {
-    if (path.startsWith('/api/')) return NextResponse.json({ error: 'Please sign in to DealRadar.', login: '/login' }, { status: 401 });
+  if (isProtected(req, path) && !(await signedIn(req))) {
+    // Buy is a link (a page visit), so it goes to the sign-in page like a page does.
+    if (path.startsWith('/api/') && !path.startsWith('/api/buy/')) return NextResponse.json({ error: 'Please sign in to DealRadar.', login: '/login' }, { status: 401 });
     const base = (process.env.APP_URL || req.nextUrl.origin).replace(/\/$/, '');
     return NextResponse.redirect(`${base}/login?next=${encodeURIComponent(path + req.nextUrl.search)}`);
   }

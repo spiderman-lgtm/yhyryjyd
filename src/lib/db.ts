@@ -127,6 +127,19 @@ export interface RelatedCache {
   fetched_at: string;
 }
 
+export interface BestPrice {
+  store: string;
+  price: number;
+  // The price after the best offer anyone can use (bank/card, coupon), and what that offer is.
+  best: number;
+  offer: string;
+  source_url: string;
+}
+export interface BestPriceCache {
+  stores: BestPrice[];
+  fetched_at: string;
+}
+
 export interface CompareCache {
   offers: StoreOffer[];
   fetched_at: string;
@@ -318,6 +331,10 @@ interface Data {
     codes?: Record<string, { hash: string; uid: string; exp: number; tries: number }>;
     sent?: Record<string, { day: string; n: number }>;
   };
+  // Each store's price after its best bank/card/coupon offer, per product (see src/lib/bestprice.ts).
+  best_price?: Record<string, BestPriceCache>;
+  // Sale events live on the stores now (see src/lib/sales.ts).
+  sales?: { items: import('./sales').Sale[]; fetched_at: string };
   settings: Settings;
 }
 

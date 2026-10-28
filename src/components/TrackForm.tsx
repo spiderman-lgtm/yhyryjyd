@@ -107,35 +107,50 @@ export default function TrackForm({ productId, existing, defaultEmail = '', tele
         </div>
         <VerifyPhone id="tf-phone" label="WhatsApp number" value={phone} onChange={setPhone} verified={verifiedPhones} onVerified={(p) => setVerifiedPhones((v) => [...new Set([...v, p])])} waVerify={waVerify} />
       </div>
-      {telegramOn && (
-        <label className={`-mt-1 flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition ${telegram ? 'border-[#229ED9] bg-sky-50' : 'border-slate-300 bg-white hover:border-slate-400'}`}>
-          <input type="checkbox" checked={telegram} onChange={(e) => setTelegram(e.target.checked)} />
+      <p className="-mt-3 text-xs text-ink-mute">Fill one or both. We only use them for this price alert.</p>
+
+      {/* Telegram and the phone ring are extras: a button each, opened only when the shopper wants it. */}
+      {((telegramOn && !telegram) || (m91On && !ring)) && (
+        <div>
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-mute">Optional</p>
+          <div className="flex flex-wrap gap-2">
+            {telegramOn && !telegram && (
+              <button type="button" onClick={() => setTelegram(true)} className="flex items-center gap-1.5 rounded-full border border-[#229ED9] px-3 py-1.5 text-sm font-semibold text-[#1b84b8] hover:bg-sky-50">
+                <span aria-hidden="true">✈️</span> + Telegram
+              </button>
+            )}
+            {m91On && !ring && (
+              <button type="button" onClick={() => setRing(true)} className="flex items-center gap-1.5 rounded-full border border-red-400 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50">
+                <span aria-hidden="true">🚨</span> + Most urgent alert
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {telegramOn && telegram && (
+        <div className="flex items-center gap-3 rounded-xl border border-[#229ED9] bg-sky-50 px-3 py-2.5 text-sm">
           <span className="grid h-7 w-7 place-items-center rounded-full bg-[#229ED9] text-sm text-white" aria-hidden="true">✈️</span>
           <span className="flex-1">
-            <b>Also alert me on Telegram</b>
-            <span className="block text-xs text-ink-mute">One tap to connect — photo, price and a Buy button in every message.</span>
+            <b>Telegram alerts on</b>
+            <span className="block text-xs text-ink-mute">One tap to connect after you save — photo, price and a Buy button in every message.</span>
           </span>
-        </label>
+          <button type="button" onClick={() => setTelegram(false)} className="text-ink-mute hover:text-ink" aria-label="Remove Telegram">✕</button>
+        </div>
       )}
-      <p className="-mt-3 text-xs text-ink-mute">{telegramOn ? 'Use any of these.' : 'Fill one or both.'} We only use them for this price alert.</p>
 
-      {m91On && (
-        <div>
-          <p className="label">🚨 Most urgent alert</p>
-          <div className={`rounded-xl border p-3 text-sm transition ${ring ? 'border-red-400 bg-red-50' : 'border-slate-300 bg-white'}`}>
-            <label className="flex cursor-pointer items-center gap-3">
-              <input type="checkbox" checked={ring} onChange={(e) => setRing(e.target.checked)} />
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-red-500 text-base text-white" aria-hidden="true">📳</span>
-              <span className="flex-1">
-                <b>Ring my phone the moment it drops</b>
-                <span className="block text-xs text-ink-mute">For a deal you can't miss: your phone rings at full volume, even on silent, until you answer. Uses the free M91 app.</span>
-              </span>
-            </label>
-            {ring && (
-              <div className="mt-3">
-                <VerifyPhone id="tf-m91" label="Mobile number to ring" value={ringPhone} onChange={setRingPhone} verified={verifiedPhones} onVerified={(p) => setVerifiedPhones((v) => [...new Set([...v, p])])} waVerify={waVerify} />
-              </div>
-            )}
+      {m91On && ring && (
+        <div className="rounded-xl border border-red-400 bg-red-50 p-3 text-sm">
+          <div className="flex items-center gap-3">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-red-500 text-base text-white" aria-hidden="true">📳</span>
+            <span className="flex-1">
+              <b>🚨 Most urgent alert: ring my phone</b>
+              <span className="block text-xs text-ink-mute">Your phone rings at full volume, even on silent, until you answer. Uses the free M91 app.</span>
+            </span>
+            <button type="button" onClick={() => setRing(false)} className="text-ink-mute hover:text-ink" aria-label="Remove most urgent alert">✕</button>
+          </div>
+          <div className="mt-3">
+            <VerifyPhone id="tf-m91" label="Mobile number to ring" value={ringPhone} onChange={setRingPhone} verified={verifiedPhones} onVerified={(p) => setVerifiedPhones((v) => [...new Set([...v, p])])} waVerify={waVerify} />
           </div>
         </div>
       )}

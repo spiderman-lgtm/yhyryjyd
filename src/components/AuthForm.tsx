@@ -39,6 +39,8 @@ export default function AuthForm({ mode, next, google, error: initialError }: { 
       setBusy(false);
       return setError(data.error || 'Something went wrong.');
     }
+    // A Buy link (an API route that redirects to the store) needs a full page load.
+    if (next.startsWith('/api/')) return void window.location.assign(next);
     router.push(next === '/' ? '/dashboard' : next);
     router.refresh();
   }

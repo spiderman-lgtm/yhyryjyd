@@ -20,6 +20,11 @@ export default function BuyNow({ productId, store, priceLabel }: { productId: st
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const res = await fetch(`/api/product/${productId}/coupons`);
+        // Ordering needs an account: sign in, then come back to this product.
+        if (res.status === 401) {
+          window.location.href = `/login?next=${encodeURIComponent(location.pathname + location.search)}`;
+          return;
+        }
         if (!res.ok) throw new Error(String(res.status));
         const data = await res.json();
         setCoupons(data.coupons || []);
