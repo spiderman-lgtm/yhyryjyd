@@ -1,0 +1,12 @@
+{
+  "name": "viasocket-plug-auditor",
+  "version": "1.0.0",
+  "description": "Evidence-backed audit agent for viaSocket Developer Hub plugs",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "test": "node --test scripts/score-audit.test.mjs",
+    "score": "node scripts/score-audit.mjs"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "app": { "name": "Acme CRM", "domain": "acme.example", "owned": true, "status": "published", "audience": "Public" },
+  "auditedAt": "2026-10-29T10:00:00Z",
+  "mode": "report",
+  "docs": { "url": "https://acme.example/api/openapi.json", "version": "v2 (2026-09-01)", "kind": "openapi" },
+  "existingScore": { "value": null, "display": "Unavailable", "statuses": ["Create Contact V2: L1_VERIFIED", "New Contact V1: NOT_VERIFIED"] },
+  "categories": {
+    "auth_security": { "status": "scored" },
+    "testing": { "status": "scored", "passed": 3, "total": 4 },
+    "request_response": { "status": "scored" }
+  },
+  "dhReviewGate": [
+    { "check": 1, "rating": 100 },
+    { "check": 6, "rating": 60, "note": "Create Contact exposes 2 of 9 documented body params" },
+    { "check": 15, "rating": null, "note": "no instant triggers" }
+  ],
+  "coverageMatrix": [
+    { "entity": "Contact", "operation": "create", "method": "POST", "path": "/v2/contacts", "status": "partial", "plugItem": "Create Contact", "docUrl": "https://acme.example/api#createContact" },
+    { "entity": "Contact", "operation": "update", "method": "PATCH", "path": "/v2/contacts/{id}", "status": "missing-core", "docUrl": "https://acme.example/api#updateContact" },
+    { "entity": "Token", "operation": "refresh", "method": "POST", "path": "/oauth/token", "status": "excluded", "reason": "auth endpoint" }
+  ],
+  "findings": [
+    {
+      "id": "F-001",
+      "title": "Create Contact — `company` required in plug, optional in API",
+      "severity": "P1",
+      "confidence": "confirmed",
+      "category": "input_schema",
+      "check": "B",
+      "affects": [{ "item": "Create Contact", "version": "V2", "live": true }],
+      "location": "Create Contact › V2 › inputjson › company › required",
+      "issue": "Users without a company cannot create contacts, although the API accepts them.",
+      "evidence": [
+        { "type": "api_doc", "ref": "https://acme.example/api#createContact", "quote": "required: [email]" },
+        { "type": "plug_config", "ref": "Create Contact › V2 › inputjson › company", "quote": "\"required\": true" }
+      ],
+      "fix": { "kind": "diff", "content": "-  \"required\": true,\n+  \"required\": false,", "verified": true },
+      "avoid": "Do not rename the key `company`.",
+      "expectedResult": "Create Contact runs with company empty.",
+      "verify": "Dry run with company omitted, provided, and empty string."
+    },
+    {
+      "id": "F-002",
+      "title": "List Contacts returns only the first page",
+      "severity": "P1",
+      "confidence": "likely",
+      "category": "triggers_pagination",
+      "check": "E",
+      "affects": [{ "item": "List Contacts", "version": "V1", "live": true }],
+      "location": "List Contacts › V1 › perform › line 12",
+      "issue": "Accounts with more than 50 contacts silently get a partial list.",
+      "evidence": [
+        { "type": "api_doc", "ref": "https://acme.example/api#listContacts", "quote": "Results are paginated; use next_cursor." },
+        { "type": "plug_config", "ref": "List Contacts › V1 › perform line 12", "quote": "return response?.data?.contacts;" }
+      ],
+      "fix": { "kind": "text", "content": "Expose a cursor input and return next_cursor alongside contacts.", "verified": false },
+      "avoid": "Do not loop through every page in one run; it can hit the documented 10 req/s limit.",
+      "expectedResult": "Users can page through all contacts.",
+      "verify": "Dry run with a cursor from page 1."
+    }
+  ],
+  "limitations": [
+    { "item": "Delete Contact", "what": "not executed", "reason": "write action; reviewed statically" }
+  ]
+}

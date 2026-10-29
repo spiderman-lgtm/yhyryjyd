@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "audit-report.schema.json",
+  "title": "viaSocket plug audit report",
+  "type": "object",
+  "required": ["app", "auditedAt", "mode", "docs", "existingScore", "categories", "coverageMatrix", "findings", "limitations"],
+  "properties": {
+    "app": {
+      "type": "object",
+      "required": ["name", "domain", "owned"],
+      "properties": {
+        "name": { "type": "string" },
+        "domain": { "type": "string" },
+        "pluginId": { "type": "string" },
+        "status": { "type": "string" },
+        "audience": { "type": "string" },
+        "owned": { "type": "boolean", "description": "true if the plug is in the org's list_plugins" }
+      }
+    },
+    "auditedAt": { "type": "string", "format": "date-time" },
+    "mode": { "enum": ["report", "fix"] },
+    "docs": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "url": { "type": "string" },
+        "version": { "type": "string" },
+        "kind": { "enum": ["openapi", "reference", "prose", "none"] }
+      }
+    },
+    "existingScore": {
+      "type": "object",
+      "required": ["value", "display"],
+      "properties": {
+        "value": { "type": ["number", "null"], "description": "null when no numeric score is stored" },
+        "display": { "type": "string", "description": "e.g. \"Unavailable\" or \"86/100 (metadata.review.score)\"" },
+        "statuses": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "categories": {
+      "type": "object",
+      "description": "Status per score category. A category missing here counts as scored.",
+      "propertyNames": { "enum": ["api_coverage", "input_schema", "request_response", "auth_security", "triggers_pagination", "error_reliability", "testing"] },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": { "enum": ["scored", "not_verified", "not_applicable"] },
+          "reason": { "type": "string" },
+          "passed": { "type": "integer", "minimum": 0, "description": "testing only: read-only blocks run and passed" },
+          "total": { "type": "integer", "minimum": 0, "description": "testing only: read-only blocks that exist" }
+        }
+      }
+    },
+    "dhReviewGate": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["check", "rating"],
+        "properties": {
+          "check": { "type": "integer", "minimum": 1, "maximum": 20 },
+          "rating": { "type": ["integer", "null"], "minimum": 0, "maximum": 100, "description": "null = not applicable" },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "coverageMatrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["entity", "operation", "status"],
+        "properties": {
+          "entity": { "type": "string" },
+          "operation": { "type": "string" },
+          "method": { "type": "string" },
+          "path": { "type": "string" },
+          "status": { "enum": ["implemented", "partial", "missing-core", "missing-optional", "excluded", "no-api", "not-verifiable"] },
+          "plugItem": { "type": "string" },
+          "docUrl": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "severity", "confidence", "category", "check", "affects", "location", "issue", "evidence", "fix", "avoid", "expectedResult", "verify"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^F-\\d{3,}$" },
+          "title": { "type": "string" },
+          "severity": { "enum": ["P0", "P1", "P2", "P3"] },
+          "confidence": { "enum": ["confirmed", "likely"] },
+          "category": { "enum": ["api_coverage", "input_schema", "request_response", "auth_security", "triggers_pagination", "error_reliability"] },
+          "check": { "enum": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"] },
+          "affects": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["item"],
+              "properties": {
+                "item": { "type": "string", "description": "action/trigger/connection/component name" },
+                "version": { "type": "string" },
+                "live": { "type": "boolean" }
+              }
+            }
+          },
+          "location": { "type": "string", "description": "e.g. Create Endpoint › V1 › inputjson › chain › required" },
+          "issue": { "type": "string" },
+          "evidence": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": ["type", "ref"],
+              "properties": {
+                "type": { "enum": ["api_doc", "kb_rule", "plug_config", "dry_run", "analytics"] },
+                "ref": { "type": "string", "description": "doc URL, KB file + heading, config path, dry-run case, or analytics version/period" },
+                "quote": { "type": "string", "maxLength": 600 }
+              }
+            }
+          },
+          "fix": {
+            "type": "object",
+            "required": ["kind", "content", "verified"],
+            "properties": {
+              "kind": { "enum": ["diff", "json", "text"] },
+              "content": { "type": "string" },
+              "verified": { "type": "boolean", "description": "false = labelled 'Proposed change — unverified'" }
+            }
+          },
+          "avoid": { "type": "string" },
+          "expectedResult": { "type": "string" },
+          "verify": { "type": "string" },
+          "status": { "enum": ["new", "still_present", "fixed_in_draft"] }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["what", "reason"],
+        "properties": {
+          "item": { "type": "string" },
+          "what": { "type": "string" },
+          "reason": { "type": "string" },
+          "wouldConfirm": { "type": "string" }
+        }
+      }
+    },
+    "previousAudit": {
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "fixed": { "type": "array", "items": { "type": "string" } },
+        "stillPresent": { "type": "array", "items": { "type": "string" } },
+        "cannotRecheck": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}
