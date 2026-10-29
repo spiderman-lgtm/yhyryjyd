@@ -77,7 +77,7 @@ Knowledge base (fetch raw, never summarised; cite as `<file> "<Heading>"`):
 | 1 | Run analytics | `GET <DH>/analytics/plugins?filter=getPluginDetails&identifier=<PLUGIN_ID>&startTime=<today−30d>&endTime=<today>` → per version `count`, `errorCount`, `flowCount`. |
 | 1 | Badges | `get_plugin_analytics` / Analytics module "Get Partner Badges" (optional). |
 | 2 | Versions (each action) | `GET <DH>/get/action_version?filter=getActionVersions&identifier=<ACTION_ID>` (`rowid,versionid,version,status,isdeleted,authid,type,triggertype,perform,performlist,performsubscribe,performunsubscribe,modifytriggerdata,transferoption,inputjson,sampledata,canpaginate,verificationstatus,metadata`) |
-| 3 | Mappings (each audited version) | `GET <DH>/get/action_version_component_table?filter=dhGetUsedComponentInActionVersionDetails&identifier=<VERSION_ID>` |
+| 3 | Mappings (each audited version) | `GET <DH>/get/action_version_component_table?filter=dhGetUsedComponentInActionVersionDetails&identifier=<VERSION_ID>` → rows with `component_id` and `metadata.componentdependson` (keys = `perform`, a field key, or a trigger block name). Every component a version's code or dropdowns call, `errorComponent` included, must have a row; a missing row is a P0 (runtime `not defined`). |
 | 3 | Failures (each version with `errorCount` > 0) | `GET <DH>/analytics/error-codes/action_version?filter=getActionVersions&identifier=<VERSION_ID>&type=<action\|sheduleTrigger\|instantTrigger>` (`sheduleTrigger` is spelled that way). |
 | 4 | Failed logs (top 2 status codes per failing version, page 1 only) | `GET <DH>/analytics/logs/action_version?filter=getActionVersions&identifier=<VERSION_ID>&status=<code>&page=1` — contains end-user data: read the request shape and the error message only; quote neither values nor personal data. |
 
@@ -262,8 +262,15 @@ with 6 locations (score deduction counted once per finding, §8).
 
 Same engine as the Developer Hub test buttons: `POST {{API_BASE}}/{{ORG_ID}}/devhubPluginPreview/execute`, body and
 `performType` / `pluginType` / `pluginBlockLocation` exactly as `SKILL-PLUG-CREATION.md` §4.2 describes, `source` from
-the saved version row. It needs a connection: `GET {{API_BASE}}/authtoken/orgid/{{ORG_ID}}/serviceid/<PLUGIN_ID>/version/<AUTH_ID>`
-(read only `identifier,connection_label,type,auth_version_id`) → `GET {{API_BASE}}/authtoken/authvalid/<identifier>`.
+the saved version row. **`name` must be the action's `key` (`List_Connections`), never its display name**: the engine
+uses it as a function name, and a name with a space fails with `Unexpected identifier '<second word>'` before any code
+runs. The result is in `data.data.message`; `success: false` is a failure.
+
+It needs a connection: `GET {{API_BASE}}/authtoken/orgid/{{ORG_ID}}/serviceid/<PLUGIN_ID>/version/<AUTH_ID>`, then
+`GET {{API_BASE}}/authtoken/authvalid/<identifier>`. **This response ignores `fields` and includes the connecting user's
+profile and every workspace's `auth_token`.** Treat the whole body as secret: take only `id`, `type`,
+`auth_version_id` and `connection_label`, and never print, quote or save any other part of it. The id to pass as
+`authData.id` is the row's `id`.
 Valid → use it. None/expired → do **not** stop or ask mid-run: mark category Testing "Not verified", put the
 connection link (creation skill §4.1 format) in the report under "To enable testing".
 
@@ -321,6 +328,11 @@ categories) — a 92 with 60% coverage must be read as "92 on what could be chec
 **Grade:** ≥ 90 A · 75–89 B · 60–74 C · 40–59 D · < 40 F — capped at **D** while a confirmed P0 is open and at
 **C** while a confirmed P1 is open, so a high weighted total never hides a blocker. The number stays the plain
 weighted total; only the letter is capped.
+
+**Docs unreachable:** if the official docs or spec could not be read, every API-match check is `Not verified`, the
+score only counts what the KB and the plug's own config can prove, and the report must say "**ceiling, not a final
+score**" next to it and list what reading the docs would add (endpoints, required fields, enums, missing
+actions/triggers, webhook signing). Coverage % does not capture this; say it in words.
 
 **DH review gate:** separately rate the 20 checks of `plug-review.md` (0–100, skip non-applicable) exactly as that
 file says, and state **Approved** (all ≥ 90) or **Rejected** (list the checks under 90). This predicts the viaSocket
