@@ -1,0 +1,137 @@
+{
+  "app": { "name": "Alt", "domain": "altalt.io", "pluginId": "rowi43n8euw4", "status": "unpublished", "audience": "Private", "owned": true },
+  "auditedAt": "2026-10-30T11:30:00Z",
+  "mode": "report",
+  "docs": { "kind": "none", "url": "https://altalt.io/developers/api-reference" },
+  "existingScore": { "value": null, "display": "Unavailable", "statuses": ["all 8 versions drafted, verificationstatus NOT_VERIFIED", "plug verified: true, status unpublished, audience Private", "0 runs in the last 30 days"] },
+  "categories": {
+    "testing": { "status": "not_verified", "reason": "No dry run: the connection lookup returns other workspaces' tokens, so it was not used, and no Alt API key (paid plan) was supplied" }
+  },
+  "dhReviewGate": [
+    { "check": 1, "rating": 100 },
+    { "check": 2, "rating": 100 },
+    { "check": 3, "rating": 100 },
+    { "check": 4, "rating": null, "note": "API match not rated: official docs unreachable" },
+    { "check": 5, "rating": null, "note": "official docs unreachable from this environment" },
+    { "check": 6, "rating": null, "note": "official docs unreachable from this environment" },
+    { "check": 7, "rating": 100 },
+    { "check": 8, "rating": 100 },
+    { "check": 11, "rating": 100 },
+    { "check": 12, "rating": 50, "note": "Get Note and List Notes are separate (2 of 4 actions)" },
+    { "check": 14, "rating": 100 },
+    { "check": 15, "rating": 100 },
+    { "check": 17, "rating": 100 },
+    { "check": 18, "rating": 25, "note": "3 of 4 read actions throw on 404 instead of returning a message" },
+    { "check": 20, "rating": null, "note": "no dry run" }
+  ],
+  "coverageMatrix": [
+    { "entity": "Notes", "operation": "list / get", "status": "implemented", "plugItem": "List Notes, Get Note", "reason": "plug side only; documented operations not compared" },
+    { "entity": "Note summary / transcript", "operation": "get", "status": "implemented", "plugItem": "Get Note Summary, Get Note Transcript" },
+    { "entity": "Webhook endpoints", "operation": "create / delete", "status": "implemented", "plugItem": "4 instant triggers (ended, summary generated, updated, deleted)" },
+    { "entity": "Alt REST API (all other endpoints)", "operation": "all", "status": "not-verifiable", "reason": "altalt.io is blocked from this environment; spec and docs could not be read" }
+  ],
+  "findings": [
+    {
+      "id": "F-001",
+      "title": "Get Note and List Notes should be one list action with a mode",
+      "severity": "P2",
+      "confidence": "confirmed",
+      "category": "api_coverage",
+      "check": "A",
+      "affects": [{ "item": "Get Note", "version": "V1" }, { "item": "List Notes", "version": "V1" }],
+      "location": "Actions › Get Note and Actions › List Notes",
+      "issue": "Two actions read notes, one by ID and one as a list. Users must pick between them, and neither action has a mode field.",
+      "evidence": [
+        { "type": "plug_config", "ref": "Get Note › V1 › perform (GET /notes/{id}) and List Notes › V1 › perform (GET /notes)", "quote": "two separate actions; neither inputjson has a mode field" },
+        { "type": "kb_rule", "ref": "ux-practice.md › LIST › LIST Best Practices", "quote": "Always combine listing (\"List All\"), searching (by specific identifiers), \"Search by ID\", and \"Advance Search\" (if supported) into a single LIST action using a Mode selector." }
+      ],
+      "fix": {
+        "kind": "text",
+        "content": "Add a Mode dropdown (List All / Search by ID) to List Notes. Show the note dropdown only for Search by ID (GET /notes/{id}, with the 404 handling from F-002), and Updated After, Include Deleted, Enable Pagination and Pagination Options only for List All. Then retire Get Note.",
+        "verified": false
+      },
+      "avoid": "Do not delete Get Note once it is published or used in flows; it is unpublished with 0 runs today, so merging now is non-breaking. Keep the key note_id.",
+      "expectedResult": "One action reads notes both ways.",
+      "verify": "Dry run each mode: list all, search by an existing ID, search by an unknown ID (expect 'No data found.')."
+    },
+    {
+      "id": "F-002",
+      "title": "Get Note, Get Note Summary and Get Note Transcript throw on 404",
+      "severity": "P2",
+      "confidence": "confirmed",
+      "category": "error_reliability",
+      "check": "G",
+      "affects": [{ "item": "Get Note", "version": "V1" }, { "item": "Get Note Summary", "version": "V1" }, { "item": "Get Note Transcript", "version": "V1" }],
+      "location": "<action> › V1 › perform › line 6 (the axios.get call)",
+      "issue": "When the note, summary or transcript is not found, the action fails with an error instead of returning a 'No data found.' message, so a flow stops. The plug's own notes say Alt answers 404 until a summary or transcript is ready, and the New Recording Ended sample shows summary_status 'pending' at that moment, so a flow that calls Get Note Summary right after that trigger is likely to hit it (not verified against Alt's docs).",
+      "evidence": [
+        { "type": "plug_config", "ref": "Get Note Summary › V1 › perform line 6", "quote": "const response = await axios.get(`https://public-api.altalt.io/v1/notes/${encodeURIComponent(note_id)}/summary`);  (no 404 handling; the catch only calls errorComponent)" },
+        { "type": "kb_rule", "ref": "ux-practice.md › GET", "quote": "The perform code should handle 404 (record not found) gracefully." }
+      ],
+      "fix": {
+        "kind": "diff",
+        "content": "-    const response = await axios.get(`https://public-api.altalt.io/v1/notes/${encodeURIComponent(note_id)}`);\n-\n-    return { success: true, ...response?.data };\n+    try {\n+      const response = await axios.get(`https://public-api.altalt.io/v1/notes/${encodeURIComponent(note_id)}`);\n+      return { success: true, ...response?.data };\n+    } catch (requestError) {\n+      if (requestError?.response?.status === 404) return { success: true, note_id, message: 'No data found.' };\n+      throw requestError;\n+    }",
+        "verified": false
+      },
+      "avoid": "Apply the same wrapper to the /summary and /transcript URLs. Do not swallow other statuses (401, 403, 429): rethrow them so errorComponent shows the real message.",
+      "expectedResult": "An unknown or not-yet-ready note returns a message with success: true and the flow carries on.",
+      "verify": "Run each action with a deleted or unknown note ID and, if possible, a note whose summary is still pending."
+    },
+    {
+      "id": "F-003",
+      "title": "List Notes treats a mapped \"false\" as true",
+      "severity": "P2",
+      "confidence": "confirmed",
+      "category": "request_response",
+      "check": "C",
+      "affects": [{ "item": "List Notes", "version": "V1" }],
+      "location": "List Notes › V1 › perform › line 18 (include_deleted) and line 6 (enable_pagination); inputjson › pagination_options › visibilityCondition",
+      "issue": "In custom mapping mode a Yes/No toggle becomes a text field, and the help tells users to type true or false. The code tests the value for truthiness, so the text \"false\" counts as true: deleted notes are returned although the user said No, and 'fetch all pages' is ignored.",
+      "evidence": [
+        { "type": "plug_config", "ref": "List Notes › V1 › perform lines 6 and 18", "quote": "const paginate = enable_pagination ?? true;  /  include_deleted: include_deleted ? true : undefined  (customHelp: \"Enter true to include deleted notes, or false to return only active notes.\")" },
+        { "type": "kb_rule", "ref": "dh-Input-fields-json-builder.md › Special Note: Custom Mapping Behavior (Dropdown, Multiselect & Boolean)", "quote": "When the user switches to custom mapping, the field becomes a plain text `string` input field." }
+      ],
+      "fix": {
+        "kind": "diff",
+        "content": "-    const paginate = enable_pagination ?? true;\n+    const isTrue = (value) => value === true || value === 'true';\n+    const paginate = !(enable_pagination === false || enable_pagination === 'false');\n ...\n-      include_deleted: include_deleted ? true : undefined\n+      include_deleted: isTrue(include_deleted) ? true : undefined\n ...\n-  \"visibilityCondition\": \"context?.inputData?.enable_pagination !== false\"\n+  \"visibilityCondition\": \"context?.inputData?.enable_pagination !== false && context?.inputData?.enable_pagination !== 'false'\"",
+        "verified": false
+      },
+      "avoid": "Do not rename the keys include_deleted or enable_pagination. Keep the default of 'paginate on' when the field is empty.",
+      "expectedResult": "Typing false behaves like choosing No.",
+      "verify": "Run with the toggle set to No, with the text false mapped in, and empty; compare whether deleted notes appear and how many pages return."
+    },
+    {
+      "id": "F-004",
+      "title": "Connection label uses an extra typed name instead of the masked API key",
+      "severity": "P3",
+      "confidence": "confirmed",
+      "category": "auth_security",
+      "check": "D",
+      "affects": [{ "item": "Connection V1 (rowufjqu6fyx)" }],
+      "location": "Connection › V1 › authfields › account_name; connectionlabelkey / connectionlabelvalue / isconnectionlabelmasked",
+      "issue": "The test call is a list endpoint (GET /notes), so the rules want the label to come from the API key field with masking on. Instead users must type a separate required Account Name, which Alt's API does not need, and the label is not masked.",
+      "evidence": [
+        { "type": "plug_config", "ref": "Connection V1", "quote": "connectionlabelkey: \"account\", connectionlabelvalue: \"context.authData?.account_name\", isconnectionlabelmasked: false; testcode: GET https://public-api.altalt.io/v1/notes?limit=1" },
+        { "type": "kb_rule", "ref": "dh-connection-kb.md › Naming & Copywriting › Connection Labels", "quote": "If the Test API is any other endpoint (lists like `/brands`, `/workspaces`, `/teams`, or `/status`, `/ping`), never map the label from its response ... Use the API key auth field with masking on: `connectionlabelkey: \"API Key\"`, `connectionlabelvalue: \"context.authData?.<api key field key>\"`, `_connectionlabelvalue: \"${context.authData?.<api key field key>}\"`, `isconnectionlabelmasked: true`." }
+      ],
+      "fix": {
+        "kind": "text",
+        "content": "Set connectionlabelkey to \"API Key\", connectionlabelvalue to \"context.authData?.api_key\", _connectionlabelvalue to \"${context.authData?.api_key}\" and isconnectionlabelmasked to true, then remove the account_name field.",
+        "verified": false
+      },
+      "avoid": "Removing a field is a breaking change: if any user has already connected, COPY the connection to a new version instead of editing it, and never rename the key api_key.",
+      "expectedResult": "Users enter only the API key; the saved connection shows it masked.",
+      "verify": "Create a connection with the new version and check the label in the connection list."
+    }
+  ],
+  "limitations": [
+    { "what": "No comparison with Alt's official API docs or OpenAPI spec", "reason": "altalt.io is blocked from this environment", "wouldConfirm": "Allow altalt.io in the session network settings, or paste the OpenAPI file; then re-run to check endpoints, parameters, response fields and missing actions" },
+    { "item": "Webhook signature checking", "what": "None of the 4 triggers verifies the webhook signature, and the subscribe call returns Alt's signing secret without using it", "reason": "the plug's own notes say Alt signs events (Standard Webhooks) and shows the secret once, but this was not confirmed against Alt's docs, and it is not known whether trigger code can read the raw body and headers", "wouldConfirm": "Alt's webhook docs and viaSocket's trigger context fields" },
+    { "item": "404 'not ready' behaviour", "what": "Whether Alt returns 404 for a summary or transcript that is not ready", "reason": "stated only in the plug's own notes" },
+    { "item": "Missing actions and triggers", "what": "Not assessed", "reason": "needs the API inventory; the plug notes say Alt's API is read-only" },
+    { "item": "Dry run", "what": "No block was run", "reason": "looking up the connection returns other workspaces' tokens, so it was not used; no Alt API key was supplied" },
+    { "item": "Component mappings", "what": "All 8 versions map errorComponent and the Note dropdown correctly, but every version has errorComponent mapped twice and the triggers keep a stale 'perform' key", "reason": "effect of the duplicate rows is unknown" },
+    { "item": "API key scopes", "what": "Only the trigger help mentions the webhooks:manage scope; the action help does not mention notes:read, summaries:read or transcripts:read", "reason": "scope names come from the plug's own notes, not from Alt's docs" },
+    { "item": "Run analytics", "what": "No production signal", "reason": "all versions are drafts with 0 runs in the last 30 days" }
+  ]
+}
