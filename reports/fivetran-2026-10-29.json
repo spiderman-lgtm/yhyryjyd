@@ -1,0 +1,188 @@
+{
+  "app": { "name": "Fivetran", "domain": "fivetran.com", "pluginId": "rowhja1ad4qz", "status": "integration_only", "audience": "Public", "owned": true },
+  "auditedAt": "2026-10-29T11:00:00Z",
+  "mode": "report",
+  "docs": { "kind": "none", "url": "https://fivetran.com/docs/rest-api" },
+  "existingScore": { "value": null, "display": "Unavailable", "statuses": ["all 13 versions drafted, verificationstatus NOT_VERIFIED", "plug verified: true, status integration_only", "no actions or triggers published; 0 runs in last 30 days"] },
+  "categories": {
+    "testing": { "status": "scored", "passed": 2, "total": 6 }
+  },
+  "dhReviewGate": [
+    { "check": 1, "rating": 100 },
+    { "check": 2, "rating": 100 },
+    { "check": 3, "rating": 100 },
+    { "check": 4, "rating": null, "note": "testcode builds an Authorization header itself; connection KB not read, so not rated" },
+    { "check": 5, "rating": null, "note": "official docs unreachable from this environment" },
+    { "check": 6, "rating": null, "note": "official docs unreachable from this environment" },
+    { "check": 8, "rating": 62, "note": "5 of 13 items read a key that is not a field" },
+    { "check": 11, "rating": 92, "note": "1 of 13 items uses a text list" },
+    { "check": 12, "rating": 71, "note": "Get Connection and List Connections are separate" },
+    { "check": 13, "rating": 62, "note": "5 of 13 dropdowns lack their parent" },
+    { "check": 14, "rating": 100 },
+    { "check": 17, "rating": 100 },
+    { "check": 20, "rating": 33, "note": "2 of 6 read-only blocks executed" }
+  ],
+  "coverageMatrix": [
+    { "entity": "Connection", "operation": "get / list / update / sync / resync", "status": "implemented", "plugItem": "7 actions", "reason": "plug side only; documented operations not compared" },
+    { "entity": "Transformation", "operation": "run", "status": "implemented", "plugItem": "Run Transformation" },
+    { "entity": "Webhooks", "operation": "create / delete (account, group)", "status": "implemented", "plugItem": "6 instant triggers" },
+    { "entity": "Fivetran REST API (all other endpoints)", "operation": "all", "status": "not-verifiable", "reason": "fivetran.com is blocked from this environment; spec and docs could not be read" }
+  ],
+  "findings": [
+    {
+      "id": "F-001",
+      "title": "Connection dropdown reads group_id, which is not a field in 5 actions",
+      "severity": "P2",
+      "confidence": "confirmed",
+      "category": "input_schema",
+      "check": "B",
+      "affects": [
+        { "item": "Sync Connection", "version": "V1" }, { "item": "Update Connection", "version": "V1" },
+        { "item": "Re-sync Connection", "version": "V1" }, { "item": "Get Connection", "version": "V1" },
+        { "item": "Get Sync History", "version": "V1" }
+      ],
+      "location": "<each action> › V1 › inputjson › connection_id › optionsGenerator / source, and blocks.connection_id.dependsOn",
+      "issue": "The dropdown calls listFivetranConnections(context?.inputData?.group_id, ...) but these actions have no group_id field, so dependsOn lists a parent that never exists. The list is never filtered and, in the editor, the dropdown may wait for a parent value that cannot be set (not verified in the UI).",
+      "evidence": [
+        { "type": "plug_config", "ref": "Sync Connection › V1 › inputjson › connection_id › optionsGenerator", "quote": "return await listFivetranConnections(context?.inputData?.group_id, context?.paginateData?.['connection_id']); ... \"dependsOn\":[\"group_id\"]; root steps: [\"connection_id\",\"force\"]" },
+        { "type": "kb_rule", "ref": "plug-review.md › Test Cases › 8. Valid fields", "quote": "The code reads only fields and system keys, such as hookUrl, performsubscribe or scheduledTime." }
+      ],
+      "fix": {
+        "kind": "diff",
+        "content": "-  return await listFivetranConnections(context?.inputData?.group_id, context?.paginateData?.['connection_id']);\n+  return await listFivetranConnections(undefined, context?.paginateData?.['connection_id']);",
+        "verified": false
+      },
+      "avoid": "Do not rename the key connection_id and do not edit the mapped component listFivetranConnections; change only the field's source / optionsGenerator, then re-save so dependsOn regenerates as []. Alternative if group filtering is wanted: add an optional Group dropdown as the first field, as List Connections already does.",
+      "expectedResult": "The Connection dropdown loads on open with no parent value and lists connections across all groups.",
+      "verify": "Dry run the connection_id source with empty input on a Fivetran account that has connections; open each action in the editor and confirm the dropdown loads."
+    },
+    {
+      "id": "F-002",
+      "title": "Get Connection and List Connections should be one LIST action with a mode",
+      "severity": "P2",
+      "confidence": "confirmed",
+      "category": "api_coverage",
+      "check": "A",
+      "affects": [{ "item": "Get Connection", "version": "V1" }, { "item": "List Connections", "version": "V1" }],
+      "location": "Actions › Get Connection and Actions › List Connections",
+      "issue": "Two actions do one job (read connections). Users must pick between them, and Get Connection duplicates List Connections' lookup by id.",
+      "evidence": [
+        { "type": "plug_config", "ref": "Get Connection › V1 › perform (GET /connections/{id}) and List Connections › V1 › perform (GET /connections)", "quote": "two separate actions, no mode field in either inputjson" },
+        { "type": "kb_rule", "ref": "ux-practice.md › LIST › LIST Best Practices", "quote": "Always combine listing (\"List All\"), searching (by specific identifiers), \"Search by ID\", and \"Advance Search\" (if supported) into a single LIST action using a Mode selector." }
+      ],
+      "fix": {
+        "kind": "text",
+        "content": "Add a Mode dropdown (List All / Search by Schema Name / Search by ID) to List Connections; show group_id/limit/cursor only for List All, schema for Search by Schema Name, and the connection dropdown for Search by ID (GET /connections/{id}, keeping the existing 404 -> 'No data found.' handling). Then retire Get Connection.",
+        "verified": false
+      },
+      "avoid": "Do not delete Get Connection once it is published or used in flows; it is unpublished with 0 runs today, so merging now is non-breaking.",
+      "expectedResult": "One action reads connections in every way the two do today.",
+      "verify": "Dry run each mode: list all, search by schema, search by id, unknown id (expect 'No data found.')."
+    },
+    {
+      "id": "F-003",
+      "title": "List Connections and Get Sync History return only one page",
+      "severity": "P2",
+      "confidence": "confirmed",
+      "category": "triggers_pagination",
+      "check": "E",
+      "affects": [{ "item": "List Connections", "version": "V1" }, { "item": "Get Sync History", "version": "V1" }],
+      "location": "<action> › V1 › perform (single axios.get, no loop) and inputjson (no 'Enable Pagination' toggle)",
+      "issue": "Users get at most one page (default 100) unless they copy next_cursor into a second run by hand. The response does expose next_cursor and has_more, so nothing is hidden, but the KB requires the action to fetch everything when paging is off.",
+      "evidence": [
+        { "type": "plug_config", "ref": "List Connections › V1 › perform", "quote": "const response = await axios.get(`${BASE}/connections`, { params, ... }); return { data: items, next_cursor: ..., has_more: ... }" },
+        { "type": "kb_rule", "ref": "ux-practice.md › LIST › LIST Best Practices", "quote": "if Mode is 'List All' ... and \"Enable Pagination\" is disabled, the perform code must automatically iterate through all pages (internal pagination) to return all records." }
+      ],
+      "fix": {
+        "kind": "text",
+        "content": "Add an 'Enable Pagination' boolean; when off, loop on data.next_cursor (limit 1000 per page) and return the combined list; when on, keep today's single-page behaviour with limit/cursor inside an input group shown only when it is true. Cap the loop and respect the API rate limit.",
+        "verified": false
+      },
+      "avoid": "Do not loop without a page cap or without a delay on 429; do not rename the existing limit and cursor keys.",
+      "expectedResult": "With pagination off, the action returns every connection / sync in the range.",
+      "verify": "On an account with more than 100 connections, run with pagination off and compare the count with the Fivetran dashboard."
+    },
+    {
+      "id": "F-004",
+      "title": "Triggers pass the raw nested webhook body through",
+      "severity": "P3",
+      "confidence": "confirmed",
+      "category": "triggers_pagination",
+      "check": "F",
+      "affects": [
+        { "item": "New Sync Started" }, { "item": "New Sync Completed" }, { "item": "New Connection Failure" },
+        { "item": "New Connection Created" }, { "item": "New Transformation Succeeded" }, { "item": "New Transformation Failed" }
+      ],
+      "location": "<trigger> › V1 › modifytriggerdata (last line: return body;) and sampledata",
+      "issue": "Event details sit under a nested data object (data.status, data.sync_type, data.message), so later steps map data.status instead of a plain field.",
+      "evidence": [
+        { "type": "plug_config", "ref": "New Sync Completed › V1 › modifytriggerdata and sampledata", "quote": "return body;  /  sampledata: { \"data\": { \"status\": \"SUCCESSFUL\", \"sync_type\": \"INCREMENTAL\" }, \"event\": \"sync_end\", ... }" },
+        { "type": "kb_rule", "ref": "perform-code.md › Instant Trigger Perform Code (Modify data before send to flow) Rules", "quote": "Webhook data contains nested object format. Now need to flatten the nested object and return it to the flow as a flat object." }
+      ],
+      "fix": {
+        "kind": "diff",
+        "content": "-  return body;\n+  const { data, ...event } = body;\n+  return { ...event, ...(data || {}) };",
+        "verified": false
+      },
+      "avoid": "Update sampledata to the same flat shape in the same change (plug-review.md check 15: the sample must match a live event). Do it before publishing: after publish, flows depend on the shape.",
+      "expectedResult": "Flows see status, sync_type, message, testName at the top level next to event, connector_id and connector_name.",
+      "verify": "Send a test webhook for each event and compare the trigger output with the saved sample."
+    },
+    {
+      "id": "F-005",
+      "title": "Re-sync tables are typed as one comma-separated string",
+      "severity": "P3",
+      "confidence": "confirmed",
+      "category": "input_schema",
+      "check": "B",
+      "affects": [{ "item": "Re-sync Connection", "version": "V1" }],
+      "location": "Re-sync Connection › V1 › inputjson › tables",
+      "issue": "Users must type schema.table pairs in an exact format; a typo is caught only at run time (the code throws 'Invalid table').",
+      "evidence": [
+        { "type": "plug_config", "ref": "Re-sync Connection › V1 › inputjson › tables", "quote": "\"type\":\"string\", \"help\":\"Enter tables as schema.table separated by commas (public.orders, public.users)...\"" },
+        { "type": "kb_rule", "ref": "plug-review.md › Test Cases › 11. Field layout", "quote": "Fixed choices are dropdowns, lists are repeating input groups, and nested objects are input groups." }
+      ],
+      "fix": {
+        "kind": "text",
+        "content": "Replace tables with a repeating input group of two fields (Schema, Table), keeping the perform code's scope-building loop; exact JSON per dh-Input-fields-json-builder.md 'Input Group Static JSON Schema' (not fetched in this audit).",
+        "verified": false
+      },
+      "avoid": "Keep accepting the old string for anyone who already mapped it; do not rename the key tables, add the group under a new key.",
+      "expectedResult": "Users add one row per table; no format to remember.",
+      "verify": "Run with one row, two rows in the same schema, two schemas, and none (expect a full re-sync)."
+    },
+    {
+      "id": "F-006",
+      "title": "Sync Connection always sends force: false",
+      "severity": "P3",
+      "confidence": "likely",
+      "category": "request_response",
+      "check": "C",
+      "affects": [{ "item": "Sync Connection", "version": "V1" }],
+      "location": "Sync Connection › V1 › perform › const payload = ...",
+      "issue": "When the user leaves Force Restart empty, the request still carries force: false. This is harmless if false is the API default, which could not be checked here.",
+      "evidence": [
+        { "type": "plug_config", "ref": "Sync Connection › V1 › perform", "quote": "const payload = force === true || force === 'true' ? { force: true } : { force: false };" },
+        { "type": "kb_rule", "ref": "plug-review.md › Test Cases › 7. Safe payload", "quote": "Only filled fields are sent." }
+      ],
+      "fix": {
+        "kind": "diff",
+        "content": "-    const payload = force === true || force === 'true' ? { force: true } : { force: false };\n+    const payload = force === true || force === 'true' ? { force: true } : force === false || force === 'false' ? { force: false } : {};",
+        "verified": false
+      },
+      "avoid": "Do not drop an explicit No: a user who picks No should still send force: false.",
+      "expectedResult": "An unfilled Force Restart sends an empty body; an explicit No still sends false.",
+      "verify": "Run with the field omitted, Yes and No and compare the request bodies."
+    }
+  ],
+  "limitations": [
+    { "what": "No comparison with Fivetran's official API docs or OpenAPI spec", "reason": "fivetran.com is blocked from this environment (proxy 403 / host not resolved)", "wouldConfirm": "Allow fivetran.com in the session network settings, or paste the OpenAPI JSON; then re-run to check endpoints, required fields, enums and missing actions/triggers" },
+    { "item": "Missing actions and triggers", "what": "Not assessed", "reason": "needs the API inventory; the plug has no actions for creating or deleting connections, groups or destinations and no triggers for paused, resumed, edited or deleted connections, but whether they belong here is not verified" },
+    { "item": "Webhook signing", "what": "Subscribe sends no secret, so incoming events are not verified", "reason": "whether Fivetran supports and documents a signing secret was not confirmed against the docs", "wouldConfirm": "the webhook section of the Fivetran docs" },
+    { "item": "Connection testcode", "what": "testcode builds the Authorization header itself while authenticationpaths also sets it", "reason": "the connection KB rules for test code were not read", "wouldConfirm": "dh-connection-practice.md 'Connection Design Strategy' (Test API & testcode rules)" },
+    { "item": "Dry run coverage", "what": "2 of 6 read-only blocks run (List Connections perform, connection_id dropdown)", "reason": "both returned 'No data found.' because the connected Fivetran account has no connections, so field mapping against real records is not verified; the other 4 were not run" },
+    { "item": "Write actions and trigger subscribe/unsubscribe", "what": "Sync, Update, Re-sync, Run Transformation, 6 subscribe/unsubscribe: not executed", "reason": "they change data or create webhooks; reviewed statically only" },
+    { "item": "Sample data", "what": "Trigger samples not compared with real Fivetran events", "reason": "no events could be generated" },
+    { "item": "Run analytics", "what": "No production signal", "reason": "all versions are drafts with 0 runs in the last 30 days" }
+  ]
+}
