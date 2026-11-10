@@ -126,34 +126,7 @@ const BUILDINGS = {
   commander: () => `<rect x="18" y="44" width="84" height="56" fill="#b9b9c4" stroke="#4d4d5c" stroke-width="3"/><path d="M18 44 v-10 h10 v8 h10 v-8 h10 v8 h10 v-8 h10 v8 h10 v-8 h10 v8 h10 v-8 h4 v10 z" fill="#a1a1ae" stroke="#4d4d5c" stroke-width="3"/><rect x="48" y="14" width="24" height="30" fill="#c8c8d3" stroke="#4d4d5c" stroke-width="3"/><line x1="60" y1="14" x2="60" y2="0" stroke="#4d4d5c" stroke-width="2"/><polygon points="60,0 76,4 60,8" fill="#f4b740"/><path d="M50 100 V80 Q60 68 70 80 V100 Z" fill="#4d3218"/>`,
 };
 
-function renderVillage() {
-  const agents = state.agents;
-  const blds = agents.map((a) => `
-    <div class="bld ${a.state}" data-agent="${a.key}" title="${esc(a.job)}">
-      <div class="bubble">${esc(a.state === 'working' ? (a.message || 'working…') : a.state === 'error' ? '⚠️ ' + (a.message || 'error') : (a.message || 'Ready'))}</div>
-      <svg viewBox="0 0 120 104" aria-hidden="true">${BUILDINGS[a.key]()}</svg>
-      <div class="agent">${a.emoji}</div>
-      <div class="label">${esc(a.name)}</div>
-    </div>`).join('');
-  const heroes = state.week_metrics.members.map((m) => heroCard(m)).join('') || `<div class="empty">No members yet. Add them in Settings.</div>`;
-  $('#view').innerHTML = `
-    <div class="village-layout">
-      <div>
-        <div class="scene">
-          <div class="sun"></div><div class="cloud"></div><div class="cloud c2"></div><div class="path"></div>
-          <div class="buildings">${blds}</div>
-        </div>
-        <h2 style="margin-top:18px">Heroes — this week</h2>
-        <div class="heroes">${heroes}</div>
-      </div>
-      <div class="card feed">
-        <h3>⚔️ Battle Log</h3>
-        <div class="feed-list" id="feed">${feedHtml(state.activity)}</div>
-      </div>
-    </div>`;
-  document.querySelectorAll('.bld').forEach((el) => el.addEventListener('click', () => agentModal(el.dataset.agent)));
-}
-
+// renderVillage() lives in village.js (isometric canvas)
 function feedHtml(items) {
   if (!items.length) return `<div class="empty">No activity yet. Put the agents to work!</div>`;
   return items.map((a) => `<div class="feed-item ${a.level}"><span class="em">${AGENT_EMOJI[a.agent] || '•'}</span><div>${esc(a.message)}<time>${ago(a.created_at)}</time></div></div>`).join('');
@@ -473,20 +446,7 @@ async function refresh() {
     renderHeader();
     if (tab === 'flow' && typeof updateFlow === 'function') updateFlow();
     if (tab === 'team' && typeof birdReact === 'function') birdReact(state);
-    if (tab === 'village') {
-      const feed = $('#feed');
-      if (feed && $('.scene')) {
-        // light update: buildings + feed, without a full re-render
-        state.agents.forEach((a) => {
-          const el = document.querySelector(`.bld[data-agent="${a.key}"]`);
-          if (!el) return;
-          el.className = `bld ${a.state}`;
-          el.querySelector('.bubble').textContent = a.state === 'working' ? (a.message || 'working…') : a.state === 'error' ? '⚠️ ' + (a.message || 'error') : (a.message || 'Ready');
-        });
-        const topId = state.activity[0] ? state.activity[0].id : 0;
-        if (topId !== lastActivityId) { feed.innerHTML = feedHtml(state.activity); lastActivityId = topId; }
-      } else render();
-    }
+    if (tab === 'village' && typeof villageUpdate === 'function') villageUpdate();
   } catch (e) { console.warn(e); }
 }
 async function render() {
