@@ -1,14 +1,48 @@
 // SQLite database. File lives under DATA_DIR (Embarko keeps it across redeploys).
 const path = require('path');
 const fs = require('fs');
-const Database = require('better-sqlite3');
+// Node ka built-in SQLite (koi native module build nahi karna padta).
+const { DatabaseSync } = require('node:sqlite');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-const db = new Database(path.join(DATA_DIR, 'squadforge.db'));
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+const raw = new DatabaseSync(path.join(DATA_DIR, 'squadforge.db'));
+raw.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+
+// Chhota wrapper: prepare/exec/transaction (nested transactions savepoint se).
+let depth = 0;
+const cache = new Map();
+const db = {
+  exec: (sql) => raw.exec(sql),
+  prepare(sql) {
+    let st = cache.get(sql);
+    if (!st) {
+      const s = raw.prepare(sql);
+      if (typeof s.setAllowUnknownNamedParameters === 'function') s.setAllowUnknownNamedParameters(true);
+      // undefined → null, aur null-prototype rows ko plain objects mein badlo
+      const fix = (args) => args.map((a) => (a === undefined ? null
+        : a && typeof a === 'object' && !Buffer.isBuffer(a)
+          ? Object.fromEntries(Object.entries(a).map(([k, v]) => [k, v === undefined ? null : v])) : a));
+      st = {
+        run: (...a) => s.run(...fix(a)),
+        get: (...a) => { const r = s.get(...fix(a)); return r ? { ...r } : undefined; },
+        all: (...a) => s.all(...fix(a)).map((r) => ({ ...r })),
+      };
+      cache.set(sql, st);
+    }
+    return st;
+  },
+  transaction(fn) {
+    return (...args) => {
+      const sp = 'sp' + depth++;
+      raw.exec(`SAVEPOINT ${sp}`);
+      try { const r = fn(...args); raw.exec(`RELEASE ${sp}`); return r; }
+      catch (e) { raw.exec(`ROLLBACK TO ${sp}; RELEASE ${sp}`); throw e; }
+      finally { depth--; }
+    };
+  },
+};
 
 // Committed, append-only migrations. Never drop tables we don't own
 // (Embarko keeps its own _litestream_* bookkeeping tables in this file).
