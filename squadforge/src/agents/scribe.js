@@ -41,6 +41,13 @@ function buildTeamReport(t, reqs) {
       L.push(`• *${m.name}* — ${m.apps} apps, ${m.actions} actions, ${m.triggers} triggers | requests ${m.requests_completed}/${m.requests_assigned} (avg ${fmt(m.avg_request_hours, 'h')}, difficulty ${fmt(m.avg_difficulty)}) | error rate ${fmt(m.error_rate)}, first-pass ${fmt(m.first_pass_pct, '%')} | plan→done ${fmt(m.plan_done_pct, '%')} | updates ${m.morning_updates + m.evening_updates}/${m.workdays * 2}`);
     }
   }
+  try {
+    const notable = require('../work').contributions(t.from, t.to).slice(0, 8);
+    if (notable.length) {
+      L.push('', '*Contributions that matter* (not a ranking):');
+      for (const c of notable) L.push(`• ${c.title} — ${c.who} — ${c.reasons.join('; ')}`);
+    }
+  } catch (e) { /* work module unavailable */ }
   if (reqs.length) {
     L.push('', '*Client requests detail:*');
     for (const r of reqs) L.push(`• ${r.title} — ${r.status} — ${r.assignees}${r.hours !== null ? ` — ${r.hours}h` : ''}${r.difficulty ? ` — difficulty ${r.difficulty}/5` : ''}${r.stuck_reason ? ` — 🧱 ${r.stuck_reason.slice(0, 80)}` : ''}`);

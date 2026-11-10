@@ -176,7 +176,7 @@ const kpi = (v, l) => `<div class="kpi"><b>${esc(v)}</b><span>${esc(l)}</span></
 
 // ---------- requests ----------
 async function renderRequests() {
-  const reqs = await api('/api/requests');
+  const [reqs, ins] = await Promise.all([api('/api/requests'), api('/api/insights').catch(() => ({ blocked: [] }))]);
   const cols = ['new', 'rnd', 'started', 'stuck', 'completed'];
   $('#view').innerHTML = `
     <div class="row" style="margin-bottom:12px"><h2 style="margin:0">Client Requests</h2><span class="spacer"></span><button class="btn" id="addReq">+ Add request</button></div>
@@ -187,6 +187,8 @@ async function renderRequests() {
     }).join('')}</div>`;
   document.querySelectorAll('.req').forEach((el) => (el.onclick = () => reqModal(reqs.find((r) => r.id == el.dataset.id))));
   $('#addReq').onclick = addReqModal;
+  if (ins.blocked && ins.blocked.length) { const strip = document.createElement('div'); strip.innerHTML = blockedCard(ins.blocked, true); $('.kanban').before(strip.firstElementChild); }
+  if (typeof openRequestAfterNav === 'number' && openRequestAfterNav) { const r = reqs.find((x) => x.id === openRequestAfterNav); openRequestAfterNav = null; if (r) reqModal(r); }
 }
 function reqCard(r) {
   return `<div class="req" data-id="${r.id}"><div class="t">${esc(r.title)}</div>
@@ -257,14 +259,15 @@ async function renderReviews() {
 
 // ---------- growth ----------
 async function renderGrowth() {
-  const items = await api('/api/growth');
+  const [items, contrib] = await Promise.all([api('/api/growth'), api('/api/contributions').catch(() => [])]);
   const counts = {};
   const weekStart = weekStartOf(state.today);
   items.filter((i) => i.date >= weekStart).forEach((i) => (counts[i.kind] = (counts[i.kind] || 0) + 1));
   $('#view').innerHTML = `<h2>Growth</h2>
     <p class="muted" style="margin-top:0">Everything the growth member posts in the channel (support requests, app listings, blogs, newsletters, credentials) is counted here. When credentials or docs arrive for a stuck app, Sprout tags the developer in that request's thread.</p>
     <div class="kpis">${Object.keys(GROWTH_LABEL).filter((k) => k !== 'other').map((k) => kpi(counts[k] || 0, GROWTH_LABEL[k] + ' (this week)')).join('')}${kpi(items.filter((i) => i.unblocked_request_id && i.date >= weekStart).length, 'Requests unblocked')}</div>
-    <div class="card"><div class="table-wrap">${items.length ? `<table><tr><th>Date</th><th>Member</th><th>Type</th><th>Message</th><th>Unblocked</th></tr>${items.map((i) => `<tr><td>${i.date}</td><td>${esc(i.name)}</td><td><span class="pill">${GROWTH_LABEL[i.kind] || i.kind}</span></td><td>${esc((i.text || '').slice(0, 140))}</td><td>${i.unblocked_request_id ? '🔓 ' + esc(i.app_name || '') : ''}</td></tr>`).join('')}</table>` : '<div class="empty">Nothing yet</div>'}</div></div>`;
+    <div class="card"><div class="table-wrap">${items.length ? `<table><tr><th>Date</th><th>Member</th><th>Type</th><th>Message</th><th>Unblocked</th></tr>${items.map((i) => `<tr><td>${i.date}</td><td>${esc(i.name)}</td><td><span class="pill">${GROWTH_LABEL[i.kind] || i.kind}</span></td><td>${esc((i.text || '').slice(0, 140))}</td><td>${i.unblocked_request_id ? '🔓 ' + esc(i.app_name || '') : ''}</td></tr>`).join('')}</table>` : '<div class="empty">Nothing yet</div>'}</div></div>
+    ${contributionsSection(contrib)}`;
 }
 
 // ---------- reports ----------

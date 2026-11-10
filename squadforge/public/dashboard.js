@@ -24,13 +24,14 @@ async function renderTeam(range = dashRange) {
   $('#view').classList.remove('drawn');
   $('#view').innerHTML = skeleton();
   const monthStart = t.slice(0, 8) + '01';
-  const [cur, prev, spark, logs, month, reqs] = await Promise.all([
+  const [cur, prev, spark, logs, month, reqs, ins] = await Promise.all([
     api(`/api/metrics?from=${r.from}&to=${r.to}`),
     api(`/api/metrics?from=${prevFrom}&to=${prevTo}`),
     api(`/api/metrics?from=${addDays(t, -13)}&to=${t}`),
     api(`/api/logs?date=${t}`),
     api(`/api/metrics?from=${monthStart}&to=${t}`),
     api('/api/requests'),
+    api('/api/insights').catch(() => ({ queue: {}, interventions: [], blocked: [] })),
   ]);
   if (tab !== 'team') return;
   const T = cur.team.totals, P = prev.team.totals, S = spark.series;
@@ -38,6 +39,8 @@ async function renderTeam(range = dashRange) {
 
   $('#view').innerHTML = `
     ${birdScene(state.today_metrics, logs.logs)}
+    ${queueBar(ins.queue)}
+    <div class="dash-main" style="grid-template-columns:1.25fr 1fr">${interventionsCard(ins.interventions)}${blockedCard(ins.blocked)}</div>
     <div class="qp-row3">
       <div class="card"><div class="card-h"><h3>Work calendar</h3><span class="muted">${new Date(t + 'T12:00:00Z').toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</span></div>${calendar(month.series, t)}</div>
       <div class="card"><div class="card-h"><h3>Request preview</h3></div>${requestPreview(reqs, open, T.requests_completed)}</div>
@@ -74,6 +77,7 @@ async function renderTeam(range = dashRange) {
     </div>`;
 
   placeBirds();
+  wireQueue(ins.queue);
   const qs = $('#qmSend');
   if (qs) qs.onclick = async () => {
     const message = $('#qmText').value.trim();

@@ -22,6 +22,7 @@ const { DEFAULTS } = require('./parser');
 const vs = require('./viasocket');
 const accounts = require('./accounts');
 const m91 = require('./m91');
+const work = require('./work');
 const scribeAgent = require('./agents/scribe');
 
 const PORT = process.env.PORT || 3000;
@@ -357,6 +358,23 @@ async function api(req, res, url) {
     const r = await U.runAgent('commander', 'Sending the message…', () => commander.broadcast(body));
     if (r && r.error) return send(res, 500, r);
     return send(res, 200, r);
+  }
+  // ---------- manager insights: action queue, where to intervene, blocked work, contributions ----------
+  if (p === '/api/insights' && m === 'GET') {
+    return send(res, 200, { queue: work.queue(), interventions: work.interventions(), blocked: work.blocked() });
+  }
+  if (p === '/api/contributions' && m === 'GET') {
+    const to = url.searchParams.get('to') || U.today();
+    const from = url.searchParams.get('from') || U.addDays(to, -13);
+    return send(res, 200, work.contributions(from, to));
+  }
+  if (p === '/api/verify' && m === 'POST') {
+    try { work.verify(body.kind, Number(body.id), body.status, body.note, (sessionOf(req) || {}).email); return send(res, 200, { ok: true }); }
+    catch (e) { return send(res, 400, { error: e.message }); }
+  }
+  if ((mm = p.match(/^\/api\/requests\/(\d+)\/ack-analysis$/)) && m === 'POST') {
+    db.prepare("UPDATE client_requests SET analysis_ack = datetime('now') WHERE id = ?").run(mm[1]);
+    return send(res, 200, { ok: true });
   }
   if (p === '/api/broadcast/polish' && m === 'POST') {
     try { return send(res, 200, await commander.polish(body.message, body.tone)); }

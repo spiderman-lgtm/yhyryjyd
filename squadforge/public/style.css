@@ -1103,3 +1103,38 @@ ul.todo .tt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text
 .vs-step.later { opacity: .45; }
 .vs-arrow { color: #b5ad9a; font-weight: 400; }
 @media (max-width: 720px) { .vs-step { font-size: 10px; padding: 2px 6px; } .vs-arrow { display: none; } .vil-story { top: 92px; } }
+
+/* ===== manager insights ===== */
+.qbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; margin-bottom: 16px; box-shadow: var(--shadow); }
+.qbar-h { display: flex; flex-direction: column; min-width: 150px; }
+.qbar-h b { font-size: 14px; } .qbar-h .muted { font-size: 11.5px; }
+.qbar-chips { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
+.qchip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px 7px 8px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text-2); font: 500 12px 'JetBrains Mono', monospace; cursor: pointer; transition: transform .2s, border-color .2s, background .2s; animation: rise .4s ease both; animation-delay: calc(var(--i) * 60ms); }
+.qchip:hover { transform: translateY(-2px); border-color: var(--accent); }
+.qchip .qi { font-size: 15px; } .qchip .qn { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--panel-3); color: var(--muted); text-align: center; }
+.qchip.has { background: var(--panel); color: var(--text); }
+.qchip.has .qn { background: var(--coral); color: #fff; animation: qpulse 2.4s ease-in-out infinite; }
+@keyframes qpulse { 50% { box-shadow: 0 0 0 4px rgba(232,101,90,.18); } }
+.qi-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; max-height: 60vh; overflow: auto; }
+.qi-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); transition: opacity .3s; }
+.qi-row.done { opacity: .6; }
+.qi-main { flex: 1; min-width: 0; } .qi-t { font-weight: 700; }
+.qi-text { font-size: 12px; color: var(--text-2); margin-top: 6px; }
+.qi-act { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+ul.iv, ul.blk, ul.contrib { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+ul.iv li { display: flex; gap: 10px; padding: 10px; border-radius: 12px; background: var(--panel-2); border-left: 3px solid var(--line-2); animation: rise .4s ease both; animation-delay: calc(var(--i) * 70ms); }
+ul.iv li.iv-high { border-left-color: var(--coral); } ul.iv li.iv-medium { border-left-color: #e8b04a; } ul.iv li.iv-low { border-left-color: var(--accent); }
+.iv-ic { font-size: 18px; } .iv-main { flex: 1; min-width: 0; } .iv-t { font-weight: 700; font-size: 12.5px; }
+.iv-c { font-size: 11.5px; margin-top: 2px; } .iv-s { font-size: 12px; color: var(--accent-2); margin-top: 4px; }
+.iv-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.sev { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--panel-3); color: var(--text-2); white-space: nowrap; }
+.sev.high { background: #fbe1dc; color: #b2463b; } .sev.medium { background: #fbefd2; color: #8a6514; } .sev.low { background: #dcefe3; color: #2f7d55; }
+[data-theme="dark"] .sev.high { background: rgba(239,122,110,.18); color: #f4a299; } [data-theme="dark"] .sev.medium { background: rgba(232,180,80,.16); color: #ecc777; } [data-theme="dark"] .sev.low { background: rgba(63,155,107,.2); color: #7fd7a3; }
+ul.blk li { display: flex; gap: 10px; padding: 10px; border-radius: 12px; background: var(--panel-2); }
+.blk-main { min-width: 0; font-size: 12.5px; } .blk-what { margin-top: 2px; } .blk-ctx { font-size: 11.5px; color: var(--text-2); margin-top: 4px; }
+.blk-help { font-size: 11.5px; color: var(--accent-2); margin-top: 4px; }
+.blk-strip { margin-bottom: 14px; } .blk-strip ul.blk { flex-direction: row; flex-wrap: wrap; } .blk-strip ul.blk li { flex: 1 1 260px; }
+ul.contrib li { display: flex; gap: 10px; padding: 10px; border-bottom: 1px dashed var(--line); }
+.c-ic { font-size: 18px; } .c-main { min-width: 0; } .c-t { font-weight: 700; }
+.c-why { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.c-why span { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-2); }
