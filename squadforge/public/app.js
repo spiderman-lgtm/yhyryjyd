@@ -44,10 +44,10 @@ const stars = (n) => (n ? '★'.repeat(n) + '☆'.repeat(5 - n) : '–');
 const initials = (n) => n.replace(/\(.*\)/, '').trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
 // ---------- auth ----------
-function showLogin() { $('#login').classList.remove('hidden'); }
+function showLogin() { $('#login').classList.remove('hidden'); document.body.classList.add('on-login'); if (window.buildLoginScene) buildLoginScene(); }
 $('#loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  try { await api('/api/login', { method: 'POST', body: { email: $('#email').value, password: $('#password').value } }); $('#login').classList.add('hidden'); boot(); }
+  try { await api('/api/login', { method: 'POST', body: { email: $('#email').value, password: $('#password').value } }); $('#login').classList.add('hidden'); document.body.classList.remove('on-login'); boot(); }
   catch (err) { $('#loginErr').textContent = err.message; }
 });
 $('#logoutBtn').addEventListener('click', async () => { await api('/api/logout', { method: 'POST' }); location.reload(); });
