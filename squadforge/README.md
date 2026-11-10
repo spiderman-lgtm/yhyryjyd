@@ -27,13 +27,15 @@ Team lead ka AI command center. Slack channel se team ka roz ka kaam padhta hai,
 
 | Var | Zaroori | Kya |
 |---|---|---|
-| `ADMIN_PASSWORD` | ✅ | Dashboard login password (poora access) |
+| `ADMIN_PASSWORD` | ✅ | Admin login password (poora access) |
+| `ADMIN_EMAILS` | ✅ | Comma se alag admin emails; sirf yeh admin login kar sakte hain aur Integrations chala sakte hain |
 | `VIEWER_PASSWORD` | optional | Sirf 🎬 Process view (Live Flow + Village), read-only — manager/team ke saath share karne ke liye |
 | `SLACK_BOT_TOKEN` | ✅ | Slack app ka bot token (`xoxb-…`) |
 | `SLACK_CHANNEL_ID` | ✅ | Team channel ID (ya Settings se) |
 | `LEAD_SLACK_USER_ID` | ✅ | Aapka Slack user ID; reports DM pe aati hain (ya Settings se) |
 | `ANTHROPIC_API_KEY` | AI ke liye | Inspector, smart classification, difficulty, weekly summary |
 | `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` | SMS ke liye | DLT template variables `##name##`, `##message##` |
+| `VIASOCKET_ORG_ID`, `VIASOCKET_PROJECT_ID`, `VIASOCKET_EMBED_SECRET` | Integrations ke liye | viaSocket keys (Slack/Gmail/Sheets connect) |
 | `WEBHOOK_SECRET` | optional | `/webhooks/publish` ke liye |
 | `CLAUDE_MODEL` | optional | default `claude-opus-5-5` |
 
