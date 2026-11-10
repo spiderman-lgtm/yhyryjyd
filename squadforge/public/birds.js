@@ -65,10 +65,6 @@ function birdScene(today, logs) {
     <div class="lb-text">
       <h2>${greetWord(h)}, ${esc(name)}.</h2>
       <p>${ms.length ? 'A calm team ships steadily 🌿' : 'Add your team in Settings — they will gather by the lake.'}</p>
-      <div class="lb-chips">
-        <span class="price" data-led="actions">⚡ <b>${t.actions}</b> actions</span><span class="price" data-led="triggers">🎯 <b>${t.triggers}</b> triggers</span>
-        <span class="price" data-led="open">📜 <b>${Object.values(t.open_by_status || {}).reduce((a, b) => a + b, 0)}</b> open</span><span class="price" data-led="stuck">🧱 <b>${(t.open_by_status || {}).stuck || 0}</b> stuck</span>
-      </div>
     </div>
     <div class="lb-clock"><span>${ph === 'night' ? '🌙' : ph === 'dusk' ? '🌇' : ph === 'dawn' ? '🌅' : '☀️'}</span><b>${clock}</b><small>${ph === 'day' ? 'Clear' : ph === 'night' ? 'Quiet night' : ph === 'dusk' ? 'Golden hour' : 'Fresh start'}</small></div>
     <div class="perch">${birds}</div>
