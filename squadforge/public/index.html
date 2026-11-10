@@ -14,7 +14,7 @@
     <form id="loginForm" class="login-card">
       <div class="logo big">⚒️ SquadForge</div>
       <p class="muted">Team lead ka command center</p>
-      <input type="password" id="password" placeholder="Admin password" autocomplete="current-password" required />
+      <input type="password" id="password" placeholder="Password" autocomplete="current-password" required />
       <button class="btn gold" type="submit">Andar chalo</button>
       <p id="loginErr" class="err"></p>
     </form>
@@ -22,6 +22,10 @@
 
   <header class="topbar">
     <div class="logo">⚒️ SquadForge</div>
+    <div class="modes" id="modes" role="tablist" aria-label="View mode">
+      <button data-mode="process" title="Kaam chalta hua dekho">🎬 Process</button>
+      <button data-mode="data" title="Numbers aur reports">📊 Data</button>
+    </div>
     <div class="resources" id="resources"></div>
     <div class="top-right">
       <div class="integrations" id="integrations"></div>
@@ -30,14 +34,15 @@
   </header>
 
   <nav class="tabs" id="tabs">
-    <button data-tab="village" class="active">🏰 Village</button>
-    <button data-tab="team">👥 Team</button>
-    <button data-tab="requests">📜 Requests</button>
-    <button data-tab="reviews">🔍 Reviews</button>
-    <button data-tab="growth">🌱 Growth</button>
-    <button data-tab="reports">📊 Reports</button>
-    <button data-tab="commander">⚔️ Commander</button>
-    <button data-tab="settings">⚙️ Settings</button>
+    <button data-tab="flow" data-mode="process" class="active">🌊 Live Flow</button>
+    <button data-tab="village" data-mode="process">🏰 Village</button>
+    <button data-tab="team" data-mode="data">👥 Team</button>
+    <button data-tab="requests" data-mode="data">📜 Requests</button>
+    <button data-tab="reviews" data-mode="data">🔍 Reviews</button>
+    <button data-tab="growth" data-mode="data">🌱 Growth</button>
+    <button data-tab="reports" data-mode="data">📊 Reports</button>
+    <button data-tab="commander" data-mode="data">⚔️ Commander</button>
+    <button data-tab="settings" data-mode="data">⚙️ Settings</button>
   </nav>
 
   <div id="banner"></div>
@@ -45,5 +50,6 @@
   <div id="modal" class="modal hidden"><div class="modal-card" id="modalCard"></div></div>
   <div id="toast" class="toast hidden"></div>
   <script src="/app.js"></script>
+  <script src="/process.js"></script>
 </body>
 </html>

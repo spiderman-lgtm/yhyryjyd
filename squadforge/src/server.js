@@ -28,22 +28,25 @@ function sessionSecret() {
   return process.env.SESSION_SECRET || crypto.createHash('sha256').update('sf:' + (process.env.ADMIN_PASSWORD || 'open')).digest('hex');
 }
 function sign(v) { return crypto.createHmac('sha256', sessionSecret()).update(v).digest('hex'); }
-function makeSession() {
+function makeSession(role) {
   const exp = Date.now() + 30 * 864e5;
-  return `${exp}.${sign(String(exp))}`;
+  return `${role}.${exp}.${sign(role + '.' + exp)}`;
 }
 function cookies(req) {
   return Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((p) => p[0]).map(([k, ...v]) => [k, decodeURIComponent(v.join('='))]));
 }
-function authed(req) {
-  if (!process.env.ADMIN_PASSWORD) return true; // password set nahi - open (dashboard pe warning dikhti hai)
+// 'admin' = poora dashboard; 'viewer' = sirf Process view (VIEWER_PASSWORD se); null = login nahi
+function roleOf(req) {
+  if (!process.env.ADMIN_PASSWORD) return 'admin'; // password set nahi - open (dashboard pe warning dikhti hai)
   const s = cookies(req).sf_session;
-  if (!s) return false;
-  const [exp, sig] = s.split('.');
-  if (!exp || !sig || Number(exp) < Date.now()) return false;
-  const good = sign(exp);
-  return sig.length === good.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good));
+  if (!s) return null;
+  const [role, exp, sig] = s.split('.');
+  if (!['admin', 'viewer'].includes(role) || !exp || !sig || Number(exp) < Date.now()) return null;
+  const good = sign(role + '.' + exp);
+  return sig.length === good.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good)) ? role : null;
 }
+// Viewer sirf yeh dekh sakta hai (read-only)
+const VIEWER_ROUTES = ['/api/state', '/api/requests', '/api/logs'];
 function safeEqual(a, b) {
   if (!a || !b) return false;
   const x = Buffer.from(String(a)), y = Buffer.from(String(b));
@@ -106,23 +109,26 @@ async function api(req, res, url) {
   const body = ['POST', 'PATCH', 'PUT'].includes(m) ? await readBody(req) : {};
 
   if (p === '/api/health') return send(res, 200, { ok: true });
-  if (p === '/api/me') return send(res, 200, { authed: authed(req), password_set: !!process.env.ADMIN_PASSWORD });
+  if (p === '/api/me') { const role = roleOf(req); return send(res, 200, { authed: !!role, role, password_set: !!process.env.ADMIN_PASSWORD }); }
   if (p === '/api/login' && m === 'POST') {
-    if (!process.env.ADMIN_PASSWORD || safeEqual(body.password, process.env.ADMIN_PASSWORD)) {
-      return send(res, 200, { ok: true }, { 'Set-Cookie': `sf_session=${makeSession()}; HttpOnly; Path=/; Max-Age=${30 * 86400}; SameSite=Lax; Secure` });
-    }
+    let role = null;
+    if (!process.env.ADMIN_PASSWORD || safeEqual(body.password, process.env.ADMIN_PASSWORD)) role = 'admin';
+    else if (process.env.VIEWER_PASSWORD && safeEqual(body.password, process.env.VIEWER_PASSWORD)) role = 'viewer';
+    if (role) return send(res, 200, { ok: true, role }, { 'Set-Cookie': `sf_session=${makeSession(role)}; HttpOnly; Path=/; Max-Age=${30 * 86400}; SameSite=Lax; Secure` });
     return send(res, 401, { error: 'Galat password' });
   }
   if (p === '/api/logout' && m === 'POST') return send(res, 200, { ok: true }, { 'Set-Cookie': 'sf_session=; Path=/; Max-Age=0' });
 
-  if (!authed(req)) return send(res, 401, { error: 'Login karo' });
+  const role = roleOf(req);
+  if (!role) return send(res, 401, { error: 'Login karo' });
+  if (role === 'viewer' && !(m === 'GET' && VIEWER_ROUTES.includes(p))) return send(res, 403, { error: 'Ye sirf admin ke liye hai' });
 
   if (p === '/api/state') {
     const t = U.today();
     const status = Object.fromEntries(db.prepare('SELECT * FROM agent_status').all().map((s) => [s.agent, s]));
     const agentList = Object.entries(agents.AGENTS).map(([key, a]) => {
       const s = status[key] || status[['tracker', 'growth'].includes(key) ? 'scout' : key] || {};
-      return { key, name: a.name, emoji: a.emoji, building: a.building, job: a.job, runnable: !!a.run, state: s.state || 'idle', message: s.message || null, last_run_at: s.last_run_at || null };
+      return { key, name: a.name, emoji: a.emoji, building: a.building, job: a.job, runnable: !!a.run && role === 'admin', state: s.state || 'idle', message: s.message || null, last_run_at: s.last_run_at || null };
     });
     return send(res, 200, {
       today: t,
@@ -134,6 +140,7 @@ async function api(req, res, url) {
       has_demo: !!db.prepare('SELECT 1 FROM members WHERE is_demo = 1').get(),
       member_count: db.prepare('SELECT COUNT(*) c FROM members WHERE active = 1').get().c,
       password_set: !!process.env.ADMIN_PASSWORD,
+      role,
     });
   }
   if (p === '/api/metrics') {

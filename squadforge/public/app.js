@@ -7,7 +7,11 @@ const GROWTH_LABEL = { support_request: 'Support request', app_listing: 'App lis
 
 let state = null;
 let members = [];
-let tab = location.hash.replace('#', '') || 'village';
+const PROCESS_TABS = ['flow', 'village'];
+const DATA_TABS = ['team', 'requests', 'reviews', 'growth', 'reports', 'commander', 'settings'];
+let tab = location.hash.replace('#', '') || 'flow';
+let mode = PROCESS_TABS.includes(tab) ? 'process' : 'data';
+let role = 'admin';
 let pollTimer = null;
 let lastActivityId = 0;
 
@@ -52,7 +56,22 @@ $('#tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-tab]'); if (!b) return;
   tab = b.dataset.tab; location.hash = tab; render();
 });
-function markTab() { document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab)); }
+function markTab() {
+  if (role === 'viewer') { mode = 'process'; if (!PROCESS_TABS.includes(tab)) tab = 'flow'; }
+  document.querySelectorAll('#tabs button').forEach((b) => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+    b.classList.toggle('hidden', b.dataset.mode !== mode);
+  });
+  document.querySelectorAll('#modes button').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
+  $('#modes').classList.toggle('hidden', role === 'viewer');
+  document.body.dataset.mode = mode;
+}
+$('#modes').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-mode]'); if (!b || b.dataset.mode === mode) return;
+  mode = b.dataset.mode;
+  tab = mode === 'process' ? 'flow' : 'team';
+  location.hash = tab; render();
+});
 
 // ---------- header ----------
 function renderHeader() {
@@ -67,6 +86,7 @@ function renderHeader() {
     .map(([n, on]) => `<span class="dot ${on ? 'on' : ''}">${on ? '●' : '○'} ${n}</span>`).join('');
   $('#logoutBtn').classList.toggle('hidden', !state.password_set);
   const banners = [];
+  if (role === 'viewer') { $('#banner').innerHTML = ''; return; }
   if (!state.password_set) banners.push(`<div class="banner red">🔓 <b>ADMIN_PASSWORD</b> set nahi hai, isliye dashboard abhi sabke liye khula hai. Embarko pe env var set karo.</div>`);
   if (!state.member_count) banners.push(`<div class="banner">👋 Shuru karo: <b>Settings</b> mein team members add karo (ya Slack se import karo). Sirf dekhna hai to <a href="#" id="demoLink">demo data load karo</a>.</div>`);
   else if (state.has_demo) banners.push(`<div class="banner">🧪 Demo data dikh raha hai. Asli data ke liye Settings se "Clear demo" karo.</div>`);
@@ -436,6 +456,7 @@ async function refresh() {
   try {
     state = await api('/api/state');
     renderHeader();
+    if (tab === 'flow' && typeof updateFlow === 'function') updateFlow();
     if (tab === 'village') {
       const feed = $('#feed');
       if (feed && $('.scene')) {
@@ -456,20 +477,24 @@ async function render() {
   markTab();
   if (!state) return;
   try {
-    if (!members.length || tab === 'settings') members = await api('/api/members');
-    ({ village: renderVillage, team: renderTeam, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, commander: renderCommander, settings: renderSettings }[tab] || renderVillage)();
+    if (role === 'admin' && (!members.length || tab === 'settings')) members = await api('/api/members');
+    ({ flow: renderFlow, village: renderVillage, team: renderTeam, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, commander: renderCommander, settings: renderSettings }[tab] || renderVillage)();
     if (tab === 'village') lastActivityId = state.activity[0] ? state.activity[0].id : 0;
   } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; }
 }
 async function boot() {
   const me = await api('/api/me');
   if (!me.authed) return showLogin();
+  role = me.role || 'admin';
   state = await api('/api/state');
-  members = await api('/api/members');
+  if (role === 'admin') members = await api('/api/members');
   renderHeader();
   render();
   clearInterval(pollTimer);
   pollTimer = setInterval(refresh, 5000);
 }
 boot();
-window.addEventListener('hashchange', () => { const t = location.hash.replace('#', ''); if (t && t !== tab) { tab = t; render(); } });
+window.addEventListener('hashchange', () => {
+  const t = location.hash.replace('#', '');
+  if (t && t !== tab && (PROCESS_TABS.includes(t) || DATA_TABS.includes(t))) { tab = t; mode = PROCESS_TABS.includes(t) ? 'process' : 'data'; render(); }
+});

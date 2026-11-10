@@ -1,6 +1,6 @@
 # ⚒️ SquadForge
 
-Team lead ka AI command center. Slack channel se team ka roz ka kaam padhta hai, client requests track karta hai, apps review karta hai, 7 PM alert aur Monday weekly report bhejta hai. Sab kuch ek game-style dashboard (Forge Village) pe dikhta hai.
+Team lead ka AI command center. Slack channel se team ka roz ka kaam padhta hai, client requests track karta hai, apps review karta hai, 7 PM alert aur Monday weekly report bhejta hai. Do mode hain: **🎬 Process** (Live Flow: kaam agents ke beech chalta hua dikhta hai, requests ka journey, aaj ka din) aur **📊 Data** (metrics, requests board, reviews, reports, settings).
 
 ## Agents
 
@@ -27,7 +27,8 @@ Team lead ka AI command center. Slack channel se team ka roz ka kaam padhta hai,
 
 | Var | Zaroori | Kya |
 |---|---|---|
-| `ADMIN_PASSWORD` | ✅ | Dashboard login password |
+| `ADMIN_PASSWORD` | ✅ | Dashboard login password (poora access) |
+| `VIEWER_PASSWORD` | optional | Sirf 🎬 Process view (Live Flow + Village), read-only — manager/team ke saath share karne ke liye |
 | `SLACK_BOT_TOKEN` | ✅ | Slack app ka bot token (`xoxb-…`) |
 | `SLACK_CHANNEL_ID` | ✅ | Team channel ID (ya Settings se) |
 | `LEAD_SLACK_USER_ID` | ✅ | Aapka Slack user ID; reports DM pe aati hain (ya Settings se) |
