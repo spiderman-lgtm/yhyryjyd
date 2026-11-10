@@ -131,13 +131,22 @@ async function api(req, res, url) {
   }
   if (p === '/api/login' && m === 'POST') {
     const email = String(body.email || '').trim().toLowerCase();
+    // phones and password managers often add a trailing space: compare trimmed values
+    const pw = String(body.password || '').trim();
+    const adminPw = String(process.env.ADMIN_PASSWORD || '').trim();
+    const viewerPw = String(process.env.VIEWER_PASSWORD || '').trim();
     let role = null;
-    if (process.env.ADMIN_PASSWORD && safeEqual(body.password, process.env.ADMIN_PASSWORD)) {
-      if (adminEmails().length && !adminEmails().includes(email)) return send(res, 403, { error: 'This email is not on the admin list' });
+    if (adminPw && safeEqual(pw, adminPw)) {
+      if (adminEmails().length && !adminEmails().includes(email)) {
+        console.log(`[login] admin password ok but email not on the list (email ${email ? 'given' : 'empty'})`);
+        return send(res, 403, { error: email ? 'This email is not on the admin list' : 'Please enter your admin email' });
+      }
       role = 'admin';
-    } else if (process.env.VIEWER_PASSWORD && safeEqual(body.password, process.env.VIEWER_PASSWORD)) role = 'viewer';
+    } else if (viewerPw && safeEqual(pw, viewerPw)) role = 'viewer';
     if (role) return send(res, 200, { ok: true, role }, { 'Set-Cookie': `sf_session=${makeSession(role, role === 'admin' ? email : '')}; HttpOnly; Path=/; Max-Age=${30 * 86400}; SameSite=Lax; Secure` });
-    return send(res, 401, { error: 'Wrong email or password' });
+    // diagnostics without the secret: lengths only
+    console.log(`[login] wrong password (typed ${pw.length} chars, admin password is ${adminPw.length} chars; email ${email ? (adminEmails().includes(email) ? 'on list' : 'not on list') : 'empty'})`);
+    return send(res, 401, { error: 'Wrong password' });
   }
   if (p === '/api/logout' && m === 'POST') return send(res, 200, { ok: true }, { 'Set-Cookie': 'sf_session=; Path=/; Max-Age=0' });
 
