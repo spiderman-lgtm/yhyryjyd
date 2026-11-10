@@ -99,7 +99,7 @@ function markTab() {
 // ---------- header ----------
 function renderHeader() {
   const i = state.integrations;
-  $('#integrations').innerHTML = `<div class="nav-label" style="padding:0 0 6px">Connections</div>` + [['Slack', i.slack], ['AI', i.ai], ['SMS', i.msg91]]
+  $('#integrations').innerHTML = `<div class="nav-label" style="padding:0 0 6px">Connections</div>` + [['Slack', i.slack], ['AI', i.ai], ['M91', i.msg91]]
     .map(([n, on]) => `<span class="dot ${on ? 'on' : ''}"><i></i>${n}</span>`).join('');
   $('#pageSub').textContent = new Date(state.today + 'T12:00:00Z').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
   $('#userChip').innerHTML = myEmail ? `<span class="avatar-xs">${esc(myEmail[0].toUpperCase())}</span>${esc(myEmail)}` : role === 'viewer' ? 'Viewer' : '';
@@ -311,24 +311,59 @@ async function renderCommander() {
   const hist = await api('/api/broadcasts');
   $('#view').innerHTML = `<h2>Commander</h2>
     <div class="grid g2">
-      <div class="card">
-        <label>Message / instruction</label><textarea id="cMsg" style="min-height:130px" placeholder="Everyone focus on the Shopify plugin triggers today…"></textarea>
+      <div class="card cmd">
+        <div class="card-h"><h3>1 · Write your message</h3><span class="muted">Hinglish is fine</span></div>
+        <textarea id="cMsg" style="min-height:120px" placeholder="sab log aaj Shopify plugin ke triggers pe focus karo, shaam tak review me daalna"></textarea>
+        <div class="row" style="margin-top:8px">
+          <div class="seg" id="cTone" role="tablist" aria-label="Tone"><button class="on" data-tone="friendly">Friendly</button><button data-tone="firm">Firm</button><button data-tone="short">Short</button></div>
+          <span class="spacer"></span>
+          <button class="btn ghost" id="cPolish">✨ Improve with AI</button>
+        </div>
+        <div id="cDraft" class="ai-draft hidden">
+          <div class="card-h" style="margin:14px 0 6px"><h3>2 · AI draft</h3><span class="muted" id="cNote"></span></div>
+          <textarea id="cOut" style="min-height:130px"></textarea>
+          <div class="row" style="margin-top:6px"><button class="btn ghost small" id="cUndo">↺ Use my original</button><button class="btn ghost small" id="cAgain">✨ Try again</button></div>
+        </div>
+        <div class="card-h" style="margin:16px 0 6px"><h3 id="cStep">2 · Send</h3></div>
         <label>Who to tag</label>${memberChecks([], 'cm')}
-        <label class="check"><input type="checkbox" id="cImp"/> 🚨 Important — tagged people also get an MSG91 SMS</label>
-        <label class="check"><input type="checkbox" id="cPol"/> ✨ Polish the message with AI</label>
-        <button class="btn gold" id="cSend" style="margin-top:6px">📣 Send to channel</button>
-        ${state.integrations.slack ? '' : '<p class="muted">Slack is not configured — the message will only be saved.</p>'}
-        ${state.integrations.msg91 ? '' : '<p class="muted">MSG91 is not configured — no SMS will be sent.</p>'}
+        <label class="check"><input type="checkbox" id="cImp"/> 🚨 Important — tagged people also get an M91 alert</label>
+        <button class="btn" id="cSend" style="margin-top:8px">📣 Send to channel</button>
+        ${state.integrations.slack ? '' : '<p class="muted">Slack is not connected — the message will only be saved here.</p>'}
+        ${state.integrations.msg91 ? '' : '<p class="muted">M91 is not set up — no alert will go out.</p>'}
       </div>
-      <div class="card"><h3>History</h3>${hist.length ? hist.map((b) => `<div class="feed-item"><span class="em">${b.important ? '🚨' : '📣'}</span><div>${esc(b.message)}<time>${ago(b.created_at)}${b.sms_status ? ' · SMS: ' + esc(b.sms_status) : ''}</time></div></div>`).join('') : '<div class="empty">Nothing sent yet</div>'}</div>
+      <div class="card"><h3>History</h3>${hist.length ? hist.map((b) => `<div class="feed-item"><span class="em">${b.important ? '🚨' : '📣'}</span><div>${esc(b.message)}<time>${ago(b.created_at)}${b.sms_status ? ' · M91: ' + esc(b.sms_status) : ''}</time></div></div>`).join('') : '<div class="empty">Nothing sent yet</div>'}</div>
     </div>`;
+  let tone = 'friendly';
+  document.querySelectorAll('#cTone button').forEach((b) => (b.onclick = () => { tone = b.dataset.tone; document.querySelectorAll('#cTone button').forEach((x) => x.classList.toggle('on', x === b)); }));
+  const improve = async () => {
+    const btn = $('#cPolish'), msg = $('#cMsg').value.trim();
+    if (!msg) { $('#cMsg').focus(); return toast('Write a message first'); }
+    btn.disabled = true; btn.textContent = '✨ Thinking…'; $('#cDraft').classList.add('thinking');
+    try {
+      const r = await api('/api/broadcast/polish', { method: 'POST', body: { message: msg, tone } });
+      $('#cDraft').classList.remove('hidden'); $('#cOut').value = r.text; $('#cNote').textContent = r.note || '';
+      $('#cStep').textContent = '3 · Send'; typeIn($('#cOut'), r.text);
+    } catch (e) { toast(e.message); }
+    btn.disabled = false; btn.textContent = '✨ Improve with AI'; $('#cDraft').classList.remove('thinking');
+  };
+  $('#cPolish').onclick = improve; $('#cAgain').onclick = improve;
+  $('#cUndo').onclick = () => { $('#cDraft').classList.add('hidden'); $('#cOut').value = ''; $('#cStep').textContent = '2 · Send'; };
   $('#cSend').onclick = async () => {
+    const message = ($('#cDraft').classList.contains('hidden') ? $('#cMsg').value : $('#cOut').value).trim();
+    if (!message) return toast('Write a message first');
     const b = $('#cSend'); b.disabled = true;
     try {
-      await api('/api/broadcast', { method: 'POST', body: { message: $('#cMsg').value, member_ids: checked('cm'), important: $('#cImp').checked, polish: $('#cPol').checked } });
+      await api('/api/broadcast', { method: 'POST', body: { message, member_ids: checked('cm'), important: $('#cImp').checked, polish: false } });
       toast('Sent ✅'); renderCommander();
     } catch (e) { toast(e.message); b.disabled = false; }
   };
+}
+// little typewriter so the AI draft visibly "writes itself"
+function typeIn(el, text) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { el.value = text; return; }
+  let i = 0; el.value = '';
+  const step = () => { i = Math.min(text.length, i + Math.max(2, Math.round(text.length / 60))); el.value = text.slice(0, i); if (i < text.length) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
 }
 
 // ---------- settings ----------
@@ -345,7 +380,7 @@ async function renderSettings() {
         <li>${i.slack ? '✅' : '⬜'} Slack — env <code>SLACK_BOT_TOKEN</code> + channel ID</li>
         <li>${i.lead ? '✅' : '⬜'} Lead's Slack user ID (for DM reports)</li>
         <li>${i.ai ? '✅' : '⬜'} AI — env <code>ANTHROPIC_API_KEY</code></li>
-        <li>${i.msg91 ? '✅' : '⬜'} MSG91 — env <code>MSG91_AUTH_KEY</code> + <code>MSG91_TEMPLATE_ID</code></li>
+        <li>${i.msg91 ? '✅' : '⬜'} M91 alerts — env <code>MSG91_AUTH_KEY</code> + <code>MSG91_TEMPLATE_ID</code></li>
         <li>${i.review_instructions ? '✅' : '⬜'} Inspector review instructions</li>
       </ul>
       <p class="muted">Put secret keys only in Embarko env vars, not here.</p>
@@ -362,7 +397,7 @@ async function renderSettings() {
       ${members.map((m) => `<tr><td>${esc(m.name)}${m.is_demo ? ' <span class="pill">demo</span>' : ''}</td><td>${m.role}</td><td><code>${esc(m.slack_user_id || '–')}</code></td><td>${esc(m.phone || '–')}</td><td><button class="btn ghost small" data-edit="${m.id}">Edit</button></td></tr>`).join('') || '<tr><td colspan="5" class="muted">No members</td></tr>'}
       </table></div>
       <div class="row" style="margin-top:10px"><button class="btn" id="addMem">+ Member</button><button class="btn ghost" id="impMem" ${i.slack ? '' : 'disabled'}>Import from Slack channel</button></div>
-      <p class="muted">Role: <b>tech</b> = plugin builders, <b>growth</b> = growth member, <b>lead</b> = you. Phone in 91XXXXXXXXXX format (for MSG91).</p>
+      <p class="muted">Role: <b>tech</b> = plugin builders, <b>growth</b> = growth member, <b>lead</b> = you. Phone in 91XXXXXXXXXX format (for M91 alerts).</p>
       <h3 style="margin-top:16px">➕ Publish count (manual)</h3>
       <p class="muted">Can also come automatically from a viaSocket flow: <code>POST /webhooks/publish</code> (see README).</p>
       <div class="grid g3"><select id="pMem">${members.filter((m) => m.role === 'tech').map((m) => `<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select>
@@ -411,7 +446,7 @@ function memberModal(m = {}) {
     <label>Name</label><input id="mName" value="${esc(m.name || '')}"/>
     <label>Role</label><select id="mRole">${['tech', 'growth', 'lead'].map((r) => `<option ${m.role === r ? 'selected' : ''}>${r}</option>`).join('')}</select>
     <label>Slack user ID</label><input id="mSlack" value="${esc(m.slack_user_id || '')}" placeholder="U0123ABCD (profile → Copy member ID)"/>
-    <label>Phone (MSG91)</label><input id="mPhone" value="${esc(m.phone || '')}" placeholder="919876543210"/>
+    <label>Phone (M91 alerts)</label><input id="mPhone" value="${esc(m.phone || '')}" placeholder="919876543210"/>
     ${m.id ? `<label class="check"><input type="checkbox" id="mActive" ${m.active ? 'checked' : ''}/> Active</label>` : ''}
     <div class="row" style="margin-top:12px"><button class="btn" id="mSave">Save</button>${m.id ? '<button class="btn red small" id="mDel">Delete</button>' : ''}<span class="spacer"></span><button class="btn ghost" data-close>Cancel</button></div>`);
   $('#mSave').onclick = async () => {
@@ -467,7 +502,6 @@ async function boot() {
   if (role === 'admin') members = await api('/api/members');
   renderHeader();
   render();
-  const art = $('#sideArt'); if (art && window.lakeSvg && !art.innerHTML) art.innerHTML = lakeSvg({ viewBox: '-20 30 150 92' });
   clearInterval(pollTimer);
   pollTimer = setInterval(refresh, 5000);
 }
@@ -476,3 +510,17 @@ window.addEventListener('hashchange', () => {
   const t = location.hash.replace('#', '');
   if (t && t !== tab && ALL_TABS.includes(t)) { tab = t; render(); }
 });
+// ---------- light / dark mode ----------
+(function () {
+  const btn = document.getElementById('themeToggle'); if (!btn) return;
+  const current = () => document.documentElement.dataset.theme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const label = () => btn.setAttribute('aria-label', current() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+  label();
+  btn.addEventListener('click', () => {
+    const next = current() === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('sf_theme', next); } catch { /* ignore */ }
+    label();
+    document.documentElement.classList.add('theme-anim'); setTimeout(() => document.documentElement.classList.remove('theme-anim'), 500);
+  });
+})();

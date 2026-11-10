@@ -66,3 +66,10 @@ function clear() {
 }
 
 module.exports = { load, clear };
+
+// Older demo rows were written in Hinglish; swap them for the current English demo once.
+function refreshOldDemo() {
+  const old = db.prepare(`SELECT 1 FROM client_requests WHERE is_demo = 1 AND (stuck_reason LIKE '%nahi%' OR ai_analysis LIKE '%tha%' OR title LIKE '%chahiye%') LIMIT 1`).get();
+  if (old) { clear(); load(); }
+}
+module.exports.refreshOldDemo = refreshOldDemo;

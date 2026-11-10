@@ -41,4 +41,17 @@ async function broadcast({ message, member_ids = [], important = false, polish =
   return { text: full, slack_ts: slackTs, sms: smsStatus };
 }
 
-module.exports = { broadcast };
+// Draft help: rewrite the lead's message so it reads well. Returns a draft; nothing is sent.
+async function polish(message, tone = 'friendly') {
+  if (!message || !message.trim()) throw new Error('Write a message first');
+  if (!llm.enabled()) throw new Error('AI is not set up yet (ANTHROPIC_API_KEY is missing)');
+  const out = await llm.askJson({
+    system: `You help a team lead write a message for their team's Slack channel. Rewrite the draft so it is clear, well structured and ${tone === 'firm' ? 'direct and firm, still respectful' : tone === 'short' ? 'as short as possible' : 'warm and friendly'}. Write in English (the draft may be in Hinglish). Keep every fact, name, date, number and link exactly. Do not invent anything. Use Slack formatting (*bold*, bullet lines starting with "• ") only when it helps. Also give a one-line note of what you changed.`,
+    prompt: message.trim(),
+    schema: { type: 'object', additionalProperties: false, properties: { message: { type: 'string' }, note: { type: 'string' } }, required: ['message', 'note'] },
+  });
+  logActivity('commander', '✨ AI polished a draft');
+  return { text: out.message, note: out.note };
+}
+
+module.exports = { broadcast, polish };

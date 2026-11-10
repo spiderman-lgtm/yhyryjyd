@@ -20,7 +20,7 @@ const FLOW_NODES = {
   alert:     { x: 1105, y: 210, kind: 'out', icon: '⏰', title: '7 PM alert', sub: 'DM to you' },
   report:    { x: 1105, y: 330, kind: 'out', icon: '🗞️', title: 'Monday report', sub: 'team + personal' },
   dash:      { x: 1105, y: 440, kind: 'out', icon: '📊', title: 'Dashboard', sub: 'Gmail · Sheets' },
-  sms:       { x: 1105, y: 520, kind: 'out', icon: '📱', title: 'MSG91 SMS', sub: 'important alerts' },
+  sms:       { x: 1105, y: 520, kind: 'out', icon: '🔔', title: 'M91 alerts', sub: 'important only' },
 };
 // [from, to, owner agent whose activity lights this edge]
 const FLOW_EDGES = [

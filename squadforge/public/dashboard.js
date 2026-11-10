@@ -43,7 +43,7 @@ async function renderTeam(range = dashRange) {
       <div class="card"><div class="card-h"><h3>Request preview</h3></div>${requestPreview(reqs, open, T.requests_completed)}</div>
       <div class="card"><div class="card-h"><h3>Quick message</h3><span class="muted">to the team channel</span></div>
         <textarea id="qmText" class="qm" placeholder="What should the team know?"></textarea>
-        <div class="qm-bar"><label class="check" title="Also send an SMS to tagged people"><input type="checkbox" id="qmImp"/> Important</label><span class="spacer"></span><button class="btn" id="qmSend">Send ✦</button></div>
+        <div class="qm-bar"><label class="check" title="Also send an M91 alert"><input type="checkbox" id="qmImp"/> Important</label><span class="spacer"></span><button class="btn ghost small" id="qmAi" title="Let AI improve the wording">✨ Improve</button><button class="btn" id="qmSend">Send ✦</button></div>
         <div class="muted" style="font-size:11px">Tag people and polish with AI in Commander.</div>
       </div>
     </div>
@@ -82,6 +82,14 @@ async function renderTeam(range = dashRange) {
     try { await api('/api/broadcast', { method: 'POST', body: { message, important: $('#qmImp').checked } }); $('#qmText').value = ''; toast('Sent to the team ✦'); refresh(); }
     catch (e) { toast(e.message); }
     qs.disabled = false;
+  };
+  const qa = $('#qmAi');
+  if (qa) qa.onclick = async () => {
+    const msg = $('#qmText').value.trim(); if (!msg) { $('#qmText').focus(); return; }
+    qa.disabled = true; qa.textContent = '✨ …';
+    try { const r = await api('/api/broadcast/polish', { method: 'POST', body: { message: msg } }); typeIn($('#qmText'), r.text); toast('AI improved it — check, then Send'); }
+    catch (e) { toast(e.message); }
+    qa.disabled = false; qa.textContent = '✨ Improve';
   };
   document.querySelectorAll('[data-goto]').forEach((el) => (el.onclick = () => { tab = el.dataset.goto; location.hash = tab; render(); }));
   document.querySelectorAll('[data-range]').forEach((b) => (b.onclick = () => renderTeam(b.dataset.range)));

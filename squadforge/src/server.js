@@ -350,6 +350,10 @@ async function api(req, res, url) {
     if (r && r.error) return send(res, 500, r);
     return send(res, 200, r);
   }
+  if (p === '/api/broadcast/polish' && m === 'POST') {
+    try { return send(res, 200, await commander.polish(body.message, body.tone)); }
+    catch (e) { return send(res, 400, { error: e.message }); }
+  }
   if (p === '/api/broadcasts') return send(res, 200, db.prepare('SELECT * FROM broadcasts ORDER BY id DESC LIMIT 50').all());
 
 
@@ -482,4 +486,5 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+try { demo.refreshOldDemo(); } catch (e) { console.error(e); }
 server.listen(PORT, '0.0.0.0', () => console.log(`SquadForge running on http://0.0.0.0:${PORT} (node ${process.version})`));
