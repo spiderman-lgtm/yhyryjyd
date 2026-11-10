@@ -1,4 +1,4 @@
-// 📜 Scribe - har Monday pichhle hafte (Mon-Sun) ki team report + lead ki personal report.
+// 📜 Scribe - every Monday: last week's (Mon-Sun) team report + the lead's personal report.
 const { db } = require('../db');
 const llm = require('../llm');
 const slack = require('../slack');
@@ -29,14 +29,14 @@ function buildTeamReport(t, reqs) {
   const L = [];
   L.push(`📜 *SquadForge — Weekly Team Report (${t.from} → ${t.to})*`, '');
   L.push(`*Team total:* ${t.totals.apps} apps · ${t.totals.actions} actions · ${t.totals.triggers} triggers`);
-  L.push(`*Client requests:* ${t.totals.client_requests} aayi · ${t.totals.requests_completed} complete hui`);
+  L.push(`*Client requests:* ${t.totals.client_requests} received · ${t.totals.requests_completed} completed`);
   L.push(`*Reviews:* ${t.totals.reviews} · errors ${t.totals.review_errors} · error rate ${fmt(t.totals.error_rate)} per review`);
   L.push(`*Missed updates:* ${t.totals.missed_updates}`, '');
-  L.push('*Member-wise:*');
+  L.push('*By member:*');
   for (const m of t.members) {
     if (m.role === 'growth') {
-      const g = Object.entries(m.growth).map(([k, v]) => `${v} ${KIND_LABEL[k] || k}`).join(', ') || 'kuch record nahi';
-      L.push(`• *${m.name}* (growth) — ${g}; ${m.unblocked} requests unblock kiye; updates ${m.morning_updates + m.evening_updates}/${m.workdays * 2}`);
+      const g = Object.entries(m.growth).map(([k, v]) => `${v} ${KIND_LABEL[k] || k}`).join(', ') || 'nothing recorded';
+      L.push(`• *${m.name}* (growth) — ${g}; ${m.unblocked} requests unblocked; updates ${m.morning_updates + m.evening_updates}/${m.workdays * 2}`);
     } else {
       L.push(`• *${m.name}* — ${m.apps} apps, ${m.actions} actions, ${m.triggers} triggers | requests ${m.requests_completed}/${m.requests_assigned} (avg ${fmt(m.avg_request_hours, 'h')}, difficulty ${fmt(m.avg_difficulty)}) | error rate ${fmt(m.error_rate)}, first-pass ${fmt(m.first_pass_pct, '%')} | plan→done ${fmt(m.plan_done_pct, '%')} | updates ${m.morning_updates + m.evening_updates}/${m.workdays * 2}`);
     }
@@ -52,10 +52,10 @@ function buildPersonalReport(t, reqs) {
   const interrupted = reqs.filter((r) => r.hours !== null).reduce((s, r) => s + r.hours, 0);
   return [
     `🔐 *Personal weekly metrics (${t.from} → ${t.to})*`, '',
-    `• Client requests aayi: *${t.totals.client_requests}*`,
-    `• Complete hui: *${t.totals.requests_completed}*  · Abhi open: ${Object.entries(t.totals.open_by_status).map(([k, v]) => `${LABEL[k]} ${v}`).join(', ') || '0'}`,
-    `• Apps bane: *${t.totals.apps}*  · Actions: *${t.totals.actions}*  · Triggers: *${t.totals.triggers}*`,
-    `• Client requests pe laga time: ~${interrupted.toFixed(1)} ghante (ye planned kaam se hata ke diya gaya)`,
+    `• Client requests received: *${t.totals.client_requests}*`,
+    `• Completed: *${t.totals.requests_completed}*  · Still open: ${Object.entries(t.totals.open_by_status).map(([k, v]) => `${LABEL[k]} ${v}`).join(', ') || '0'}`,
+    `• Apps built: *${t.totals.apps}*  · Actions: *${t.totals.actions}*  · Triggers: *${t.totals.triggers}*`,
+    `• Time spent on client requests: ~${interrupted.toFixed(1)} hours (taken away from planned work)`,
     `• Review error rate: ${fmt(t.totals.error_rate)} per review`,
   ].join('\n');
 }
@@ -71,7 +71,7 @@ async function run(ref = today()) {
     try {
       const out = await llm.askJson({
         effort: 'high',
-        system: 'You help a team lead write the weekly report for their manager. Be factual and use only the numbers given. Write in short Hinglish bullet points.',
+        system: 'You help a team lead write the weekly report for their manager. Be factual and use only the numbers given. Write short bullet points in clear English.',
         prompt: `Weekly metrics JSON:\n${JSON.stringify({ totals: t.totals, members: t.members, requests: reqs })}\n\nWrite 3-5 highlights, 2-4 concerns/risks, and 2-3 suggestions for next week.`,
         schema: {
           type: 'object', additionalProperties: false,
@@ -84,7 +84,7 @@ async function run(ref = today()) {
         },
       });
       team += `\n\n*✨ Highlights*\n${out.highlights.map((x) => '• ' + x).join('\n')}\n\n*⚠️ Concerns*\n${out.concerns.map((x) => '• ' + x).join('\n')}\n\n*➡️ Next week*\n${out.next_week.map((x) => '• ' + x).join('\n')}`;
-    } catch (e) { logActivity('scribe', 'AI summary fail: ' + e.message, 'warn'); }
+    } catch (e) { logActivity('scribe', 'AI summary failed: ' + e.message, 'warn'); }
   }
 
   db.prepare(`INSERT INTO reports (kind, period_start, period_end, content, data) VALUES ('weekly', ?, ?, ?, ?)`).run(from, to, team, JSON.stringify(t));
@@ -93,28 +93,28 @@ async function run(ref = today()) {
   const lead = cfg('LEAD_SLACK_USER_ID');
   if (slack.enabled() && lead) {
     try { await slack.dm(lead, team); await slack.dm(lead, personal); }
-    catch (e) { logActivity('scribe', 'DM fail: ' + e.message, 'warn'); }
+    catch (e) { logActivity('scribe', 'DM failed: ' + e.message, 'warn'); }
   }
   await sendOutside(from, to, team, t);
-  logActivity('scribe', `Weekly report tayyar: ${from} → ${to}`);
-  return { message: `Weekly report ${from} → ${to} ban gayi` };
+  logActivity('scribe', `Weekly report ready: ${from} → ${to}`);
+  return { message: `Weekly report ${from} → ${to} created` };
 }
 
-// viaSocket outputs: manager ko email (Gmail), har member ki row (Google Sheets)
+// viaSocket outputs: email to the manager (Gmail), one row per member (Google Sheets)
 async function sendOutside(from, to, team, t) {
   const g = vs.settings('gmail');
   if (vs.connected('gmail') && g.manager_email && g.weekly_email !== false) {
     try {
       await vs.gmailSend(g.manager_email, `SquadForge weekly report: ${from} to ${to}`, team.replace(/\*/g, ''));
-      logActivity('scribe', `📧 Weekly report email gaya: ${g.manager_email}`);
-    } catch (e) { logActivity('scribe', 'Email fail: ' + e.message, 'warn'); }
+      logActivity('scribe', `📧 Weekly report emailed to ${g.manager_email}`);
+    } catch (e) { logActivity('scribe', 'Email failed: ' + e.message, 'warn'); }
   }
   const sh = vs.settings('google-sheets');
   if (vs.connected('google-sheets') && sh.spreadsheet_id && sh.tab && sh.weekly_rows !== false) {
     try {
       await vs.sheetsAppend(sh.spreadsheet_id, sh.tab, sheetRows(from, to, t));
-      logActivity('scribe', `📗 ${t.members.length} rows Google Sheet mein add hui`);
-    } catch (e) { logActivity('scribe', 'Sheet fail: ' + e.message, 'warn'); }
+      logActivity('scribe', `📗 Added ${t.members.length} rows to the Google Sheet`);
+    } catch (e) { logActivity('scribe', 'Sheet failed: ' + e.message, 'warn'); }
   }
 }
 const SHEET_HEADER = ['Week start', 'Week end', 'Member', 'Role', 'Actions', 'Triggers', 'Apps', 'Requests done', 'Requests assigned', 'Avg hours', 'Avg difficulty', 'Reviews', 'Error rate', 'First pass %', 'Plan→done %', 'Updates posted', 'Updates expected', 'Growth posts', 'Unblocked'];

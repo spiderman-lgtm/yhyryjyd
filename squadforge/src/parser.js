@@ -49,7 +49,7 @@ function detectStatus(text) {
     if (s === 'stuck' || s === 'blocked') return 'stuck';
     return 'completed';
   }
-  // "not done"/"nahi hua" should not count as completed
+  // "not done" / "nahi hua" (Hinglish: not done) should not count as completed
   const negated = /(not|nahi|nhi)\s+(done|complete|completed|hua|ho)/.test(t) || /(done|complete)\s+(nahi|nhi)/.test(t);
   for (const status of ['stuck', 'completed', 'started', 'rnd']) {
     if (status === 'completed' && negated) continue;

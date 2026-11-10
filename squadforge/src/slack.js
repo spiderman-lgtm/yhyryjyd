@@ -16,7 +16,7 @@ async function call(method, params = {}, { post = false } = {}) {
     return vs.slackCall(method, clean, post);
   }
   const t = token();
-  if (!t) throw new Error('SLACK_BOT_TOKEN set nahi hai');
+  if (!t) throw new Error('SLACK_BOT_TOKEN is not set');
   let res;
   for (let attempt = 0; attempt < 3; attempt++) {
     if (post) {
@@ -60,7 +60,7 @@ async function replies(channel, ts) {
     out.push(...d.messages);
     cursor = d.response_metadata && d.response_metadata.next_cursor;
   } while (cursor);
-  return out.filter((m) => m.ts !== ts); // parent alag
+  return out.filter((m) => m.ts !== ts); // drop the parent
 }
 
 async function post(channel, text, thread_ts) {

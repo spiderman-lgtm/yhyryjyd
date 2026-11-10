@@ -44,9 +44,9 @@ function makeSession(role, email = '') {
 function cookies(req) {
   return Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((p) => p[0]).map(([k, ...v]) => [k, decodeURIComponent(v.join('='))]));
 }
-// { role: 'admin' | 'viewer', email } or null. 'admin' = poora dashboard; 'viewer' = sirf Process view.
+// { role: 'admin' | 'viewer', email } or null. 'admin' = full dashboard; 'viewer' = process views only.
 function sessionOf(req) {
-  if (!process.env.ADMIN_PASSWORD) return { role: 'admin', email: null, open: true }; // password set nahi - open
+  if (!process.env.ADMIN_PASSWORD) return { role: 'admin', email: null, open: true }; // no password set: open
   const s = cookies(req).sf_session;
   if (!s) return null;
   const parts = s.split('.');
@@ -61,7 +61,7 @@ function sessionOf(req) {
   return { role, email };
 }
 function roleOf(req) { const s = sessionOf(req); return s ? s.role : null; }
-// Viewer sirf yeh dekh sakta hai (read-only)
+// The viewer can only see these (read-only)
 const VIEWER_ROUTES = ['/api/state', '/api/requests', '/api/logs'];
 function safeEqual(a, b) {
   if (!a || !b) return false;
@@ -133,17 +133,17 @@ async function api(req, res, url) {
     const email = String(body.email || '').trim().toLowerCase();
     let role = null;
     if (process.env.ADMIN_PASSWORD && safeEqual(body.password, process.env.ADMIN_PASSWORD)) {
-      if (adminEmails().length && !adminEmails().includes(email)) return send(res, 403, { error: 'Ye email admin list mein nahi hai' });
+      if (adminEmails().length && !adminEmails().includes(email)) return send(res, 403, { error: 'This email is not on the admin list' });
       role = 'admin';
     } else if (process.env.VIEWER_PASSWORD && safeEqual(body.password, process.env.VIEWER_PASSWORD)) role = 'viewer';
     if (role) return send(res, 200, { ok: true, role }, { 'Set-Cookie': `sf_session=${makeSession(role, role === 'admin' ? email : '')}; HttpOnly; Path=/; Max-Age=${30 * 86400}; SameSite=Lax; Secure` });
-    return send(res, 401, { error: 'Galat email ya password' });
+    return send(res, 401, { error: 'Wrong email or password' });
   }
   if (p === '/api/logout' && m === 'POST') return send(res, 200, { ok: true }, { 'Set-Cookie': 'sf_session=; Path=/; Max-Age=0' });
 
   const role = roleOf(req);
-  if (!role) return send(res, 401, { error: 'Login karo' });
-  if (role === 'viewer' && !(m === 'GET' && VIEWER_ROUTES.includes(p))) return send(res, 403, { error: 'Ye sirf admin ke liye hai' });
+  if (!role) return send(res, 401, { error: 'Please log in' });
+  if (role === 'viewer' && !(m === 'GET' && VIEWER_ROUTES.includes(p))) return send(res, 403, { error: 'Admins only' });
 
   if (p === '/api/state') {
     const t = U.today();
@@ -184,12 +184,12 @@ async function api(req, res, url) {
     return send(res, 200, rows.map(requestView));
   }
   if (p === '/api/requests' && m === 'POST') {
-    if (!body.title) return send(res, 400, { error: 'Title chahiye' });
+    if (!body.title) return send(res, 400, { error: 'Title is required' });
     const at = new Date().toISOString();
     const info = db.prepare(`INSERT INTO client_requests (title, text, assigned_member_ids, status, created_at) VALUES (?, ?, ?, 'new', ?)`)
       .run(body.title, body.text || '', JSON.stringify((body.member_ids || []).map(Number)), at);
     db.prepare('INSERT INTO request_events (request_id, status, at) VALUES (?, ?, ?)').run(info.lastInsertRowid, 'new', at);
-    U.logActivity('tracker', `Nayi client request (manual): "${body.title}"`);
+    U.logActivity('tracker', `New client request (manual): "${body.title}"`);
     return send(res, 200, requestView(db.prepare('SELECT * FROM client_requests WHERE id = ?').get(info.lastInsertRowid)));
   }
   let mm;
@@ -197,7 +197,7 @@ async function api(req, res, url) {
     const r = db.prepare('SELECT * FROM client_requests WHERE id = ?').get(mm[1]);
     if (!r) return send(res, 404, { error: 'Not found' });
     if (body.status && tracker.LABEL[body.status]) {
-      await tracker.applyStatus(r, body.status, { ts: String(Date.now() / 1000), text: body.reason || 'Dashboard se update' }, null);
+      await tracker.applyStatus(r, body.status, { ts: String(Date.now() / 1000), text: body.reason || 'Updated from the dashboard' }, null);
     }
     if (body.member_ids) db.prepare('UPDATE client_requests SET assigned_member_ids = ? WHERE id = ?').run(JSON.stringify(body.member_ids.map(Number)), r.id);
     if (body.difficulty) db.prepare('UPDATE client_requests SET difficulty = ? WHERE id = ?').run(Math.min(5, Math.max(1, Number(body.difficulty))), r.id);
@@ -216,10 +216,10 @@ async function api(req, res, url) {
     return send(res, 200, rows);
   }
   if (p === '/api/reviews/manual' && m === 'POST') {
-    if (!llm.enabled()) return send(res, 400, { error: 'ANTHROPIC_API_KEY set nahi hai' });
-    if (!getSetting('inspector.instructions', '')) return send(res, 400, { error: 'Pehle Settings mein review instructions daalo' });
-    if (!body.submission) return send(res, 400, { error: 'Review ke liye content paste karo' });
-    const r = await U.runAgent('inspector', 'Manual review kar raha hai…', () => inspector.manual(body));
+    if (!llm.enabled()) return send(res, 400, { error: 'ANTHROPIC_API_KEY is not set' });
+    if (!getSetting('inspector.instructions', '')) return send(res, 400, { error: 'Add review instructions in Settings first' });
+    if (!body.submission) return send(res, 400, { error: 'Paste the content to review' });
+    const r = await U.runAgent('inspector', 'Running a manual review…', () => inspector.manual(body));
     if (r && r.error) return send(res, 500, r);
     return send(res, 200, r);
   }
@@ -240,12 +240,12 @@ async function api(req, res, url) {
   // members
   if (p === '/api/members' && m === 'GET') return send(res, 200, U.members({ includeInactive: true }));
   if (p === '/api/members' && m === 'POST') {
-    if (!body.name) return send(res, 400, { error: 'Naam chahiye' });
+    if (!body.name) return send(res, 400, { error: 'Name is required' });
     try {
       const info = db.prepare('INSERT INTO members (name, slack_user_id, role, phone) VALUES (?, ?, ?, ?)')
         .run(body.name.trim(), body.slack_user_id ? body.slack_user_id.trim() : null, ['tech', 'growth', 'lead'].includes(body.role) ? body.role : 'tech', body.phone || null);
       return send(res, 200, U.memberById(info.lastInsertRowid));
-    } catch (e) { return send(res, 400, { error: 'Ye Slack ID pehle se hai' }); }
+    } catch (e) { return send(res, 400, { error: 'This Slack ID already exists' }); }
   }
   if ((mm = p.match(/^\/api\/members\/(\d+)$/)) && m === 'PATCH') {
     const cur = U.memberById(mm[1]);
@@ -260,7 +260,7 @@ async function api(req, res, url) {
     return send(res, 200, { ok: true });
   }
   if (p === '/api/members/import-slack' && m === 'POST') {
-    if (!slack.enabled()) return send(res, 400, { error: 'Slack configure nahi hai' });
+    if (!slack.enabled()) return send(res, 400, { error: 'Slack is not configured' });
     const ids = await slack.channelMembers(U.cfg('SLACK_CHANNEL_ID'));
     let added = 0;
     for (const id of ids) {
@@ -277,7 +277,7 @@ async function api(req, res, url) {
   // publishes (manual)
   if (p === '/api/publishes' && m === 'POST') {
     const count = Math.min(50, Math.max(1, Number(body.count) || 1));
-    if (!U.memberById(body.member_id) || !['action', 'trigger', 'app'].includes(body.kind)) return send(res, 400, { error: 'Member aur kind chahiye' });
+    if (!U.memberById(body.member_id) || !['action', 'trigger', 'app'].includes(body.kind)) return send(res, 400, { error: 'Member and kind are required' });
     const ins = db.prepare('INSERT INTO publishes (member_id, kind, plugin, name, date, source) VALUES (?, ?, ?, ?, ?, ?)');
     for (let i = 0; i < count; i++) ins.run(body.member_id, body.kind, body.plugin || null, body.name || null, body.date || U.today(), 'manual');
     U.logActivity('analyst', `${memberName(body.member_id)}: +${count} ${body.kind}${body.plugin ? ' (' + body.plugin + ')' : ''}`);
@@ -299,13 +299,13 @@ async function api(req, res, url) {
 
   // agents
   if ((mm = p.match(/^\/api\/agents\/(\w+)\/run$/)) && m === 'POST') {
-    if (!agents.AGENTS[mm[1]] || !agents.AGENTS[mm[1]].run) return send(res, 400, { error: 'Ye agent manually nahi chalta' });
+    if (!agents.AGENTS[mm[1]] || !agents.AGENTS[mm[1]].run) return send(res, 400, { error: 'This agent cannot be run manually' });
     const result = await agents.run(mm[1]);
     return send(res, 200, result || {});
   }
-  if (p === '/api/agents/herald/morning' && m === 'POST') return send(res, 200, await U.runAgent('herald', 'Subah ka reminder…', () => herald.morning()));
+  if (p === '/api/agents/herald/morning' && m === 'POST') return send(res, 200, await U.runAgent('herald', 'Sending the morning reminder…', () => herald.morning()));
   if (p === '/api/broadcast' && m === 'POST') {
-    const r = await U.runAgent('commander', 'Message bhej raha hai…', () => commander.broadcast(body));
+    const r = await U.runAgent('commander', 'Sending the message…', () => commander.broadcast(body));
     if (r && r.error) return send(res, 500, r);
     return send(res, 200, r);
   }
@@ -317,13 +317,13 @@ async function api(req, res, url) {
   if (p.startsWith('/api/integrations')) {
     const se = sessionOf(req);
     if (!process.env.ADMIN_PASSWORD || !adminEmails().length) {
-      return send(res, 403, { error: 'Integrations ke liye pehle ADMIN_PASSWORD aur ADMIN_EMAILS set karo (Embarko → App setup), phir apni email se login karo.' });
+      return send(res, 403, { error: 'To use Integrations, first set ADMIN_PASSWORD and ADMIN_EMAILS (Embarko → App setup), then log in with your email.' });
     }
-    if (!se || se.role !== 'admin' || !adminEmails().includes(se.email)) return send(res, 403, { error: 'Integrations sirf admin emails ke liye hai' });
+    if (!se || se.role !== 'admin' || !adminEmails().includes(se.email)) return send(res, 403, { error: 'Integrations are only for admin emails' });
   }
   if (p === '/api/integrations' && m === 'GET') return send(res, 200, await vs.status());
   if (p === '/api/integrations/connect-info' && m === 'GET') {
-    if (!vs.configured()) return send(res, 400, { error: 'viaSocket keys (VIASOCKET_ORG_ID, VIASOCKET_PROJECT_ID, VIASOCKET_EMBED_SECRET) set nahi hain' });
+    if (!vs.configured()) return send(res, 400, { error: 'viaSocket keys (VIASOCKET_ORG_ID, VIASOCKET_PROJECT_ID, VIASOCKET_EMBED_SECRET) are not set' });
     return send(res, 200, await vs.connectInfo());
   }
   if (p === '/api/integrations/connected' && m === 'POST') {
@@ -334,7 +334,7 @@ async function api(req, res, url) {
     const app = mm[1], action = mm[2];
     if (!vs.APPS[app]) return send(res, 404, { error: 'Unknown app' });
     if (action === 'disconnect' && m === 'POST') return send(res, 200, await vs.disconnect(app));
-    if (!vs.connected(app)) return send(res, 400, { error: `${vs.APPS[app].name} pehle connect karo` });
+    if (!vs.connected(app)) return send(res, 400, { error: `Connect ${vs.APPS[app].name} first` });
     if (action === 'settings' && m === 'POST') {
       const allowed = {
         slack: ['channel_id', 'channel_name', 'me_id', 'me_name', 'use_for_slack'],
@@ -342,7 +342,7 @@ async function api(req, res, url) {
         'google-sheets': ['spreadsheet_id', 'spreadsheet_name', 'tab', 'weekly_rows'],
       }[app];
       const patch = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
-      if (patch.manager_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patch.manager_email)) return send(res, 400, { error: 'Email sahi nahi hai' });
+      if (patch.manager_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patch.manager_email)) return send(res, 400, { error: 'That email is not valid' });
       const saved = vs.saveSettings(app, patch);
       if (app === 'google-sheets' && patch.tab && patch.spreadsheet_id) {
         // header row once, so the weekly rows have column names
@@ -363,13 +363,13 @@ async function api(req, res, url) {
       const st = vs.settings(app);
       let result;
       if (app === 'slack') {
-        if (!st.me_id) return send(res, 400, { error: 'Pehle "Main kaun hoon" chuno' });
+        if (!st.me_id) return send(res, 400, { error: 'Pick yourself in the "Who am I" list first' });
         const d = await vs.slackCall('conversations.open', { users: st.me_id }, true);
-        result = await vs.slackCall('chat.postMessage', { channel: d.channel.id, text: '✅ SquadForge test: Slack connection kaam kar raha hai.' }, true);
+        result = await vs.slackCall('chat.postMessage', { channel: d.channel.id, text: '✅ SquadForge test: the Slack connection works.' }, true);
         result = { ok: result.ok, ts: result.ts, channel: result.channel };
       } else if (app === 'gmail') {
         const me = await vs.gmailMe();
-        result = { to: me.email, ...(await vs.gmailSend(me.email, 'SquadForge test', 'Gmail connection kaam kar raha hai. Monday report yahin se jayegi.')) };
+        result = { to: me.email, ...(await vs.gmailSend(me.email, 'SquadForge test', 'The Gmail connection works. The Monday report will be sent from here.')) };
       } else {
         result = await vs.sheetsTest();
       }
@@ -391,21 +391,21 @@ function cron(req, res, url) {
   if (!secret || !safeEqual(auth, secret)) return send(res, 401, { error: 'unauthorized' });
   const job = url.pathname.replace('/cron/', '');
   const jobs = {
-    sync: () => background('scout', 'Slack sync kar raha hai…', () => scout.sync()),
-    morning: () => background('herald', 'Subah ka plan check…', () => herald.morning()),
-    evening: () => background('herald', '7 PM alert bana raha hai…', async () => {
+    sync: () => background('scout', 'Syncing Slack…', () => scout.sync()),
+    morning: () => background('herald', 'Checking morning plans…', () => herald.morning()),
+    evening: () => background('herald', 'Building the 7 PM alert…', async () => {
       await U.runAgent('scout', 'Final sync…', () => scout.sync());
-      await U.runAgent('analyst', 'Aaj ka analysis…', () => analyst.run());
+      await U.runAgent('analyst', 'Analysing today…', () => analyst.run());
       return herald.evening();
     }),
-    weekly: () => background('scribe', 'Weekly report likh raha hai…', () => scribe.run()),
+    weekly: () => background('scribe', 'Writing the weekly report…', () => scribe.run()),
   };
   if (!jobs[job]) return send(res, 404, { error: 'unknown job' });
   jobs[job]();
   return send(res, 202, { accepted: job });
 }
 
-// viaSocket flow (ya koi bhi tool) se publish count: POST /webhooks/publish
+// Publish counts from a viaSocket flow (or any tool): POST /webhooks/publish
 async function publishWebhook(req, res) {
   const secret = process.env.WEBHOOK_SECRET;
   if (!secret || !safeEqual(req.headers['x-webhook-secret'], secret)) return send(res, 401, { error: 'unauthorized' });
@@ -423,7 +423,7 @@ async function publishWebhook(req, res) {
         .run(member.id, kind, it.plugin || null, it.name || null, it.date || U.today(), 'webhook');
       added++;
     }
-    U.logActivity('analyst', `${member.name} ne publish kiya: ${count} ${kind}${it.plugin ? ' — ' + it.plugin : ''}`);
+    U.logActivity('analyst', `${member.name} published ${count} ${kind}${it.plugin ? ' — ' + it.plugin : ''}`);
   }
   return send(res, 200, { added });
 }
@@ -441,4 +441,4 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '0.0.0.0', () => console.log(`SquadForge chal raha hai: http://0.0.0.0:${PORT} (node ${process.version})`));
+server.listen(PORT, '0.0.0.0', () => console.log(`SquadForge running on http://0.0.0.0:${PORT} (node ${process.version})`));

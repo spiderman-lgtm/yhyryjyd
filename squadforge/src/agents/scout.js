@@ -1,5 +1,5 @@
-// 🔭 Scout - Slack channel padhta hai (top-level + threads) aur har message ko sahi agent
-// tak bhejta hai: standup updates, client requests (Tracker), growth posts, review asks (Inspector).
+// 🔭 Scout - reads the Slack channel (top-level + threads) and hands each message to the right
+// agent: standup updates, client requests (Tracker), growth posts, review asks (Inspector).
 const { db, getSetting, setSetting } = require('../db');
 const slack = require('../slack');
 const llm = require('../llm');
@@ -29,7 +29,7 @@ function recordStandup(member, kind, msg) {
   } else {
     db.prepare(`UPDATE daily_logs SET ${textCol} = ?, ${tsCol} = ? WHERE id = ?`).run(text, tsList, row.id);
   }
-  // heuristic counts (Analyst AI se baad mein refine karta hai)
+  // heuristic counts (Analyst refines them later with AI)
   if (kind === 'morning') {
     db.prepare('UPDATE daily_logs SET planned_count = ? WHERE member_id = ? AND date = ?').run(P.countItems(text), member.id, date);
   } else {
@@ -37,7 +37,7 @@ function recordStandup(member, kind, msg) {
     db.prepare(`UPDATE daily_logs SET done_count = ?, actions_count = ?, triggers_count = ?, apps_count = ? WHERE member_id = ? AND date = ?`)
       .run(P.countItems(text), c.actions, c.triggers, c.apps, member.id, date);
   }
-  logActivity('scout', `${member.name} ka ${kind === 'morning' ? 'subah ka plan' : 'shaam ka update'} mila`);
+  logActivity('scout', `Got ${member.name}'s ${kind === 'morning' ? 'morning plan' : 'evening update'}`);
   return true;
 }
 
@@ -46,7 +46,7 @@ async function statusFor(text) {
   if (s || !llm.enabled() || (text || '').length < 15) return s;
   try {
     const out = await llm.askJson({
-      system: 'Classify a developer\'s reply in a Slack thread about a client request to build an app integration. Messages are in Hinglish.',
+      system: 'Classify a developer\'s reply in a Slack thread about a client request to build an app integration. Messages may be in Hinglish.',
       prompt: `Reply:\n${text}\n\nWhich status does it announce? rnd (checking if the app can be built / researching), started (began building), stuck (blocked - e.g. API docs missing, no credentials), completed (app done/published), none (just a comment).`,
       schema: { type: 'object', additionalProperties: false, properties: { status: { type: 'string', enum: ['rnd', 'started', 'stuck', 'completed', 'none'] } }, required: ['status'] },
     });
@@ -61,7 +61,7 @@ async function handleTopLevel(msg, channel, stats) {
     if (tracker.createFromMessage(msg, channel, leadId())) stats.requests++;
     return;
   }
-  if (!member || member.role === 'lead') return; // standup parent posts by lead/bots: replies handle karenge
+  if (!member || member.role === 'lead') return; // standup parent posts by lead/bots: their replies are handled instead
   const kind = P.standupKind(text);
   if (kind) { if (recordStandup(member, kind, msg)) stats.updates++; return; }
   if (member.role === 'growth') { if (await growth.handle(msg, member)) stats.growth++; return; }
@@ -82,7 +82,7 @@ async function handleReply(reply, parent, channel, stats) {
       if (member.role === 'growth') {
         if (await growth.handle(reply, member)) stats.growth++;
       } else {
-        // "completed, review please" → status bhi aur review bhi. Sirf "review please" pe AI se status mat poochho.
+        // "completed, review please" → both a status and a review. Do not ask the AI for a status on a bare "review please".
         const status = reviewAsk ? P.detectStatus(text) : await statusFor(text);
         if (status && (await tracker.applyStatus(db.prepare('SELECT * FROM client_requests WHERE id = ?').get(req.id), status, reply, member))) stats.statusChanges++;
       }
@@ -100,11 +100,11 @@ async function handleReply(reply, parent, channel, stats) {
 }
 
 async function sync() {
-  if (!slack.enabled()) return { message: 'Slack configure nahi hai (SLACK_BOT_TOKEN, SLACK_CHANNEL_ID)' };
+  if (!slack.enabled()) return { message: 'Slack is not configured (connect it on Integrations, or set SLACK_BOT_TOKEN + SLACK_CHANNEL_ID)' };
   const channel = cfg('SLACK_CHANNEL_ID');
   const now = Date.now() / 1000;
   const lastTs = parseFloat(getSetting('scout.last_ts', 0)) || 0;
-  // 36 ghante ki history: subah ke standup thread ke naye replies bhi pakad sake
+  // 36 hours of history, so new replies to this morning's standup thread are caught too
   const oldest = Math.min(lastTs ? lastTs - 3600 : now - 3 * 86400, now - 36 * 3600);
   const stats = { messages: 0, updates: 0, requests: 0, statusChanges: 0, growth: 0, reviews: 0 };
 
@@ -114,7 +114,7 @@ async function sync() {
     if (!skip(msg) && parseFloat(msg.ts) > lastTs - 3600) { stats.messages++; await handleTopLevel(msg, channel, stats); }
     if (msg.reply_count && parseFloat(msg.latest_reply || msg.ts) > lastTs - 3600) threads.set(msg.ts, msg);
   }
-  // purani open client requests ke threads bhi dekho
+  // also check the threads of older open client requests
   const open = db.prepare(`SELECT slack_ts, text FROM client_requests WHERE status != 'completed' AND slack_ts IS NOT NULL
                            AND is_demo = 0 AND created_at > datetime('now', '-45 days')`).all();
   for (const r of open) if (!threads.has(r.slack_ts)) threads.set(r.slack_ts, { ts: r.slack_ts, text: r.text });
@@ -132,11 +132,11 @@ async function sync() {
   const reviewResult = stats.reviews ? await inspector.runPending() : null;
   const parts = [];
   if (stats.updates) parts.push(`${stats.updates} updates`);
-  if (stats.requests) parts.push(`${stats.requests} nayi requests`);
+  if (stats.requests) parts.push(`${stats.requests} new requests`);
   if (stats.statusChanges) parts.push(`${stats.statusChanges} status change`);
   if (stats.growth) parts.push(`${stats.growth} growth posts`);
   if (stats.reviews) parts.push(`${stats.reviews} review asks`);
-  const message = parts.length ? 'Sync: ' + parts.join(', ') : 'Sync: kuch naya nahi';
+  const message = parts.length ? 'Sync: ' + parts.join(', ') : 'Sync: nothing new';
   if (parts.length) logActivity('scout', message);
   return { message, stats, review: reviewResult };
 }

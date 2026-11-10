@@ -11,19 +11,19 @@ const USER_ID = 'squadforge-lead';
 const APPS = {
   slack: {
     name: 'Slack', icon: 'https://stuff.thingsofbrand.com/slack.com/images/img668216333e_slack.jpg',
-    about: 'Team channel padhna, threads mein reply, aapko DM',
+    about: 'Read the team channel, reply in threads, DM you',
     // Get Messages, Get Thread Replies, Send Message as Thread, Send Message, Send Direct Message,
     // List all Public Channels, Get all Channel Members
     actions: ['rowil89utzpt', 'row5hqsz299t', 'rowh44ornzyz', 'row1jrbor', 'rowovgwtt9u4', 'rowmo747gxss', 'row8ivj3pajb'],
   },
   gmail: {
     name: 'Gmail', icon: 'https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_48dp.png',
-    about: 'Monday report manager ko email',
+    about: 'Email the Monday report to your manager',
     actions: ['rowogelpy0h6'], // Send Email
   },
   'google-sheets': {
     name: 'Google Sheets', icon: 'https://www.gstatic.com/images/branding/product/1x/sheets_2020q4_48dp.png',
-    about: 'Har Monday har member ki row sheet mein',
+    about: 'Every Monday, one row per member in a sheet',
     actions: ['rowfudy5tu2q'], // Add Multiple Rows
   },
 };
@@ -43,7 +43,7 @@ function configured() {
   return !!(process.env.VIASOCKET_ORG_ID && process.env.VIASOCKET_PROJECT_ID && process.env.VIASOCKET_EMBED_SECRET);
 }
 function vs() {
-  if (!configured()) throw new Error('viaSocket keys set nahi hain');
+  if (!configured()) throw new Error('viaSocket keys are not set');
   if (!client) {
     client = new ViaSocket({
       orgId: process.env.VIASOCKET_ORG_ID,
@@ -86,7 +86,7 @@ async function onConnected(app, authId, by = null) {
   db.prepare(`INSERT INTO integrations (app, auth_id, script_id, connected_by) VALUES (?, ?, ?, ?)
               ON CONFLICT(app) DO UPDATE SET auth_id = excluded.auth_id, script_id = excluded.script_id, connected_by = excluded.connected_by, connected_at = datetime('now'), last_error = NULL`)
     .run(app, authId, scriptId, by);
-  logActivity('scout', `🔌 ${APPS[app].name} connect ho gaya${by ? ' (' + by + ')' : ''}`);
+  logActivity('scout', `🔌 ${APPS[app].name} connected${by ? ' (' + by + ')' : ''}`);
   return status();
 }
 
@@ -104,7 +104,7 @@ async function disconnect(app) {
     await u.revokeConnection(r.auth_id);
   } catch (e) { logActivity('scout', `${APPS[app].name} disconnect: ${e.message}`, 'warn'); }
   db.prepare('DELETE FROM integrations WHERE app = ?').run(app);
-  logActivity('scout', `🔌 ${APPS[app].name} disconnect hua`);
+  logActivity('scout', `🔌 ${APPS[app].name} disconnected`);
   return status();
 }
 
@@ -131,7 +131,7 @@ async function status() {
 // Run JavaScript with the user's connection (axios carries that app's credentials).
 async function run(app, code, inputData = {}) {
   const r = row(app);
-  if (!r || !r.script_id) throw new Error(`${APPS[app].name} connect nahi hai`);
+  if (!r || !r.script_id) throw new Error(`${APPS[app].name} is not connected`);
   try {
     const out = await vs().runCode(r.script_id, code, inputData);
     if (r.last_error) db.prepare('UPDATE integrations SET last_error = NULL WHERE app = ?').run(app);

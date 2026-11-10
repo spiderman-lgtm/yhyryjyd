@@ -1,7 +1,7 @@
 // SQLite database. File lives under DATA_DIR (Embarko keeps it across redeploys).
 const path = require('path');
 const fs = require('fs');
-// Node ka built-in SQLite (koi native module build nahi karna padta).
+// Node's built-in SQLite (no native module to build).
 const { DatabaseSync } = require('node:sqlite');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
@@ -10,7 +10,7 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 const raw = new DatabaseSync(path.join(DATA_DIR, 'squadforge.db'));
 raw.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
 
-// Chhota wrapper: prepare/exec/transaction (nested transactions savepoint se).
+// Small wrapper: prepare/exec/transaction (nested transactions via savepoints).
 let depth = 0;
 const cache = new Map();
 const db = {
@@ -20,7 +20,7 @@ const db = {
     if (!st) {
       const s = raw.prepare(sql);
       if (typeof s.setAllowUnknownNamedParameters === 'function') s.setAllowUnknownNamedParameters(true);
-      // undefined → null, aur null-prototype rows ko plain objects mein badlo
+      // undefined → null, and turn null-prototype rows into plain objects
       const fix = (args) => args.map((a) => (a === undefined ? null
         : a && typeof a === 'object' && !Buffer.isBuffer(a)
           ? Object.fromEntries(Object.entries(a).map(([k, v]) => [k, v === undefined ? null : v])) : a));
@@ -53,7 +53,7 @@ const MIGRATIONS = [
     name TEXT NOT NULL,
     slack_user_id TEXT UNIQUE,
     role TEXT NOT NULL DEFAULT 'tech',          -- tech | growth | lead
-    phone TEXT,                                  -- MSG91 ke liye, country code ke saath (91XXXXXXXXXX)
+    phone TEXT,                                  -- for MSG91, with country code (91XXXXXXXXXX)
     active INTEGER NOT NULL DEFAULT 1,
     is_demo INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -69,7 +69,7 @@ const MIGRATIONS = [
     evening_text TEXT, evening_ts TEXT,
     planned_count INTEGER DEFAULT 0,
     done_count INTEGER DEFAULT 0,
-    actions_count INTEGER DEFAULT 0,             -- shaam ke update se parse kiya hua
+    actions_count INTEGER DEFAULT 0,             -- parsed from the evening update
     triggers_count INTEGER DEFAULT 0,
     apps_count INTEGER DEFAULT 0,
     summary TEXT,

@@ -17,7 +17,7 @@ function createFromMessage(msg, channel, leadId) {
                            VALUES (?, ?, ?, ?, ?, 'new', ?, ?)`)
     .run(msg.ts, channel, requestTitle(msg.text), msg.text, JSON.stringify(assigned), at, msg.ts);
   db.prepare('INSERT INTO request_events (request_id, status, slack_ts, at) VALUES (?, ?, ?, ?)').run(info.lastInsertRowid, 'new', msg.ts, at);
-  logActivity('tracker', `Nayi client request: "${requestTitle(msg.text)}"`);
+  logActivity('tracker', `New client request: "${requestTitle(msg.text)}"`);
   return info.lastInsertRowid;
 }
 
@@ -38,7 +38,7 @@ function addAssignees(req, memberIds) {
   if (changed) {
     db.prepare('UPDATE client_requests SET assigned_member_ids = ? WHERE id = ?').run(JSON.stringify([...cur]), req.id);
     const names = memberIds.map((id) => (memberById(id) || {}).name).filter(Boolean).join(', ');
-    logActivity('tracker', `"${req.title}" assign hui: ${names}`);
+    logActivity('tracker', `"${req.title}" assigned to: ${names}`);
   }
   return changed;
 }
@@ -63,7 +63,7 @@ async function applyStatus(req, status, msg, member) {
   return true;
 }
 
-// AI (or heuristic) analysis once a request is completed: kitna time, kitna hard.
+// AI (or heuristic) analysis once a request is completed: how long it took, how hard it was.
 async function analyze(requestId) {
   const req = db.prepare('SELECT * FROM client_requests WHERE id = ?').get(requestId);
   if (!req) return;
@@ -72,7 +72,7 @@ async function analyze(requestId) {
   const hours = hoursBetween(start, req.completed_at);
   let difficulty = 1 + (hours > 4) + (hours > 12) + (hours > 36) + (req.stuck_count > 0 ? 1 : 0);
   difficulty = Math.min(5, difficulty);
-  let analysis = `Total ${hours !== null ? hours.toFixed(1) : '?'} ghante laga, ${req.stuck_count} baar stuck hua.`;
+  let analysis = `Took ${hours !== null ? hours.toFixed(1) : '?'} hours in total, stuck ${req.stuck_count} time(s).`;
 
   if (llm.enabled()) {
     let thread = '';
@@ -84,7 +84,7 @@ async function analyze(requestId) {
     }
     try {
       const out = await llm.askJson({
-        system: 'You analyse how a software team handled a client request to build an app integration/plugin. Reply in short Hinglish (Hindi in Latin script mixed with English).',
+        system: 'You analyse how a software team handled a client request to build an app integration/plugin. Team messages may be in Hinglish; reply in clear, concise English.',
         prompt: `Request: ${req.title}\n\nOriginal message:\n${req.text}\n\nStatus timeline:\n${events.map((e) => `${e.at} ${e.status}${e.reason ? ' - ' + e.reason : ''}`).join('\n')}\n\nWork time (first R&D/start to completion): ${hours !== null ? hours.toFixed(1) + ' hours' : 'unknown'}\nTimes stuck: ${req.stuck_count}\n\nThread:\n${thread || '(not available)'}\n\nRate difficulty 1 (very easy) to 5 (very hard) and explain in 2-3 lines how it went: time, blockers, was it actually hard.`,
         schema: {
           type: 'object', additionalProperties: false,
@@ -99,11 +99,11 @@ async function analyze(requestId) {
       difficulty = out.difficulty;
       analysis = out.analysis;
     } catch (e) {
-      logActivity('tracker', 'AI analysis fail, heuristic use kiya: ' + e.message, 'warn');
+      logActivity('tracker', 'AI analysis failed, used the heuristic instead: ' + e.message, 'warn');
     }
   }
   db.prepare('UPDATE client_requests SET difficulty = ?, ai_analysis = ? WHERE id = ?').run(difficulty, analysis, requestId);
-  logActivity('tracker', `"${req.title}" complete: difficulty ${difficulty}/5, ${hours !== null ? hours.toFixed(1) + 'h' : ''}`);
+  logActivity('tracker', `"${req.title}" completed: difficulty ${difficulty}/5, ${hours !== null ? hours.toFixed(1) + 'h' : ''}`);
 }
 
 module.exports = { createFromMessage, applyStatus, addAssignees, assignedFromMentions, analyze, LABEL };

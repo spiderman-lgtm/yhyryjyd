@@ -1,5 +1,5 @@
-// 🌱 Growth - growth member ke posts: support requests, app listing, blog, newsletter,
-// credentials. Credentials/docs aate hi stuck request ko unblock karke thread mein batata hai.
+// 🌱 Growth - the growth member's posts: support requests, app listing, blog, newsletter,
+// credentials. When credentials/docs arrive it unblocks the stuck request and says so in its thread.
 const { db, getSetting } = require('../db');
 const slack = require('../slack');
 const llm = require('../llm');
@@ -52,15 +52,15 @@ async function tryUnblock(itemId, msg, member) {
   }
   if (!match) return;
   db.prepare('UPDATE growth_items SET app_name = ?, unblocked_request_id = ? WHERE id = ?').run(match.title, match.id, itemId);
-  logActivity('growth', `🔓 "${match.title}" ke credentials/docs aa gaye (${member.name})`);
+  logActivity('growth', `🔓 Credentials/docs arrived for "${match.title}" (${member.name})`);
   if (slack.enabled() && match.slack_ts && getSetting('growth.notify_thread', true)) {
     const ids = JSON.parse(match.assigned_member_ids || '[]');
     const tags = ids.map((id) => db.prepare('SELECT slack_user_id FROM members WHERE id = ?').get(id))
       .filter((m) => m && m.slack_user_id).map((m) => `<@${m.slack_user_id}>`).join(' ');
     try {
       await slack.post(match.channel || cfg('SLACK_CHANNEL_ID'),
-        `🔓 *Unblocked:* <@${member.slack_user_id}> ne is app ke credentials/docs share kar diye hain. ${tags} ab is app pe kaam shuru kar sakte ho.`, match.slack_ts);
-    } catch (e) { logActivity('growth', 'Thread mein post fail: ' + e.message, 'warn'); }
+        `🔓 *Unblocked:* <@${member.slack_user_id}> has shared the credentials/docs for this app. ${tags} you can start building it now.`, match.slack_ts);
+    } catch (e) { logActivity('growth', 'Posting in the thread failed: ' + e.message, 'warn'); }
   }
 }
 

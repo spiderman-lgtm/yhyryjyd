@@ -1,5 +1,5 @@
-// 📊 Analyst - har member ka subah ka plan vs shaam ka update compare karta hai,
-// kitne actions/triggers/apps bane, aur ek line ka summary banata hai.
+// 📊 Analyst - compares each member's morning plan with their evening update,
+// counts actions/triggers/apps built, and writes a one-line summary.
 const { db } = require('../db');
 const llm = require('../llm');
 const { logActivity, members, today } = require('../util');
@@ -23,10 +23,10 @@ async function run(date = today()) {
   for (const m of ms) {
     const log = db.prepare('SELECT * FROM daily_logs WHERE member_id = ? AND date = ?').get(m.id, date);
     if (!log || (!log.morning_text && !log.evening_text)) continue;
-    if (!llm.enabled()) continue; // heuristic counts Scout already daal chuka hai
+    if (!llm.enabled()) continue; // Scout has already stored the heuristic counts
     try {
       const out = await llm.askJson({
-        system: `You analyse a daily standup for "${m.name}", a ${m.role === 'growth' ? 'growth/marketing' : 'developer building app integrations (plugins with actions and triggers)'} on a small team. Messages are Hinglish. Count only what is clearly stated. Summary: one short Hinglish line.`,
+        system: `You analyse a daily standup for "${m.name}", a ${m.role === 'growth' ? 'growth/marketing' : 'developer building app integrations (plugins with actions and triggers)'} on a small team. Messages may be in Hinglish. Count only what is clearly stated. Summary: one short line in clear English.`,
         prompt: `Morning plan:\n${log.morning_text || '(not posted)'}\n\nEvening update:\n${log.evening_text || '(not posted)'}\n\nCount planned tasks, how many of them were completed, and how many actions, triggers and apps/plugins were built or published today.`,
         schema: SCHEMA,
       });
@@ -35,10 +35,10 @@ async function run(date = today()) {
       analysed++;
       logActivity('analyst', `${m.name}: ${out.completed_items}/${out.planned_items} tasks, ${out.actions} actions, ${out.triggers} triggers`);
     } catch (e) {
-      logActivity('analyst', `${m.name} ka analysis fail: ${e.message}`, 'warn');
+      logActivity('analyst', `Analysis for ${m.name} failed: ${e.message}`, 'warn');
     }
   }
-  return { message: llm.enabled() ? `${analysed} members ka analysis ho gaya` : 'AI key nahi hai — keyword counts use ho rahe hain' };
+  return { message: llm.enabled() ? `Analysed ${analysed} member(s)` : 'No AI key — using keyword counts' };
 }
 
 module.exports = { run };

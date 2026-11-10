@@ -1,5 +1,5 @@
 /* Live Flow: shows how work moves through the agents, live.
-   1) Agent flow map: Slack/viaSocket/aap → agents → outputs, chalti hui lines + packets
+   1) Agent flow map: Slack/viaSocket/you → agents → outputs, with moving lines and packets
    2) Request journeys: each client request's token moves forward stage by stage
    3) Today: who posted updates and when, a "now" line, and a countdown to the 7 PM alert */
 
@@ -7,7 +7,7 @@ const FLOW_W = 1200, FLOW_H = 560;
 const FLOW_NODES = {
   slack:     { x: 90,   y: 150, kind: 'src', icon: '💬', title: 'Slack channel', sub: 'threads, requests, updates' },
   viasocket: { x: 90,   y: 310, kind: 'src', icon: '🔌', title: 'viaSocket', sub: 'publish counts' },
-  lead:      { x: 90,   y: 460, kind: 'src', icon: '🧑‍✈️', title: 'Aap (Lead)', sub: 'instructions' },
+  lead:      { x: 90,   y: 460, kind: 'src', icon: '🧑‍✈️', title: 'You (Lead)', sub: 'instructions' },
   scout:     { x: 340,  y: 150, kind: 'agent', agent: 'scout' },
   tracker:   { x: 600,  y: 60,  kind: 'agent', agent: 'tracker' },
   growth:    { x: 600,  y: 160, kind: 'agent', agent: 'growth' },
@@ -17,7 +17,7 @@ const FLOW_NODES = {
   herald:    { x: 860,  y: 210, kind: 'agent', agent: 'herald' },
   scribe:    { x: 860,  y: 380, kind: 'agent', agent: 'scribe' },
   threads:   { x: 1105, y: 90,  kind: 'out', icon: '🧵', title: 'Slack threads', sub: 'feedback, unblock' },
-  alert:     { x: 1105, y: 210, kind: 'out', icon: '⏰', title: '7 PM alert', sub: 'aapko DM' },
+  alert:     { x: 1105, y: 210, kind: 'out', icon: '⏰', title: '7 PM alert', sub: 'DM to you' },
   report:    { x: 1105, y: 330, kind: 'out', icon: '🗞️', title: 'Monday report', sub: 'team + personal' },
   dash:      { x: 1105, y: 440, kind: 'out', icon: '📊', title: 'Dashboard', sub: 'Gmail · Sheets' },
   sms:       { x: 1105, y: 520, kind: 'out', icon: '📱', title: 'MSG91 SMS', sub: 'important alerts' },

@@ -1,5 +1,5 @@
-// 🔍 Inspector - app review agent. Member thread mein "review" bolta hai → Inspector lead ke
-// instructions ke hisaab se review karta hai aur galtiyan usi thread mein daalta hai.
+// 🔍 Inspector - app review agent. A member writes "review" in a thread → Inspector reviews against the
+// lead's instructions and posts the mistakes in that same thread.
 const { db, getSetting } = require('../db');
 const slack = require('../slack');
 const llm = require('../llm');
@@ -12,7 +12,7 @@ function queueFromMessage(msg, member, threadTs, requestId) {
   const info = db.prepare(`INSERT OR IGNORE INTO reviews (member_id, request_id, subject, submission, slack_ts, thread_ts, attempt, date)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
     .run(member.id, requestId || null, subject || (msg.text || '').slice(0, 80), msg.text, msg.ts, threadTs, prev + 1, tsToDate(msg.ts));
-  if (info.changes) logActivity('inspector', `${member.name} ne review maanga${subject ? ': ' + subject : ''} (attempt ${prev + 1})`);
+  if (info.changes) logActivity('inspector', `${member.name} asked for a review${subject ? ': ' + subject : ''} (attempt ${prev + 1})`);
   return info.lastInsertRowid;
 }
 
@@ -53,7 +53,7 @@ async function reviewOne(review) {
   }
   const out = await llm.askJson({
     effort: 'high',
-    system: `You are "Inspector", the reviewer for a team that builds app integrations (plugins with actions and triggers) on viaSocket. Review strictly by the team lead's checklist below. Only report real problems you can see in the submission; do not invent issues. Write findings in short, clear Hinglish (Hindi in Latin script mixed with English) so the developer can fix them quickly.\n\nTEAM LEAD'S REVIEW INSTRUCTIONS:\n${instructions}`,
+    system: `You are "Inspector", the reviewer for a team that builds app integrations (plugins with actions and triggers) on viaSocket. Review strictly by the team lead's checklist below. Only report real problems you can see in the submission; do not invent issues. Messages may be in Hinglish. Write findings in short, clear English so the developer can fix them quickly.\n\nTEAM LEAD'S REVIEW INSTRUCTIONS:\n${instructions}`,
     prompt: `Developer: ${member ? member.name : 'unknown'}\nReview attempt: ${review.attempt}\n${review.subject ? 'Request: ' + review.subject + '\n' : ''}\nSubmission message:\n${review.submission}\n\nThread context (oldest first):\n${thread || '(not available)'}\n\nReview it. "passed" is true only if there are no high or medium issues.`,
     schema: SCHEMA,
   });
@@ -65,33 +65,33 @@ async function reviewOne(review) {
     const tag = member && member.slack_user_id ? `<@${member.slack_user_id}> ` : '';
     const icon = { high: '🔴', medium: '🟠', low: '🟡' };
     const body = errors.length
-      ? `${tag}🔍 *Inspector review* (attempt ${review.attempt}) — ${errors.length} cheezein theek karni hain:\n` +
+      ? `${tag}🔍 *Inspector review* (attempt ${review.attempt}) — ${errors.length} thing(s) to fix:\n` +
         errors.map((e, i) => `${i + 1}. ${icon[e.severity] || '•'} *${e.title}* — ${e.detail}`).join('\n') +
-        `\n\n${out.summary}\nTheek karke dobara "review" likh dena.`
-      : `${tag}🔍 *Inspector review* (attempt ${review.attempt}) — ✅ Sab sahi hai! ${out.summary}`;
+        `\n\n${out.summary}\nFix these and write "review" again.`
+      : `${tag}🔍 *Inspector review* (attempt ${review.attempt}) — ✅ All good! ${out.summary}`;
     try { await slack.post(cfg('SLACK_CHANNEL_ID'), body, review.thread_ts); }
-    catch (e) { logActivity('inspector', 'Thread mein post fail: ' + e.message, 'warn'); }
+    catch (e) { logActivity('inspector', 'Posting in the thread failed: ' + e.message, 'warn'); }
   }
-  logActivity('inspector', `${member ? member.name : 'Review'}: ${errors.length ? errors.length + ' galtiyan mili' : 'pass ✅'}${review.subject ? ' — ' + review.subject : ''}`);
+  logActivity('inspector', `${member ? member.name : 'Review'}: ${errors.length ? errors.length + ' issue(s) found' : 'pass ✅'}${review.subject ? ' — ' + review.subject : ''}`);
   return errors.length;
 }
 
 async function runPending() {
   const pending = db.prepare(`SELECT * FROM reviews WHERE status = 'pending' AND is_demo = 0 ORDER BY id LIMIT 10`).all();
-  if (!pending.length) return { message: 'Koi pending review nahi' };
+  if (!pending.length) return { message: 'No pending reviews' };
   if (!getSetting('inspector.instructions', '')) {
-    return { message: `${pending.length} review pending — Settings mein review instructions daalo` };
+    return { message: `${pending.length} review(s) pending — add review instructions in Settings` };
   }
-  if (!llm.enabled()) return { message: `${pending.length} review pending — ANTHROPIC_API_KEY chahiye` };
+  if (!llm.enabled()) return { message: `${pending.length} review(s) pending — ANTHROPIC_API_KEY is needed` };
   let done = 0;
   for (const r of pending) {
     try { await reviewOne(r); done++; }
-    catch (e) { logActivity('inspector', `Review #${r.id} fail: ${e.message}`, 'error'); }
+    catch (e) { logActivity('inspector', `Review #${r.id} failed: ${e.message}`, 'error'); }
   }
-  return { message: `${done}/${pending.length} reviews ho gaye` };
+  return { message: `${done}/${pending.length} reviews done` };
 }
 
-// Manual review from dashboard (paste karke)
+// Manual review from the dashboard (pasted content)
 async function manual({ member_id, subject, submission }) {
   const info = db.prepare(`INSERT INTO reviews (member_id, subject, submission, attempt, date) VALUES (?, ?, ?, 1, ?)`)
     .run(member_id || null, subject || 'Manual review', submission, today());

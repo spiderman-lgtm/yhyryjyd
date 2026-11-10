@@ -68,7 +68,7 @@ async function runAgent(agent, label, fn) {
   setAgent(agent, 'working', label);
   try {
     const result = await fn();
-    setAgent(agent, 'idle', (result && result.message) || 'Kaam ho gaya');
+    setAgent(agent, 'idle', (result && result.message) || 'Done');
     return result;
   } catch (err) {
     console.error(err);
