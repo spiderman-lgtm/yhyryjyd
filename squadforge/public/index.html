@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SquadForge</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚒️</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="login" class="login hidden">
+    <form id="loginForm" class="login-card">
+      <div class="logo big">⚒️ SquadForge</div>
+      <p class="muted">Team lead ka command center</p>
+      <input type="password" id="password" placeholder="Admin password" autocomplete="current-password" required />
+      <button class="btn gold" type="submit">Andar chalo</button>
+      <p id="loginErr" class="err"></p>
+    </form>
+  </div>
+
+  <header class="topbar">
+    <div class="logo">⚒️ SquadForge</div>
+    <div class="resources" id="resources"></div>
+    <div class="top-right">
+      <div class="integrations" id="integrations"></div>
+      <button class="btn ghost small" id="logoutBtn" title="Logout">⎋</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="village" class="active">🏰 Village</button>
+    <button data-tab="team">👥 Team</button>
+    <button data-tab="requests">📜 Requests</button>
+    <button data-tab="reviews">🔍 Reviews</button>
+    <button data-tab="growth">🌱 Growth</button>
+    <button data-tab="reports">📊 Reports</button>
+    <button data-tab="commander">⚔️ Commander</button>
+    <button data-tab="settings">⚙️ Settings</button>
+  </nav>
+
+  <div id="banner"></div>
+  <main id="view"></main>
+  <div id="modal" class="modal hidden"><div class="modal-card" id="modalCard"></div></div>
+  <div id="toast" class="toast hidden"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

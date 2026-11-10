@@ -1,0 +1,31 @@
+const { test } = require('node:test');
+const assert = require('node:assert');
+process.env.DATA_DIR = require('fs').mkdtempSync(require('path').join(require('os').tmpdir(), 'sf-'));
+const P = require('../src/parser');
+
+test('status detection', () => {
+  assert.equal(P.detectStatus('r&d kar raha hu, dekhta hu ban sakta hai ki nahi'), 'rnd');
+  assert.equal(P.detectStatus('started'), 'started');
+  assert.equal(P.detectStatus('stuck hu, API doc missing hai'), 'stuck');
+  assert.equal(P.detectStatus('app completed and published ✅'), 'completed');
+  assert.equal(P.detectStatus('ho gaya'), 'completed');
+  assert.equal(P.detectStatus('abhi done nahi hua, working on it'), 'started');
+  assert.equal(P.detectStatus('status: stuck - credentials nahi mile'), 'stuck');
+  assert.equal(P.detectStatus('thanks'), null);
+});
+
+test('counts and items', () => {
+  assert.deepEqual(P.parseCounts('Aaj 3 actions aur 2 triggers publish kiye, 1 app'), { actions: 3, triggers: 2, apps: 1 });
+  assert.deepEqual(P.parseCounts('actions: 4'), { actions: 4, triggers: 0, apps: 0 });
+  assert.equal(P.countItems('Plan:\n- a\n- b\n- c'), 3);
+});
+
+test('request + standup + growth', () => {
+  assert.ok(P.isRequest('Client request: Zoho Bigin plugin chahiye <@U1>'));
+  assert.equal(P.requestTitle('Client request: Zoho Bigin plugin chahiye <@U1>'), 'Zoho Bigin plugin chahiye');
+  assert.equal(P.standupKind('Good morning team! Aaj ka plan daalo'), 'morning');
+  assert.equal(P.standupKind('EOD update thread'), 'evening');
+  assert.equal(P.growthKind('Kommo ke credentials aa gaye, ab app bana do'), 'credentials');
+  assert.equal(P.growthKind('Naya blog publish hua'), 'blog');
+  assert.ok(P.mentionsApp('Kommo ke credentials aa gaye', 'Kommo CRM actions'));
+});
