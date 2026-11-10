@@ -3,7 +3,7 @@ const { db } = require('../db');
 const llm = require('../llm');
 const slack = require('../slack');
 const vs = require('../viasocket');
-const { logActivity, today, addDays, weekStart, hoursBetween, memberById, cfg } = require('../util');
+const { logActivity, today, addDays, weekStart, hoursBetween, memberById, cfg, tzMod } = require('../util');
 const { teamMetrics } = require('../metrics');
 const { LABEL } = require('./tracker');
 const { KIND_LABEL } = require('./growth');
@@ -14,8 +14,8 @@ function lastWeek(ref = today()) {
 }
 
 function requestRows(from, to) {
-  return db.prepare(`SELECT * FROM client_requests WHERE date(created_at) BETWEEN ? AND ?
-                     OR (date(completed_at) BETWEEN ? AND ?) ORDER BY created_at`).all(from, to, from, to)
+  return db.prepare(`SELECT * FROM client_requests WHERE date(created_at, '${tzMod()}') BETWEEN ? AND ?
+                     OR (date(completed_at, '${tzMod()}') BETWEEN ? AND ?) ORDER BY created_at`).all(from, to, from, to)
     .map((r) => {
       const names = JSON.parse(r.assigned_member_ids || '[]').map((id) => (memberById(id) || {}).name).filter(Boolean);
       const h = hoursBetween(r.started_at || r.rnd_at || r.created_at, r.completed_at);

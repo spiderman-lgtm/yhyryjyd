@@ -84,7 +84,8 @@ test('full sync flow', async () => {
   assert.equal(done.status, 'completed');
   assert.ok(done.difficulty >= 1);
 
-  const m = teamMetrics(U.today(), U.today());
+  // the request is a few hours old, so it may be from yesterday in team time: look at both days
+  const m = teamMetrics(U.addDays(U.today(), -1), U.today());
   const aarav = m.members.find((x) => x.name === 'Aarav');
   assert.equal(aarav.requests_completed, 1);
 

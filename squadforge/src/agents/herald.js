@@ -2,7 +2,7 @@
 // 11:30 morning reminder. Goes to the lead as a DM; the channel reminder is switched on in Settings.
 const { db, getSetting } = require('../db');
 const slack = require('../slack');
-const { logActivity, members, today, weekday, cfg } = require('../util');
+const { logActivity, members, today, weekday, cfg, tzMod } = require('../util');
 const { memberMetrics } = require('../metrics');
 const { LABEL } = require('./tracker');
 
@@ -31,7 +31,7 @@ function buildDaily(date) {
       if (log.planned_count) bits.push(`plan ${log.done_count || 0}/${log.planned_count}`);
     }
     const moved = db.prepare(`SELECT r.title, e.status FROM request_events e JOIN client_requests r ON r.id = e.request_id
-                              WHERE e.member_id = ? AND date(e.at) = ?`).all(m.id, date);
+                              WHERE e.member_id = ? AND date(e.at, '${tzMod()}') = ?`).all(m.id, date);
     if (moved.length) bits.push('req: ' + moved.map((x) => `${x.title.slice(0, 30)} → ${LABEL[x.status]}`).join(', '));
     const icon = miss.length === 2 ? '❌' : miss.length ? '⚠️' : '✅';
     lines.push(`${icon} *${m.name}* — ${bits.join(' | ') || 'nothing recorded'}${miss.length ? ` _(${miss.join(' + ')} update missing)_` : ''}`);

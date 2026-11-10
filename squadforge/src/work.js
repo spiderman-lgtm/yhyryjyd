@@ -2,7 +2,7 @@
 // records (queue, where to intervene, blocked work, deadline risks, contributions that matter,
 // journeys) plus the member-side "My Work". Rules are fixed and explainable — no scoring of people.
 const { db } = require('./db');
-const { today, addDays, hoursBetween, memberById, members, logActivity } = require('./util');
+const { today, tzMod, addDays, hoursBetween, memberById, members, logActivity } = require('./util');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS tasks (
@@ -123,7 +123,7 @@ function queue() {
   const outcomes = [];
   reqs.filter((r) => r.status === 'completed' && (r.completed_at || '').slice(0, 10) >= since && !verOf('request', r.id))
     .forEach((r) => outcomes.push({ kind: 'request', id: r.id, title: r.title, who: r.assigned.map(name).join(', '), at: r.completed_at }));
-  db.prepare(`SELECT * FROM tasks WHERE status = 'done' AND date(done_at) >= ?`).all(since).filter((t) => !verOf('task', t.id))
+  db.prepare(`SELECT * FROM tasks WHERE status = 'done' AND date(done_at, '${tzMod()}') >= ?`).all(since).filter((t) => !verOf('task', t.id))
     .forEach((t) => outcomes.push({ kind: 'task', id: t.id, title: t.title, who: name(t.member_id), at: t.done_at, evidence: t.evidence_url || t.evidence_note || null }));
   const evidence = [];
   db.prepare(`SELECT * FROM verifications WHERE status = 'needs_evidence'`).all().forEach((v) => {
@@ -204,7 +204,7 @@ function deadlineRisks() {
 // Notable work with the reason it matters. Chronological — not a ranking.
 function contributions(from, to) {
   const out = [];
-  db.prepare(`SELECT * FROM client_requests WHERE status = 'completed' AND date(completed_at) BETWEEN ? AND ?`).all(from, to).forEach((r) => {
+  db.prepare(`SELECT * FROM client_requests WHERE status = 'completed' AND date(completed_at, '${tzMod()}') BETWEEN ? AND ?`).all(from, to).forEach((r) => {
     const reasons = [];
     if (r.difficulty >= 4) reasons.push(`Complex work (difficulty ${r.difficulty}/5)`);
     if (r.stuck_count > 0) reasons.push('Got through a blocker');
@@ -213,7 +213,7 @@ function contributions(from, to) {
     if (!reasons.length) reasons.push('Client request delivered');
     out.push({ kind: 'request', id: r.id, title: r.title, who: JSON.parse(r.assigned_member_ids || '[]').map(name).join(', ') || '—', date: (r.completed_at || '').slice(0, 10), reasons, verified: !!(v && v.status === 'verified') });
   });
-  db.prepare(`SELECT * FROM tasks WHERE status = 'done' AND date(done_at) BETWEEN ? AND ?`).all(from, to).forEach((t) => {
+  db.prepare(`SELECT * FROM tasks WHERE status = 'done' AND date(done_at, '${tzMod()}') BETWEEN ? AND ?`).all(from, to).forEach((t) => {
     const reasons = []; const v = verOf('task', t.id);
     if (v && v.status === 'verified') reasons.push('Outcome verified by the lead');
     if (t.evidence_url || t.evidence_note) reasons.push('Evidence attached');

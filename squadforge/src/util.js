@@ -8,6 +8,12 @@ function dateInTz(d = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 }
 function today() { return dateInTz(new Date()); }
+// SQLite modifier that shifts a UTC timestamp into the team timezone, e.g. date(col, '+330 minutes')
+function tzMod() {
+  const d = new Date(), local = new Date(d.toLocaleString('en-US', { timeZone: TZ })), utc = new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const min = Math.round((local - utc) / 60000);
+  return `${min >= 0 ? '+' : ''}${min} minutes`;
+}
 function addDays(dateStr, n) {
   const d = new Date(dateStr + 'T12:00:00Z');
   d.setUTCDate(d.getUTCDate() + n);
@@ -89,6 +95,6 @@ function memberBySlack(id) {
 function memberById(id) { return db.prepare('SELECT * FROM members WHERE id = ?').get(id); }
 
 module.exports = {
-  TZ, today, addDays, weekday, weekStart, tsToDate, tsToIso, hoursBetween, dateInTz,
+  TZ, today, tzMod, addDays, weekday, weekStart, tsToDate, tsToIso, hoursBetween, dateInTz,
   cfg, list, logActivity, setAgent, runAgent, members, memberBySlack, memberById,
 };

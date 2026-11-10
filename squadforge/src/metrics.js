@@ -1,6 +1,6 @@
 // All dashboard / report numbers are computed here from the database.
 const { db } = require('./db');
-const { members, addDays, weekday, today, hoursBetween } = require('./util');
+const { members, addDays, weekday, today, hoursBetween, tzMod } = require('./util');
 
 function workdays(from, to) {
   const out = [];
@@ -34,7 +34,7 @@ function memberMetrics(m, from, to) {
   const done = logs.reduce((s, l) => s + (l.done_count || 0), 0);
 
   const reqs = db.prepare(`SELECT r.* FROM client_requests r, json_each(r.assigned_member_ids) j
-                           WHERE j.value = ? AND date(r.created_at) BETWEEN ? AND ?`).all(m.id, from, to);
+                           WHERE j.value = ? AND date(r.created_at, '${tzMod()}') BETWEEN ? AND ?`).all(m.id, from, to);
   const completed = reqs.filter((r) => r.status === 'completed');
   const hrs = completed.map((r) => hoursBetween(r.started_at || r.rnd_at || r.created_at, r.completed_at)).filter((h) => h !== null);
   const diffs = completed.map((r) => r.difficulty).filter(Boolean);
@@ -74,9 +74,9 @@ function memberMetrics(m, from, to) {
 function teamMetrics(from, to) {
   const ms = members().filter((m) => m.role !== 'lead');
   const per = ms.map((m) => memberMetrics(m, from, to));
-  const reqs = db.prepare(`SELECT * FROM client_requests WHERE date(created_at) BETWEEN ? AND ?`).all(from, to);
+  const reqs = db.prepare(`SELECT * FROM client_requests WHERE date(created_at, '${tzMod()}') BETWEEN ? AND ?`).all(from, to);
   const openAll = db.prepare(`SELECT status, COUNT(*) c FROM client_requests WHERE status != 'completed' GROUP BY status`).all();
-  const completedInRange = db.prepare(`SELECT COUNT(*) c FROM client_requests WHERE date(completed_at) BETWEEN ? AND ?`).get(from, to).c;
+  const completedInRange = db.prepare(`SELECT COUNT(*) c FROM client_requests WHERE date(completed_at, '${tzMod()}') BETWEEN ? AND ?`).get(from, to).c;
   const sum = (k) => per.reduce((s, p) => s + (p[k] || 0), 0);
   const reviews = sum('reviews');
   return {
