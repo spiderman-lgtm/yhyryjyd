@@ -65,16 +65,14 @@
     </g>`;
   }
 
-  function build() {
-    const el = document.getElementById('qpScene');
-    if (!el || el.dataset.built) return;
-    el.dataset.built = '1';
+  // The lake scene as an SVG string; reused by the login page and the dashboard banner.
+  function lakeSvg(opts = {}) {
     const W = 320, H = 120, bank = 92;
     const leftTrees = [[24, 78, -.3], [48, 62, -1.1], [70, 56, -.6], [8, 52, -1.6], [92, 44, -2.1], [-14, 66, -.9], [-38, 54, -1.4], [-62, 70, -.2]];
     const rightTrees = [[244, 58, -.8], [264, 70, -.2], [288, 80, -1.3], [310, 60, -.5], [228, 46, -1.9], [334, 68, -1.0], [358, 56, -.4], [382, 74, -1.7]];
     const rod = { x: 120, y: bank - 8 };
     n++;
-    el.innerHTML = `<svg shape-rendering="crispEdges">
+    return `<svg shape-rendering="crispEdges" ${opts.viewBox ? `viewBox="${opts.viewBox}" preserveAspectRatio="xMidYMax slice"` : ''}>
       <g class="qp-clouds">${cloud(70, 34, 3)}${cloud(150, 46, 4)}${cloud(205, 30, 3)}${cloud(-30, 52, 3)}</g>
       <g class="qp-flock"><path d="M0 0h1v1h1v1h1V1h1V0h1v1H4v1H3v1H2V2H1V1H0z" fill="#3e5a52"/><path transform="translate(8 3)" d="M0 0h1v1h1v1h1V1h1V0h1v1H4v1H3v1H2V2H1V1H0z" fill="#3e5a52"/></g>
       ${leftTrees.sort((a, b) => a[1] - b[1]).map(([x, h, s]) => pine(x, bank, h, s)).join('')}
@@ -97,6 +95,13 @@
     </svg>`;
   }
 
+  function build() {
+    const el = document.getElementById('qpScene');
+    if (!el || el.dataset.built) return;
+    el.dataset.built = '1';
+    el.innerHTML = lakeSvg();
+  }
+
   // Fit the scene to the box: phones show the left bank; wide, short screens fit the whole
   // height (banks, lake and extra pines continue past the sides) so treetops never get cut.
   function fit() {
@@ -109,4 +114,6 @@
   }
   window.addEventListener('resize', fit);
   window.buildLoginScene = () => { build(); fit(); };
+  window.lakeSvg = lakeSvg;
+  window.pixelTree = pine;
 })();

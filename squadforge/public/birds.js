@@ -1,4 +1,4 @@
-/* Bird Town: every team member is an (original) cartoon bird sitting on the wire above the
+/* The lake: every team member is an (original) pixel bird resting on the banks above the
    dashboard. Mood comes from today's data: happy (posted + output), busy (morning plan only),
    worried (a stuck request), sleepy (no update yet). Click a bird to see the details. */
 
@@ -7,31 +7,22 @@ const BIRD_COLORS = [
   ['#5fb84a', '#a5e08f'], ['#d9b032', '#f3dc86'], ['#4f86d9', '#9dc1f3'], ['#9a6bc4', '#cfb0ea'],
 ];
 
+// Pixel bird (14×14 grid). Moods: happy (wing up), busy, worried (brows), sleepy (eyes shut).
 function birdSvg(i, mood) {
   const [c, belly] = BIRD_COLORS[i % BIRD_COLORS.length];
-  const dark = 'rgba(30,24,48,.28)';
-  const eyes = {
-    sleepy: `<path d="M33 47 q7 5 14 0" class="lid-line"/><path d="M53 47 q7 5 14 0" class="lid-line"/>`,
-    worried: `<g class="eye"><circle cx="40" cy="47" r="10" fill="#fff"/><circle cx="41" cy="50" r="4.5" fill="#1e1830"/></g>
-              <g class="eye"><circle cx="60" cy="47" r="10" fill="#fff"/><circle cx="59" cy="50" r="4.5" fill="#1e1830"/></g>
-              <path d="M30 35 l15 5 M70 35 l-15 5" stroke="#1e1830" stroke-width="3" stroke-linecap="round"/>`,
-    default: `<g class="eye"><circle cx="40" cy="47" r="10.5" fill="#fff"/><circle cx="42" cy="47" r="5" fill="#1e1830"/><circle cx="43.5" cy="45" r="1.6" fill="#fff"/></g>
-              <g class="eye"><circle cx="60" cy="47" r="10.5" fill="#fff"/><circle cx="62" cy="47" r="5" fill="#1e1830"/><circle cx="63.5" cy="45" r="1.6" fill="#fff"/></g>`,
-  };
-  const mouth = mood === 'happy' ? '<path d="M45 64 q5 4 10 0" stroke="#1e1830" stroke-width="2" fill="none" stroke-linecap="round"/>' : '';
-  return `<svg viewBox="0 0 100 112" class="bird-svg" aria-hidden="true">
-    <ellipse cx="50" cy="108" rx="22" ry="3" fill="rgba(0,0,0,.12)"/>
-    <path d="M22 78 L4 92 L26 88 Z" fill="${c}" stroke="#1e1830" stroke-width="3" stroke-linejoin="round"/>
-    <path d="M48 20 q-6 -12 2 -16 M54 21 q2 -12 10 -12" stroke="#1e1830" stroke-width="3" fill="none" stroke-linecap="round" class="tuft"/>
-    <path d="M48 20 q-6 -12 2 -16 M54 21 q2 -12 10 -12" stroke="${c}" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-    <ellipse cx="50" cy="62" rx="31" ry="36" fill="${c}" stroke="#1e1830" stroke-width="3.5"/>
-    <ellipse cx="52" cy="76" rx="18" ry="19" fill="${belly}"/>
-    <path d="M22 62 q-8 16 6 26 q10 -6 6 -24 Z" fill="${dark}" class="wing"/>
-    ${eyes[mood] || eyes.default}
-    <rect x="28" y="35" width="44" height="0" fill="${c}" class="lid"/>
-    <path d="M44 56 L56 56 L50 66 Z" fill="#f5a623" stroke="#1e1830" stroke-width="2.5" stroke-linejoin="round"/>
-    ${mouth}
-    <path d="M42 96 v8 M38 104 h8 M58 96 v8 M54 104 h8" stroke="#f5a623" stroke-width="3.5" stroke-linecap="round"/>
+  const K = '#2d2a26', O = '#f2a93b', W = '#fffaf0';
+  const r = (x, y, w, h, f) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}"/>`;
+  const eye = mood === 'sleepy' ? r(8, 5, 2, 1, K) : r(8, 4, 2, 2, W) + r(9, 4, 1, 1, K);
+  const brow = mood === 'worried' ? r(8, 3, 2, 1, K) : '';
+  const wing = mood === 'happy' ? `<g class="pwing">${r(3, 4, 3, 3, K)}${r(3, 5, 2, 1, c)}</g>` : `<g class="pwing">${r(3, 7, 4, 3, 'rgba(0,0,0,.18)')}</g>`;
+  return `<svg viewBox="0 0 14 14" class="bird-svg" shape-rendering="crispEdges" aria-hidden="true">
+    ${r(6, 0, 1, 2, K)}${r(7, 1, 1, 1, K)}
+    ${r(4, 2, 7, 1, K)}${r(3, 3, 9, 1, K)}${r(2, 4, 11, 6, K)}${r(3, 10, 9, 1, K)}
+    ${r(4, 3, 7, 1, c)}${r(3, 4, 9, 6, c)}${r(6, 6, 5, 4, belly)}
+    ${r(0, 7, 3, 2, K)}${r(1, 7, 2, 1, c)}
+    ${wing}${eye}${brow}
+    ${r(12, 6, 2, 1, O)}${r(12, 7, 1, 1, O)}
+    ${r(5, 11, 1, 2, O)}${r(8, 11, 1, 2, O)}${r(4, 13, 3, 1, O)}${r(7, 13, 3, 1, O)}
   </svg>`;
 }
 
@@ -49,9 +40,15 @@ function istHour() {
   return Number(p[0]) + Number(p[1]) / 60;
 }
 
+function greetWord(h) { return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; }
 function birdScene(today, logs) {
   const ms = today.members || [];
   const h = istHour();
+  const t = today.totals;
+  const who = (typeof myName === 'string' && myName) ? myName.split(' ')[0]
+    : (typeof myEmail === 'string' && myEmail) ? myEmail.split('@')[0].replace(/[._\d]+/g, ' ').trim().split(' ')[0] : 'lead';
+  const name = who ? who[0].toUpperCase() + who.slice(1) : 'lead';
+  const ph = skyPhase(h);
   const birds = ms.map((m, i) => {
     const log = logs.find((l) => l.member_id === m.id) || {};
     const b = birdMood(m, log, h);
@@ -62,34 +59,53 @@ function birdScene(today, logs) {
       <span class="tag">${esc(m.name.replace(/\s*\(.*\)/, ''))}</span>
     </button>`;
   }).join('');
-  const t = today.totals;
-  const ph = skyPhase(h);
-  // sun/moon travel an arc across the sky with the real time of day (IST)
-  const dayK = Math.min(1, Math.max(0, (h - 6) / 13)), nightK = ((h >= 19 ? h - 19 : h + 5) / 11);
-  const k = ph === 'night' ? nightK : dayK;
-  const orbX = 8 + k * 84, orbY = 70 - Math.sin(Math.PI * k) * 52;
-  const stars = Array.from({ length: 28 }, (_, i) => `<i style="left:${(i * 37) % 100}%;top:${(i * 53) % 55}%;animation-delay:${(i % 7) * .4}s"></i>`).join('');
-  const windows = Array.from({ length: 34 }, (_, i) => `<rect x="${20 + ((i * 71) % 1160)}" y="${48 + ((i * 29) % 56)}" width="6" height="8" rx="1"/>`).join('');
-  return `<section class="town sky-${ph}" aria-label="Team on the wire">
-    <div class="stars">${stars}</div>
-    <div class="orb ${ph === 'night' ? 'moon' : 'sun'}" style="left:${orbX}%;top:${orbY}%"></div>
-    <div class="cloud-c c1"></div><div class="cloud-c c2"></div><div class="cloud-c c3"></div>
-    <svg class="skyline" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M0 120 V82 h40 V60 h50 v22 h60 V70 h80 V52 h40 v30 h70 V64 h55 v18 h60 V58 h50 v24 h80 V66 h45 v16 h70 V54 h60 v28 h55 V68 h70 v14 h60 V60 h50 v22 h60 V120 Z" class="sky-far"/>
-      <path d="M0 120 V70 h60 V40 h50 v30 h40 V55 h70 V25 h45 v45 h30 V60 h80 V35 h55 v35 h40 V50 h60 v20 h50 V30 h40 v40 h70 V58 h45 V20 h60 v50 h40 V45 h70 v25 h55 V38 h50 v32 h40 V120 Z" class="sky-near"/>
-      <g class="win">${windows}</g>
-    </svg>
+  const clock = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' }).format(new Date());
+  return `<section class="lake-banner sky-${ph}" aria-label="Your team at the lake">
+    <div class="lb-scene">${window.lakeSvg ? lakeSvg({ viewBox: '0 -60 320 180' }) : ''}</div>
+    <div class="lb-text">
+      <h2>${greetWord(h)}, ${esc(name)}.</h2>
+      <p>${ms.length ? 'A calm team ships steadily 🌿' : 'Add your team in Settings — they will gather by the lake.'}</p>
+      <div class="lb-chips">
+        <span class="price" data-led="actions">⚡ <b>${t.actions}</b> actions</span><span class="price" data-led="triggers">🎯 <b>${t.triggers}</b> triggers</span>
+        <span class="price" data-led="open">📜 <b>${Object.values(t.open_by_status || {}).reduce((a, b) => a + b, 0)}</b> open</span><span class="price" data-led="stuck">🧱 <b>${(t.open_by_status || {}).stuck || 0}</b> stuck</span>
+      </div>
+    </div>
+    <div class="lb-clock"><span>${ph === 'night' ? '🌙' : ph === 'dusk' ? '🌇' : ph === 'dawn' ? '🌅' : '☀️'}</span><b>${clock}</b><small>${ph === 'day' ? 'Clear' : ph === 'night' ? 'Quiet night' : ph === 'dusk' ? 'Golden hour' : 'Fresh start'}</small></div>
+    <div class="perch">${birds}</div>
     <div class="flyer" aria-hidden="true">${flyerSvg()}<span class="note"></span></div>
     <div class="fx" id="townFx"></div>
-    <div class="town-title"><span>Bird Town</span><small>${ms.length ? 'Your team, live from the wire' : 'Add team members in Settings to fill the wire'}</small></div>
-    <svg class="wire" viewBox="0 0 1000 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 6 Q500 34 1000 6" /></svg>
-    <div class="perch">${birds || '<div class="empty-wire">No birds yet 🪹</div>'}</div>
-    <div class="ledge">
-      <span class="price" data-led="actions">⚡ <b>${t.actions}</b> actions</span><span class="price" data-led="triggers">🎯 <b>${t.triggers}</b> triggers</span>
-      <span class="price" data-led="open">📜 <b>${Object.values(t.open_by_status || {}).reduce((a, b) => a + b, 0)}</b> open</span><span class="price" data-led="stuck">🧱 <b>${(t.open_by_status || {}).stuck || 0}</b> stuck</span>
-    </div>
   </section>`;
 }
+
+// Sit each bird on the grassy banks of the lake (never on the water), whatever the banner size.
+function placeBirds() {
+  const box = document.querySelector('.lake-banner'); if (!box) return;
+  const svg = box.querySelector('.lb-scene svg');
+  const cw = box.clientWidth, ch = box.clientHeight;
+  // wide banner: fit the whole scene height (pines continue past the sides); narrow: crop like a photo
+  let scale, x0, bottomY;
+  if (cw / ch > 320 / 118) {
+    if (svg) { svg.setAttribute('viewBox', '0 2 320 118'); svg.setAttribute('preserveAspectRatio', 'xMidYMax meet'); }
+    scale = ch / 118; bottomY = 120;
+  } else {
+    if (svg) { svg.setAttribute('viewBox', '0 -60 320 180'); svg.setAttribute('preserveAspectRatio', 'xMidYMax slice'); }
+    scale = Math.max(cw / 320, ch / 180); bottomY = 120;
+  }
+  const visW = cw / scale; x0 = (320 - visW) / 2;
+  const bankPx = (bottomY - 92) * scale;  // grass line, measured from the bottom edge
+  const spots = [];
+  const L = [], R = [];
+  for (let x = 92; x >= Math.max(x0 + 8, -110); x -= 30) L.push(x);                 // left bank (the fishing bird sits at ~116)
+  for (let x = 240; x <= Math.min(x0 + visW - 8, 430); x += 30) R.push(x);          // right bank
+  for (let i = 0; i < Math.max(L.length, R.length); i++) { if (L[i] !== undefined) spots.push(L[i]); if (R[i] !== undefined) spots.push(R[i]); }
+  [...box.querySelectorAll('.bird')].forEach((b, i) => {
+    const sx = spots[i % Math.max(1, spots.length)];
+    b.style.left = `${(sx - x0) * scale}px`;
+    b.style.bottom = `${bankPx - 1}px`;
+    b.style.setProperty('--px', `${Math.max(2, Math.round(scale * 0.9))}px`);
+  });
+}
+window.addEventListener('resize', () => { if (document.querySelector('.lake-banner')) placeBirds(); });
 
 function wireBirds(today, logs) {
   document.querySelectorAll('[data-bird]').forEach((el) => {
@@ -127,7 +143,7 @@ function flyerSvg() {
 let townLastAct = null;
 let flyerBusy = false;
 function birdReact(st) {
-  if (!document.querySelector('.town')) { townLastAct = null; return; }
+  if (!document.querySelector('.lake-banner')) { townLastAct = null; return; }
   const top = st.activity[0] ? st.activity[0].id : 0;
   if (townLastAct === null) { townLastAct = top; return; }
   const fresh = st.activity.filter((a) => a.id > townLastAct).reverse().slice(-5);
@@ -155,12 +171,12 @@ function reactTo(a, st) {
     say.textContent = a.message.replace(who.name, '').replace(/^[\s:—-]+/, '').slice(0, 38) || old;
     say.className = 'say ' + (bad ? 'bad' : win ? 'good' : '');
     say.style.animation = 'none'; void say.offsetWidth; say.style.animation = '';
-    el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop');
+    el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop', 'talk');
     burst(el, win ? 'confetti' : 'feathers');
-    setTimeout(() => { say.textContent = old; say.className = oldCls; }, 5000);
+    setTimeout(() => { say.textContent = old; say.className = oldCls; el.classList.remove('talk'); }, 5000);
   } else {
     flyNote(a.message);
-    if (win) burst(document.querySelector('.town-title'), 'confetti');
+    if (win) burst(document.querySelector('.lb-text h2'), 'confetti');
   }
 }
 function flyNote(text) {
@@ -186,7 +202,7 @@ function burst(anchor, kind) {
 }
 // ambient: the messenger bird crosses the sky now and then even when nothing happens
 setInterval(() => {
-  if (document.hidden || !document.querySelector('.town') || flyerBusy) return;
+  if (document.hidden || !document.querySelector('.lake-banner') || flyerBusy) return;
   const f = document.querySelector('.flyer'); flyerBusy = true;
   f.querySelector('.note').textContent = '';
   f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');

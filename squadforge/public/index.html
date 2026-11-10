@@ -25,11 +25,12 @@
           <div><span class="qp-ic">🌿</span><b>Weekly Reports</b><small>Monday's report, written before you ask.</small></div>
         </div>
         <form id="loginForm" class="qp-form" autocomplete="on">
-          <input type="email" id="email" placeholder="you@company.com" autocomplete="username" aria-label="Email (admins)" />
+          <input type="text" id="signupName" placeholder="Your name" autocomplete="name" aria-label="Name" class="hidden" />
+          <input type="email" id="email" placeholder="you@company.com" autocomplete="username" aria-label="Email" />
           <input type="password" id="password" placeholder="Password" autocomplete="current-password" required aria-label="Password" />
-          <button class="qp-btn" type="submit">Sign in →</button>
-          <p class="qp-hint">Viewers: leave the email empty and use the viewer password.</p>
-          <p id="loginErr" class="err"></p>
+          <button class="qp-btn" type="submit" id="authBtn">Sign in →</button>
+          <p class="qp-hint" id="authHint">New here? <a href="#" id="authToggle">Create an account</a></p>
+          <p id="loginErr" class="err" role="alert"></p>
         </form>
       </section>
       <div class="qp-scene" id="qpScene" aria-hidden="true"></div>
@@ -53,6 +54,7 @@
       <button data-tab="integrations" data-admin><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v4a6 6 0 0 1-12 0z"/><path d="M12 18v4"/></svg><span>Integrations</span></button>
       <button data-tab="settings" data-admin><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg><span>Settings</span></button>
     </nav>
+    <div class="side-art" id="sideArt" aria-hidden="true"></div>
     <div class="side-foot"><div class="integrations" id="integrations"></div></div>
   </aside>
 

@@ -20,6 +20,7 @@ const tracker = require('./agents/tracker');
 const demo = require('./demo');
 const { DEFAULTS } = require('./parser');
 const vs = require('./viasocket');
+const accounts = require('./accounts');
 const scribeAgent = require('./agents/scribe');
 
 const PORT = process.env.PORT || 3000;
@@ -48,9 +49,10 @@ function cookies(req) {
 // { role: 'admin' | 'viewer', email } or null. 'admin' = full dashboard; 'viewer' = process views only.
 function sessionOf(req) {
   if (!process.env.ADMIN_PASSWORD) return { role: 'admin', email: null, open: true }; // no password set: open
-  const s = cookies(req).sf_session;
+  // cookie, or the X-SF-Session header (kept in the browser) for proxies that drop cookies
+  const s = cookies(req).sf_session || req.headers['x-sf-session'];
   if (!s) return null;
-  const parts = s.split('.');
+  const parts = String(s).split('.');
   if (parts.length !== 4) return null;
   const [role, em, exp, sig] = parts;
   if (!['admin', 'viewer'].includes(role) || Number(exp) < Date.now()) return null;
@@ -134,26 +136,49 @@ async function api(req, res, url) {
   if (p === '/api/health') return send(res, 200, { ok: true });
   if (p === '/api/me') {
     const se = sessionOf(req);
-    return send(res, 200, { authed: !!se, role: se ? se.role : null, email: se ? se.email : null, password_set: !!process.env.ADMIN_PASSWORD, admin_emails_set: adminEmails().length > 0 });
+    const acct = se && se.email ? accounts.find(se.email) : null;
+    return send(res, 200, { authed: !!se, role: se ? se.role : null, email: se ? se.email : null, name: acct ? acct.name : null, password_set: !!process.env.ADMIN_PASSWORD, admin_emails_set: adminEmails().length > 0 });
+  }
+  const issue = (role, email, extra = {}) => {
+    const token = makeSession(role, email || '');
+    console.log(`[login] ok: ${role}${email ? ' (' + email.replace(/(.).*@/, '$1***@') + ')' : ''}`);
+    return send(res, 200, { ok: true, role, token, ...extra }, { 'Set-Cookie': `sf_session=${token}; HttpOnly; Path=/; Max-Age=${30 * 86400}; SameSite=Lax; Secure` });
+  };
+  if (p === '/api/signup' && m === 'POST') {
+    const email = String(body.email || '').trim().toLowerCase();
+    const name = String(body.name || '').trim().slice(0, 60);
+    const pw = String(body.password || '');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { error: 'Please enter a valid email' });
+    if (pw.trim().length < 8) return send(res, 400, { error: 'Password must be at least 8 characters' });
+    if (accounts.find(email)) return send(res, 409, { error: 'An account with this email already exists — sign in instead' });
+    const role = adminEmails().includes(email) ? 'admin' : 'viewer';
+    accounts.create(email, name, pw.trim(), role);
+    console.log(`[signup] new ${role} account`);
+    return issue(role, email, { created: true });
   }
   if (p === '/api/login' && m === 'POST') {
     const email = String(body.email || '').trim().toLowerCase();
     // phones and password managers often add a trailing space: compare trimmed values
     const pw = String(body.password || '').trim();
+    const acct = email ? accounts.find(email) : null;
+    if (acct) {
+      if (!accounts.verify(acct, pw)) { console.log('[login] wrong password for an existing account'); return send(res, 401, { error: 'Wrong password' }); }
+      const role = adminEmails().includes(email) ? 'admin' : 'viewer';
+      return issue(role, email);
+    }
     const adminPw = String(process.env.ADMIN_PASSWORD || '').trim();
     const viewerPw = String(process.env.VIEWER_PASSWORD || '').trim();
-    let role = null;
     if (adminPw && safeEqual(pw, adminPw)) {
       if (adminEmails().length && !adminEmails().includes(email)) {
         console.log(`[login] admin password ok but email not on the list (email ${email ? 'given' : 'empty'})`);
         return send(res, 403, { error: email ? 'This email is not on the admin list' : 'Please enter your admin email' });
       }
-      role = 'admin';
-    } else if (viewerPw && safeEqual(pw, viewerPw)) role = 'viewer';
-    if (role) return send(res, 200, { ok: true, role }, { 'Set-Cookie': `sf_session=${makeSession(role, role === 'admin' ? email : '')}; HttpOnly; Path=/; Max-Age=${30 * 86400}; SameSite=Lax; Secure` });
+      return issue('admin', email);
+    }
+    if (viewerPw && safeEqual(pw, viewerPw)) return issue('viewer', '');
     // diagnostics without the secret: lengths only
-    console.log(`[login] wrong password (typed ${pw.length} chars, admin password is ${adminPw.length} chars; email ${email ? (adminEmails().includes(email) ? 'on list' : 'not on list') : 'empty'})`);
-    return send(res, 401, { error: 'Wrong password' });
+    console.log(`[login] wrong password (typed ${pw.length} chars, admin password is ${adminPw.length} chars; email ${email ? (adminEmails().includes(email) ? 'on list' : 'no account') : 'empty'})`);
+    return send(res, 401, { error: email && !adminEmails().includes(email) ? 'No account for this email — create one first' : 'Wrong password' });
   }
   if (p === '/api/logout' && m === 'POST') return send(res, 200, { ok: true }, { 'Set-Cookie': 'sf_session=; Path=/; Max-Age=0' });
 

@@ -12,13 +12,16 @@ const ALL_TABS = ['team', 'requests', 'reviews', 'growth', 'reports', 'commander
 let tab = ALL_TABS.includes(location.hash.replace('#', '')) ? location.hash.replace('#', '') : 'team'; // viewers are sent to 'flow' in markTab
 let role = 'admin';
 let myEmail = null;
+let myName = null;
 const PAGE_TITLES = { team: 'Dashboard', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
 let pollTimer = null;
 let lastActivityId = 0;
 
 async function api(path, opts = {}) {
-  const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined });
-  if (res.status === 401 && !path.startsWith('/api/login')) { showLogin(); throw new Error('Please log in'); }
+  const headers = { 'Content-Type': 'application/json' };
+  const tok = sessionToken(); if (tok) headers['X-SF-Session'] = tok;
+  const res = await fetch(path, { headers, credentials: 'same-origin', ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  if (res.status === 401 && !path.startsWith('/api/login') && !path.startsWith('/api/signup')) { saveToken(null); showLogin(); throw new Error('Please log in'); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || res.statusText);
   return data;
@@ -45,12 +48,36 @@ const initials = (n) => n.replace(/\(.*\)/, '').trim().split(/\s+/).map((w) => w
 
 // ---------- auth ----------
 function showLogin() { $('#login').classList.remove('hidden'); document.body.classList.add('on-login'); if (window.buildLoginScene) buildLoginScene(); }
+// session token kept in the browser too (some proxies drop cookies)
+function sessionToken() { try { return localStorage.getItem('sf_token'); } catch { return null; } }
+function saveToken(t) { try { t ? localStorage.setItem('sf_token', t) : localStorage.removeItem('sf_token'); } catch { /* private mode */ } }
+let signupMode = false;
+$('#authToggle').addEventListener('click', (e) => {
+  e.preventDefault();
+  signupMode = !signupMode;
+  $('#signupName').classList.toggle('hidden', !signupMode);
+  $('#authBtn').textContent = signupMode ? 'Create account →' : 'Sign in →';
+  $('#password').setAttribute('autocomplete', signupMode ? 'new-password' : 'current-password');
+  $('#password').placeholder = signupMode ? 'Choose a password (8+ characters)' : 'Password';
+  $('#authHint').innerHTML = signupMode ? 'Already have an account? <a href="#" id="authToggle2">Sign in</a>' : 'New here? <a href="#" id="authToggle2">Create an account</a>';
+  $('#authToggle2').onclick = (ev) => { ev.preventDefault(); $('#authToggle').click(); };
+  $('#loginErr').textContent = '';
+  (signupMode ? $('#signupName') : $('#email')).focus();
+});
 $('#loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  try { await api('/api/login', { method: 'POST', body: { email: $('#email').value, password: $('#password').value } }); $('#login').classList.add('hidden'); document.body.classList.remove('on-login'); boot(); }
-  catch (err) { $('#loginErr').textContent = err.message; }
+  const btn = $('#authBtn'); btn.disabled = true; $('#loginErr').textContent = '';
+  try {
+    const body = { email: $('#email').value, password: $('#password').value };
+    const r = signupMode ? await api('/api/signup', { method: 'POST', body: { ...body, name: $('#signupName').value } }) : await api('/api/login', { method: 'POST', body });
+    saveToken(r.token);
+    $('#login').classList.add('hidden'); document.body.classList.remove('on-login');
+    if (r.created) toast(r.role === 'admin' ? 'Welcome! Your admin account is ready.' : 'Welcome! You can see the live views.');
+    boot();
+  } catch (err) { $('#loginErr').textContent = err.message; }
+  btn.disabled = false;
 });
-$('#logoutBtn').addEventListener('click', async () => { await api('/api/logout', { method: 'POST' }); location.reload(); });
+$('#logoutBtn').addEventListener('click', async () => { saveToken(null); await api('/api/logout', { method: 'POST' }); location.reload(); });
 
 // ---------- tabs ----------
 $('#tabs').addEventListener('click', (e) => {
@@ -435,10 +462,12 @@ async function boot() {
   if (!me.authed) return showLogin();
   role = me.role || 'admin';
   myEmail = me.email || null;
+  myName = me.name || null;
   state = await api('/api/state');
   if (role === 'admin') members = await api('/api/members');
   renderHeader();
   render();
+  const art = $('#sideArt'); if (art && window.lakeSvg && !art.innerHTML) art.innerHTML = lakeSvg({ viewBox: '-20 30 150 92' });
   clearInterval(pollTimer);
   pollTimer = setInterval(refresh, 5000);
 }

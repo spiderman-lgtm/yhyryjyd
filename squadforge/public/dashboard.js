@@ -23,11 +23,14 @@ async function renderTeam(range = dashRange) {
   const prevTo = addDays(r.from, -1), prevFrom = addDays(r.from, -span);
   $('#view').classList.remove('drawn');
   $('#view').innerHTML = skeleton();
-  const [cur, prev, spark, logs] = await Promise.all([
+  const monthStart = t.slice(0, 8) + '01';
+  const [cur, prev, spark, logs, month, reqs] = await Promise.all([
     api(`/api/metrics?from=${r.from}&to=${r.to}`),
     api(`/api/metrics?from=${prevFrom}&to=${prevTo}`),
     api(`/api/metrics?from=${addDays(t, -13)}&to=${t}`),
     api(`/api/logs?date=${t}`),
+    api(`/api/metrics?from=${monthStart}&to=${t}`),
+    api('/api/requests'),
   ]);
   if (tab !== 'team') return;
   const T = cur.team.totals, P = prev.team.totals, S = spark.series;
@@ -35,8 +38,17 @@ async function renderTeam(range = dashRange) {
 
   $('#view').innerHTML = `
     ${birdScene(state.today_metrics, logs.logs)}
+    <div class="qp-row3">
+      <div class="card"><div class="card-h"><h3>Work calendar</h3><span class="muted">${new Date(t + 'T12:00:00Z').toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</span></div>${calendar(month.series, t)}</div>
+      <div class="card"><div class="card-h"><h3>Request preview</h3></div>${requestPreview(reqs, open, T.requests_completed)}</div>
+      <div class="card"><div class="card-h"><h3>Quick message</h3><span class="muted">to the team channel</span></div>
+        <textarea id="qmText" class="qm" placeholder="What should the team know?"></textarea>
+        <div class="qm-bar"><label class="check" title="Also send an SMS to tagged people"><input type="checkbox" id="qmImp"/> Important</label><span class="spacer"></span><button class="btn" id="qmSend">Send ✦</button></div>
+        <div class="muted" style="font-size:11px">Tag people and polish with AI in Commander.</div>
+      </div>
+    </div>
     <div class="dash-head">
-      <div><h2 style="margin:0">Team overview</h2><div class="muted" style="font-size:13px">${fmtRange(r.from, r.to)} · compared with ${r.prevLabel}</div></div>
+      <div><h3 style="margin:0">Team overview</h3><div class="muted" style="font-size:12px">${fmtRange(r.from, r.to)} · compared with ${r.prevLabel}</div></div>
       <div class="seg" role="tablist" aria-label="Date range">${Object.entries(ranges).map(([k, v]) => `<button role="tab" aria-selected="${k === range}" class="${k === range ? 'on' : ''}" data-range="${k}">${v.label}</button>`).join('')}</div>
     </div>
     <div class="kpi-grid">
@@ -49,22 +61,29 @@ async function renderTeam(range = dashRange) {
     </div>
     <div class="dash-main">
       <div class="card chart-card">
-        <div class="row" style="margin-bottom:6px"><div><h3 style="margin:0">Output by day</h3><div class="muted" style="font-size:12px">Actions, triggers and apps published</div></div><span class="spacer"></span>
-          <div class="legend">${SERIES.map((s) => `<span><i style="background:${s.color}"></i>${s.label}</span>`).join('')}</div></div>
+        <div class="card-h"><div><h3 style="margin:0">Output by day</h3><div class="muted" style="font-size:12px">Actions, triggers and apps published</div></div><span class="spacer"></span>
+          <div class="legend">${SERIES.map((x) => `<span><i style="background:${x.color}"></i>${x.label}</span>`).join('')}</div></div>
         <div class="chart-wrap" id="dayChart">${stackChart(cur.series)}</div>
       </div>
-      <div class="card">
-        <h3>Request pipeline</h3>
-        <div class="muted" style="font-size:12px;margin-top:-6px">Open requests right now</div>
-        ${pipeline(open, T.requests_completed)}
-      </div>
+      <div class="card"><div class="card-h"><h3>To-do</h3><span class="muted">client requests</span></div>${todo(reqs)}</div>
     </div>
-    <div class="dash-main" style="grid-template-columns:2fr 1fr">
-      <div class="card"><div class="row" style="margin-bottom:4px"><h3 style="margin:0">Team leaderboard</h3><span class="spacer"></span><span class="muted" style="font-size:12px">${fmtRange(r.from, r.to)}</span></div>
+    <div class="dash-main">
+      <div class="card"><div class="card-h"><h3 style="margin:0">Team leaderboard</h3><span class="spacer"></span><span class="muted" style="font-size:12px">${fmtRange(r.from, r.to)}</span></div>
         <div class="table-wrap">${leaderboard(cur.team.members)}</div></div>
-      <div class="card"><h3>Today's check-ins</h3>${checkins(logs.logs)}</div>
+      <div class="card"><div class="card-h"><h3>Today's check-ins</h3></div>${checkins(logs.logs)}</div>
     </div>`;
 
+  placeBirds();
+  const qs = $('#qmSend');
+  if (qs) qs.onclick = async () => {
+    const message = $('#qmText').value.trim();
+    if (!message) { $('#qmText').focus(); return; }
+    qs.disabled = true;
+    try { await api('/api/broadcast', { method: 'POST', body: { message, important: $('#qmImp').checked } }); $('#qmText').value = ''; toast('Sent to the team ✦'); refresh(); }
+    catch (e) { toast(e.message); }
+    qs.disabled = false;
+  };
+  document.querySelectorAll('[data-goto]').forEach((el) => (el.onclick = () => { tab = el.dataset.goto; location.hash = tab; render(); }));
   document.querySelectorAll('[data-range]').forEach((b) => (b.onclick = () => renderTeam(b.dataset.range)));
   wireChart(cur.series);
   wireBirds(state.today_metrics, logs.logs);
@@ -212,4 +231,48 @@ function animateDash() {
     requestAnimationFrame(step);
   });
   requestAnimationFrame(() => document.querySelector('#view')?.classList.add('drawn'));
+}
+
+// Month calendar: each day shaded by how much the team published (actions + triggers + apps).
+function calendar(series, today) {
+  const byDate = Object.fromEntries(series.map((d) => [d.date, d.actions + d.triggers + d.apps]));
+  const max = Math.max(1, ...Object.values(byDate));
+  const first = new Date(today.slice(0, 8) + '01T12:00:00Z');
+  const lead = (first.getUTCDay() + 6) % 7; // Monday first
+  const days = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push('<i class="cd empty"></i>');
+  for (let d = 1; d <= days; d++) {
+    const ds = today.slice(0, 8) + String(d).padStart(2, '0');
+    const v = byDate[ds];
+    const lvl = v === undefined ? 'future' : v === 0 ? 'l0' : 'l' + Math.min(4, Math.ceil((v / max) * 4));
+    cells.push(`<i class="cd ${lvl} ${ds === today ? 'today' : ''}" style="--d:${d * 12}ms" title="${ds}: ${v ?? '–'} published">${d}</i>`);
+  }
+  const total = Object.values(byDate).reduce((a, b) => a + b, 0);
+  return `<div class="cal"><div class="cal-w">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((x) => `<b>${x}</b>`).join('')}</div><div class="cal-g">${cells.join('')}</div>
+    <div class="cal-f"><span class="muted">${total} published this month</span><span class="cal-legend">less <i class="cd l0"></i><i class="cd l1"></i><i class="cd l2"></i><i class="cd l3"></i><i class="cd l4"></i> more</span></div></div>`;
+}
+
+function requestPreview(reqs, open, done) {
+  const active = reqs.find((r) => r.status === 'stuck') || reqs.find((r) => r.status === 'started') || reqs.find((r) => r.status === 'rnd') || reqs.find((r) => r.status === 'new');
+  const order = ['new', 'rnd', 'started', 'completed'];
+  if (!active) return `<div class="empty">No open client requests 🌿</div>${pipeline(open, done)}`;
+  const pct = active.status === 'stuck' ? 66 : Math.round((order.indexOf(active.status) / 3) * 100);
+  return `<div class="rp">
+      <div class="rp-art">${birdSvg(2, active.status === 'stuck' ? 'worried' : 'happy')}</div>
+      <div class="rp-main"><span class="pill ${active.status}">${STATUS[active.status]}</span>
+        <div class="rp-t">${esc(active.title)}</div>
+        <div class="muted" style="font-size:12px">${esc(active.assigned.map((a) => a.name).join(', ') || 'unassigned')} · ${active.hours !== null ? active.hours.toFixed(1) + 'h' : '–'}</div>
+        <div class="rp-bar"><i style="--w:${pct}%" class="${active.status}"></i></div>
+        ${active.stuck_reason ? `<div class="rp-reason">🧱 ${esc(active.stuck_reason.slice(0, 80))}</div>` : ''}
+      </div></div>
+    <div class="rp-counts">${['new', 'rnd', 'started', 'stuck'].map((k) => `<span><b class="tnum">${open[k] || 0}</b>${STATUS[k]}</span>`).join('')}</div>
+    <button class="btn ghost small" data-goto="requests" style="width:100%;justify-content:center;margin-top:10px">Open requests board</button>`;
+}
+
+function todo(reqs) {
+  const list = [...reqs.filter((r) => r.status !== 'completed'), ...reqs.filter((r) => r.status === 'completed').slice(0, 2)].slice(0, 7);
+  if (!list.length) return '<div class="empty">Nothing to do — enjoy the quiet 🌿</div>';
+  return `<ul class="todo">${list.map((r) => `<li class="${r.status === 'completed' ? 'done' : ''}" data-goto="requests" title="${esc(r.title)}"><span class="box">${r.status === 'completed' ? '✓' : ''}</span><span class="tt">${esc(r.title)}</span><span class="pill ${r.status}">${STATUS[r.status]}</span></li>`).join('')}</ul>
+    <button class="btn ghost small" data-goto="requests" style="margin-top:8px">+ Add request</button>`;
 }

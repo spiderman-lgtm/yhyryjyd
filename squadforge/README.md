@@ -23,6 +23,10 @@ An AI command center for a team lead. It reads the team's daily work from a Slac
 - **Standup:** a morning and an evening thread (the parent message contains a word like "morning", "evening" or "EOD"). Members post their updates as replies. Writing `3 actions, 2 triggers` in the evening update gets counted.
 - Keywords can be changed in Settings.
 
+## Accounts
+
+Anyone can **Create an account** on the sign-in page (name, email, password of 8+ characters; stored as a salted scrypt hash). Emails listed in `ADMIN_EMAILS` get the full admin dashboard; everyone else is a viewer of Live Flow and Village. Admins can also sign in with `ADMIN_PASSWORD` plus their admin email.
+
 ## Env vars (Embarko → App setup)
 
 | Var | Required | What |
