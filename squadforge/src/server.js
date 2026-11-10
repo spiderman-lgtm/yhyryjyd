@@ -24,6 +24,7 @@ const scribeAgent = require('./agents/scribe');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, '..', 'public');
+const BUILD = Date.now().toString(36);
 
 // ---------- auth ----------
 function sessionSecret() {
@@ -91,6 +92,12 @@ function serveStatic(req, res, pathname) {
   let file = path.normalize(path.join(PUBLIC, pathname === '/' ? 'index.html' : pathname));
   if (!file.startsWith(PUBLIC)) return send(res, 403, 'Forbidden');
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(PUBLIC, 'index.html');
+  if (file.endsWith('index.html')) {
+    // cache-bust: every deploy gets new asset URLs, so browsers never run an old script or stylesheet
+    const html = fs.readFileSync(file, 'utf8').replace(/(src|href)="\/([\w.-]+\.(?:js|css))"/g, `$1="/$2?v=${BUILD}"`);
+    res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store' });
+    return res.end(html);
+  }
   res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
   fs.createReadStream(file).pipe(res);
 }
