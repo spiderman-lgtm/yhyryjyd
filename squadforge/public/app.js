@@ -404,6 +404,7 @@ async function refresh() {
     state = await api('/api/state');
     renderHeader();
     if (tab === 'flow' && typeof updateFlow === 'function') updateFlow();
+    if (tab === 'team' && typeof birdReact === 'function') birdReact(state);
     if (tab === 'village') {
       const feed = $('#feed');
       if (feed && $('.scene')) {

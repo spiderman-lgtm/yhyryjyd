@@ -34,6 +34,7 @@ async function renderTeam(range = dashRange) {
   const open = state.week_metrics.totals.open_by_status || {};
 
   $('#view').innerHTML = `
+    ${birdScene(state.today_metrics, logs.logs)}
     <div class="dash-head">
       <div><h2 style="margin:0">Team overview</h2><div class="muted" style="font-size:13px">${fmtRange(r.from, r.to)} · compared with ${r.prevLabel}</div></div>
       <div class="seg" role="tablist" aria-label="Date range">${Object.entries(ranges).map(([k, v]) => `<button role="tab" aria-selected="${k === range}" class="${k === range ? 'on' : ''}" data-range="${k}">${v.label}</button>`).join('')}</div>
@@ -66,6 +67,7 @@ async function renderTeam(range = dashRange) {
 
   document.querySelectorAll('[data-range]').forEach((b) => (b.onclick = () => renderTeam(b.dataset.range)));
   wireChart(cur.series);
+  wireBirds(state.today_metrics, logs.logs);
   animateDash();
 }
 
@@ -88,7 +90,8 @@ function tile(label, val, prevVal, series, upGood, foot) {
     const dir = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
     const good = upGood === null || dir === 'flat' ? 'neutral' : (dir === 'up') === upGood ? 'good' : 'bad';
     const arrow = dir === 'up' ? '↑' : dir === 'down' ? '↓' : '→';
-    delta = `<span class="delta ${good}">${arrow} ${pct !== null ? Math.abs(pct) + '%' : (diff > 0 ? '+' : '') + diff}</span>`;
+    const word = good === 'good' ? (pct !== null && pct >= 50 ? 'GREAT!' : 'GOOD!') : good === 'bad' ? 'BAD' : '';
+    delta = `<span class="delta ${good}">${arrow} ${pct !== null ? Math.abs(pct) + '%' : (diff > 0 ? '+' : '') + diff}</span>${word ? `<span class="sticker ${good}">${word}</span>` : ''}`;
   }
   const isNum = typeof val === 'number' && Number.isInteger(val);
   return `<div class="card kpi-tile">
@@ -178,7 +181,7 @@ function leaderboard(ms) {
       const segs = SERIES.map((s) => (m[s.key] ? `<span style="flex:${m[s.key]};background:${s.color}" title="${s.label}: ${m[s.key]}"></span>` : '')).join('');
       const err = m.error_rate === null ? '–' : `<span class="pill ${m.error_rate >= 3 ? 'stuck' : m.error_rate >= 1.5 ? 'started' : 'completed'}">${m.error_rate}</span>`;
       const growth = Object.values(m.growth).reduce((a, b) => a + b, 0);
-      return `<tr><td class="muted tnum">${i + 1}</td>
+      return `<tr><td class="muted tnum">${i < 3 ? medal(i) : i + 1}</td>
         <td><div class="who"><span class="av ${m.role}">${esc(initials(m.name))}</span><div><div class="who-n">${esc(m.name)}</div><div class="muted" style="font-size:12px">${m.role === 'growth' ? 'Growth' : 'Plugin builder'} · Lv ${m.level}</div></div></div></td>
         <td style="min-width:140px">${m.role === 'growth' ? `<span class="tnum">${growth}</span> <span class="muted">posts · ${m.unblocked} unblocked</span>` : `<div class="out"><div class="out-bar" style="width:${(out / maxOut) * 100}%">${segs}</div><span class="tnum">${out}</span></div>`}</td>
         <td class="r">${m.plan_done_pct === null ? '–' : `<div class="meter"><i style="--w:${Math.min(100, m.plan_done_pct)}%"></i></div><span class="tnum">${m.plan_done_pct}%</span>`}</td>
