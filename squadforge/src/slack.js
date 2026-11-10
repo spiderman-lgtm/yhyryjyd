@@ -3,10 +3,18 @@
 // chat:write, users:read, im:write
 const { cfg } = require('./util');
 
+const vs = require('./viasocket');
+
 function token() { return cfg('SLACK_BOT_TOKEN'); }
-function enabled() { return !!token() && !!cfg('SLACK_CHANNEL_ID'); }
+// viaSocket connection (Integrations page) wins; bot token is the fallback.
+function viaViaSocket() { return vs.slackReady(); }
+function enabled() { return viaViaSocket() || (!!token() && !!cfg('SLACK_CHANNEL_ID')); }
 
 async function call(method, params = {}, { post = false } = {}) {
+  if (viaViaSocket()) {
+    const clean = Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null));
+    return vs.slackCall(method, clean, post);
+  }
   const t = token();
   if (!t) throw new Error('SLACK_BOT_TOKEN set nahi hai');
   let res;
@@ -86,4 +94,4 @@ function permalinkish(channel, ts) {
   return `${team.replace(/\/$/, '')}/archives/${channel}/p${String(ts).replace('.', '')}`;
 }
 
-module.exports = { enabled, call, history, replies, post, dm, channelMembers, userInfo, mentions, permalinkish };
+module.exports = { enabled, viaViaSocket, call, history, replies, post, dm, channelMembers, userInfo, mentions, permalinkish };

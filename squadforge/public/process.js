@@ -19,7 +19,7 @@ const FLOW_NODES = {
   threads:   { x: 1105, y: 90,  kind: 'out', icon: '🧵', title: 'Slack threads', sub: 'feedback, unblock' },
   alert:     { x: 1105, y: 210, kind: 'out', icon: '⏰', title: '7 PM alert', sub: 'aapko DM' },
   report:    { x: 1105, y: 330, kind: 'out', icon: '🗞️', title: 'Monday report', sub: 'team + personal' },
-  dash:      { x: 1105, y: 440, kind: 'out', icon: '📊', title: 'Dashboard', sub: 'Data mode' },
+  dash:      { x: 1105, y: 440, kind: 'out', icon: '📊', title: 'Dashboard', sub: 'Gmail · Sheets' },
   sms:       { x: 1105, y: 520, kind: 'out', icon: '📱', title: 'MSG91 SMS', sub: 'important alerts' },
 };
 // [from, to, owner agent whose activity lights this edge]
@@ -84,7 +84,7 @@ function renderFlow() {
     <div class="pmode-head">
       <div>
         <h2 style="margin:0">🌊 Live Flow</h2>
-        <p class="muted" style="margin:2px 0 0">Kaam kaise chal raha hai, live. Numbers dekhne hain to upar <b>📊 Data</b> pe jao.</p>
+        <p class="muted" style="margin:2px 0 0">Kaam kaise chal raha hai, live. Numbers ke liye <b>📊 Dashboard</b> kholo.</p>
       </div>
       <div class="counters">
         ${counter('⚡', tm.actions, 'actions aaj')}${counter('🎯', tm.triggers, 'triggers aaj')}
@@ -225,7 +225,7 @@ function renderJourneys(reqs) {
   }));
   box.querySelectorAll('.journey').forEach((el) => (el.onclick = () => {
     if (role !== 'admin') return;
-    tab = 'requests'; mode = 'data'; location.hash = 'requests'; render();
+    tab = 'requests'; location.hash = 'requests'; render();
   }));
 }
 

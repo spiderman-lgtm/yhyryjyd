@@ -2,6 +2,7 @@
 const { db } = require('../db');
 const llm = require('../llm');
 const slack = require('../slack');
+const vs = require('../viasocket');
 const { logActivity, today, addDays, weekStart, hoursBetween, memberById, cfg } = require('../util');
 const { teamMetrics } = require('../metrics');
 const { LABEL } = require('./tracker');
@@ -94,8 +95,33 @@ async function run(ref = today()) {
     try { await slack.dm(lead, team); await slack.dm(lead, personal); }
     catch (e) { logActivity('scribe', 'DM fail: ' + e.message, 'warn'); }
   }
+  await sendOutside(from, to, team, t);
   logActivity('scribe', `Weekly report tayyar: ${from} → ${to}`);
   return { message: `Weekly report ${from} → ${to} ban gayi` };
 }
 
-module.exports = { run, lastWeek };
+// viaSocket outputs: manager ko email (Gmail), har member ki row (Google Sheets)
+async function sendOutside(from, to, team, t) {
+  const g = vs.settings('gmail');
+  if (vs.connected('gmail') && g.manager_email && g.weekly_email !== false) {
+    try {
+      await vs.gmailSend(g.manager_email, `SquadForge weekly report: ${from} to ${to}`, team.replace(/\*/g, ''));
+      logActivity('scribe', `📧 Weekly report email gaya: ${g.manager_email}`);
+    } catch (e) { logActivity('scribe', 'Email fail: ' + e.message, 'warn'); }
+  }
+  const sh = vs.settings('google-sheets');
+  if (vs.connected('google-sheets') && sh.spreadsheet_id && sh.tab && sh.weekly_rows !== false) {
+    try {
+      await vs.sheetsAppend(sh.spreadsheet_id, sh.tab, sheetRows(from, to, t));
+      logActivity('scribe', `📗 ${t.members.length} rows Google Sheet mein add hui`);
+    } catch (e) { logActivity('scribe', 'Sheet fail: ' + e.message, 'warn'); }
+  }
+}
+const SHEET_HEADER = ['Week start', 'Week end', 'Member', 'Role', 'Actions', 'Triggers', 'Apps', 'Requests done', 'Requests assigned', 'Avg hours', 'Avg difficulty', 'Reviews', 'Error rate', 'First pass %', 'Plan→done %', 'Updates posted', 'Updates expected', 'Growth posts', 'Unblocked'];
+function sheetRows(from, to, t) {
+  return t.members.map((m) => [from, to, m.name, m.role, m.actions, m.triggers, m.apps, m.requests_completed, m.requests_assigned,
+    m.avg_request_hours ?? '', m.avg_difficulty ?? '', m.reviews, m.error_rate ?? '', m.first_pass_pct ?? '', m.plan_done_pct ?? '',
+    m.morning_updates + m.evening_updates, m.workdays * 2, Object.values(m.growth).reduce((a, b) => a + b, 0), m.unblocked]);
+}
+
+module.exports = { run, lastWeek, SHEET_HEADER, sheetRows };

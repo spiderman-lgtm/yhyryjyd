@@ -27,9 +27,16 @@ function hoursBetween(a, b) {
 }
 
 // Config: env var wins, then dashboard setting, then default.
+// Slack via viaSocket connection: channel and "me" are chosen once on the Integrations page.
+const VS_FALLBACK = { SLACK_CHANNEL_ID: 'channel_id', LEAD_SLACK_USER_ID: 'me_id' };
 function cfg(key, fallback = null) {
   const env = process.env[key];
   if (env !== undefined && env !== '') return env;
+  if (VS_FALLBACK[key]) {
+    const vs = require('./viasocket'); // lazy: avoids a require cycle
+    const v = vs.connected('slack') ? vs.settings('slack')[VS_FALLBACK[key]] : null;
+    if (v) return v;
+  }
   const s = getSetting('cfg.' + key);
   return s !== null && s !== '' ? s : fallback;
 }

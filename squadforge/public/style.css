@@ -189,8 +189,6 @@ code { background: #0d1222; padding: 1px 6px; border-radius: 6px; font-size: 12p
 .modes { display: flex; background: #0b1020; border: 2px solid #33406a; border-radius: 12px; padding: 3px; gap: 2px; flex-shrink: 0; }
 .modes button { border: 0; background: none; color: var(--muted); font: 700 13px Inter, sans-serif; padding: 6px 12px; border-radius: 9px; cursor: pointer; white-space: nowrap; }
 .modes button.active { background: linear-gradient(var(--gold-2), var(--gold)); color: #1a1300; }
-body[data-mode="process"] .resources { display: none; }
-body[data-mode="process"] .topbar .top-right { margin-left: auto; }
 
 /* ---------- Live Flow ---------- */
 .pmode-head { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -287,3 +285,12 @@ svg.flow { width: 100%; min-width: 860px; height: auto; display: block; }
 
 .swipe-hint { display: none; font-size: 11px; text-align: center; padding-top: 4px; }
 @media (max-width: 900px) { .swipe-hint { display: block; } }
+
+/* ---------- Integrations ---------- */
+.integ-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.app-ic { width: 36px; height: 36px; border-radius: 9px; background: #fff; padding: 4px; object-fit: contain; }
+.btn-ic { width: 16px; height: 16px; vertical-align: -3px; margin-right: 4px; background: #fff; border-radius: 4px; }
+.picker { display: flex; gap: 8px; align-items: center; }
+.picker select { flex: 1; }
+.integ > .row:first-child { flex-wrap: nowrap; align-items: flex-start; }
+.app-ic-fb { display: grid; place-items: center; font: 400 18px 'Lilita One', sans-serif; color: #1a1300; background: linear-gradient(var(--gold-2), var(--gold)); }

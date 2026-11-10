@@ -19,6 +19,8 @@ const commander = require('./agents/commander');
 const tracker = require('./agents/tracker');
 const demo = require('./demo');
 const { DEFAULTS } = require('./parser');
+const vs = require('./viasocket');
+const scribeAgent = require('./agents/scribe');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, '..', 'public');
@@ -288,6 +290,65 @@ async function api(req, res, url) {
     return send(res, 200, r);
   }
   if (p === '/api/broadcasts') return send(res, 200, db.prepare('SELECT * FROM broadcasts ORDER BY id DESC LIMIT 50').all());
+
+
+  // ---------- viaSocket integrations (admin only) ----------
+  if (p === '/api/integrations' && m === 'GET') return send(res, 200, await vs.status());
+  if (p === '/api/integrations/connect-info' && m === 'GET') {
+    if (!vs.configured()) return send(res, 400, { error: 'viaSocket keys (VIASOCKET_ORG_ID, VIASOCKET_PROJECT_ID, VIASOCKET_EMBED_SECRET) set nahi hain' });
+    return send(res, 200, await vs.connectInfo());
+  }
+  if (p === '/api/integrations/connected' && m === 'POST') {
+    if (!vs.APPS[body.app]) return send(res, 400, { error: 'Unknown app' });
+    return send(res, 200, await vs.onConnected(body.app, body.authId));
+  }
+  if ((mm = p.match(/^\/api\/integrations\/([a-z-]+)\/(disconnect|settings|test|options)$/))) {
+    const app = mm[1], action = mm[2];
+    if (!vs.APPS[app]) return send(res, 404, { error: 'Unknown app' });
+    if (action === 'disconnect' && m === 'POST') return send(res, 200, await vs.disconnect(app));
+    if (!vs.connected(app)) return send(res, 400, { error: `${vs.APPS[app].name} pehle connect karo` });
+    if (action === 'settings' && m === 'POST') {
+      const allowed = {
+        slack: ['channel_id', 'channel_name', 'me_id', 'me_name', 'use_for_slack'],
+        gmail: ['manager_email', 'weekly_email'],
+        'google-sheets': ['spreadsheet_id', 'spreadsheet_name', 'tab', 'weekly_rows'],
+      }[app];
+      const patch = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
+      if (patch.manager_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patch.manager_email)) return send(res, 400, { error: 'Email sahi nahi hai' });
+      const saved = vs.saveSettings(app, patch);
+      if (app === 'google-sheets' && patch.tab && patch.spreadsheet_id) {
+        // header row once, so the weekly rows have column names
+        try { await vs.sheetsAppend(patch.spreadsheet_id, patch.tab, [scribeAgent.SHEET_HEADER]); } catch (e) { return send(res, 200, { settings: saved, warning: e.message }); }
+      }
+      return send(res, 200, { settings: saved });
+    }
+    if (action === 'options' && m === 'GET') {
+      const field = url.searchParams.get('field');
+      const cursor = url.searchParams.get('paginate') || undefined;
+      if (app === 'slack' && field === 'channel') return send(res, 200, await vs.slackChannels(cursor));
+      if (app === 'slack' && field === 'me') return send(res, 200, await vs.slackUsers(cursor));
+      if (app === 'google-sheets' && field === 'spreadsheet') return send(res, 200, await vs.sheetsList(url.searchParams.get('search')));
+      if (app === 'google-sheets' && field === 'tab') return send(res, 200, await vs.sheetsTabs(url.searchParams.get('spreadsheet')));
+      return send(res, 400, { error: 'Unknown field' });
+    }
+    if (action === 'test' && m === 'POST') {
+      const st = vs.settings(app);
+      let result;
+      if (app === 'slack') {
+        if (!st.me_id) return send(res, 400, { error: 'Pehle "Main kaun hoon" chuno' });
+        const d = await vs.slackCall('conversations.open', { users: st.me_id }, true);
+        result = await vs.slackCall('chat.postMessage', { channel: d.channel.id, text: '✅ SquadForge test: Slack connection kaam kar raha hai.' }, true);
+        result = { ok: result.ok, ts: result.ts, channel: result.channel };
+      } else if (app === 'gmail') {
+        const me = await vs.gmailMe();
+        result = { to: me.email, ...(await vs.gmailSend(me.email, 'SquadForge test', 'Gmail connection kaam kar raha hai. Monday report yahin se jayegi.')) };
+      } else {
+        result = await vs.sheetsTest();
+      }
+      U.logActivity('scout', `🔌 ${vs.APPS[app].name} test pass ✅`);
+      return send(res, 200, { ok: true, result });
+    }
+  }
 
   if (p === '/api/demo/load' && m === 'POST') return send(res, 200, demo.load());
   if (p === '/api/demo/clear' && m === 'POST') return send(res, 200, demo.clear());

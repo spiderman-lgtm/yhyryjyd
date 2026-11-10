@@ -7,10 +7,9 @@ const GROWTH_LABEL = { support_request: 'Support request', app_listing: 'App lis
 
 let state = null;
 let members = [];
-const PROCESS_TABS = ['flow', 'village'];
-const DATA_TABS = ['team', 'requests', 'reviews', 'growth', 'reports', 'commander', 'settings'];
-let tab = location.hash.replace('#', '') || 'flow';
-let mode = PROCESS_TABS.includes(tab) ? 'process' : 'data';
+const VIEWER_TABS = ['flow', 'village'];
+const ALL_TABS = ['flow', 'team', 'village', 'requests', 'reviews', 'growth', 'reports', 'commander', 'integrations', 'settings'];
+let tab = ALL_TABS.includes(location.hash.replace('#', '')) ? location.hash.replace('#', '') : 'flow';
 let role = 'admin';
 let pollTimer = null;
 let lastActivityId = 0;
@@ -57,21 +56,12 @@ $('#tabs').addEventListener('click', (e) => {
   tab = b.dataset.tab; location.hash = tab; render();
 });
 function markTab() {
-  if (role === 'viewer') { mode = 'process'; if (!PROCESS_TABS.includes(tab)) tab = 'flow'; }
+  if (role === 'viewer' && !VIEWER_TABS.includes(tab)) tab = 'flow';
   document.querySelectorAll('#tabs button').forEach((b) => {
     b.classList.toggle('active', b.dataset.tab === tab);
-    b.classList.toggle('hidden', b.dataset.mode !== mode);
+    b.classList.toggle('hidden', role === 'viewer' && b.dataset.admin !== undefined);
   });
-  document.querySelectorAll('#modes button').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
-  $('#modes').classList.toggle('hidden', role === 'viewer');
-  document.body.dataset.mode = mode;
 }
-$('#modes').addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-mode]'); if (!b || b.dataset.mode === mode) return;
-  mode = b.dataset.mode;
-  tab = mode === 'process' ? 'flow' : 'team';
-  location.hash = tab; render();
-});
 
 // ---------- header ----------
 function renderHeader() {
@@ -478,7 +468,7 @@ async function render() {
   if (!state) return;
   try {
     if (role === 'admin' && (!members.length || tab === 'settings')) members = await api('/api/members');
-    ({ flow: renderFlow, village: renderVillage, team: renderTeam, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, commander: renderCommander, settings: renderSettings }[tab] || renderVillage)();
+    ({ flow: renderFlow, integrations: renderIntegrations, village: renderVillage, team: renderTeam, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, commander: renderCommander, settings: renderSettings }[tab] || renderVillage)();
     if (tab === 'village') lastActivityId = state.activity[0] ? state.activity[0].id : 0;
   } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; }
 }
@@ -496,5 +486,5 @@ async function boot() {
 boot();
 window.addEventListener('hashchange', () => {
   const t = location.hash.replace('#', '');
-  if (t && t !== tab && (PROCESS_TABS.includes(t) || DATA_TABS.includes(t))) { tab = t; mode = PROCESS_TABS.includes(t) ? 'process' : 'data'; render(); }
+  if (t && t !== tab && ALL_TABS.includes(t)) { tab = t; render(); }
 });
