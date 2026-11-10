@@ -394,7 +394,7 @@ async function renderSettings() {
     </div>
     <div class="card"><h3>👥 Team members</h3>
       <div class="table-wrap"><table><tr><th>Name</th><th>Role</th><th>Slack ID</th><th>Phone</th><th></th></tr>
-      ${members.map((m) => `<tr><td>${esc(m.name)}${m.is_demo ? ' <span class="pill">demo</span>' : ''}</td><td>${m.role}</td><td><code>${esc(m.slack_user_id || '–')}</code></td><td>${esc(m.phone || '–')}</td><td><button class="btn ghost small" data-edit="${m.id}">Edit</button></td></tr>`).join('') || '<tr><td colspan="5" class="muted">No members</td></tr>'}
+      ${members.map((m) => `<tr><td>${esc(m.name)}${m.is_demo ? ' <span class="pill">demo</span>' : ''}</td><td>${m.role}</td><td><code>${esc(m.slack_user_id || '–')}</code></td><td>${esc(m.phone || '–')}</td><td class="row" style="flex-wrap:nowrap"><button class="btn ghost small" data-edit="${m.id}">Edit</button>${m.phone ? `<button class="btn ghost small" data-m91="${m.id}" title="Invite to the M91 app so they can get alerts">🔔 Invite to M91</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No members</td></tr>'}
       </table></div>
       <div class="row" style="margin-top:10px"><button class="btn" id="addMem">+ Member</button><button class="btn ghost" id="impMem" ${i.slack ? '' : 'disabled'}>Import from Slack channel</button></div>
       <p class="muted">Role: <b>tech</b> = plugin builders, <b>growth</b> = growth member, <b>lead</b> = you. Phone in 91XXXXXXXXXX format (for M91 alerts).</p>
@@ -437,6 +437,12 @@ async function renderSettings() {
   $('#addMem').onclick = () => memberModal();
   $('#impMem').onclick = async () => { const r = await api('/api/members/import-slack', { method: 'POST' }); toast(`${r.added} members imported — please check their roles`); renderSettings(); };
   document.querySelectorAll('[data-edit]').forEach((b) => (b.onclick = () => memberModal(members.find((m) => m.id == b.dataset.edit))));
+  document.querySelectorAll('[data-m91]').forEach((b) => (b.onclick = async () => {
+    b.disabled = true;
+    try { await api(`/api/members/${b.dataset.m91}/m91-invite`, { method: 'POST' }); toast('M91 invite sent — they accept it in the M91 app'); }
+    catch (e) { toast(e.message); }
+    b.disabled = false;
+  }));
   $('#addPub').onclick = async () => { await api('/api/publishes', { method: 'POST', body: { member_id: Number($('#pMem').value), kind: $('#pKind').value, count: $('#pCount').value, plugin: $('#pPlugin').value } }); toast('Added'); refresh(); };
   $('#demoLoad').onclick = async () => { const r = await api('/api/demo/load', { method: 'POST' }); toast(r.message); refresh(); };
   $('#demoClear').onclick = async () => { const r = await api('/api/demo/clear', { method: 'POST' }); toast(r.message); refresh(); };

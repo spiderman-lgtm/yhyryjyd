@@ -49,3 +49,19 @@ test channel or a DM to the lead, the email to the lead's own address, rows to a
 
 - Jira / ClickUp / Trello: a task for each client request, closed when it completes.
 - Real-time Slack (subscribe `New_Message_in_Channels`) instead of 10-minute reads.
+
+## M91 (added, confirmed by the lead)
+
+| app | action (key, version) | value | who supplies it | when |
+|---|---|---|---|---|
+| m91 | `Send_Direct_Alert` `V4` | To (phone) | member's phone from Settings | once per member |
+| m91 | `Send_Direct_Alert` `V4` | Title, Description | the lead's message (first line / full text) | per run |
+| m91 | `Send_Direct_Alert` `V4` | Severity | SquadForge: High when "Important" is ticked (Low for the test) | per run |
+| m91 | `Send_Direct_Alert` `V4` | Custom Alert ID | SquadForge (`sf-<broadcast>-<member>`) | per run |
+| m91 | `Send_Direct_Alert` `V4` | Response buttons | constant "On it" (SHARED), "Seen" (PERSONAL) | constant |
+| m91 | `Invite_Direct_Recipient` `V3` | To, From | member's phone / "SquadForge" | when the lead clicks Invite |
+| m91 | `Get_Direct_Alert_by_ID` `V3` | Alert ID, Phone | SquadForge | to read responses |
+
+Who picks the action: SquadForge's code (Important ticked → direct alert per tagged member).
+Field keys are read at run time from the public catalog's form schema and matched by label (viasocket.com docs are not reachable from the build session); the first run logs the keys found.
+Status: built, UNTESTED until the lead connects M91 and sends the test alert.

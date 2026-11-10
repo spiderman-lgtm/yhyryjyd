@@ -24,7 +24,12 @@ function appCard(a) {
   const s = a.settings || {};
   let body = '';
   if (a.connected && !a.expired) {
-    if (a.slug === 'slack') {
+    if (a.slug === 'm91') {
+      body = `
+        <p class="muted" style="margin:10px 0 0">Important messages from Commander now alert the tagged people on M91 — push, then SMS, then a call until someone answers. Add each member's phone in Settings and send them an M91 invite there.</p>
+        <label>Your phone for a test alert</label>
+        <div class="picker"><input id="m91Phone" inputmode="numeric" placeholder="919876543210" value="${esc(s.test_phone || '')}"/><button class="btn ghost" data-test="m91">🔔 Send me a test alert</button></div>`;
+    } else if (a.slug === 'slack') {
       body = `
         <label>Team channel (updates are read from here)</label>
         <div class="picker" data-pick="channel" data-app="slack"><select id="pk_channel"><option value="${esc(s.channel_id || '')}">${esc(s.channel_name || '— choose —')}</option></select><button class="btn ghost small" data-load="channel">Load list</button></div>
@@ -104,9 +109,9 @@ function wireCard(a) {
   if (test) test.onclick = async () => {
     test.disabled = true; const t = test.textContent; test.textContent = 'Testing…';
     try {
-      const r = await api(`/api/integrations/${a.slug}/test`, { method: 'POST' });
+      const r = await api(`/api/integrations/${a.slug}/test`, { method: 'POST', body: a.slug === 'm91' ? { phone: $('#m91Phone').value } : undefined });
       const x = r.result || {};
-      out.innerHTML = `<div class="banner" style="margin-top:10px">✅ Test passed. ${a.slug === 'gmail' ? 'Email sent to: ' + esc(x.to || '') : a.slug === 'slack' ? 'Check your DMs in Slack.' : `Sheet created: <a href="${esc(x.url || '#')}" target="_blank" rel="noopener">viaSocket test ↗</a>`}</div>`;
+      out.innerHTML = `<div class="banner" style="margin-top:10px">✅ Test passed. ${a.slug === 'm91' ? 'Alert sent — check the M91 app on your phone.' : a.slug === 'gmail' ? 'Email sent to: ' + esc(x.to || '') : a.slug === 'slack' ? 'Check your DMs in Slack.' : `Sheet created: <a href="${esc(x.url || '#')}" target="_blank" rel="noopener">viaSocket test ↗</a>`}</div>`;
     } catch (e) { out.innerHTML = `<div class="banner red" style="margin-top:10px">❌ ${esc(e.message)}</div>`; }
     test.disabled = false; test.textContent = t;
   };

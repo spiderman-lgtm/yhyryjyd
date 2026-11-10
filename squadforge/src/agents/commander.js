@@ -4,6 +4,7 @@ const { db } = require('../db');
 const slack = require('../slack');
 const llm = require('../llm');
 const msg91 = require('../msg91');
+const m91 = require('../m91');
 const { logActivity, memberById, cfg } = require('../util');
 
 async function broadcast({ message, member_ids = [], important = false, polish = false }) {
@@ -30,14 +31,26 @@ async function broadcast({ message, member_ids = [], important = false, polish =
   }
   let smsStatus = null;
   if (important && tagged.length) {
-    if (msg91.enabled()) {
+    if (m91.ready()) {
+      // M91: push → SMS → call until someone answers. One direct alert per tagged member.
+      const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+      const title = (lines[0] || 'Important message').replace(/[*_`]/g, '').slice(0, 120);
+      const stamp = Date.now().toString(36);
+      let ok = 0; const fails = [];
+      for (const m of tagged) {
+        if (!m.phone) { fails.push(`${m.name}: no phone`); continue; }
+        try { await m91.sendAlert({ phone: m.phone, title, description: text, severity: 'High', customId: `sf-${stamp}-${m.id}` }); ok++; }
+        catch (e) { fails.push(`${m.name}: ${e.message.slice(0, 80)}`); }
+      }
+      smsStatus = `M91 ${ok}/${tagged.length}` + (fails.length ? ` (${fails.join('; ')})` : '');
+    } else if (msg91.enabled()) {
       const r = await msg91.sendAlert(tagged.map((m) => ({ phone: m.phone, name: m.name, message: 'Check Slack' })));
       smsStatus = r.ok ? `sent ${r.sent}` : `failed: ${r.error || r.body}`;
-    } else smsStatus = 'MSG91 not configured';
+    } else smsStatus = 'M91 not connected';
   }
   db.prepare('INSERT INTO broadcasts (message, tagged, important, slack_ts, sms_status) VALUES (?, ?, ?, ?, ?)')
     .run(text, JSON.stringify(tagged.map((m) => m.id)), important ? 1 : 0, slackTs, smsStatus);
-  logActivity('commander', `${important ? '🚨 ' : ''}Message sent${tagged.length ? ' → ' + tagged.map((m) => m.name).join(', ') : ''}${smsStatus ? ' | SMS: ' + smsStatus : ''}${slack.enabled() ? '' : ' (Slack off — saved only)'}`);
+  logActivity('commander', `${important ? '🚨 ' : ''}Message sent${tagged.length ? ' → ' + tagged.map((m) => m.name).join(', ') : ''}${smsStatus ? ' | ' + smsStatus : ''}${slack.enabled() ? '' : ' (Slack off — saved only)'}`);
   return { text: full, slack_ts: slackTs, sms: smsStatus };
 }
 

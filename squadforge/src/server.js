@@ -21,6 +21,7 @@ const demo = require('./demo');
 const { DEFAULTS } = require('./parser');
 const vs = require('./viasocket');
 const accounts = require('./accounts');
+const m91 = require('./m91');
 const scribeAgent = require('./agents/scribe');
 
 const PORT = process.env.PORT || 3000;
@@ -199,7 +200,7 @@ async function api(req, res, url) {
       activity: db.prepare('SELECT * FROM activity ORDER BY id DESC LIMIT 60').all(),
       today_metrics: metrics.teamMetrics(t, t),
       week_metrics: metrics.teamMetrics(U.weekStart(t), t),
-      integrations: { slack: slack.enabled(), ai: llm.enabled(), msg91: msg91.enabled(), lead: !!U.cfg('LEAD_SLACK_USER_ID'), review_instructions: !!getSetting('inspector.instructions', '') },
+      integrations: { slack: slack.enabled(), ai: llm.enabled(), msg91: msg91.enabled() || vs.connected('m91'), lead: !!U.cfg('LEAD_SLACK_USER_ID'), review_instructions: !!getSetting('inspector.instructions', '') },
       has_demo: !!db.prepare('SELECT 1 FROM members WHERE is_demo = 1').get(),
       member_count: db.prepare('SELECT COUNT(*) c FROM members WHERE active = 1').get().c,
       password_set: !!process.env.ADMIN_PASSWORD,
@@ -300,6 +301,13 @@ async function api(req, res, url) {
     db.prepare('DELETE FROM members WHERE id = ?').run(mm[1]);
     return send(res, 200, { ok: true });
   }
+  if ((mm = p.match(/^\/api\/members\/(\d+)\/m91-invite$/)) && m === 'POST') {
+    const mem = U.memberById(mm[1]);
+    if (!mem || !mem.phone) return send(res, 400, { error: 'Add a phone number for this member first' });
+    if (!m91.ready()) return send(res, 400, { error: 'Connect M91 on the Integrations page first' });
+    try { return send(res, 200, { ok: true, result: await m91.invite(mem.phone) }); }
+    catch (e) { return send(res, 400, { error: e.message }); }
+  }
   if (p === '/api/members/import-slack' && m === 'POST') {
     if (!slack.enabled()) return send(res, 400, { error: 'Slack is not configured' });
     const ids = await slack.channelMembers(U.cfg('SLACK_CHANNEL_ID'));
@@ -382,6 +390,7 @@ async function api(req, res, url) {
     if (!vs.connected(app)) return send(res, 400, { error: `Connect ${vs.APPS[app].name} first` });
     if (action === 'settings' && m === 'POST') {
       const allowed = {
+        m91: ['test_phone'],
         slack: ['channel_id', 'channel_name', 'me_id', 'me_name', 'use_for_slack'],
         gmail: ['manager_email', 'weekly_email'],
         'google-sheets': ['spreadsheet_id', 'spreadsheet_name', 'tab', 'weekly_rows'],
@@ -407,6 +416,15 @@ async function api(req, res, url) {
     if (action === 'test' && m === 'POST') {
       const st = vs.settings(app);
       let result;
+      if (app === 'm91') {
+        const phone = String(body.phone || st.test_phone || '').replace(/[^0-9]/g, '');
+        if (phone.length < 10) return send(res, 400, { error: 'Enter your phone number with country code, e.g. 919876543210' });
+        vs.saveSettings('m91', { test_phone: phone });
+        try { result = await m91.sendAlert({ phone, title: 'SquadForge test alert', description: 'If you see this, M91 alerts from SquadForge work. Tap "Seen".', severity: 'Low', customId: 'sf-test-' + Date.now().toString(36) }); }
+        catch (e) { return send(res, 400, { error: e.message }); }
+        U.logActivity('scout', '🔔 M91 test alert sent');
+        return send(res, 200, { ok: true, result });
+      }
       if (app === 'slack') {
         if (!st.me_id) return send(res, 400, { error: 'Pick yourself in the "Who am I" list first' });
         const d = await vs.slackCall('conversations.open', { users: st.me_id }, true);

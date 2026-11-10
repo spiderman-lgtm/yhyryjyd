@@ -9,6 +9,11 @@ const USER_ID = 'squadforge-lead';
 
 // App catalog used by SquadForge. Action ids only scope the Connect popup's consent screen.
 const APPS = {
+  m91: {
+    name: 'M91', icon: 'https://play-lh.googleusercontent.com/QODTxSSZQOvzmE05wWrqVrXTXom_k-wRerP9wNQC5MOOJT01IL7DKh1aqmSAfpoyAF--iBqJpqrgs4YwVRwb4w=w240-h480-rw',
+    about: 'Important alerts by push, SMS and call until someone answers',
+    actions: ['rowrdphmcwo6', 'rowm6gkj8ozo', 'rowqohw5b5ec'], // Send Direct Alert, Invite Direct Recipient, Get Direct Alert by ID
+  },
   slack: {
     name: 'Slack', icon: 'https://stuff.thingsofbrand.com/slack.com/images/img668216333e_slack.jpg',
     about: 'Read the team channel, reply in threads, DM you',
@@ -129,6 +134,32 @@ async function status() {
 }
 
 // Run JavaScript with the user's connection (axios carries that app's credentials).
+// Run one of the app's own actions through the user's enabled flow (script_id stays server-side).
+async function runActionFor(app, key, version, inputData) {
+  const r = row(app);
+  if (!r || !r.script_id) throw new Error(`${APPS[app].name} is not connected`);
+  try {
+    const out = await vs().runAction(r.script_id, key, inputData, { version });
+    if (r.last_error) db.prepare('UPDATE integrations SET last_error = NULL WHERE app = ?').run(app);
+    return out;
+  } catch (e) {
+    const msg = String((e.body && (e.body.errorMsg || e.body.message)) || e.message).slice(0, 300);
+    db.prepare('UPDATE integrations SET last_error = ? WHERE app = ?').run(msg, app);
+    throw new Error(`${APPS[app].name}: ${msg}`);
+  }
+}
+// The public catalog's form schema for one action (cached), read live — never typed from memory.
+const schemaCache = new Map();
+async function actionSchema(serviceId, actionId) {
+  const k = serviceId + ':' + actionId, hit = schemaCache.get(k);
+  if (hit && Date.now() - hit.at < 3600e3) return hit.schema;
+  const app = await vs().catalog.versions(serviceId);
+  const a = app && (app.actions || []).find((x) => x.action_id === actionId);
+  if (!a) throw new Error('Action not found in the viaSocket catalog');
+  schemaCache.set(k, { at: Date.now(), schema: a.input_schema || {} });
+  return a.input_schema || {};
+}
+
 async function run(app, code, inputData = {}) {
   const r = row(app);
   if (!r || !r.script_id) throw new Error(`${APPS[app].name} is not connected`);
@@ -221,7 +252,7 @@ const r = await axios.post('https://sheets.googleapis.com/v4/spreadsheets/' + id
 return { spreadsheetId: id, url: c.data.spreadsheetUrl, updatedRange: r.data.updates && r.data.updates.updatedRange };`);
 }
 
-module.exports = { sheetsTest,
+module.exports = { runActionFor, actionSchema, sheetsTest,
   USER_ID, APPS, configured, connected, settings, saveSettings, connectInfo, onConnected, disconnect, status,
   slackCall, slackReady, slackChannels, slackUsers, gmailSend, gmailMe, sheetsList, sheetsTabs, sheetsAppend,
 };
