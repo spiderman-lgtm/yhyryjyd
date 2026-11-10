@@ -70,17 +70,16 @@
     if (!el || el.dataset.built) return;
     el.dataset.built = '1';
     const W = 320, H = 120, bank = 92;
-    const leftTrees = [[24, 78, -.3], [48, 62, -1.1], [70, 56, -.6], [8, 52, -1.6], [92, 44, -2.1]];
-    const rightTrees = [[244, 58, -.8], [264, 70, -.2], [288, 80, -1.3], [310, 60, -.5], [228, 46, -1.9]];
+    const leftTrees = [[24, 78, -.3], [48, 62, -1.1], [70, 56, -.6], [8, 52, -1.6], [92, 44, -2.1], [-14, 66, -.9], [-38, 54, -1.4], [-62, 70, -.2]];
+    const rightTrees = [[244, 58, -.8], [264, 70, -.2], [288, 80, -1.3], [310, 60, -.5], [228, 46, -1.9], [334, 68, -1.0], [358, 56, -.4], [382, 74, -1.7]];
     const rod = { x: 120, y: bank - 8 };
     n++;
-    const narrow = window.innerWidth < 720; // phones: show the left bank (trees + fishing bird)
-    el.innerHTML = `<svg viewBox="${narrow ? '0 0 168 120' : `0 0 ${W} ${H}`}" preserveAspectRatio="xMidYMax slice" shape-rendering="crispEdges">
+    el.innerHTML = `<svg shape-rendering="crispEdges">
       <g class="qp-clouds">${cloud(70, 34, 3)}${cloud(150, 46, 4)}${cloud(205, 30, 3)}${cloud(-30, 52, 3)}</g>
       <g class="qp-flock"><path d="M0 0h1v1h1v1h1V1h1V0h1v1H4v1H3v1H2V2H1V1H0z" fill="#3e5a52"/><path transform="translate(8 3)" d="M0 0h1v1h1v1h1V1h1V0h1v1H4v1H3v1H2V2H1V1H0z" fill="#3e5a52"/></g>
       ${leftTrees.sort((a, b) => a[1] - b[1]).map(([x, h, s]) => pine(x, bank, h, s)).join('')}
       ${rightTrees.sort((a, b) => a[1] - b[1]).map(([x, h, s]) => pine(x, bank, h, s)).join('')}
-      ${grass(4, 128, bank)}${grass(222, 96, bank)}
+      ${grass(-120, 252, bank)}${grass(222, 220, bank)}
       ${flower(70, bank - 4)}${flower(250, bank - 4)}${flower(233, bank - 3)}
       ${rect(104, bank - 4, 6, 4, '#7a8a8f')}${rect(104, bank - 5, 6, 1, '#2b2b2b')}${rect(105, bank - 3, 4, 1, '#9fb0b5')}
       ${fishingBird(rod.x - 4, bank - 1)}
@@ -88,8 +87,8 @@
         <path d="M${rod.x - 2} ${bank - 6} L${rod.x + 18} ${bank - 26}" stroke="#6b4a3a" stroke-width="1.2" shape-rendering="auto"/>
         <path d="M${rod.x + 18} ${bank - 26} L${rod.x + 18} ${bank + 7}" stroke="#2b2b2b" stroke-width=".4" shape-rendering="auto"/>
       </g>
-      <rect x="0" y="${bank + 5}" width="${W}" height="${H - bank - 5}" fill="#9cbcb6"/>
-      <rect x="0" y="${bank + 5}" width="${W}" height="1" fill="#7fa29c"/>
+      <rect x="-400" y="${bank + 5}" width="${W + 800}" height="${H - bank - 5}" fill="#9cbcb6"/>
+      <rect x="-400" y="${bank + 5}" width="${W + 800}" height="1" fill="#7fa29c"/>
       <g class="qp-shimmer">${Array.from({ length: 34 }, (_, i) => rect((i * 47) % (W + 40) - 20, bank + 8 + ((i * 13) % 18), 3 + (i % 4) * 2, 1, i % 3 ? '#c8dcd6' : '#e3eeea')).join('')}</g>
       <g class="qp-bobber">${rect(rod.x + 17, bank + 6, 3, 2, '#e8735f')}${rect(rod.x + 17, bank + 8, 3, 1, '#fbf3e4')}</g>
       <g class="qp-ripple">${rect(rod.x + 13, bank + 10, 11, 1, '#e3eeea')}</g>
@@ -98,5 +97,16 @@
     </svg>`;
   }
 
-  window.buildLoginScene = build;
+  // Fit the scene to the box: phones show the left bank; wide, short screens fit the whole
+  // height (banks, lake and extra pines continue past the sides) so treetops never get cut.
+  function fit() {
+    const el = document.getElementById('qpScene'); const svg = el && el.querySelector('svg');
+    if (!svg) return;
+    const cw = el.clientWidth, ch = el.clientHeight || 1;
+    if (cw < 720) { svg.setAttribute('viewBox', '0 -70 168 190'); svg.setAttribute('preserveAspectRatio', 'xMidYMax slice'); }
+    else if (cw / ch > 320 / 112) { svg.setAttribute('viewBox', '0 2 320 118'); svg.setAttribute('preserveAspectRatio', 'xMidYMax meet'); }
+    else { svg.setAttribute('viewBox', '0 -70 320 190'); svg.setAttribute('preserveAspectRatio', 'xMidYMax slice'); }
+  }
+  window.addEventListener('resize', fit);
+  window.buildLoginScene = () => { build(); fit(); };
 })();

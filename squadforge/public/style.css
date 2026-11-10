@@ -738,8 +738,8 @@ body.on-login { overflow: hidden; }
 .qp-form .err { flex-basis: 100%; margin: 0; color: #b23a30; font-family: 'JetBrains Mono', monospace; }
 .qp-scene { position: absolute; left: 0; right: 0; bottom: 0; height: clamp(300px, 62vh, 640px); z-index: 1; pointer-events: none; }
 .qp-hero > * { position: relative; }
-.qp-form, .qp-feats { background: rgba(207,226,219,.55); border-radius: 18px; }
-.qp-scene svg { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+
+.qp-scene svg { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; overflow: hidden; }
 @keyframes qp-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes qp-float { 50% { transform: translateY(-4px); } }
 .qp-tree { animation: qp-sway 5s ease-in-out infinite; transform-box: view-box; }
@@ -768,3 +768,16 @@ body.on-login { overflow: hidden; }
   .qp-hero { padding-top: 10px; }
 }
 @media (prefers-reduced-motion: reduce) { .qp * { animation: none !important; } }
+
+/* Login is one fixed screen: no scrollbars at all, content scales to the viewport */
+html:has(body.on-login), body.on-login { overflow: hidden !important; height: 100%; }
+.login { overflow: hidden !important; }
+.qp { height: 100vh; height: 100dvh; min-height: 0; }
+.qp-nav { padding: clamp(10px, 2.2vh, 18px) 28px; }
+.qp-hero { padding: clamp(6px, 2.5vh, 28px) 20px 0; padding-bottom: 0 !important; }
+.qp-hero h1 { font-size: clamp(24px, min(5vw, 6vh), 50px); margin-bottom: clamp(8px, 1.6vh, 16px); }
+.qp-hero > p { margin-bottom: clamp(10px, 2.6vh, 28px); }
+.qp-feats { margin-bottom: clamp(10px, 2.4vh, 26px); }
+.qp-scene { height: min(56vh, 600px) !important; }
+@media (max-height: 760px) { .qp-feats small { display: none; } .qp-hero > p { font-size: 12px; } }
+@media (max-width: 720px) { .qp-scene { height: 34vh !important; } .qp-hero > p { font-size: 12px; } }
