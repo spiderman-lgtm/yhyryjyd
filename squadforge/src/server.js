@@ -293,6 +293,10 @@ async function api(req, res, url) {
 
 
   // ---------- viaSocket integrations (admin only) ----------
+  // Connections act as the lead: never open to anyone without a login.
+  if (p.startsWith('/api/integrations') && !process.env.ADMIN_PASSWORD) {
+    return send(res, 403, { error: 'Integrations ke liye pehle ADMIN_PASSWORD set karo (Embarko → App setup), phir login karke Connect karo.' });
+  }
   if (p === '/api/integrations' && m === 'GET') return send(res, 200, await vs.status());
   if (p === '/api/integrations/connect-info' && m === 'GET') {
     if (!vs.configured()) return send(res, 400, { error: 'viaSocket keys (VIASOCKET_ORG_ID, VIASOCKET_PROJECT_ID, VIASOCKET_EMBED_SECRET) set nahi hain' });
