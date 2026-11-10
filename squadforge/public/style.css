@@ -714,7 +714,7 @@ body.on-login { overflow: hidden; }
 .qp-nav { display: flex; align-items: center; gap: 20px; padding: 18px 28px; position: relative; z-index: 3; }
 .qp-logo { display: flex; align-items: center; gap: 8px; font: 700 14px 'JetBrains Mono', monospace; }
 .qp-logo svg { width: 14px; height: 16px; }
-.qp-links { display: flex; gap: 30px; margin: 0 auto; font-size: 13px; color: var(--ink); }
+.qp-links { display: flex; gap: 30px; margin-left: auto; font-size: 13px; color: var(--ink); }
 .qp-links span { cursor: default; position: relative; }
 .qp-links span::after { content: ''; position: absolute; left: 0; right: 100%; bottom: -3px; height: 1px; background: var(--ink); transition: right .3s; }
 .qp-links span:hover::after { right: 0; }
@@ -761,7 +761,7 @@ body.on-login { overflow: hidden; }
 .qp-flock { animation: qp-fly 22s linear infinite; }
 @keyframes qp-fly { from { transform: translate(-20px, 20px); } to { transform: translate(340px, 6px); } }
 @media (max-width: 720px) {
-  .qp-links { display: none; } .qp-pill { margin-left: auto; }
+  .qp-links { display: none; }
   .qp-feats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .qp-feats small { display: none; } .qp-feats b { font-size: 11px; }
   .qp-hero { padding-bottom: 300px; } .qp-scene { height: 300px; }
