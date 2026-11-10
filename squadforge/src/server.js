@@ -30,23 +30,37 @@ function sessionSecret() {
   return process.env.SESSION_SECRET || crypto.createHash('sha256').update('sf:' + (process.env.ADMIN_PASSWORD || 'open')).digest('hex');
 }
 function sign(v) { return crypto.createHmac('sha256', sessionSecret()).update(v).digest('hex'); }
-function makeSession(role) {
+// Admin emails: only these can log in as admin (and manage Integrations). Comma separated env var.
+function adminEmails() {
+  return String(process.env.ADMIN_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+}
+const b64 = (s) => Buffer.from(s, 'utf8').toString('base64url');
+const unb64 = (s) => Buffer.from(s, 'base64url').toString('utf8');
+function makeSession(role, email = '') {
   const exp = Date.now() + 30 * 864e5;
-  return `${role}.${exp}.${sign(role + '.' + exp)}`;
+  const payload = `${role}.${b64(email)}.${exp}`;
+  return `${payload}.${sign(payload)}`;
 }
 function cookies(req) {
   return Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((p) => p[0]).map(([k, ...v]) => [k, decodeURIComponent(v.join('='))]));
 }
-// 'admin' = poora dashboard; 'viewer' = sirf Process view (VIEWER_PASSWORD se); null = login nahi
-function roleOf(req) {
-  if (!process.env.ADMIN_PASSWORD) return 'admin'; // password set nahi - open (dashboard pe warning dikhti hai)
+// { role: 'admin' | 'viewer', email } or null. 'admin' = poora dashboard; 'viewer' = sirf Process view.
+function sessionOf(req) {
+  if (!process.env.ADMIN_PASSWORD) return { role: 'admin', email: null, open: true }; // password set nahi - open
   const s = cookies(req).sf_session;
   if (!s) return null;
-  const [role, exp, sig] = s.split('.');
-  if (!['admin', 'viewer'].includes(role) || !exp || !sig || Number(exp) < Date.now()) return null;
-  const good = sign(role + '.' + exp);
-  return sig.length === good.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good)) ? role : null;
+  const parts = s.split('.');
+  if (parts.length !== 4) return null;
+  const [role, em, exp, sig] = parts;
+  if (!['admin', 'viewer'].includes(role) || Number(exp) < Date.now()) return null;
+  const good = sign(`${role}.${em}.${exp}`);
+  if (sig.length !== good.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) return null;
+  const email = unb64(em);
+  // admin list changed after login → that session is no longer admin
+  if (role === 'admin' && adminEmails().length && !adminEmails().includes(email)) return null;
+  return { role, email };
 }
+function roleOf(req) { const s = sessionOf(req); return s ? s.role : null; }
 // Viewer sirf yeh dekh sakta hai (read-only)
 const VIEWER_ROUTES = ['/api/state', '/api/requests', '/api/logs'];
 function safeEqual(a, b) {
@@ -111,13 +125,19 @@ async function api(req, res, url) {
   const body = ['POST', 'PATCH', 'PUT'].includes(m) ? await readBody(req) : {};
 
   if (p === '/api/health') return send(res, 200, { ok: true });
-  if (p === '/api/me') { const role = roleOf(req); return send(res, 200, { authed: !!role, role, password_set: !!process.env.ADMIN_PASSWORD }); }
+  if (p === '/api/me') {
+    const se = sessionOf(req);
+    return send(res, 200, { authed: !!se, role: se ? se.role : null, email: se ? se.email : null, password_set: !!process.env.ADMIN_PASSWORD, admin_emails_set: adminEmails().length > 0 });
+  }
   if (p === '/api/login' && m === 'POST') {
+    const email = String(body.email || '').trim().toLowerCase();
     let role = null;
-    if (!process.env.ADMIN_PASSWORD || safeEqual(body.password, process.env.ADMIN_PASSWORD)) role = 'admin';
-    else if (process.env.VIEWER_PASSWORD && safeEqual(body.password, process.env.VIEWER_PASSWORD)) role = 'viewer';
-    if (role) return send(res, 200, { ok: true, role }, { 'Set-Cookie': `sf_session=${makeSession(role)}; HttpOnly; Path=/; Max-Age=${30 * 86400}; SameSite=Lax; Secure` });
-    return send(res, 401, { error: 'Galat password' });
+    if (process.env.ADMIN_PASSWORD && safeEqual(body.password, process.env.ADMIN_PASSWORD)) {
+      if (adminEmails().length && !adminEmails().includes(email)) return send(res, 403, { error: 'Ye email admin list mein nahi hai' });
+      role = 'admin';
+    } else if (process.env.VIEWER_PASSWORD && safeEqual(body.password, process.env.VIEWER_PASSWORD)) role = 'viewer';
+    if (role) return send(res, 200, { ok: true, role }, { 'Set-Cookie': `sf_session=${makeSession(role, role === 'admin' ? email : '')}; HttpOnly; Path=/; Max-Age=${30 * 86400}; SameSite=Lax; Secure` });
+    return send(res, 401, { error: 'Galat email ya password' });
   }
   if (p === '/api/logout' && m === 'POST') return send(res, 200, { ok: true }, { 'Set-Cookie': 'sf_session=; Path=/; Max-Age=0' });
 
@@ -294,8 +314,12 @@ async function api(req, res, url) {
 
   // ---------- viaSocket integrations (admin only) ----------
   // Connections act as the lead: never open to anyone without a login.
-  if (p.startsWith('/api/integrations') && !process.env.ADMIN_PASSWORD) {
-    return send(res, 403, { error: 'Integrations ke liye pehle ADMIN_PASSWORD set karo (Embarko → App setup), phir login karke Connect karo.' });
+  if (p.startsWith('/api/integrations')) {
+    const se = sessionOf(req);
+    if (!process.env.ADMIN_PASSWORD || !adminEmails().length) {
+      return send(res, 403, { error: 'Integrations ke liye pehle ADMIN_PASSWORD aur ADMIN_EMAILS set karo (Embarko → App setup), phir apni email se login karo.' });
+    }
+    if (!se || se.role !== 'admin' || !adminEmails().includes(se.email)) return send(res, 403, { error: 'Integrations sirf admin emails ke liye hai' });
   }
   if (p === '/api/integrations' && m === 'GET') return send(res, 200, await vs.status());
   if (p === '/api/integrations/connect-info' && m === 'GET') {
@@ -304,7 +328,7 @@ async function api(req, res, url) {
   }
   if (p === '/api/integrations/connected' && m === 'POST') {
     if (!vs.APPS[body.app]) return send(res, 400, { error: 'Unknown app' });
-    return send(res, 200, await vs.onConnected(body.app, body.authId));
+    return send(res, 200, await vs.onConnected(body.app, body.authId, (sessionOf(req) || {}).email));
   }
   if ((mm = p.match(/^\/api\/integrations\/([a-z-]+)\/(disconnect|settings|test|options)$/))) {
     const app = mm[1], action = mm[2];

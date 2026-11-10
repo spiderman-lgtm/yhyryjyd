@@ -45,7 +45,7 @@ const initials = (n) => n.replace(/\(.*\)/, '').trim().split(/\s+/).map((w) => w
 function showLogin() { $('#login').classList.remove('hidden'); }
 $('#loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  try { await api('/api/login', { method: 'POST', body: { password: $('#password').value } }); $('#login').classList.add('hidden'); boot(); }
+  try { await api('/api/login', { method: 'POST', body: { email: $('#email').value, password: $('#password').value } }); $('#login').classList.add('hidden'); boot(); }
   catch (err) { $('#loginErr').textContent = err.message; }
 });
 $('#logoutBtn').addEventListener('click', async () => { await api('/api/logout', { method: 'POST' }); location.reload(); });

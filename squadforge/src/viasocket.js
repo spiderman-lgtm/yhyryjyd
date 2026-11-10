@@ -36,6 +36,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS integrations (
   connected_at TEXT NOT NULL DEFAULT (datetime('now')),
   last_error TEXT
 )`);
+try { db.exec('ALTER TABLE integrations ADD COLUMN connected_by TEXT'); } catch { /* already there */ }
 
 let client = null;
 function configured() {
@@ -77,15 +78,15 @@ async function connectInfo() {
 }
 
 // After the popup posts back an auth_id: enable the app once and keep its script_id.
-async function onConnected(app, authId) {
+async function onConnected(app, authId, by = null) {
   if (!APPS[app]) throw new Error('Unknown app');
   if (!authId || typeof authId !== 'string') throw new Error('authId missing');
   const u = user();
   const scriptId = (await u.findEnabled(app)) || (await u.enable(app, authId)).scriptId;
-  db.prepare(`INSERT INTO integrations (app, auth_id, script_id) VALUES (?, ?, ?)
-              ON CONFLICT(app) DO UPDATE SET auth_id = excluded.auth_id, script_id = excluded.script_id, last_error = NULL`)
-    .run(app, authId, scriptId);
-  logActivity('scout', `🔌 ${APPS[app].name} connect ho gaya`);
+  db.prepare(`INSERT INTO integrations (app, auth_id, script_id, connected_by) VALUES (?, ?, ?, ?)
+              ON CONFLICT(app) DO UPDATE SET auth_id = excluded.auth_id, script_id = excluded.script_id, connected_by = excluded.connected_by, connected_at = datetime('now'), last_error = NULL`)
+    .run(app, authId, scriptId, by);
+  logActivity('scout', `🔌 ${APPS[app].name} connect ho gaya${by ? ' (' + by + ')' : ''}`);
   return status();
 }
 
@@ -121,7 +122,7 @@ async function status() {
         slug, name: a.name, icon: a.icon, about: a.about,
         connected: !!(r && r.script_id), expired: !!(c && c.isExpired),
         auth_id_for_reconnect: c && c.isExpired ? r.auth_id : undefined, // only for in-place reconnect popup
-        settings: r ? r.settings : {}, last_error: r ? r.last_error : null, connected_at: r ? r.connected_at : null,
+        settings: r ? r.settings : {}, last_error: r ? r.last_error : null, connected_at: r ? r.connected_at : null, connected_by: r ? r.connected_by : null,
       };
     }),
   };

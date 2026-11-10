@@ -54,7 +54,7 @@ function appCard(a) {
     ${a.last_error ? `<div class="banner red" style="margin-top:10px">⚠️ ${esc(a.last_error)}</div>` : ''}
     ${body}
     <div class="row" style="margin-top:12px">
-      ${!a.connected || a.expired ? `<button class="btn gold" data-connect="${a.slug}" ${a.expired ? `data-reauth="${esc(a.auth_id_for_reconnect || '')}"` : ''}><img src="${esc(a.icon)}" alt="" class="btn-ic" onerror="this.remove()"/> ${a.expired ? 'Reconnect' : 'Connect'} ${esc(a.name)}</button>` : `<span class="muted" style="font-size:12px">Connected ${ago(a.connected_at)}</span><span class="spacer"></span><button class="btn ghost small" data-disconnect="${a.slug}">Disconnect</button>`}
+      ${!a.connected || a.expired ? `<button class="btn gold" data-connect="${a.slug}" ${a.expired ? `data-reauth="${esc(a.auth_id_for_reconnect || '')}"` : ''}><img src="${esc(a.icon)}" alt="" class="btn-ic" onerror="this.remove()"/> ${a.expired ? 'Reconnect' : 'Connect'} ${esc(a.name)}</button>` : `<span class="muted" style="font-size:12px">Connected ${ago(a.connected_at)}${a.connected_by ? ' · ' + esc(a.connected_by) : ''}</span><span class="spacer"></span><button class="btn ghost small" data-disconnect="${a.slug}">Disconnect</button>`}
     </div>
     <div class="integ-out" data-out="${a.slug}"></div>
   </div>`;
