@@ -1,21 +1,21 @@
-/* 🔌 Integrations: lead connects Slack / Gmail / Google Sheets through viaSocket, then picks
-   channel, "main kaun hoon", manager email, spreadsheet - once. SquadForge does the rest. */
+/* 🔌 Integrations: an admin connects Slack / Gmail / Google Sheets through viaSocket, then picks
+   the channel, "this is me", the manager's email and the spreadsheet, once. SquadForge does the rest. */
 
 let vsInfo = null; // { token, serviceIds, actions } - embed token is the only viaSocket value the browser holds
 let vsListening = false;
 
 async function renderIntegrations() {
-  $('#view').innerHTML = `<h2>🔌 Integrations</h2><div class="empty">Load ho raha hai…</div>`;
+  $('#view').innerHTML = `<h2>🔌 Integrations</h2><div class="empty">Loading…</div>`;
   let st;
   try { st = await api('/api/integrations'); } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; return; }
   if (st.configured && !vsInfo) { try { vsInfo = await api('/api/integrations/connect-info'); } catch (e) { toast(e.message); } }
   listenForConnect();
   $('#view').innerHTML = `
-    <div class="row" style="margin-bottom:6px"><h2 style="margin:0">🔌 Integrations</h2><span class="spacer"></span><span class="muted" style="font-size:12px">viaSocket se — 2,300+ apps</span></div>
-    <p class="muted" style="margin-top:0">Ek baar <b>Connect</b> dabao aur apna account chuno. Login aur tokens viaSocket sambhalta hai; SquadForge sirf aapke chune hue kaam karta hai.</p>
-    ${st.configured ? '' : '<div class="banner red">viaSocket keys server pe set nahi hain (VIASOCKET_ORG_ID, VIASOCKET_PROJECT_ID, VIASOCKET_EMBED_SECRET).</div>'}
+    <div class="row" style="margin-bottom:6px"><h2 style="margin:0">🔌 Integrations</h2><span class="spacer"></span><span class="muted" style="font-size:12px">via viaSocket: 2,300+ apps</span></div>
+    <p class="muted" style="margin-top:0">Click <b>Connect</b> once and choose your account. viaSocket handles sign-in and tokens; SquadForge only does the jobs you switch on.</p>
+    ${st.configured ? '' : '<div class="banner red">viaSocket keys are not set on the server (VIASOCKET_ORG_ID, VIASOCKET_PROJECT_ID, VIASOCKET_EMBED_SECRET).</div>'}
     <div class="grid integ-grid">${st.apps.map(appCard).join('')}</div>
-    <div class="card" style="margin-top:16px"><h3>➕ Aur apps</h3><p class="muted" style="margin:0">Jira, ClickUp, Trello, Notion, HubSpot… jo bhi chahiye bataiye. Client request aate hi wahan task banana, ya complete hone pe update karna, isi tarah juda jayega.</p></div>`;
+    <div class="card" style="margin-top:16px"><h3>➕ More apps</h3><p class="muted" style="margin:0">Jira, ClickUp, Trello, Notion, HubSpot… tell us what you need. Creating a task there when a client request arrives, or updating it when the request completes, plugs in the same way.</p></div>`;
   st.apps.forEach(wireCard);
 }
 
@@ -26,27 +26,27 @@ function appCard(a) {
   if (a.connected && !a.expired) {
     if (a.slug === 'slack') {
       body = `
-        <label>Team channel (yahan se updates padhe jayenge)</label>
-        <div class="picker" data-pick="channel" data-app="slack"><select id="pk_channel"><option value="${esc(s.channel_id || '')}">${esc(s.channel_name || '— chuno —')}</option></select><button class="btn ghost small" data-load="channel">List lao</button></div>
-        <label>Main kaun hoon (7 PM alert aur reports ka DM)</label>
-        <div class="picker" data-pick="me" data-app="slack"><select id="pk_me"><option value="${esc(s.me_id || '')}">${esc(s.me_name || '— chuno —')}</option></select><button class="btn ghost small" data-load="me">List lao</button></div>
-        <label class="check"><input type="checkbox" id="sl_use" ${s.use_for_slack !== false ? 'checked' : ''}/> SquadForge Slack isi connection se chalaye (bot token ki zaroorat nahi)</label>
-        <div class="row" style="margin-top:8px"><button class="btn" data-save="slack">Save</button><button class="btn ghost" data-test="slack">🧪 Mujhe test DM bhejo</button></div>`;
+        <label>Team channel (updates are read from here)</label>
+        <div class="picker" data-pick="channel" data-app="slack"><select id="pk_channel"><option value="${esc(s.channel_id || '')}">${esc(s.channel_name || '— choose —')}</option></select><button class="btn ghost small" data-load="channel">Load list</button></div>
+        <label>This is me (receives the 7 PM alert and report DMs)</label>
+        <div class="picker" data-pick="me" data-app="slack"><select id="pk_me"><option value="${esc(s.me_id || '')}">${esc(s.me_name || '— choose —')}</option></select><button class="btn ghost small" data-load="me">Load list</button></div>
+        <label class="check"><input type="checkbox" id="sl_use" ${s.use_for_slack !== false ? 'checked' : ''}/> Run SquadForge's Slack through this connection (no bot token needed)</label>
+        <div class="row" style="margin-top:8px"><button class="btn" data-save="slack">Save</button><button class="btn ghost" data-test="slack">🧪 Send me a test DM</button></div>`;
     } else if (a.slug === 'gmail') {
       body = `
-        <label>Manager ka email (Monday report yahan jayegi)</label>
+        <label>Manager's email (the Monday report goes here)</label>
         <input id="gm_to" type="email" value="${esc(s.manager_email || '')}" placeholder="manager@company.com"/>
-        <label class="check"><input type="checkbox" id="gm_on" ${s.weekly_email !== false ? 'checked' : ''}/> Har Monday weekly report email karo</label>
-        <div class="row" style="margin-top:8px"><button class="btn" data-save="gmail">Save</button><button class="btn ghost" data-test="gmail">🧪 Mujhe test email bhejo</button></div>`;
+        <label class="check"><input type="checkbox" id="gm_on" ${s.weekly_email !== false ? 'checked' : ''}/> Email the weekly report every Monday</label>
+        <div class="row" style="margin-top:8px"><button class="btn" data-save="gmail">Save</button><button class="btn ghost" data-test="gmail">🧪 Send me a test email</button></div>`;
     } else {
       body = `
         <label>Spreadsheet</label>
-        <div class="picker"><input id="gs_search" placeholder="naam se dhundho…" style="flex:1"/><button class="btn ghost small" data-load="spreadsheet">Dhundho</button></div>
-        <select id="pk_sheet" style="margin-top:6px"><option value="${esc(s.spreadsheet_id || '')}">${esc(s.spreadsheet_name || '— chuno —')}</option></select>
+        <div class="picker"><input id="gs_search" placeholder="search by name…" style="flex:1"/><button class="btn ghost small" data-load="spreadsheet">Search</button></div>
+        <select id="pk_sheet" style="margin-top:6px"><option value="${esc(s.spreadsheet_id || '')}">${esc(s.spreadsheet_name || '— choose —')}</option></select>
         <label>Sheet (tab)</label>
-        <div class="picker"><select id="pk_tab"><option value="${esc(s.tab || '')}">${esc(s.tab || '— pehle spreadsheet chuno —')}</option></select><button class="btn ghost small" data-load="tab">List lao</button></div>
-        <label class="check"><input type="checkbox" id="gs_on" ${s.weekly_rows !== false ? 'checked' : ''}/> Har Monday har member ki ek row add karo</label>
-        <div class="row" style="margin-top:8px"><button class="btn" data-save="google-sheets">Save</button><button class="btn ghost" data-test="google-sheets">🧪 "viaSocket test" sheet banao</button></div>`;
+        <div class="picker"><select id="pk_tab"><option value="${esc(s.tab || '')}">${esc(s.tab || '— choose a spreadsheet first —')}</option></select><button class="btn ghost small" data-load="tab">Load list</button></div>
+        <label class="check"><input type="checkbox" id="gs_on" ${s.weekly_rows !== false ? 'checked' : ''}/> Add one row per member every Monday</label>
+        <div class="row" style="margin-top:8px"><button class="btn" data-save="google-sheets">Save</button><button class="btn ghost" data-test="google-sheets">🧪 Create a "viaSocket test" sheet</button></div>`;
     }
   }
   return `<div class="card integ" data-app="${a.slug}">
@@ -68,8 +68,8 @@ function wireCard(a) {
   if (c) c.onclick = () => openConnect(a.slug, c.dataset.reauth || undefined);
   const d = card.querySelector('[data-disconnect]');
   if (d) d.onclick = async () => {
-    if (!confirm(`${a.name} disconnect karna hai?`)) return;
-    await api(`/api/integrations/${a.slug}/disconnect`, { method: 'POST' }); toast('Disconnect ho gaya'); renderIntegrations();
+    if (!confirm(`Disconnect ${a.name}?`)) return;
+    await api(`/api/integrations/${a.slug}/disconnect`, { method: 'POST' }); toast('Disconnected'); renderIntegrations();
   };
   card.querySelectorAll('[data-load]').forEach((b) => (b.onclick = async () => {
     const field = b.dataset.load;
@@ -77,16 +77,16 @@ function wireCard(a) {
     try {
       let q = `field=${field}`;
       if (field === 'spreadsheet') q += `&search=${encodeURIComponent($('#gs_search').value)}`;
-      if (field === 'tab') { const sid = $('#pk_sheet').value; if (!sid) throw new Error('Pehle spreadsheet chuno'); q += `&spreadsheet=${encodeURIComponent(sid)}`; }
+      if (field === 'tab') { const sid = $('#pk_sheet').value; if (!sid) throw new Error('Choose a spreadsheet first'); q += `&spreadsheet=${encodeURIComponent(sid)}`; }
       let r = await api(`/api/integrations/${a.slug}/options?${q}`);
       let opts = r.options || [];
       while (r.paginate && opts.length < 1000 && (field === 'channel' || field === 'me')) { r = await api(`/api/integrations/${a.slug}/options?${q}&paginate=${encodeURIComponent(r.paginate)}`); opts = opts.concat(r.options || []); }
       const sel = { channel: '#pk_channel', me: '#pk_me', spreadsheet: '#pk_sheet', tab: '#pk_tab' }[field];
       const cur = $(sel).value;
-      $(sel).innerHTML = `<option value="">— chuno (${opts.length}) —</option>` + opts.sort((x, y) => x.label.localeCompare(y.label)).map((o) => `<option value="${esc(o.value)}" ${o.value === cur ? 'selected' : ''}>${esc(o.label)}</option>`).join('');
+      $(sel).innerHTML = `<option value="">— choose (${opts.length}) —</option>` + opts.sort((x, y) => x.label.localeCompare(y.label)).map((o) => `<option value="${esc(o.value)}" ${o.value === cur ? 'selected' : ''}>${esc(o.label)}</option>`).join('');
       if (r.message) out.innerHTML = `<p class="muted">${esc(r.message)}</p>`;
     } catch (e) { out.innerHTML = `<div class="banner red">${esc(e.message)}</div>`; }
-    b.disabled = false; b.textContent = field === 'spreadsheet' ? 'Dhundho' : 'List lao';
+    b.disabled = false; b.textContent = field === 'spreadsheet' ? 'Search' : 'Load list';
   }));
   const save = card.querySelector('[data-save]');
   if (save) save.onclick = async () => {
@@ -97,16 +97,16 @@ function wireCard(a) {
     else body = { spreadsheet_id: $('#pk_sheet').value, spreadsheet_name: label('#pk_sheet'), tab: $('#pk_tab').value, weekly_rows: $('#gs_on').checked };
     try {
       const r = await api(`/api/integrations/${a.slug}/settings`, { method: 'POST', body });
-      toast(r.warning ? 'Save hua, lekin: ' + r.warning : 'Save ho gaya ✅'); refresh(); renderIntegrations();
+      toast(r.warning ? 'Saved, but: ' + r.warning : 'Saved ✅'); refresh(); renderIntegrations();
     } catch (e) { toast(e.message); }
   };
   const test = card.querySelector('[data-test]');
   if (test) test.onclick = async () => {
-    test.disabled = true; const t = test.textContent; test.textContent = 'Test chal raha hai…';
+    test.disabled = true; const t = test.textContent; test.textContent = 'Testing…';
     try {
       const r = await api(`/api/integrations/${a.slug}/test`, { method: 'POST' });
       const x = r.result || {};
-      out.innerHTML = `<div class="banner" style="margin-top:10px">✅ Test pass. ${a.slug === 'gmail' ? 'Email gaya: ' + esc(x.to || '') : a.slug === 'slack' ? 'Slack mein apna DM dekho.' : `Sheet bani: <a href="${esc(x.url || '#')}" target="_blank" rel="noopener">viaSocket test ↗</a>`}</div>`;
+      out.innerHTML = `<div class="banner" style="margin-top:10px">✅ Test passed. ${a.slug === 'gmail' ? 'Email sent to: ' + esc(x.to || '') : a.slug === 'slack' ? 'Check your DMs in Slack.' : `Sheet created: <a href="${esc(x.url || '#')}" target="_blank" rel="noopener">viaSocket test ↗</a>`}</div>`;
     } catch (e) { out.innerHTML = `<div class="banner red" style="margin-top:10px">❌ ${esc(e.message)}</div>`; }
     test.disabled = false; test.textContent = t;
   };
@@ -114,8 +114,8 @@ function wireCard(a) {
 
 // The popup opens straight from the click (token was fetched on page load).
 function openConnect(slug, authId) {
-  if (!vsInfo) return toast('viaSocket abhi taiyaar nahi — page refresh karo');
-  if (typeof window.openViasocketConnection !== 'function') return toast('viaSocket connect script load nahi hui — page refresh karo');
+  if (!vsInfo) return toast('viaSocket is not ready yet. Refresh the page.');
+  if (typeof window.openViasocketConnection !== 'function') return toast('The viaSocket connect script did not load. Refresh the page.');
   const opts = { filteredActions: vsInfo.actions[slug], skipActionSelection: true };
   if (authId) opts.authId = authId;
   window.openViasocketConnection(vsInfo.token, vsInfo.serviceIds[slug], opts);
@@ -133,10 +133,10 @@ function listenForConnect() {
       if (!app) return;
       try {
         await api('/api/integrations/connected', { method: 'POST', body: { app, authId: d.data && d.data.id } });
-        toast('Connect ho gaya ✅ — ab neeche choices bharo'); renderIntegrations(); refresh();
+        toast('Connected ✅ Now fill in the choices below.'); renderIntegrations(); refresh();
       } catch (e) { toast(e.message); }
     } else if (d.type === 'viasocket_connection_error') {
-      toast('Connect nahi hua: ' + ((d.error && d.error.message) || 'error'));
+      toast('Could not connect: ' + ((d.error && d.error.message) || 'error'));
     }
   });
 }

@@ -1,7 +1,7 @@
-/* Process mode: Live Flow - kaam ka structure chalta hua dikhta hai.
+/* Live Flow: shows how work moves through the agents, live.
    1) Agent flow map: Slack/viaSocket/aap → agents → outputs, chalti hui lines + packets
-   2) Request journeys: har client request ka token stage-by-stage aage badhta hai
-   3) Aaj ka din: kisne kab update daala, "abhi" line, 7 PM alert ka countdown */
+   2) Request journeys: each client request's token moves forward stage by stage
+   3) Today: who posted updates and when, a "now" line, and a countdown to the 7 PM alert */
 
 const FLOW_W = 1200, FLOW_H = 560;
 const FLOW_NODES = {
@@ -31,7 +31,7 @@ const FLOW_EDGES = [
   ['inspector', 'threads', 'inspector'], ['growth', 'threads', 'growth'], ['commander', 'threads', 'commander'],
   ['herald', 'alert', 'herald'], ['scribe', 'report', 'scribe'], ['analyst', 'dash', 'analyst'], ['commander', 'sms', 'commander'],
 ];
-// Activity feed ka agent → packet kis edge pe chalega
+// Activity feed agent → which edge its packet travels along
 const PACKET_EDGE = {
   scout: ['slack', 'scout'], tracker: ['scout', 'tracker'], growth: ['scout', 'growth'], inspector: ['inspector', 'threads'],
   analyst: ['analyst', 'dash'], herald: ['herald', 'alert'], scribe: ['scribe', 'report'], commander: ['commander', 'threads'],
@@ -64,7 +64,7 @@ function flowNodeSvg(id, n) {
   </g>`;
 }
 function statusLine(a) {
-  if (a.state === 'working') return a.message || 'kaam chal raha hai…';
+  if (a.state === 'working') return a.message || 'working…';
   if (a.state === 'error') return '⚠ ' + (a.message || 'error');
   return a.last_run_at ? 'ready · ' + ago(a.last_run_at) : 'ready';
 }
@@ -84,10 +84,10 @@ function renderFlow() {
     <div class="pmode-head">
       <div>
         <h2 style="margin:0">🌊 Live Flow</h2>
-        <p class="muted" style="margin:2px 0 0">Kaam kaise chal raha hai, live. Numbers ke liye <b>📊 Dashboard</b> kholo.</p>
+        <p class="muted" style="margin:2px 0 0">How work is moving, live. For numbers, open <b>📊 Dashboard</b>.</p>
       </div>
       <div class="counters">
-        ${counter('⚡', tm.actions, 'actions aaj')}${counter('🎯', tm.triggers, 'triggers aaj')}
+        ${counter('⚡', tm.actions, 'actions today')}${counter('🎯', tm.triggers, 'triggers today')}
         ${counter('📜', Object.values(tm.open_by_status || {}).reduce((a, b) => a + b, 0), 'open requests')}
         ${counter('🧱', (tm.open_by_status || {}).stuck || 0, 'stuck')}
       </div>
@@ -96,12 +96,12 @@ function renderFlow() {
       <div class="flow-scroll"><svg class="flow" id="flowSvg" viewBox="0 0 ${FLOW_W} ${FLOW_H}" role="img" aria-label="Agent flow map">
         ${cols}<g id="fEdges">${edges}</g><g id="fNodes">${nodes}</g><g id="fPackets"></g>
       </svg></div>
-      <div class="swipe-hint muted">← map ko side mein swipe karo →</div>
+      <div class="swipe-hint muted">← swipe the map sideways →</div>
       <div class="flow-ticker" id="flowTicker">${tickerHtml(state.activity[0])}</div>
     </div>
     <div class="grid g2" style="margin-top:16px">
-      <div class="card"><div class="row"><h3 style="margin:0">📜 Request journeys</h3><span class="spacer"></span><span class="muted" style="font-size:12px">token = abhi kis stage pe hai</span></div><div id="journeys" class="journeys"><div class="empty">Load ho raha hai…</div></div></div>
-      <div class="card"><div class="row"><h3 style="margin:0">🕘 Aaj ka din</h3><span class="spacer"></span><span class="muted" id="countdown" style="font-size:12px"></span></div><div id="dayline"></div></div>
+      <div class="card"><div class="row"><h3 style="margin:0">📜 Request journeys</h3><span class="spacer"></span><span class="muted" style="font-size:12px">token = current stage</span></div><div id="journeys" class="journeys"><div class="empty">Loading…</div></div></div>
+      <div class="card"><div class="row"><h3 style="margin:0">🕘 Today</h3><span class="spacer"></span><span class="muted" id="countdown" style="font-size:12px"></span></div><div id="dayline"></div></div>
     </div>`;
 
   document.querySelectorAll('#fNodes [data-agent]').forEach((el) => {
@@ -125,7 +125,7 @@ function countUp() {
   });
 }
 function tickerHtml(a) {
-  if (!a) return '<span class="muted">Abhi koi activity nahi — Slack connect hote hi yahan kaam dikhega.</span>';
+  if (!a) return '<span class="muted">No activity yet. Work will show up here once Slack is connected.</span>';
   return `<span class="tk-ic">${AGENT_EMOJI[a.agent] || '•'}</span><span>${esc(a.message)}</span><span class="muted">${ago(a.created_at)}</span>`;
 }
 
@@ -158,7 +158,7 @@ function updateFlow() {
   }
 }
 
-// Ek "packet" edge pe chalta hai, upar activity ka chhota label
+// A "packet" travels along an edge with a short activity label above it
 function launchPacket(a) {
   const e = PACKET_EDGE[a.agent]; if (!e) return;
   const idx = FLOW_EDGES.findIndex(([x, y]) => x === e[0] && y === e[1]);
@@ -202,7 +202,7 @@ function renderJourneys(reqs) {
   const cutoff = Date.now() - 3 * 864e5;
   const list = reqs.filter((r) => r.status !== 'completed' || (r.completed_at && new Date(r.completed_at) > cutoff))
     .sort((a, b) => STAGES.indexOf(a.status) - STAGES.indexOf(b.status)).slice(0, 10);
-  if (!list.length) { box.innerHTML = '<div class="empty">Koi open client request nahi 🎉</div>'; return; }
+  if (!list.length) { box.innerHTML = '<div class="empty">No open client requests 🎉</div>'; return; }
   const prev = Object.fromEntries([...box.querySelectorAll('.journey')].map((j) => [j.dataset.id, j.dataset.stage]));
   box.innerHTML = list.map((r) => {
     const st = STAGES.indexOf(r.status), pct = (st / (STAGES.length - 1)) * 100;
@@ -245,22 +245,22 @@ function renderDayline(logs) {
   const lane = ({ m, log }) => {
     const marks = [];
     const first = (s) => (s ? s.split(',')[0] : null);
-    if (first(log.morning_ts)) marks.push(`<i class="mk am" style="left:${x(hourOf(first(log.morning_ts)))}" title="Subah ka plan"></i>`);
-    else if (log.morning_text) marks.push(`<i class="mk am" style="left:${x(10)}" title="Subah ka plan"></i>`);
-    else if (nowH > 11.5) marks.push(`<i class="mk miss" style="left:${x(11.5)}" title="Subah ka plan nahi aaya">?</i>`);
-    if (first(log.evening_ts)) marks.push(`<i class="mk pm" style="left:${x(hourOf(first(log.evening_ts)))}" title="Shaam ka update"></i>`);
-    else if (log.evening_text) marks.push(`<i class="mk pm" style="left:${x(Math.min(18.5, nowH))}" title="Shaam ka update"></i>`);
-    else if (nowH > 19) marks.push(`<i class="mk miss" style="left:${x(19)}" title="Shaam ka update nahi aaya">?</i>`);
+    if (first(log.morning_ts)) marks.push(`<i class="mk am" style="left:${x(hourOf(first(log.morning_ts)))}" title="Morning plan"></i>`);
+    else if (log.morning_text) marks.push(`<i class="mk am" style="left:${x(10)}" title="Morning plan"></i>`);
+    else if (nowH > 11.5) marks.push(`<i class="mk miss" style="left:${x(11.5)}" title="Morning plan missing">?</i>`);
+    if (first(log.evening_ts)) marks.push(`<i class="mk pm" style="left:${x(hourOf(first(log.evening_ts)))}" title="Evening update"></i>`);
+    else if (log.evening_text) marks.push(`<i class="mk pm" style="left:${x(Math.min(18.5, nowH))}" title="Evening update"></i>`);
+    else if (nowH > 19) marks.push(`<i class="mk miss" style="left:${x(19)}" title="Evening update missing">?</i>`);
     return `<div class="lane"><span class="lname">${esc(trim(m.name, 14))}</span><div class="ltrack">${marks.join('')}</div></div>`;
   };
   box.innerHTML = `<div class="day">
       <div class="dticks">${ticks.join('')}</div>
       <div class="dlanes">
-        ${people.map(lane).join('') || '<div class="empty">Koi member nahi</div>'}
-        <div class="doverlay"><div class="dnow" style="left:${x(nowH)}"><span>abhi</span></div><div class="d7" style="left:${x(19)}"><span>📢 7PM</span></div></div>
+        ${people.map(lane).join('') || '<div class="empty">No members yet</div>'}
+        <div class="doverlay"><div class="dnow" style="left:${x(nowH)}"><span>now</span></div><div class="d7" style="left:${x(19)}"><span>📢 7PM</span></div></div>
       </div>
     </div>
-    <div class="legend" style="margin-top:8px"><span><i style="background:var(--blue)"></i>subah ka plan</span><span><i style="background:var(--green)"></i>shaam ka update</span><span><i style="background:var(--red)"></i>missing</span></div>`;
+    <div class="legend" style="margin-top:8px"><span><i style="background:var(--blue)"></i>morning plan</span><span><i style="background:var(--green)"></i>evening update</span><span><i style="background:var(--red)"></i>missing</span></div>`;
   const left = 19 - nowH;
-  $('#countdown').textContent = left > 0 ? `📢 7 PM alert ${Math.floor(left)}h ${Math.round((left % 1) * 60)}m mein` : '📢 Aaj ka alert ja chuka';
+  $('#countdown').textContent = left > 0 ? `📢 7 PM alert in ${Math.floor(left)}h ${Math.round((left % 1) * 60)}m` : '📢 Today\'s alert has gone out';
 }
