@@ -22,8 +22,19 @@ const BLD = [
   { key: 'scribe', name: 'Library', x: 7, y: 13, w: 3, d: 2, c: ['#efe3c6', '#d6c8a6', '#bba98a'], roof: 'gable', roofC: '#8e5bd1' },
 ];
 const SPOTS = {
-  gate: { x: 9, y: 16.6 }, forge: { x: 4.5, y: 8.5 }, vault: { x: 11.2, y: 15 },
+  gate: { x: 9, y: 16.6 }, forge: { x: 4.5, y: 8.5 }, vault: { x: 11.2, y: 15 }, launch: { x: 13.6, y: 16.3 },
 };
+// The journey of one piece of work, station by station
+const STORY = [
+  { at: 'gate', icon: '📨', label: 'Message in', item: '✉️' },
+  { at: 'scout', icon: '🔭', label: 'Scout reads', item: '✉️' },
+  { at: 'tracker', icon: '🎯', label: 'Assigned', item: '📜' },
+  { at: 'forge', icon: '🔨', label: 'Building', item: '📜' },
+  { at: 'inspector', icon: '🔍', label: 'Review', item: '📦' },
+  { at: 'commander', icon: '👑', label: 'Lead approves', item: '📦' },
+  { at: 'launch', icon: '🚀', label: 'Published', item: '✅' },
+];
+const STOP_AT = { new: 2, rnd: 3, started: 3, stuck: 3, completed: 6 };
 const MEMBER_COLORS = ['#7b6fd6', '#2aa3b8', '#f08a3c', '#e0628f', '#5fb84a', '#d9b032', '#4f86d9', '#9a6bc4'];
 const CRATE = { actions: '#3987e5', triggers: '#eb6834', apps: '#1baf7a' };
 // where each agent walks while it works
@@ -48,6 +59,7 @@ function renderVillage() {
         <span class="spacer"></span>
         <div class="vil-legend"><i style="background:${CRATE.actions}"></i>action <i style="background:${CRATE.triggers}"></i>trigger <i style="background:${CRATE.apps}"></i>app</div>
       </div>
+      <div class="vil-story" id="vilStory" aria-live="polite"><div class="vs-title" id="vsTitle">Watching the next piece of work…</div><div class="vs-steps">${STORY.map((st, i) => `<span class="vs-step" data-s="${i}"><i>${st.icon}</i>${st.label}</span>`).join('<b class="vs-arrow">›</b>')}</div></div>
       <canvas id="vilCanvas" aria-label="Forge Village: agents and the team at work"></canvas>
       <div class="vil-tip" id="vilTip"></div>
       <div class="vil-ticker" id="vilTicker">${state.activity[0] ? `${AGENT_EMOJI[state.activity[0].agent] || '•'} ${esc(state.activity[0].message)}` : 'Waiting for the first bit of work…'}</div>
@@ -55,6 +67,7 @@ function renderVillage() {
     <h2 style="margin-top:18px">Heroes — this week</h2>
     <div class="heroes">${state.week_metrics.members.map((m) => heroCard(m)).join('') || '<div class="empty">No members yet. Add them in Settings.</div>'}</div>`;
   startVillage();
+  api('/api/requests').then((r) => { if (vil) { vil.jobs = r; vil.jobsAt = Date.now(); } }).catch(() => {});
 }
 
 // ---------- engine ----------
@@ -80,6 +93,7 @@ function startVillage() {
 window.addEventListener('resize', () => { if (vil) resizeVillage(); });
 
 function resizeVillage() {
+  if (vil) vil.terrain = null;
   const c = vil.canvas, box = c.parentElement.getBoundingClientRect();
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const W = box.width, H = Math.max(420, Math.min(720, W * 0.62));
@@ -174,6 +188,7 @@ function stepVillage(t) {
   vil.fx = vil.fx.filter((p) => (p.life -= dt) > 0);
   vil.fx.forEach((p) => { p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; p.vz -= (p.g || 0) * dt; });
   vil.bubbles = vil.bubbles.filter((b) => (b.life -= dt) > 0);
+  stepStory(dt);
 }
 function sparks(p, n) { for (let i = 0; i < n; i++) vil.fx.push({ kind: 'spark', x: p.x, y: p.y - 0.4, z: 20, vx: (Math.random() - .5) * .8, vy: (Math.random() - .5) * .8, vz: 40 + Math.random() * 40, g: 120, life: .7 }); }
 function smoke(p, soft) { for (let i = 0; i < (soft ? 1 : 5); i++) vil.fx.push({ kind: 'smoke', x: p.x - 0.3 + Math.random() * .3, y: p.y - 1.2, z: 60, vx: .05, vy: -.05, vz: 18 + Math.random() * 10, life: 2.2 }); }
@@ -194,20 +209,7 @@ function drawVillage(t) {
   const dark = document.documentElement.dataset.theme === 'dark';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, vil.W, vil.H);
-  // ground
-  for (let y = -2; y < V.N + 2; y++) for (let x = -2; x < V.N + 2; x++) {
-    const inside = x >= 1 && y >= 1 && x < V.N - 1 && y < V.N - 1;
-    const g = inside ? ((x + y) % 2 ? '#8cc56a' : '#82bd60') : ((x + y) % 2 ? '#6aa653' : '#639e4c');
-    tile(ctx, x, y, dark ? shade(g, -0.45) : g);
-  }
-  // paths: ring road + spokes to the gate
-  const road = dark ? '#6b5d48' : '#d8c08a';
-  for (let i = 2; i < V.N - 2; i++) { tile(ctx, i, 11, road); tile(ctx, 9, i, road); }
-  for (let i = 4; i < 15; i++) { tile(ctx, i, 6, road); tile(ctx, 11, i, road); }
-  for (let y = 11; y < V.N; y++) tile(ctx, 9, y, road);
-  // vault floor
-  tile(ctx, 10.5, 14.5, dark ? '#4a4038' : '#b39a6b');
-
+  ctx.drawImage(terrain(dark), 0, 0, vil.W, vil.H);
   const items = [];
   // walls (perimeter, with a gate)
   for (let i = 1; i < V.N - 1; i++) {
@@ -216,9 +218,10 @@ function drawVillage(t) {
     if (i !== 9) items.push({ d: i + V.N - 1, draw: () => wallSeg(ctx, i, V.N - 2, dark) });
     items.push({ d: V.N - 1 + i, draw: () => wallSeg(ctx, V.N - 2, i, dark) });
   }
-  // trees outside the wall
-  for (let i = 0; i < 26; i++) { const x = (i * 7) % (V.N + 2) - 1, y = i % 2 ? -1 : V.N; items.push({ d: x + y, draw: () => tree(ctx, x, y, dark) }); }
-  for (let i = 0; i < 14; i++) { const y = (i * 5) % V.N, x = i % 2 ? -1 : V.N; items.push({ d: x + y, draw: () => tree(ctx, x, y, dark) }); }
+  // river shimmer
+  for (let i = 0; i < 18; i++) { const k = (t / 1800 + i / 18) % 1, y = -6 + k * (V.N + 12); items.push({ d: -99, draw: () => { const q = iso(V.N + 2.5, y); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(q.x - 6 * vil.scale, q.y, 12 * vil.scale, 1.5); } }); }
+  // launch pad (publish)
+  items.push({ d: SPOTS.launch.x + SPOTS.launch.y, draw: () => launchPad(ctx, t, dark) });
   // forge (workshop) and vault
   items.push({ d: SPOTS.forge.x + SPOTS.forge.y, draw: () => forge(ctx, t, dark) });
   items.push({ d: 11 + 15.5, draw: () => vault(ctx, dark) });
@@ -231,6 +234,7 @@ function drawVillage(t) {
   BLD.forEach((b) => items.push({ d: b.x + b.y + b.w + b.d, draw: () => building(ctx, b, lv[b.key] || 1, working.has(b.key), errored.has(b.key), t, dark) }));
   // units
   vil.units.forEach((u) => items.push({ d: u.x + u.y, draw: () => unit(ctx, u, t, errored) }));
+  if (vil.story) items.push({ d: vil.story.x + vil.story.y, draw: () => courier(ctx, vil.story, t) });
   // fx
   vil.fx.forEach((p) => items.push({ d: p.x + p.y + 0.5, draw: () => fx(ctx, p) }));
   items.sort((a, b) => a.d - b.d).forEach((i) => i.draw());
@@ -238,6 +242,44 @@ function drawVillage(t) {
   BLD.forEach((b) => label(ctx, b, lv[b.key] || 1, working.has(b.key)));
   vil.bubbles.forEach((bb) => bubble(ctx, bb));
 }
+// Pre-render ground, roads, river and the wild land outside the wall (redrawn on resize/theme).
+function seeded(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+function terrain(dark) {
+  const key = `${vil.W}x${vil.H}:${dark}`;
+  if (vil.terrain && vil.terrain.key === key) return vil.terrain.cv;
+  const cv = document.createElement('canvas'); cv.width = vil.W * vil.dpr; cv.height = vil.H * vil.dpr;
+  const c = cv.getContext('2d'); c.setTransform(vil.dpr, 0, 0, vil.dpr, 0, 0);
+  const M = 22, river = (x, y) => Math.abs((x - y) - 13) < 1.4 && (x < 1 || y > V.N - 2 || x > V.N - 2 || y < 1) || (x >= V.N + 2 && x <= V.N + 3);
+  const decos = [];
+  for (let y = -M; y < V.N + M; y++) for (let x = -M; x < V.N + M; x++) {
+    const inside = x >= 1 && y >= 1 && x < V.N - 1 && y < V.N - 1;
+    const r = seeded(x * 977 + y * 131);
+    let g;
+    if (inside) g = (x + y) % 2 ? '#8cc56a' : '#84bf62';
+    else if (river(x, y)) g = (x + y) % 2 ? '#5aa9d6' : '#4f9fcf';
+    else g = r < 0.5 ? '#6cab55' : r < 0.8 ? '#66a44f' : '#72b25a';
+    tile(c, x, y, dark ? shade(g, -0.48) : g);
+    if (!inside && !river(x, y) && (x < 0 || y < 0 || x > V.N - 1 || y > V.N - 1)) {
+      if (r > 0.82) decos.push({ x, y, k: 'pine' }); else if (r > 0.76) decos.push({ x, y, k: 'rock' }); else if (r > 0.72) decos.push({ x, y, k: 'bush' }); else if (r > 0.70) decos.push({ x, y, k: 'flower' });
+    }
+  }
+  const road = dark ? '#6b5d48' : '#d8c08a';
+  for (let i = 2; i < V.N - 2; i++) { tile(c, i, 11, road); tile(c, 9, i, road); }
+  for (let i = 4; i < 15; i++) { tile(c, i, 6, road); tile(c, 11, i, road); }
+  for (let y = 11; y < V.N + 6; y++) tile(c, 9, y, road);
+  for (let x = 11; x < 16; x++) tile(c, x, 15, road);
+  tile(c, 10.5, 14.5, dark ? '#4a4038' : '#b39a6b');
+  decos.sort((a, b) => a.x + a.y - b.x - b.y).forEach((d) => {
+    const p = iso(d.x + .5, d.y + .5), s = vil.scale;
+    if (d.k === 'pine') { c.fillStyle = dk('#5a3d2c', dark); c.fillRect(p.x - 2 * s, p.y - 10 * s, 4 * s, 10 * s); [[26, 16], [19, 12], [12, 8]].forEach(([h, w], i) => { c.fillStyle = dk(i % 2 ? '#3f8a4a' : '#357a40', dark); c.beginPath(); c.moveTo(p.x, p.y - (h + 14) * s); c.lineTo(p.x - w * s, p.y - (h - 6) * s); c.lineTo(p.x + w * s, p.y - (h - 6) * s); c.fill(); }); }
+    else if (d.k === 'rock') { c.fillStyle = dk('#9a9a96', dark); c.beginPath(); c.ellipse(p.x, p.y - 5 * s, 13 * s, 8 * s, 0, 0, 7); c.fill(); c.fillStyle = dk('#b8b8b2', dark); c.beginPath(); c.ellipse(p.x - 3 * s, p.y - 8 * s, 7 * s, 4 * s, 0, 0, 7); c.fill(); }
+    else if (d.k === 'bush') { c.fillStyle = dk('#4f9a4e', dark); c.beginPath(); c.arc(p.x - 4 * s, p.y - 5 * s, 6 * s, 0, 7); c.arc(p.x + 4 * s, p.y - 5 * s, 6 * s, 0, 7); c.fill(); }
+    else { ['#f6c2d4', '#fff2a8', '#ffffff'].forEach((fc, i) => { c.fillStyle = dk(fc, dark); c.fillRect(p.x + (i - 1) * 5 * s, p.y - 3 * s - i % 2 * 3 * s, 3 * s, 3 * s); }); }
+  });
+  vil.terrain = { key, cv };
+  return cv;
+}
+
 function shade(col, k) {
   let r, g, b;
   if (String(col).startsWith('rgb')) [r, g, b] = col.match(/[\d.]+/g).map(Number);
@@ -378,6 +420,7 @@ function villageHover(e) {
 // called by app.js refresh() every 5 s while the Village is open
 function villageUpdate() {
   if (!vil) return;
+  if (!vil.jobsAt || Date.now() - vil.jobsAt > 30000) { vil.jobsAt = Date.now(); api('/api/requests').then((r) => { if (vil) vil.jobs = r; }).catch(() => {}); }
   const w = state.week_metrics.totals;
   ['actions', 'triggers', 'apps'].forEach((k) => { const el = document.querySelector(`[data-r="${k}"]`); if (el && el.textContent !== String(w[k])) { el.textContent = w[k]; el.parentElement.classList.remove('bump'); void el.offsetWidth; el.parentElement.classList.add('bump'); } });
   const fresh = state.activity.filter((a) => a.id > vil.lastAct).reverse();
@@ -395,6 +438,87 @@ function villageUpdate() {
     if (good) confetti(spot(key));
     $('#vilTicker').textContent = `${AGENT_EMOJI[a.agent] || '•'} ${a.message}`;
   }, i * 900));
+}
+
+
+// ---------- the story of one request, walked station by station ----------
+function nextStory() {
+  const jobs = (vil.jobs || []).filter((j) => STOP_AT[j.status] !== undefined);
+  if (!jobs.length) return null;
+  vil.storyIdx = ((vil.storyIdx ?? -1) + 1) % jobs.length;
+  const j = jobs[vil.storyIdx];
+  const who = j.assigned[0] ? j.assigned[0].name.replace(/\s*\(.*\)/, '') : 'the team';
+  const p = spot('gate');
+  return { job: j, who, x: p.x, y: p.y + 1.5, step: 0, stop: STOP_AT[j.status], wait: 0.6, done: false };
+}
+function stepStory(dt) {
+  if (!vil.story || vil.story.done && (vil.story.hold -= dt) <= 0) { vil.story = nextStory(); paintStory(); return; }
+  const st = vil.story;
+  if (st.done) return;
+  if (st.wait > 0) { st.wait -= dt; return; }
+  const target = spot(STORY[st.step].at);
+  const dx = target.x - st.x, dy = target.y - st.y, dist = Math.hypot(dx, dy), sp = 2.4 * dt;
+  st.walk = (st.walk || 0) + dt * 10;
+  if (dist > 0.05) { st.x += dx / dist * Math.min(sp, dist); st.y += dy / dist * Math.min(sp, dist); return; }
+  // arrived at a station
+  const here = STORY[st.step];
+  if (here.at === 'forge') sparks(target, 10);
+  if (here.at === 'inspector' || here.at === 'scout') smoke(target, true);
+  if (st.step >= st.stop) {
+    st.done = true; st.hold = st.job.status === 'completed' ? 4 : 3.5;
+    if (st.job.status === 'completed') { confetti(target); vil.rocket = 1; }
+    if (st.job.status === 'stuck') vil.bubbles.push({ key: 'inspector', text: '🧱 ' + (st.job.stuck_reason || 'Stuck'), life: 3.5, bad: true });
+  } else { st.step++; st.wait = 0.9; }
+  paintStory();
+}
+function paintStory() {
+  const box = document.getElementById('vilStory'); if (!box) return;
+  const st = vil.story;
+  if (!st) { $('#vsTitle').textContent = 'No client requests yet — new work will walk through here.'; box.querySelectorAll('.vs-step').forEach((e) => (e.className = 'vs-step')); return; }
+  const now = STORY[st.step];
+  const words = {
+    gate: `📨 New request: “${st.job.title}”`, scout: `🔭 Scout picked it up from Slack`, tracker: `🎯 Assigned to ${st.who}`,
+    forge: st.job.status === 'stuck' ? `🧱 ${st.who} is stuck — ${st.job.stuck_reason || 'waiting'}` : st.job.status === 'rnd' ? `🔎 ${st.who} is checking if it can be built (R&D)` : `🔨 ${st.who} is building it`,
+    inspector: '🔍 Inspector is reviewing the work', commander: '👑 On to the team lead for a final look', launch: `🚀 Published! ${st.job.hours ? st.job.hours.toFixed(1) + 'h total' : ''}`,
+  };
+  $('#vsTitle').textContent = words[now.at] || now.label;
+  box.querySelectorAll('.vs-step').forEach((e) => {
+    const i = +e.dataset.s;
+    e.className = 'vs-step' + (i < st.step || (st.done && i === st.step && st.job.status === 'completed') ? ' done' : '') + (i === st.step ? ' now' : '') + (i === st.step && st.job.status === 'stuck' && st.done ? ' stuck' : '') + (i > st.stop ? ' later' : '');
+  });
+}
+function courier(ctx, st, t) {
+  const s = vil.scale * 1.7, p = iso(st.x, st.y), bob = st.done ? 0 : Math.abs(Math.sin(st.walk || 0)) * 2 * s;
+  const step = STORY[st.step], hero = ['tracker', 'forge'].includes(step.at) || (step.at === 'inspector' && st.step > 3);
+  const look = step.at === 'scout' || step.at === 'gate' ? AGENT_LOOK.scout : step.at === 'inspector' ? AGENT_LOOK.inspector : step.at === 'commander' || step.at === 'launch' ? AGENT_LOOK.commander : null;
+  const col = look ? look[0] : '#f08a3c';
+  ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, 7 * s, 3.5 * s, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = col; roundRect(ctx, p.x - 5 * s, p.y - 17 * s - bob, 10 * s, 12 * s, 4 * s); ctx.fill();
+  ctx.fillStyle = '#fbe3c8'; ctx.beginPath(); ctx.arc(p.x, p.y - 22 * s - bob, 5 * s, 0, 7); ctx.fill();
+  if (step.at === 'commander' || step.at === 'launch') { ctx.fillStyle = '#f5c542'; ctx.fillRect(p.x - 4 * s, p.y - 29 * s - bob, 8 * s, 3 * s); }
+  // the work item, carried above the head
+  ctx.font = `${13 * s}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText(step.item, p.x, p.y - 32 * s - bob);
+  // name tag
+  const tag = hero ? st.who : step.label;
+  ctx.font = `700 ${Math.max(10, 10 * vil.scale)}px JetBrains Mono, monospace`;
+  const w = ctx.measureText(tag).width + 12;
+  ctx.fillStyle = st.job.status === 'stuck' && st.done ? 'rgba(214,90,78,.95)' : 'rgba(232,101,90,.95)';
+  roundRect(ctx, p.x - w / 2, p.y + 4, w, 15, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(tag, p.x, p.y + 15);
+  if (st.job.status === 'stuck' && st.done) { ctx.fillStyle = '#e2483d'; ctx.beginPath(); ctx.arc(p.x + 10 * s, p.y - 34 * s, 6 * s, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = `700 ${9 * s}px sans-serif`; ctx.fillText('!', p.x + 10 * s, p.y - 31 * s); }
+}
+function launchPad(ctx, t, dark) {
+  const { x, y } = SPOTS.launch, s = vil.scale;
+  box(ctx, x - .9, y - 1.4, 1.6, 1.4, 0, 6, [dk('#c9c2b2', dark), dk('#a69d89', dark), dk('#8a8170', dark)]);
+  const c = iso(x - .1, y - .7, 6);
+  const lift = vil.rocket ? (vil.rocket = Math.min(vil.rocket + 0.02, 6), (vil.rocket - 1) * 60 * s) : 0;
+  if (vil.rocket >= 6) vil.rocket = 0;
+  if (lift > 0) { for (let i = 0; i < 2; i++) vil.fx.push({ kind: 'smoke', x: x - .1, y: y - .4, z: 6, vx: (Math.random() - .5) * .3, vy: .1, vz: 8, life: 1.4 }); }
+  ctx.fillStyle = dk('#e8e4dc', dark); roundRect(ctx, c.x - 6 * s, c.y - 34 * s - lift, 12 * s, 28 * s, 6 * s); ctx.fill();
+  ctx.fillStyle = '#e8655a'; ctx.beginPath(); ctx.moveTo(c.x, c.y - 44 * s - lift); ctx.lineTo(c.x - 6 * s, c.y - 32 * s - lift); ctx.lineTo(c.x + 6 * s, c.y - 32 * s - lift); ctx.fill();
+  ctx.fillStyle = '#3987e5'; ctx.beginPath(); ctx.arc(c.x, c.y - 24 * s - lift, 3 * s, 0, 7); ctx.fill();
+  if (lift > 0) { ctx.fillStyle = `rgba(255,${150 + Math.random() * 80},40,.9)`; ctx.beginPath(); ctx.moveTo(c.x - 4 * s, c.y - 6 * s - lift); ctx.lineTo(c.x + 4 * s, c.y - 6 * s - lift); ctx.lineTo(c.x, c.y + (4 + Math.random() * 8) * s - lift); ctx.fill(); }
+  const tg = iso(x - .1, y - .7, 60); ctx.font = `600 ${Math.max(9, 10 * s)}px JetBrains Mono, monospace`; ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(251,248,241,.92)'; const txt = 'Launch Pad'; const w = ctx.measureText(txt).width + 10; ctx.fillRect(tg.x - w / 2, tg.y - 9, w, 14); ctx.fillStyle = '#2c3a33'; ctx.fillText(txt, tg.x, tg.y + 2);
 }
 
 window.renderVillage = renderVillage;

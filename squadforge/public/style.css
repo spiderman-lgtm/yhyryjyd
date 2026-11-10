@@ -1089,3 +1089,17 @@ ul.todo .tt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text
 .vil-tip { position: absolute; z-index: 3; max-width: 220px; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 12px; box-shadow: 0 10px 24px rgba(40,50,40,.18); pointer-events: none; opacity: 0; transform: translateY(4px); transition: opacity .15s, transform .15s; }
 .vil-tip.on { opacity: 1; transform: none; } .vil-tip span { color: var(--text-2); } .vil-tip small { color: var(--muted); }
 .vil-ticker { position: absolute; left: 12px; right: 12px; bottom: 12px; background: rgba(251,248,241,.92); color: #2c3a33; border: 1px solid var(--line); border-radius: 12px; padding: 7px 12px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* village: full terrain, no sky; story chips */
+.vil-wrap { background: #66a44f; }
+[data-theme="dark"] .vil-wrap { background: #33522a; }
+.vil-story { position: absolute; top: 56px; left: 12px; right: 12px; z-index: 2; background: rgba(251,248,241,.94); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; box-shadow: 0 6px 16px rgba(30,40,30,.18); color: #2c3a33; }
+.vs-title { font-weight: 700; font-size: 13px; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vs-steps { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 11px; }
+.vs-step { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; background: #f0ebdf; color: #7b857d; transition: background .3s, color .3s, transform .3s; }
+.vs-step i { font-style: normal; }
+.vs-step.done { background: #dcefe3; color: #2f7d55; }
+.vs-step.now { background: #e8655a; color: #fff; transform: scale(1.06); box-shadow: 0 2px 8px rgba(232,101,90,.4); }
+.vs-step.stuck { background: #d65a4e; animation: shiver .5s ease-in-out infinite; }
+.vs-step.later { opacity: .45; }
+.vs-arrow { color: #b5ad9a; font-weight: 400; }
+@media (max-width: 720px) { .vs-step { font-size: 10px; padding: 2px 6px; } .vs-arrow { display: none; } .vil-story { top: 92px; } }
