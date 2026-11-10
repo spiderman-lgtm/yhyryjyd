@@ -11,6 +11,8 @@ const VIEWER_TABS = ['flow', 'village'];
 const ALL_TABS = ['team', 'requests', 'reviews', 'growth', 'reports', 'commander', 'flow', 'village', 'integrations', 'settings'];
 let tab = ALL_TABS.includes(location.hash.replace('#', '')) ? location.hash.replace('#', '') : 'team'; // viewers are sent to 'flow' in markTab
 let role = 'admin';
+let myEmail = null;
+const PAGE_TITLES = { team: 'Dashboard', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
 let pollTimer = null;
 let lastActivityId = 0;
 
@@ -61,19 +63,19 @@ function markTab() {
     b.classList.toggle('active', b.dataset.tab === tab);
     b.classList.toggle('hidden', role === 'viewer' && b.dataset.admin !== undefined);
   });
+  document.querySelectorAll('#tabs .nav-label').forEach((l) => l.classList.toggle('hidden', role === 'viewer' && l.textContent !== 'Live'));
+  $('#pageTitle').textContent = PAGE_TITLES[tab] || 'SquadForge';
+  document.title = `${PAGE_TITLES[tab] || 'Dashboard'} · SquadForge`;
+  const v = $('#view'); v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter');
 }
 
 // ---------- header ----------
 function renderHeader() {
-  const w = state.week_metrics.totals;
-  const open = Object.values(w.open_by_status || {}).reduce((a, b) => a + b, 0);
-  $('#resources').innerHTML = [
-    ['⚡', w.actions, 'actions'], ['🎯', w.triggers, 'triggers'], ['🧩', w.apps, 'apps'],
-    ['📜', open, 'open requests'], ['🛡️', fmt(w.error_rate), 'error rate'],
-  ].map(([ic, v, l]) => `<div class="res" title="This week"><span class="ic">${ic}</span>${esc(v)} <small>${l}</small></div>`).join('');
   const i = state.integrations;
-  $('#integrations').innerHTML = [['Slack', i.slack], ['AI', i.ai], ['MSG91', i.msg91]]
-    .map(([n, on]) => `<span class="dot ${on ? 'on' : ''}">${on ? '●' : '○'} ${n}</span>`).join('');
+  $('#integrations').innerHTML = `<div class="nav-label" style="padding:0 0 6px">Connections</div>` + [['Slack', i.slack], ['AI', i.ai], ['SMS', i.msg91]]
+    .map(([n, on]) => `<span class="dot ${on ? 'on' : ''}"><i></i>${n}</span>`).join('');
+  $('#pageSub').textContent = new Date(state.today + 'T12:00:00Z').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  $('#userChip').innerHTML = myEmail ? `<span class="avatar-xs">${esc(myEmail[0].toUpperCase())}</span>${esc(myEmail)}` : role === 'viewer' ? 'Viewer' : '';
   $('#logoutBtn').classList.toggle('hidden', !state.password_set);
   const banners = [];
   if (role === 'viewer') { $('#banner').innerHTML = ''; return; }
@@ -114,7 +116,7 @@ function renderVillage() {
           <div class="sun"></div><div class="cloud"></div><div class="cloud c2"></div><div class="path"></div>
           <div class="buildings">${blds}</div>
         </div>
-        <h2 style="margin-top:18px">🛡️ Heroes — this week</h2>
+        <h2 style="margin-top:18px">Heroes — this week</h2>
         <div class="heroes">${heroes}</div>
       </div>
       <div class="card feed">
@@ -167,62 +169,17 @@ function agentModal(key) {
   if (mb) mb.onclick = async () => { const r = await api('/api/agents/herald/morning', { method: 'POST' }); toast(r.message || 'Sent'); closeModal(); refresh(); };
 }
 
-// ---------- team ----------
-async function renderTeam(range = 'week') {
-  const t = state.today;
-  const ws = weekStartOf(t);
-  const ranges = { week: [ws, t, 'This week'], last: [addDays(ws, -7), addDays(ws, -1), 'Last week'], d14: [addDays(t, -13), t, '14 days'], d30: [addDays(t, -29), t, '30 days'] };
-  const [from, to] = ranges[range];
-  const [data, logs] = await Promise.all([api(`/api/metrics?from=${from}&to=${to}`), api(`/api/logs?date=${t}`)]);
-  const T = data.team.totals;
-  $('#view').innerHTML = `
-    <div class="row" style="margin-bottom:12px"><h2 style="margin:0">👥 Team metrics</h2><span class="spacer"></span>
-      ${Object.entries(ranges).map(([k, v]) => `<button class="btn ${k === range ? '' : 'ghost'} small" data-range="${k}">${v[2]}</button>`).join('')}</div>
-    <div class="kpis">
-      ${kpi(T.actions, 'Actions')}${kpi(T.triggers, 'Triggers')}${kpi(T.apps, 'Apps')}${kpi(T.client_requests, 'Client requests received')}${kpi(T.requests_completed, 'Requests completed')}${kpi(fmt(T.error_rate), 'Error rate / review')}${kpi(T.missed_updates, 'Missed updates')}
-    </div>
-    <div class="grid g2">
-      <div class="card"><div class="row"><h3 style="margin:0">Daily work</h3><span class="spacer"></span><div class="legend"><span><i style="background:var(--gold)"></i>Actions</span><span><i style="background:var(--blue)"></i>Triggers</span><span><i style="background:var(--green)"></i>Apps</span></div></div>${barChart(data.series)}</div>
-      <div class="card"><h3>Today's updates (${t})</h3>${logsTable(logs.logs)}</div>
-    </div>
-    <div class="card" style="margin-top:16px"><h3>Member-wise (${from} → ${to})</h3><div class="table-wrap">${memberTable(data.team.members)}</div></div>`;
-  document.querySelectorAll('[data-range]').forEach((b) => (b.onclick = () => renderTeam(b.dataset.range)));
-}
-const kpi = (v, l) => `<div class="kpi"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
+// ---------- dates (dashboard itself lives in dashboard.js) ----------
 function weekStartOf(d) { const wd = new Date(d + 'T12:00:00Z').getUTCDay(); return addDays(d, wd === 0 ? -6 : 1 - wd); }
 function addDays(d, n) { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }
-
-function barChart(series) {
-  const W = 600, H = 200, pad = 26;
-  const max = Math.max(1, ...series.map((s) => s.actions + s.triggers + s.apps));
-  const bw = (W - pad) / series.length;
-  const bars = series.map((s, i) => {
-    let y = H - 18;
-    const seg = [['actions', 'var(--gold)'], ['triggers', 'var(--blue)'], ['apps', 'var(--green)']].map(([k, c]) => {
-      const h = (s[k] / max) * (H - 40); y -= h;
-      return h > 0 ? `<rect x="${pad + i * bw + 3}" y="${y}" width="${Math.max(2, bw - 6)}" height="${h}" rx="3" fill="${c}"><title>${s.date}: ${s[k]} ${k}</title></rect>` : '';
-    }).join('');
-    const lbl = series.length <= 16 || i % 2 === 0 ? `<text x="${pad + i * bw + bw / 2}" y="${H - 4}" fill="var(--muted)" font-size="10" text-anchor="middle">${s.date.slice(8)}</text>` : '';
-    return seg + lbl;
-  }).join('');
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><text x="0" y="12" fill="var(--muted)" font-size="10">${max}</text><line x1="${pad}" y1="${H - 18}" x2="${W}" y2="${H - 18}" stroke="var(--line)"/>${bars}</svg>`;
-}
-function logsTable(logs) {
-  if (!logs.length) return `<div class="empty">No updates yet today</div>`;
-  return `<div class="table-wrap"><table><tr><th>Member</th><th>Morning</th><th>Evening</th><th>Plan→Done</th></tr>${logs.map((l) => `<tr><td><b>${esc(l.name)}</b></td><td>${l.morning_text ? `<span title="${esc(l.morning_text)}">✅ ${esc(l.morning_text.slice(0, 60))}</span>` : '❌'}</td><td>${l.evening_text ? `<span title="${esc(l.evening_text)}">✅ ${esc((l.summary || l.evening_text).slice(0, 60))}</span>` : '❌'}</td><td>${l.done_count || 0}/${l.planned_count || 0}</td></tr>`).join('')}</table></div>`;
-}
-function memberTable(ms) {
-  if (!ms.length) return `<div class="empty">No members</div>`;
-  return `<table><tr><th>Member</th><th>Actions</th><th>Triggers</th><th>Apps</th><th>Plan→Done</th><th>Requests</th><th>Avg time</th><th>Difficulty</th><th>Reviews</th><th>Error rate</th><th>First pass</th><th>Updates</th><th>Growth</th></tr>
-    ${ms.map((m) => `<tr><td><b>${esc(m.name)}</b><br><span class="muted">${m.role}</span></td><td>${m.actions}</td><td>${m.triggers}</td><td>${m.apps}</td><td>${fmt(m.plan_done_pct, '%')}</td><td>${m.requests_completed}/${m.requests_assigned}${m.requests_stuck ? ` <span class="pill stuck">${m.requests_stuck} stuck</span>` : ''}</td><td>${fmt(m.avg_request_hours, 'h')}</td><td>${fmt(m.avg_difficulty)}</td><td>${m.reviews}</td><td>${fmt(m.error_rate)}</td><td>${fmt(m.first_pass_pct, '%')}</td><td>${m.morning_updates + m.evening_updates}/${m.workdays * 2}</td><td>${Object.entries(m.growth).map(([k, v]) => `${v} ${GROWTH_LABEL[k] || k}`).join(', ') || '–'}</td></tr>`).join('')}</table>`;
-}
+const kpi = (v, l) => `<div class="kpi"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
 
 // ---------- requests ----------
 async function renderRequests() {
   const reqs = await api('/api/requests');
   const cols = ['new', 'rnd', 'started', 'stuck', 'completed'];
   $('#view').innerHTML = `
-    <div class="row" style="margin-bottom:12px"><h2 style="margin:0">📜 Client Requests</h2><span class="spacer"></span><button class="btn" id="addReq">+ Add request</button></div>
+    <div class="row" style="margin-bottom:12px"><h2 style="margin:0">Client Requests</h2><span class="spacer"></span><button class="btn" id="addReq">+ Add request</button></div>
     <p class="muted" style="margin-top:0">You post a request in Slack (e.g. <code>Client request: Zoho Bigin plugin</code>) and tag a member in the thread. The member replies in the thread with <code>r&d</code> / <code>started</code> / <code>stuck - API doc missing</code> / <code>completed</code>, and Tracker updates the status automatically.</p>
     <div class="kanban">${cols.map((c) => {
       const list = reqs.filter((r) => r.status === c);
@@ -272,7 +229,7 @@ async function renderReviews() {
   const [reviews, data] = await Promise.all([api('/api/reviews'), api(`/api/metrics?from=${addDays(state.today, -29)}&to=${state.today}`)]);
   const tech = data.team.members.filter((m) => m.role === 'tech');
   $('#view').innerHTML = `
-    <h2>🔍 Reviews & error rate</h2>
+    <h2>Reviews & error rate</h2>
     ${state.integrations.review_instructions ? '' : `<div class="banner" style="margin-bottom:12px">Inspector's review instructions are not set yet. Write your checklist in <b>Settings → Inspector instructions</b>.</div>`}
     <div class="kpis">${tech.map((m) => kpi(`${fmt(m.error_rate)}`, `${m.name} — error rate (30 days) · first pass ${fmt(m.first_pass_pct, '%')}`)).join('')}</div>
     <div class="grid g2">
@@ -304,7 +261,7 @@ async function renderGrowth() {
   const counts = {};
   const weekStart = weekStartOf(state.today);
   items.filter((i) => i.date >= weekStart).forEach((i) => (counts[i.kind] = (counts[i.kind] || 0) + 1));
-  $('#view').innerHTML = `<h2>🌱 Growth</h2>
+  $('#view').innerHTML = `<h2>Growth</h2>
     <p class="muted" style="margin-top:0">Everything the growth member posts in the channel (support requests, app listings, blogs, newsletters, credentials) is counted here. When credentials or docs arrive for a stuck app, Sprout tags the developer in that request's thread.</p>
     <div class="kpis">${Object.keys(GROWTH_LABEL).filter((k) => k !== 'other').map((k) => kpi(counts[k] || 0, GROWTH_LABEL[k] + ' (this week)')).join('')}${kpi(items.filter((i) => i.unblocked_request_id && i.date >= weekStart).length, 'Requests unblocked')}</div>
     <div class="card"><div class="table-wrap">${items.length ? `<table><tr><th>Date</th><th>Member</th><th>Type</th><th>Message</th><th>Unblocked</th></tr>${items.map((i) => `<tr><td>${i.date}</td><td>${esc(i.name)}</td><td><span class="pill">${GROWTH_LABEL[i.kind] || i.kind}</span></td><td>${esc((i.text || '').slice(0, 140))}</td><td>${i.unblocked_request_id ? '🔓 ' + esc(i.app_name || '') : ''}</td></tr>`).join('')}</table>` : '<div class="empty">Nothing yet</div>'}</div></div>`;
@@ -313,7 +270,7 @@ async function renderGrowth() {
 // ---------- reports ----------
 async function renderReports() {
   const reports = await api('/api/reports');
-  $('#view').innerHTML = `<div class="row" style="margin-bottom:12px"><h2 style="margin:0">📊 Reports</h2><span class="spacer"></span>
+  $('#view').innerHTML = `<div class="row" style="margin-bottom:12px"><h2 style="margin:0">Reports</h2><span class="spacer"></span>
       <button class="btn ghost" id="pvDaily">👀 Today's 7 PM preview</button><button class="btn" id="genWeekly">📜 Generate weekly report now</button></div>
     <p class="muted" style="margin-top:0">The 7 PM daily alert and the Monday weekly report (team + your personal one) are generated automatically and sent to you as a Slack DM.</p>
     <div class="grid g2">${reports.length ? reports.map((r) => `<div class="card"><div class="row"><span class="pill ${r.kind === 'weekly' ? 'started' : r.kind === 'personal' ? 'rnd' : 'new'}">${r.kind}</span><span class="muted">${r.period_start}${r.period_end !== r.period_start ? ' → ' + r.period_end : ''}</span><span class="spacer"></span><button class="btn ghost small" data-copy="${r.id}">Copy</button></div><pre class="report">${esc(r.content)}</pre></div>`).join('') : '<div class="card empty">No reports yet</div>'}</div>`;
@@ -325,7 +282,7 @@ async function renderReports() {
 // ---------- commander ----------
 async function renderCommander() {
   const hist = await api('/api/broadcasts');
-  $('#view').innerHTML = `<h2>⚔️ Commander</h2>
+  $('#view').innerHTML = `<h2>Commander</h2>
     <div class="grid g2">
       <div class="card">
         <label>Message / instruction</label><textarea id="cMsg" style="min-height:130px" placeholder="Everyone focus on the Shopify plugin triggers today…"></textarea>
@@ -354,7 +311,7 @@ async function renderSettings() {
   const i = state.integrations;
   const v = (k) => esc(s[k] ?? '');
   const locked = (k) => (s.env_locked.includes(k) ? 'disabled title="Set by an env var"' : '');
-  $('#view').innerHTML = `<h2>⚙️ Settings</h2>
+  $('#view').innerHTML = `<h2>Settings</h2>
   <div class="grid g2">
     <div class="card"><h3>🔌 Connections</h3>
       <ul class="setup-list">
@@ -476,6 +433,7 @@ async function boot() {
   const me = await api('/api/me');
   if (!me.authed) return showLogin();
   role = me.role || 'admin';
+  myEmail = me.email || null;
   state = await api('/api/state');
   if (role === 'admin') members = await api('/api/members');
   renderHeader();

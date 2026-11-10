@@ -5,13 +5,13 @@ let vsInfo = null; // { token, serviceIds, actions } - embed token is the only v
 let vsListening = false;
 
 async function renderIntegrations() {
-  $('#view').innerHTML = `<h2>🔌 Integrations</h2><div class="empty">Loading…</div>`;
+  $('#view').innerHTML = `<h2>Integrations</h2><div class="empty">Loading…</div>`;
   let st;
   try { st = await api('/api/integrations'); } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; return; }
   if (st.configured && !vsInfo) { try { vsInfo = await api('/api/integrations/connect-info'); } catch (e) { toast(e.message); } }
   listenForConnect();
   $('#view').innerHTML = `
-    <div class="row" style="margin-bottom:6px"><h2 style="margin:0">🔌 Integrations</h2><span class="spacer"></span><span class="muted" style="font-size:12px">via viaSocket: 2,300+ apps</span></div>
+    <div class="row" style="margin-bottom:6px"><h2 style="margin:0">Integrations</h2><span class="spacer"></span><span class="muted" style="font-size:12px">via viaSocket: 2,300+ apps</span></div>
     <p class="muted" style="margin-top:0">Click <b>Connect</b> once and choose your account. viaSocket handles sign-in and tokens; SquadForge only does the jobs you switch on.</p>
     ${st.configured ? '' : '<div class="banner red">viaSocket keys are not set on the server (VIASOCKET_ORG_ID, VIASOCKET_PROJECT_ID, VIASOCKET_EMBED_SECRET).</div>'}
     <div class="grid integ-grid">${st.apps.map(appCard).join('')}</div>

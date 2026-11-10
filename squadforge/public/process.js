@@ -83,7 +83,7 @@ function renderFlow() {
   $('#view').innerHTML = `
     <div class="pmode-head">
       <div>
-        <h2 style="margin:0">🌊 Live Flow</h2>
+        <h2 style="margin:0">Live Flow</h2>
         <p class="muted" style="margin:2px 0 0">How work is moving, live. For numbers, open <b>📊 Dashboard</b>.</p>
       </div>
       <div class="counters">
