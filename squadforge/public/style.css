@@ -974,3 +974,20 @@ ul.todo .tt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text
 .lake-banner .bird:hover .say, .lake-banner .bird:focus-visible .say, .lake-banner .bird.worried .say, .lake-banner .bird.sleepy .say, .lake-banner .bird.talk .say { opacity: 1; animation: say-pop .45s cubic-bezier(.3,1.7,.5,1) both; }
 .lake-banner .bird:hover, .lake-banner .bird.talk { z-index: 5; }
 @media (max-width: 640px) { .lb-clock { display: none; } .lb-text h2 { font-size: 18px; } }
+
+/* idle life of the pixel birds */
+.lake-banner .bird { transition: left 1.2s steps(8); }
+.lake-banner .bw { display: inline-block; transition: transform .2s steps(2); }
+.lake-banner .bird.face-left .bw { transform: scaleX(-1); }
+.lake-banner .bird.walking .bird-svg { animation: pwalk .3s steps(2) infinite; }
+@keyframes pwalk { 0% { transform: translateY(0); } 50% { transform: translateY(calc(var(--px, 3px) * -1)); } }
+.lake-banner .bird.peck .bird-svg { animation: ppeck .6s steps(3) 2; transform-origin: 70% 90%; }
+@keyframes ppeck { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(28deg) translateY(calc(var(--px, 3px) * 1)); } }
+.lake-banner .bird.flap .pwing { animation: pflap2 .2s steps(1) 6; }
+@keyframes pflap2 { 0% { transform: translateY(calc(var(--px, 3px) * -1.5 / var(--px, 3px))); } 50% { transform: translateY(1px); } }
+.lake-banner .bird.flap .bird-svg { animation: pflaphop .4s ease-in-out 3; }
+@keyframes pflaphop { 50% { transform: translateY(calc(var(--px, 3px) * -2)); } }
+.lake-banner .bird.fly .bird-svg { animation: pfly 2.2s cubic-bezier(.4,0,.2,1); }
+.lake-banner .bird.fly .pwing { animation: pflap2 .16s steps(1) 12; }
+@keyframes pfly { 0% { transform: translate(0,0); } 25% { transform: translate(calc(var(--px,3px) * 6), calc(var(--px,3px) * -14)) rotate(-8deg); } 55% { transform: translate(calc(var(--px,3px) * -4), calc(var(--px,3px) * -18)) rotate(6deg); } 85% { transform: translate(calc(var(--px,3px) * -1), calc(var(--px,3px) * -3)); } 100% { transform: translate(0,0); } }
+.lake-banner .bird.fly .tag, .lake-banner .bird.walking .tag { opacity: .6; }

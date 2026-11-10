@@ -55,7 +55,7 @@ function birdScene(today, logs) {
     return `<button class="bird ${b.mood}" style="--i:${i}" data-bird="${m.id}" title="${esc(m.name)}: ${esc(b.say)}">
       <span class="say ${b.cls}">${esc(b.say)}</span>
       ${b.mood === 'sleepy' ? '<span class="zzz">z<b>z</b><i>z</i></span>' : ''}
-      ${birdSvg(i, b.mood)}
+      <span class="bw">${birdSvg(i, b.mood)}</span>
       <span class="tag">${esc(m.name.replace(/\s*\(.*\)/, ''))}</span>
     </button>`;
   }).join('');
@@ -94,8 +94,11 @@ function placeBirds() {
   for (let x = 92; x >= Math.max(x0 + 8, -110); x -= 30) L.push(x);                 // left bank (the fishing bird sits at ~116)
   for (let x = 240; x <= Math.min(x0 + visW - 8, 430); x += 30) R.push(x);          // right bank
   for (let i = 0; i < Math.max(L.length, R.length); i++) { if (L[i] !== undefined) spots.push(L[i]); if (R[i] !== undefined) spots.push(R[i]); }
+  const leftBank = [Math.max(x0 + 8, -110), 100], rightBank = [232, Math.min(x0 + visW - 8, 430)];
   [...box.querySelectorAll('.bird')].forEach((b, i) => {
     const sx = spots[i % Math.max(1, spots.length)];
+    const bank = sx < 160 ? leftBank : rightBank;
+    b.dataset.min = (bank[0] - x0) * scale; b.dataset.max = (bank[1] - x0) * scale;
     b.style.left = `${(sx - x0) * scale}px`;
     b.style.bottom = `${bankPx - 1}px`;
     b.style.setProperty('--px', `${Math.max(2, Math.round(scale * 0.9))}px`);
@@ -204,3 +207,28 @@ setInterval(() => {
   f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
   setTimeout(() => { f.classList.remove('go'); flyerBusy = false; }, 7000);
 }, 26000);
+
+// ---------- idle life: birds wander, peck, flap, hop, turn and take short flights ----------
+const BEHAVIOURS = ['walk', 'walk', 'peck', 'peck', 'flap', 'hop', 'turn', 'fly'];
+function liveBird() {
+  if (document.hidden) return;
+  const birds = [...document.querySelectorAll('.lake-banner .bird')].filter((b) => !b.classList.contains('busy-move'));
+  if (!birds.length || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const b = birds[Math.floor(Math.random() * birds.length)];
+  if (b.classList.contains('sleepy') && Math.random() < 0.7) return; // sleepy birds mostly keep napping
+  const act = BEHAVIOURS[Math.floor(Math.random() * BEHAVIOURS.length)];
+  const done = (ms) => setTimeout(() => b.classList.remove('busy-move', 'walking', 'peck', 'flap', 'fly'), ms);
+  b.classList.add('busy-move');
+  if (act === 'walk') {
+    const min = +b.dataset.min || 0, max = +b.dataset.max || 0, cur = parseFloat(b.style.left) || 0;
+    let to = cur + (Math.random() < 0.5 ? -1 : 1) * (18 + Math.random() * 40);
+    to = Math.max(min, Math.min(max, to));
+    b.classList.toggle('face-left', to < cur);
+    b.classList.add('walking');
+    b.style.left = `${to}px`;
+    done(1300);
+  } else if (act === 'turn') { b.classList.toggle('face-left'); done(300); }
+  else if (act === 'hop') { b.classList.remove('hop'); void b.offsetWidth; b.classList.add('hop'); done(500); }
+  else { b.classList.add(act); done(act === 'fly' ? 2300 : 1200); }
+}
+setInterval(liveBird, 1400);
