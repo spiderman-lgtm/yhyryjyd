@@ -38,7 +38,7 @@ function queueBar(q) {
   });
   return `<section class="qhero ${total ? '' : 'clear'}" aria-label="Things that need you">
     <div class="qh-head">
-      <div><div class="qh-greet">${greet}${esc(nameTxt)}</div>
+      <div><div class="qh-greet">Your queue</div>
         <h2>${total ? `${total} thing${total === 1 ? '' : 's'} need${total === 1 ? 's' : ''} you` : 'All clear 🌿'}</h2>
         <div class="qh-sub">${total ? `About ${mins < 60 ? mins + ' minutes' : Math.round(mins / 60) + ' h'} of your time${oldest ? ` · oldest request waiting ${oldest}h` : ''} · tap a card to act` : 'Nothing is waiting on you right now — the team has what it needs.'}</div></div>
       ${evening ? `<div class="qh-alert">📢 Your 7 PM alert goes out at 7:00 PM <button class="btn small ghost" id="previewAlert">Preview</button></div>` : ''}

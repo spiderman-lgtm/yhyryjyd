@@ -40,9 +40,9 @@ async function renderTeam(range = dashRange) {
   const open = state.week_metrics.totals.open_by_status || {};
 
   $('#view').innerHTML = `
+    ${birdScene(state.today_metrics, logs.logs)}
     ${queueBar(ins.queue)}
     ${checklistCard(check)}
-    ${birdScene(state.today_metrics, logs.logs)}
     <div class="dash-main" style="grid-template-columns:1.25fr 1fr">${interventionsCard(ins.interventions)}${blockedCard(ins.blocked)}</div>
     <div class="qp-row3">
       <div class="card"><div class="card-h"><h3>Work calendar</h3><span class="muted">${new Date(t + 'T12:00:00Z').toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</span></div>${calendar(month.series, t)}</div>
