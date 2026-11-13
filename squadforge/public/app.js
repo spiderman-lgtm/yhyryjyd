@@ -8,12 +8,12 @@ const GROWTH_LABEL = { support_request: 'Support request', app_listing: 'App lis
 let state = null;
 let members = [];
 const VIEWER_TABS = ['flow', 'village'];
-const ALL_TABS = ['team', 'requests', 'reviews', 'growth', 'reports', 'commander', 'flow', 'village', 'integrations', 'settings'];
+const ALL_TABS = ['team', 'requests', 'reviews', 'growth', 'reports', 'history', 'commander', 'flow', 'village', 'integrations', 'settings'];
 let tab = ALL_TABS.includes(location.hash.replace('#', '')) ? location.hash.replace('#', '') : 'team'; // viewers are sent to 'flow' in markTab
 let role = 'admin';
 let myEmail = null;
 let myName = null;
-const PAGE_TITLES = { team: 'Dashboard', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
+const PAGE_TITLES = { team: 'Dashboard', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'History', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
 let pollTimer = null;
 let lastActivityId = 0;
 
@@ -480,6 +480,11 @@ async function renderSettings() {
   };
   $('#addMem').onclick = () => memberModal();
   workspaceCard();
+  api('/api/checklist').then((c) => {
+    if (!c.hidden || !$('#view h2')) return;
+    $('#view h2').insertAdjacentHTML('afterend', `<div class="banner">🧪 The “Test it for real” checklist is hidden (${c.done} of ${c.total} done). <a href="#" id="ckShow">Show it on the Dashboard</a></div>`);
+    $('#ckShow').onclick = async (e) => { e.preventDefault(); await api('/api/checklist', { method: 'POST', body: { hidden: false } }); tab = 'team'; location.hash = 'team'; render(); };
+  }).catch(() => {});
   $('#impMem').onclick = async () => { const r = await api('/api/members/import-slack', { method: 'POST' }); toast(`${r.added} members imported — please check their roles`); renderSettings(); };
   document.querySelectorAll('[data-edit]').forEach((b) => (b.onclick = () => memberModal(members.find((m) => m.id == b.dataset.edit))));
   document.querySelectorAll('[data-m91]').forEach((b) => (b.onclick = async () => {
@@ -526,7 +531,7 @@ async function render() {
   if (!state) return;
   try {
     if (role === 'admin' && (!members.length || tab === 'settings')) members = await api('/api/members');
-    ({ flow: renderFlow, integrations: renderIntegrations, village: renderVillage, team: renderTeam, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, commander: renderCommander, settings: renderSettings }[tab] || renderVillage)();
+    ({ flow: renderFlow, integrations: renderIntegrations, village: renderVillage, team: renderTeam, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, history: renderHistory, commander: renderCommander, settings: renderSettings }[tab] || renderVillage)();
     if (tab === 'village') lastActivityId = state.activity[0] ? state.activity[0].id : 0;
   } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; }
 }

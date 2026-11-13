@@ -1247,3 +1247,41 @@ html:has(body.on-login), body.on-login { overflow: hidden !important; }
 .login .qp-form input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 40px #f6f3e6 inset, 0 0 0 3px rgba(232,101,90,.18) !important; }
 .login .qp-form input::placeholder { color: #7d958d !important; -webkit-text-fill-color: #7d958d; }
 .login { color-scheme: light; }
+
+/* ===== Test checklist ===== */
+.checklist { margin-bottom: 16px; border-left: 4px solid var(--accent, #5f8a7a); }
+.ck-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ck-title { display: flex; flex-direction: column; gap: 2px; margin-right: auto; } .ck-title h3 { margin: 0; }
+.ck-title .muted { font-size: 12px; }
+.ck-bar { width: 180px; height: 8px; border-radius: 99px; background: var(--line, #e6e2d3); overflow: hidden; }
+.ck-bar i { display: block; height: 100%; background: var(--accent, #5f8a7a); border-radius: 99px; transition: width .6s cubic-bezier(.2,.7,.2,1); }
+.ck-body { display: none; grid-template-columns: 1fr 1fr; gap: 6px 22px; margin-top: 14px; }
+.checklist.open .ck-body { display: grid; }
+.ck-group { display: flex; flex-direction: column; gap: 6px; }
+.ck-step { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line, #e6e2d3); }
+.ck-step.next { border-color: var(--coral, #e8655a); box-shadow: 0 0 0 3px rgba(232,101,90,.12); }
+.ck-step.done { opacity: .62; } .ck-step.done b { text-decoration: line-through; text-decoration-thickness: 1px; }
+.ck-dot { flex: 0 0 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--text-3, #9aa79f); display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; }
+.ck-step.done .ck-dot { background: var(--accent, #5f8a7a); border-color: var(--accent, #5f8a7a); }
+.ck-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; } .ck-text b { font-size: 13px; } .ck-text small { font-size: 11.5px; color: var(--text-2, #6b7a72); }
+@media (max-width: 900px) { .ck-body { grid-template-columns: 1fr; } .ck-bar { width: 100%; order: 5; } }
+
+/* ===== History ===== */
+.hist-top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.hist-kinds { flex-wrap: wrap; }
+.hist-tools { display: flex; gap: 8px; } .hist-tools input { width: 220px; } .hist-tools select { width: auto; }
+.hist-card { padding: 6px 18px 14px; }
+.hist-day { padding-top: 10px; }
+.hist-date { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2, #6b7a72); padding: 8px 0; background: var(--panel, #fffdf6); border-bottom: 1px solid var(--line, #e6e2d3); }
+.hist-date span { font-weight: 500; letter-spacing: 0; padding: 1px 8px; border-radius: 99px; background: var(--line, #ece8da); }
+.hist-row { display: grid; grid-template-columns: 70px 26px 1fr auto; gap: 10px; align-items: start; padding: 10px 0; border-bottom: 1px dashed var(--line, #ece8da); font-size: 13px; }
+.hist-row:last-child { border-bottom: 0; }
+.hist-row[data-req] { cursor: pointer; } .hist-row[data-req]:hover { background: rgba(95,138,122,.06); }
+.hist-time { font-size: 11.5px; color: var(--text-3, #9aa79f); padding-top: 2px; font-variant-numeric: tabular-nums; }
+.hist-ic { font-size: 15px; line-height: 1.2; }
+.hist-body small { display: block; color: var(--text-2, #6b7a72); font-size: 12px; margin-top: 3px; line-height: 1.5; }
+.hist-actor { font-size: 11.5px; padding: 2px 9px; border-radius: 99px; background: var(--line, #ece8da); color: var(--text-2, #6b7a72); white-space: nowrap; }
+.hist-row.warn .hist-ic { filter: saturate(1.4); } .hist-row.warn .hist-body > div { color: var(--coral-2, #b4503f); }
+.hist-row.ok .hist-body > div { color: var(--accent-2, #2f6b52); }
+.hist-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 40px 0; text-align: center; }
+@media (max-width: 640px) { .hist-row { grid-template-columns: 22px 1fr; } .hist-time { display: none; } .hist-actor { grid-column: 2; justify-self: start; } .hist-tools input { width: 100%; } }

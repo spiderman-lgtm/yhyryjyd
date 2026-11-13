@@ -24,7 +24,7 @@ async function renderTeam(range = dashRange) {
   $('#view').classList.remove('drawn');
   $('#view').innerHTML = skeleton();
   const monthStart = t.slice(0, 8) + '01';
-  const [cur, prev, spark, logs, month, reqs, ins] = await Promise.all([
+  const [cur, prev, spark, logs, month, reqs, ins, check] = await Promise.all([
     api(`/api/metrics?from=${r.from}&to=${r.to}`),
     api(`/api/metrics?from=${prevFrom}&to=${prevTo}`),
     api(`/api/metrics?from=${addDays(t, -13)}&to=${t}`),
@@ -32,6 +32,7 @@ async function renderTeam(range = dashRange) {
     api(`/api/metrics?from=${monthStart}&to=${t}`),
     api('/api/requests'),
     api('/api/insights').catch(() => ({ queue: {}, interventions: [], blocked: [] })),
+    api('/api/checklist').catch(() => null),
   ]);
   if (tab !== 'team') return;
   const T = cur.team.totals, P = prev.team.totals, S = spark.series;
@@ -39,6 +40,7 @@ async function renderTeam(range = dashRange) {
   const open = state.week_metrics.totals.open_by_status || {};
 
   $('#view').innerHTML = `
+    ${checklistCard(check)}
     ${birdScene(state.today_metrics, logs.logs)}
     ${queueBar(ins.queue)}
     <div class="dash-main" style="grid-template-columns:1.25fr 1fr">${interventionsCard(ins.interventions)}${blockedCard(ins.blocked)}</div>
@@ -78,6 +80,7 @@ async function renderTeam(range = dashRange) {
     </div>`;
 
   placeBirds();
+  wireChecklist();
   wireQueue(ins.queue);
   const qs = $('#qmSend');
   if (qs) qs.onclick = async () => {

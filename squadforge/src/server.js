@@ -5,6 +5,8 @@ const path = require('path');
 const crypto = require('crypto');
 const { db, getSetting, setSetting, withWorkspace } = require('./db');
 const workspaces = require('./workspaces');
+const history = require('./history');
+const checklist = require('./checklist');
 const U = require('./util');
 const slack = require('./slack');
 const llm = require('./llm');
@@ -217,11 +219,68 @@ async function api(req, res, url) {
 
   const cx = contextOf(req);
   if (!cx) return send(res, sessionOf(req) ? 403 : 401, { error: sessionOf(req) ? 'You are not a member of this workspace' : 'Please log in' });
-  return withWorkspace(cx.ws, () => routes(req, res, url, p, m, body, cx));
+  return withWorkspace(cx.ws, () => {
+    if (m !== 'GET') auditOnSuccess(req, res, p, m, body, cx);
+    return routes(req, res, url, p, m, body, cx);
+  });
+}
+
+// History: note what a person changed, once the change succeeded.
+const SETTING_NAMES = { 'cfg.SLACK_CHANNEL_ID': 'Slack channel', 'cfg.LEAD_SLACK_USER_ID': 'lead Slack ID', 'cfg.ALERT_CHANNEL_ID': 'alert channel', 'cfg.SLACK_WORKSPACE_URL': 'Slack workspace URL', 'inspector.instructions': 'Inspector rules' };
+function auditOnSuccess(req, res, p, m, body, cx) {
+  const d = require('./db').workspaceDb(cx.ws);
+  const actor = cx.email ? (accounts.find(cx.email) || {}).name || cx.email : 'Admin';
+  const member = (id) => d.prepare('SELECT name FROM members WHERE id = ?').get(id) || {};
+  const reqRow = (id) => d.prepare('SELECT title FROM client_requests WHERE id = ?').get(id) || {};
+  let mm, ev = null;
+  // read names before the handler runs (deletes remove them)
+  if ((mm = p.match(/^\/api\/requests\/(\d+)$/))) {
+    const t = reqRow(mm[1]).title;
+    if (m === 'DELETE') ev = ['requests', `Deleted request “${t}”`];
+    else {
+      const what = [body.member_ids && 'assignees', body.difficulty && `difficulty ${body.difficulty}/5`, body.title && 'title', body.impact_note !== undefined && 'outcome note', body.evidence_url !== undefined && 'evidence link'].filter(Boolean);
+      if (body.status && tracker.LABEL[body.status]) ev = ['requests', `Moved “${body.title || t}” to ${tracker.LABEL[body.status]} by hand${what.length ? ' and edited ' + what.join(', ') : ''}`, 'status:' + mm[1]];
+      else if (what.length) ev = ['requests', `Edited “${body.title || t}”: ${what.join(', ')}`, 'request:' + mm[1]];
+    }
+  } else if ((mm = p.match(/^\/api\/members\/(\d+)$/))) {
+    const n = member(mm[1]).name;
+    ev = m === 'DELETE' ? ['members', `Removed member ${n}`] : ['members', `Updated member ${body.name || n}${body.active === false ? ' (set inactive)' : ''}`];
+  } else if ((mm = p.match(/^\/api\/members\/(\d+)\/m91-invite$/))) ev = ['alerts', `Sent an M91 invite to ${member(mm[1]).name}`];
+  else if ((mm = p.match(/^\/api\/agents\/(\w+)\/run$/))) ev = ['agents', `Ran ${(agents.AGENTS[mm[1]] || {}).name || mm[1]} manually`];
+  else if ((mm = p.match(/^\/api\/integrations\/([a-z-]+)\/(disconnect|settings|test)$/))) {
+    const app = (vs.APPS[mm[1]] || {}).name || mm[1];
+    ev = ['integrations', { disconnect: `Disconnected ${app}`, settings: `Changed ${app} settings`, test: `Tested ${app}` }[mm[2]]];
+  } else {
+    const keys = Object.keys(body || {}).filter((k) => SETTING_KEYS.includes(k));
+    ev = {
+      '/api/requests': ['requests', `Added a client request “${body.title}”`],
+      '/api/reviews/manual': ['reviews', `Asked Inspector to review “${body.subject || 'a submission'}”`],
+      '/api/members': ['members', `Added member ${body.name} (${body.role || 'tech'})`],
+      '/api/members/import-slack': ['members', 'Imported members from Slack'],
+      '/api/settings': keys.length ? ['settings', `Changed settings: ${keys.map((k) => SETTING_NAMES[k] || k.replace(/^cfg\./, '').replace(/_/g, ' ').toLowerCase()).join(', ')}`] : null,
+      '/api/agents/herald/morning': ['alerts', 'Sent the morning reminder'],
+      '/api/workspace': m === 'PATCH' ? ['settings', `Renamed the workspace to “${body.name}”`] : null,
+      '/api/workspace/people': m === 'POST' ? ['settings', `Gave ${body.email} ${body.role === 'admin' ? 'admin' : 'viewer'} access`] : m === 'DELETE' ? ['settings', `Removed ${body.email} from the workspace`] : null,
+      '/api/integrations/connected': ['integrations', `Connected ${(vs.APPS[body.app] || {}).name || body.app}`],
+      '/api/demo/load': ['settings', 'Loaded demo data'],
+      '/api/demo/clear': ['settings', 'Cleared demo data'],
+      '/api/checklist': null,
+    }[p] || null;
+  }
+  if (!ev) return;
+  res.on('finish', () => { if (res.statusCode < 300) history.record(d, ev[0], actor, ev[1], ev[2]); });
 }
 
 async function routes(req, res, url, p, m, body, cx) {
   const role = cx.role;
+  // ---------- history & test checklist ----------
+  if (p === '/api/history' && m === 'GET') {
+    if (role !== 'admin') return send(res, 403, { error: 'Admins only' });
+    return send(res, 200, history.list({ days: Number(url.searchParams.get('days')) || 7, kind: url.searchParams.get('kind') || 'all' }));
+  }
+  if (p === '/api/checklist' && role !== 'admin') return send(res, 403, { error: 'Admins only' });
+  if (p === '/api/checklist' && m === 'GET') return send(res, 200, checklist.build());
+  if (p === '/api/checklist' && m === 'POST') { setSetting('checklist.hidden', !!body.hidden); return send(res, 200, checklist.build()); }
   // ---------- workspaces ----------
   if (p === '/api/workspaces' && m === 'GET') return send(res, 200, cx.email ? workspaces.forEmail(cx.email) : [workspaces.get(1)]);
   if (p === '/api/workspaces' && m === 'POST') {
