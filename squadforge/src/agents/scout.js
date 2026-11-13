@@ -6,8 +6,10 @@ const llm = require('../llm');
 const tracker = require('./tracker');
 const growth = require('./growth');
 const inspector = require('./inspector');
-const { cfg, logActivity, memberBySlack, tsToDate } = require('../util');
+const { cfg, logActivity, memberBySlack, tsToDate, today: U_today } = require('../util');
 const P = require('../parser');
+const standup = require('./standup');
+const istHour = (ts) => Number(new Intl.DateTimeFormat('en-US', { timeZone: process.env.TEAM_TIMEZONE || 'Asia/Kolkata', hour: 'numeric', hour12: false }).format(new Date(parseFloat(ts) * 1000)));
 
 function leadId() { return cfg('LEAD_SLACK_USER_ID'); }
 function isLead(userId, member) { return (userId && userId === leadId()) || (member && member.role === 'lead'); }
@@ -105,7 +107,7 @@ async function handleTopLevel(msg, channel, stats) {
   const kind = P.standupKind(text);
   if (kind) { if (recordStandup(member, kind, msg)) stats.updates++; return; }
   if (member.role === 'growth') { if (await growth.handle(msg, member)) stats.growth++; return; }
-  if (P.isReviewAsk(text)) { if (inspector.queueFromMessage(msg, member, msg.ts, null)) stats.reviews++; }
+  if (P.isReviewAsk(text) || (member.role === 'tech' && P.isAppSubmission(text))) { if (inspector.queueFromMessage(msg, member, msg.ts, null)) stats.reviews++; }
 }
 
 async function handleReply(reply, parent, channel, stats) {
@@ -122,7 +124,7 @@ async function handleReply(reply, parent, channel, stats) {
         if (status && (await tracker.applyStatus(db.prepare('SELECT * FROM client_requests WHERE id = ?').get(req.id), status, reply, member || null))) stats.statusChanges++;
       }
     } else if (member) {
-      const reviewAsk = member.role === 'tech' && P.isReviewAsk(text);
+      const reviewAsk = member.role === 'tech' && (P.isReviewAsk(text) || P.isAppSubmission(text));
       if (reviewAsk && inspector.queueFromMessage(reply, member, parent.ts, req.id)) stats.reviews++;
       if (member.role === 'growth') {
         if (await growth.handle(reply, member)) stats.growth++;
@@ -137,11 +139,23 @@ async function handleReply(reply, parent, channel, stats) {
     return;
   }
   if (!member || member.role === 'lead') return;
+  // the day's Good morning thread: plan in the morning, what got built later (app + actions/triggers)
+  if (standup.isStandupThread(parent.ts)) {
+    const app = P.isAppSubmission(text);
+    const kind = P.standupKind(text) || (/\b(plan|planning|aaj karunga|will do|today i will)\b/i.test(text) && !app ? 'morning' : null) || (app || P.detectStatus(text) === 'completed' || /\b\d+\s*(actions?|triggers?)\b/i.test(text) || istHour(reply.ts) >= 15 ? 'evening' : 'morning');
+    if (recordStandup(member, kind, reply)) stats.updates++;
+    if (app && member.role === 'tech' && inspector.queueFromMessage(reply, member, parent.ts, null)) stats.reviews++;
+    return;
+  }
   const parentKind = P.standupKind(parent.text || '');
   const ownKind = P.standupKind(text);
-  if (parentKind || ownKind) { if (recordStandup(member, ownKind || parentKind, reply)) stats.updates++; return; }
+  if (parentKind || ownKind) {
+    if (recordStandup(member, ownKind || parentKind, reply)) stats.updates++;
+    if (member.role === 'tech' && P.isAppSubmission(text) && inspector.queueFromMessage(reply, member, parent.ts, null)) stats.reviews++;
+    return;
+  }
   if (member.role === 'growth') { if (await growth.handle(reply, member)) stats.growth++; return; }
-  if (member.role === 'tech' && P.isReviewAsk(text)) { if (inspector.queueFromMessage(reply, member, parent.ts, null)) stats.reviews++; }
+  if (member.role === 'tech' && (P.isReviewAsk(text) || P.isAppSubmission(text))) { if (inspector.queueFromMessage(reply, member, parent.ts, null)) stats.reviews++; }
 }
 
 async function sync() {
@@ -163,6 +177,8 @@ async function sync() {
     } else if (!skip(msg) && fresh) { stats.messages++; await handleTopLevel(asSim(msg), channel, stats); }
     if (msg.reply_count && parseFloat(msg.latest_reply || msg.ts) > lastTs - 3600) threads.set(msg.ts, msg);
   }
+  // the last two Good morning threads (replies keep coming all day)
+  for (const d of [U_today(), standup.prevWorkday(U_today())]) { const ts = standup.threadOf(d); if (ts && !threads.has(ts)) threads.set(ts, { ts, text: 'good morning' }); }
   // also check the threads of older open client requests
   const open = db.prepare(`SELECT slack_ts, text FROM client_requests WHERE status != 'completed' AND slack_ts IS NOT NULL
                            AND is_demo = 0 AND created_at > datetime('now', '-45 days')`).all();

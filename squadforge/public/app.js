@@ -378,6 +378,24 @@ async function renderCommander() {
     } catch (e) { toast(e.message); b.disabled = false; }
   };
 }
+// Daily standup: 11 AM Good morning thread, yesterday's tally, the target, M91 nudges.
+function standupCard(s) {
+  const h2 = $('#view h2'); if (!h2) return;
+  const on = (k) => s[k] === null || s[k] === undefined ? true : !!s[k];
+  h2.insertAdjacentHTML('afterend', `<div class="card su-card"><h3>☀️ Daily standup</h3>
+    <p class="muted">Every day at <b>11:00 AM</b> (Mon–Sat) SquadForge posts a friendly Good morning in the channel. Everyone replies in its thread with their plan, then what they built. Next morning the first reply is yesterday's tally (you also get the full version as a DM). Monday's report adds the week.</p>
+    <div class="su-row">
+      <label>Daily target <input id="suTarget" type="number" min="1" max="100" value="${esc(s['standup.target'] ?? 10)}" style="width:80px"/> actions + triggers per person</label>
+      <label class="check"><input type="checkbox" id="suM91am" ${on('standup.m91_morning') ? 'checked' : ''}/> M91 alert at 11 AM: “post your plan”</label>
+      <label class="check"><input type="checkbox" id="suM91pm" ${on('standup.m91_missing') ? 'checked' : ''}/> M91 alert at 7 PM to anyone without an update</label>
+    </div>
+    <div class="row"><button class="btn small" id="suSave">Save</button><button class="btn ghost small" id="suPreview">Preview yesterday's tally</button><button class="btn ghost small" id="suPost">Post Good morning now</button></div>
+  </div>`);
+  $('#suSave').onclick = async () => { await api('/api/settings', { method: 'POST', body: { 'standup.target': Number($('#suTarget').value) || 10, 'standup.m91_morning': $('#suM91am').checked, 'standup.m91_missing': $('#suM91pm').checked } }); toast('Standup settings saved'); };
+  $('#suPreview').onclick = async () => { try { const r = await api('/api/standup/tally'); modal(`<div class="card-h"><h2 style="margin:0">📋 Tally for ${esc(r.date)}</h2></div><p class="muted">This goes in the Good morning thread (short) and to you as a DM (full).</p><pre class="report">${esc(r.short)}</pre><details><summary>Full version (your DM)</summary><pre class="report">${esc(r.full)}</pre></details><div class="row"><span class="spacer"></span><button class="btn ghost" data-close>Close</button></div>`); } catch (e) { toast(e.message); } };
+  $('#suPost').onclick = async () => { if (!confirm('Post the Good morning message in the team channel now?')) return; const b = $('#suPost'); b.disabled = true; try { const r = await api('/api/standup/morning', { method: 'POST' }); toast(r.message || r.error || 'Done'); } catch (e) { toast(e.message); } b.disabled = false; };
+}
+
 // Workspace (team) settings: name and who can open it.
 async function workspaceCard() {
   if (!myWorkspace || !myEmail) return;

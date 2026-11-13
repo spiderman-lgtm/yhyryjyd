@@ -80,7 +80,7 @@ async function run(ref = today()) {
   const { from, to } = lastWeek(ref);
   const t = teamMetrics(from, to);
   const reqs = requestRows(from, to);
-  let team = buildTeamReport(t, reqs);
+  let team = buildTeamReport(t, reqs) + require('./standup').weekSection(from, to);
   const personal = buildPersonalReport(t, reqs);
 
   if (llm.enabled()) {

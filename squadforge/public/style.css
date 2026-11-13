@@ -1354,3 +1354,6 @@ html:has(body.on-login), body.on-login { overflow: hidden !important; }
 .qh-zero { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .qh-zero:empty { display: none; }
 .qh-zero .qtile.zero { flex: 0 0 auto; padding: 7px 12px; border-radius: 99px; }
+.su-card { margin-bottom: 16px; border-left: 4px solid #f2b84b; }
+.su-row { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; margin: 10px 0 12px; font-size: 13px; }
+.su-row label { display: inline-flex; align-items: center; gap: 8px; }

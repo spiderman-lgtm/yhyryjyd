@@ -37,3 +37,12 @@ test('website plug-request form is a client request with the app as title', () =
   assert.equal(P.requestTitle(t), 'Archbee — New App');
   assert.equal(P.plugRequest(t).source, 'website');
 });
+
+test('an app posted with its actions/triggers list is a submission and is counted', () => {
+  const P = require('../src/parser');
+  const t = 'Archbee done ✅\nactions: create doc, update doc, delete doc\ntriggers: new doc, doc updated';
+  assert.equal(P.isAppSubmission(t), true);
+  assert.deepEqual([P.parseCounts(t).actions, P.parseCounts(t).triggers], [3, 2]);
+  assert.equal(P.isAppSubmission('Archbee — 6 actions, 4 triggers done'), false);
+  assert.equal(P.parseCounts('Archbee — 6 actions, 4 triggers done').actions, 6);
+});

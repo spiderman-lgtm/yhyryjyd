@@ -73,8 +73,24 @@ function growthKind(text) {
 }
 
 // "3 actions, 2 triggers, 1 app" -> counts
+// "Archbee done — actions: create doc, update doc, delete doc · triggers: new doc"
+const LIST_RE = /\b(actions?|triggers?)\s*(?:\(\s*\d+\s*\))?\s*[:\-–]\s*([^\n]*(?:\n\s*[-•*\d.)]+\s*[^\n]+)*)/gi;
+function namedLists(text = '') {
+  const out = { actions: [], triggers: [] };
+  let m;
+  while ((m = LIST_RE.exec(text))) {
+    const key = m[1].toLowerCase().startsWith('action') ? 'actions' : 'triggers';
+    const items = m[2].split(/\n|,|;|·|\|/).map((x) => x.replace(/^[\s\-•*\d.)]+/, '').trim())
+      .filter((x) => x && !/^\d+$/.test(x) && !/^(triggers?|actions?)\b/i.test(x)).map((x) => x.split(/\s+(?:triggers?|actions?)\s*[:\-–]/i)[0].trim()).filter(Boolean);
+    out[key].push(...items);
+  }
+  return out;
+}
+// A teammate posting the app they built: names its actions/triggers as a list.
+function isAppSubmission(text = '') { const l = namedLists(text); return l.actions.length + l.triggers.length >= 1 && /[a-z]/i.test(text.replace(LIST_RE, '')); }
 function parseCounts(text = '') {
   const out = { actions: 0, triggers: 0, apps: 0 };
+  const named = namedLists(text);
   const re = /(\d+)\s*(actions?|triggers?|apps?|plugins?)\b|\b(actions?|triggers?|apps?|plugins?)\s*[:=-]?\s*(\d+)/gi;
   let m;
   while ((m = re.exec(text))) {
@@ -84,6 +100,8 @@ function parseCounts(text = '') {
     else if (w.startsWith('trigger')) out.triggers += n;
     else out.apps += n;
   }
+  out.actions = Math.max(out.actions, named.actions.length);
+  out.triggers = Math.max(out.triggers, named.triggers.length);
   return out;
 }
 
@@ -121,4 +139,4 @@ function mentionsApp(text, title) {
   return words.length > 0 && wordMatch(t, words[0]);
 }
 
-module.exports = { isPlugRequest, plugRequest, formField, isRequest, isReviewAsk, standupKind, detectStatus, growthKind, parseCounts, countItems, requestTitle, mentionsApp, DEFAULTS };
+module.exports = { isAppSubmission, namedLists, isPlugRequest, plugRequest, formField, isRequest, isReviewAsk, standupKind, detectStatus, growthKind, parseCounts, countItems, requestTitle, mentionsApp, DEFAULTS };

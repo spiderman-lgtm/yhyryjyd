@@ -8,8 +8,8 @@
       "timezone": "Asia/Kolkata"
     },
     {
-      "name": "Herald: subah ka plan check",
-      "cron": "30 11 * * 1-6",
+      "name": "Standup: 11 AM Good morning + yesterday's tally",
+      "cron": "0 11 * * 1-6",
       "path": "/cron/morning",
       "timezone": "Asia/Kolkata"
     },

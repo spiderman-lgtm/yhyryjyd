@@ -28,6 +28,7 @@ const accounts = require('./accounts');
 const m91 = require('./m91');
 const work = require('./work');
 const scribeAgent = require('./agents/scribe');
+const standup = require('./agents/standup');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, '..', 'public');
@@ -140,6 +141,7 @@ const SETTING_KEYS = [
   'cfg.SLACK_CHANNEL_ID', 'cfg.LEAD_SLACK_USER_ID', 'cfg.ALERT_CHANNEL_ID', 'cfg.SLACK_WORKSPACE_URL',
   'cfg.REQUEST_KEYWORDS', 'cfg.MORNING_KEYWORDS', 'cfg.EVENING_KEYWORDS', 'cfg.REVIEW_KEYWORDS',
   'inspector.instructions', 'herald.channel_reminder', 'herald.sunday', 'growth.notify_thread',
+  'standup.target', 'standup.m91_morning', 'standup.m91_missing',
 ];
 
 // Background job runner for cron routes (Embarko: reply fast, keep working).
@@ -260,6 +262,8 @@ function auditOnSuccess(req, res, p, m, body, cx) {
       '/api/members/import-slack': ['members', 'Imported members from Slack'],
       '/api/settings': keys.length ? ['settings', `Changed settings: ${keys.map((k) => SETTING_NAMES[k] || k.replace(/^cfg\./, '').replace(/_/g, ' ').toLowerCase()).join(', ')}`] : null,
       '/api/agents/herald/morning': ['alerts', 'Sent the morning reminder'],
+      '/api/standup/morning': ['alerts', 'Posted Good morning in the channel'],
+      '/api/standup/morning': ['alerts', 'Posted Good morning in the channel'],
       '/api/workspace': m === 'PATCH' ? ['settings', `Renamed the workspace to “${body.name}”`] : null,
       '/api/workspace/people': m === 'POST' ? ['settings', `Gave ${body.email} ${['admin', 'manager'].includes(body.role) ? body.role : 'viewer'} access`] : m === 'DELETE' ? ['settings', `Removed ${body.email} from the workspace`] : null,
       '/api/integrations/connected': ['integrations', `Connected ${(vs.APPS[body.app] || {}).name || body.app}`],
@@ -485,6 +489,8 @@ async function routes(req, res, url, p, m, body, cx) {
     const result = await agents.run(mm[1]);
     return send(res, 200, result || {});
   }
+  if (p === '/api/standup/morning' && m === 'POST') return send(res, 200, await U.runAgent('herald', 'Posting Good morning…', async () => { await scout.sync().catch(() => {}); return standup.morning(); }));
+  if (p === '/api/standup/tally' && m === 'GET') { const d = url.searchParams.get('date') || standup.prevWorkday(U.today()); const t = standup.dayTally(d); return send(res, 200, { date: d, short: t.short, full: t.full, people: t.people, target: standup.target(), thread: standup.threadOf(U.today()) }); }
   if (p === '/api/agents/herald/morning' && m === 'POST') return send(res, 200, await U.runAgent('herald', 'Sending the morning reminder…', () => herald.morning()));
   if (p === '/api/broadcast' && m === 'POST') {
     const r = await U.runAgent('commander', 'Sending the message…', () => commander.broadcast(body));
@@ -609,10 +615,14 @@ function cron(req, res, url) {
   const job = url.pathname.replace('/cron/', '');
   const jobs = {
     sync: () => background('scout', 'Syncing Slack…', () => scout.sync()),
-    morning: () => background('herald', 'Checking morning plans…', () => herald.morning()),
+    morning: () => background('herald', 'Posting Good morning…', async () => {
+      await U.runAgent('scout', 'Sync before the tally…', () => scout.sync());
+      return standup.morning();
+    }),
     evening: () => background('herald', 'Building the 7 PM alert…', async () => {
       await U.runAgent('scout', 'Final sync…', () => scout.sync());
       await U.runAgent('analyst', 'Analysing today…', () => analyst.run());
+      await standup.eveningNudge();
       return herald.evening();
     }),
     weekly: () => background('scribe', 'Writing the weekly report…', () => scribe.run()),

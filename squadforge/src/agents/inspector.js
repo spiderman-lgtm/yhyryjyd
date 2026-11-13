@@ -16,11 +16,15 @@ function queueFromMessage(msg, member, threadTs, requestId) {
   return info.lastInsertRowid;
 }
 
+for (const sql of ['ALTER TABLE reviews ADD COLUMN correct_count INTEGER', 'ALTER TABLE reviews ADD COLUMN missing TEXT']) require('../db').addSchema(sql);
+
 const SCHEMA = {
   type: 'object', additionalProperties: false,
   properties: {
     passed: { type: 'boolean' },
     summary: { type: 'string' },
+    correct: { type: 'array', items: { type: 'string' }, description: 'Things done right (one short line each)' },
+    missing: { type: 'array', items: { type: 'string' }, description: 'What was needed but is not there (e.g. a missing action or field)' },
     errors: {
       type: 'array',
       items: {
@@ -34,7 +38,7 @@ const SCHEMA = {
       },
     },
   },
-  required: ['passed', 'summary', 'errors'],
+  required: ['passed', 'summary', 'correct', 'missing', 'errors'],
 };
 
 async function reviewOne(review) {
@@ -57,18 +61,20 @@ async function reviewOne(review) {
     prompt: `Developer: ${member ? member.name : 'unknown'}\nReview attempt: ${review.attempt}\n${review.subject ? 'Request: ' + review.subject + '\n' : ''}\nSubmission message:\n${review.submission}\n\nThread context (oldest first):\n${thread || '(not available)'}\n\nReview it. "passed" is true only if there are no high or medium issues.`,
     schema: SCHEMA,
   });
-  const errors = out.errors || [];
-  db.prepare(`UPDATE reviews SET status = 'done', errors_count = ?, findings = ?, summary = ?, passed = ? WHERE id = ?`)
-    .run(errors.length, JSON.stringify(errors), out.summary, out.passed ? 1 : 0, review.id);
+  const errors = out.errors || [], correct = out.correct || [], missing = out.missing || [];
+  db.prepare(`UPDATE reviews SET status = 'done', errors_count = ?, findings = ?, summary = ?, passed = ?, correct_count = ?, missing = ? WHERE id = ?`)
+    .run(errors.length, JSON.stringify(errors), out.summary, out.passed ? 1 : 0, correct.length, JSON.stringify(missing), review.id);
 
   if (slack.enabled() && review.thread_ts) {
     const tag = member && member.slack_user_id ? `<@${member.slack_user_id}> ` : '';
     const icon = { high: '🔴', medium: '🟠', low: '🟡' };
-    const body = errors.length
-      ? `${tag}🔍 *Inspector review* (attempt ${review.attempt}) — ${errors.length} thing(s) to fix:\n` +
-        errors.map((e, i) => `${i + 1}. ${icon[e.severity] || '•'} *${e.title}* — ${e.detail}`).join('\n') +
-        `\n\n${out.summary}\nFix these and write "review" again.`
-      : `${tag}🔍 *Inspector review* (attempt ${review.attempt}) — ✅ All good! ${out.summary}`;
+    const head = `${tag}🔍 *Inspector review* (attempt ${review.attempt}) — ✅ ${correct.length} correct · ❌ ${errors.length} mistake${errors.length === 1 ? '' : 's'}${missing.length ? ` · 📌 ${missing.length} missing` : ''}`;
+    const body = [head,
+      correct.length ? `*What's right*\n${correct.slice(0, 8).map((c) => '✅ ' + c).join('\n')}` : '',
+      errors.length ? `*To fix*\n${errors.map((e, i) => `${i + 1}. ${icon[e.severity] || '•'} *${e.title}* — ${e.detail}`).join('\n')}` : '',
+      missing.length ? `*Missing*\n${missing.map((x) => '📌 ' + x).join('\n')}` : '',
+      out.summary + (errors.length || missing.length ? '\nFix these and post the app again.' : ' 🎉'),
+    ].filter(Boolean).join('\n\n');
     try { await slack.post(cfg('SLACK_CHANNEL_ID'), body, review.thread_ts); }
     catch (e) { logActivity('inspector', 'Posting in the thread failed: ' + e.message, 'warn'); }
   }
