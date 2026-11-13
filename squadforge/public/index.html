@@ -15,7 +15,7 @@
     <div class="qp">
       <header class="qp-nav">
         <div class="qp-logo"><svg viewBox="0 0 8 9" shape-rendering="crispEdges" aria-hidden="true"><path d="M3 0h2v1h1v2h1v2h1v1H5v3H3V6H0V5h1V3h1V1h1z" fill="#1f3b33"/></svg>SquadForge</div>
-        <nav class="qp-links"><a href="#lp-how">How it works</a><a href="#lp-features">Features</a><a href="#lp-agents">Agents</a><a href="#lp-faq">FAQ</a></nav>
+        <nav class="qp-links"><a href="#lp-how">How it works</a><a href="#lp-features">Features</a><a href="#lp-agents">Agents</a></nav>
       </header>
       <section class="qp-hero">
         <h1>Where your team's<br/>work comes alive.</h1>
@@ -26,9 +26,9 @@
           <div><span class="qp-ic">🌿</span><b>Weekly Reports</b><small>Monday's report, written before you ask.</small></div>
         </div>
         <form id="loginForm" class="qp-form" autocomplete="on">
-          <input type="text" id="wsName" placeholder="Workspace name (e.g. Plugins team)" aria-label="Workspace name" class="hidden" />
           <input type="text" id="signupName" placeholder="Your name" autocomplete="name" aria-label="Name" class="hidden" />
           <input type="email" id="email" placeholder="you@company.com" autocomplete="username" aria-label="Email" />
+          <input type="text" id="wsName" placeholder="Team / workspace name" aria-label="Workspace name" class="hidden" />
           <input type="password" id="password" placeholder="Password" autocomplete="current-password" required aria-label="Password" />
           <button class="qp-btn" type="submit" id="authBtn">Sign in →</button>
           <p class="qp-hint" id="authHint"></p>
@@ -95,21 +95,10 @@
         <div class="lp-apps"><span>Slack</span><span>viaSocket</span><span>M91</span><span>Gmail</span><span>Google Sheets</span><span>Claude AI</span></div>
       </section>
 
-      <section class="lp-sec" id="lp-faq">
-        <span class="lp-kicker">FAQ</span>
-        <h2>Questions</h2>
-        <div class="lp-faq">
-          <details><summary>Do my teammates need to change how they work?</summary><p>No. They keep posting in Slack the way they do today. SquadForge only reads the channel you choose.</p></details>
-          <details><summary>What is a workspace?</summary><p>One team. Each workspace has its own members, Slack channel, M91 alerts, reports and settings. If you lead several teams, create one workspace per team and switch between them from the top bar.</p></details>
-          <details><summary>Who can see the dashboard?</summary><p>Workspace owners and admins see everything. People you invite as viewers see the live views (Live Flow and Village).</p></details>
-          <details><summary>How are apps connected?</summary><p>Through viaSocket on the Integrations page. Only owners and admins can connect apps, and connections belong to that workspace.</p></details>
-          <details><summary>Does it rank people?</summary><p>No. It shows outcomes and blockers so you can help — not leaderboards or task counts.</p></details>
-        </div>
-      </section>
 
       <section class="lp-sec lp-cta">
         <h2>Ready when your team is.</h2>
-        <div class="lp-cta-btns"><a href="#" class="qp-btn" data-auth="signin">Sign in</a><a href="#" class="qp-btn ghost" data-auth="workspace">Create a workspace</a></div>
+        <div class="lp-cta-btns"><a href="#" class="qp-btn" data-auth="signin">Sign in</a><a href="#" class="qp-btn ghost" data-auth="signup">Create an account</a></div>
       </section>
       <footer class="lp-foot">SquadForge · built for team leads</footer>
     </div>

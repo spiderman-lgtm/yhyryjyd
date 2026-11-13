@@ -57,13 +57,12 @@ function saveWs(id) { try { id ? localStorage.setItem('sf_ws', String(id)) : loc
 // Login modes: sign in, create an account, or create a workspace (a new team).
 let authMode = 'signin';
 const AUTH = {
-  signin: { btn: 'Sign in →', pw: 'Password', hint: 'New here? <a href="#" data-auth="signup">Create an account</a> · <a href="#" data-auth="workspace">Create a workspace</a>' },
-  signup: { btn: 'Create account →', pw: 'Choose a password (8+ characters)', hint: 'Already have an account? <a href="#" data-auth="signin">Sign in</a> · <a href="#" data-auth="workspace">Create a workspace</a>' },
-  workspace: { btn: 'Create workspace →', pw: 'Password (8+ characters, or your existing one)', hint: 'One workspace per team. Already have one? <a href="#" data-auth="signin">Sign in</a>' },
+  signin: { btn: 'Sign in →', pw: 'Password', hint: 'New here? <a href="#" data-auth="signup">Create an account</a>' },
+  signup: { btn: 'Create account →', pw: 'Choose a password (8+ characters)', hint: 'Already have an account? <a href="#" data-auth="signin">Sign in</a>' },
 };
 function setAuthMode(mode) {
   authMode = mode; const a = AUTH[mode];
-  $('#wsName').classList.toggle('hidden', mode !== 'workspace');
+  $('#wsName').classList.toggle('hidden', mode !== 'signup');
   $('#signupName').classList.toggle('hidden', mode === 'signin');
   $('#authBtn').textContent = a.btn;
   $('#password').setAttribute('autocomplete', mode === 'signin' ? 'current-password' : 'new-password');
@@ -74,9 +73,9 @@ function setAuthMode(mode) {
 setAuthMode('signin');
 document.addEventListener('click', (e) => {
   const a = e.target.closest('[data-auth]'); if (!a || !$('#login').contains(a)) return;
-  e.preventDefault(); setAuthMode(a.dataset.auth);
+  e.preventDefault(); setAuthMode(a.dataset.auth === 'workspace' ? 'signup' : a.dataset.auth);
   $('#login').scrollTo({ top: 0, behavior: 'smooth' });
-  setTimeout(() => (authMode === 'workspace' ? $('#wsName') : authMode === 'signup' ? $('#signupName') : $('#email')).focus(), 300);
+  setTimeout(() => (authMode === 'signup' ? $('#signupName') : $('#email')).focus(), 300);
 });
 $('#loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -84,14 +83,14 @@ $('#loginForm').addEventListener('submit', async (e) => {
   try {
     const body = { email: $('#email').value, password: $('#password').value };
     let r;
-    if (authMode === 'workspace') r = await api('/api/workspace-signup', { method: 'POST', body: { ...body, name: $('#signupName').value, workspace: $('#wsName').value } });
-    else if (authMode === 'signup') r = await api('/api/signup', { method: 'POST', body: { ...body, name: $('#signupName').value } });
+    if (authMode === 'signup') r = await api('/api/signup', { method: 'POST', body: { ...body, name: $('#signupName').value, workspace: $('#wsName').value } });
     else r = await api('/api/login', { method: 'POST', body });
     saveToken(r.token);
-    if (r.workspace) saveWs(r.workspace);
+    saveWs(r.workspace || null);
+    members = []; state = null; tab = 'team';
     $('#login').classList.add('hidden'); document.body.classList.remove('on-login');
-    if (r.workspace) toast('Your workspace is ready — add your team in Settings.');
-    else if (r.created) toast(r.role === 'admin' ? 'Welcome! Your admin account is ready.' : 'Welcome! You can see the live views.');
+    if (r.joined) toast('Welcome! You joined the workspace you were invited to.');
+    else if (r.created) toast('Your workspace is ready — add your team in Settings.');
     boot();
   } catch (err) { $('#loginErr').textContent = err.message; }
   btn.disabled = false;

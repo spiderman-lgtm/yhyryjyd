@@ -53,7 +53,7 @@ function cookies(req) {
 function sessionOf(req) {
   if (!process.env.ADMIN_PASSWORD) return { role: 'admin', email: null, open: true }; // no password set: open
   // cookie, or the X-SF-Session header (kept in the browser) for proxies that drop cookies
-  const s = cookies(req).sf_session || req.headers['x-sf-session'];
+  const s = req.headers['x-sf-session'] || cookies(req).sf_session;
   if (!s) return null;
   const parts = String(s).split('.');
   if (parts.length !== 4) return null;
@@ -167,35 +167,27 @@ async function api(req, res, url) {
     console.log(`[login] ok: ${role}${email ? ' (' + email.replace(/(.).*@/, '$1***@') + ')' : ''}`);
     return send(res, 200, { ok: true, role, token, ...extra }, { 'Set-Cookie': `sf_session=${token}; HttpOnly; Path=/; Max-Age=${30 * 86400}; SameSite=Lax; Secure` });
   };
-  if (p === '/api/signup' && m === 'POST') {
-    const email = String(body.email || '').trim().toLowerCase();
-    const name = String(body.name || '').trim().slice(0, 60);
-    const pw = String(body.password || '');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { error: 'Please enter a valid email' });
-    if (pw.trim().length < 8) return send(res, 400, { error: 'Password must be at least 8 characters' });
-    if (accounts.find(email)) return send(res, 409, { error: 'An account with this email already exists — sign in instead' });
-    const role = adminEmails().includes(email) ? 'admin' : 'viewer';
-    accounts.create(email, name, pw.trim(), role);
-    console.log(`[signup] new ${role} account`);
-    return issue(role, email, { created: true });
-  }
-  if (p === '/api/workspace-signup' && m === 'POST') {
+  // Create account = a new account that owns its own workspace (team).
+  // Someone already invited to a workspace can leave the workspace name empty and just join.
+  if ((p === '/api/signup' || p === '/api/workspace-signup') && m === 'POST') {
     const email = String(body.email || '').trim().toLowerCase();
     const name = String(body.name || '').trim().slice(0, 60);
     const pw = String(body.password || '').trim();
     const wsName = String(body.workspace || '').trim();
-    if (!wsName) return send(res, 400, { error: 'Give your workspace a name (for example, your team name)' });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { error: 'Please enter a valid email' });
+    const invited = workspaces.forEmail(email);
+    if (!wsName && !invited.length) return send(res, 400, { error: 'Give your workspace a name (for example, your team name)' });
     const acct = accounts.find(email);
     if (acct) {
+      if (!wsName) return send(res, 409, { error: 'An account with this email already exists — sign in instead' });
       if (!accounts.verify(acct, pw)) return send(res, 401, { error: 'This email already has an account — use its password' });
     } else {
       if (pw.length < 8) return send(res, 400, { error: 'Password must be at least 8 characters' });
       accounts.create(email, name, pw, 'viewer');
     }
-    const ws = workspaces.create(wsName, email);
-    console.log(`[workspace] created #${ws.id}`);
-    return issue(adminEmails().includes(email) ? 'admin' : 'viewer', email, { created: true, workspace: ws.id });
+    const ws = wsName ? workspaces.create(wsName, email) : invited[0];
+    console.log(wsName ? `[workspace] created #${ws.id}` : `[signup] joined invited workspace #${ws.id}`);
+    return issue(adminEmails().includes(email) ? 'admin' : 'viewer', email, { created: true, workspace: ws.id, joined: !wsName });
   }
   if (p === '/api/login' && m === 'POST') {
     const email = String(body.email || '').trim().toLowerCase();
