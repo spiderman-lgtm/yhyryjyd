@@ -54,6 +54,33 @@ async function statusFor(text) {
   } catch { return null; }
 }
 
+// Test teammates: Slack has no accounts for them, so the lead writes "[Aarav] started …" and the
+// message is read as Aarav's. Only these names; members are created on first use (Settings removes them).
+const SIM = { aarav: ['Aarav (test)', 'tech'], meera: ['Meera (test)', 'tech'], kabir: ['Kabir (test)', 'tech'], isha: ['Isha (test)', 'growth'] };
+function simMember(key) {
+  const k = String(key || '').toLowerCase();
+  if (!SIM[k]) return null;
+  const id = 'SIM_' + k.toUpperCase();
+  let m = memberBySlack(id);
+  if (!m) {
+    db.prepare('INSERT INTO members (name, slack_user_id, role, active) VALUES (?, ?, ?, 1)').run(SIM[k][0], id, SIM[k][1]);
+    m = memberBySlack(id);
+    logActivity('scout', `🧪 Test teammate ${m.name} joined`);
+  }
+  return m;
+}
+function asSim(msg) {
+  if (!msg || !msg.user || msg.user !== leadId()) return msg;
+  const mm = String(msg.text || '').match(/^\s*\[(aarav|meera|kabir|isha)\]\s*/i);
+  if (!mm) return msg;
+  const m = simMember(mm[1]);
+  return m ? { ...msg, user: m.slack_user_id, text: msg.text.slice(mm[0].length) } : msg;
+}
+// plain-text "@Aarav" from the lead assigns a test teammate
+function simMentions(text) {
+  return [...String(text || '').matchAll(/@(aarav|meera|kabir|isha)\b/gi)].map((x) => simMember(x[1])).filter(Boolean).map((m) => m.id);
+}
+
 // Bots and Slack workflows often put the text in attachments or blocks
 function botText(msg) {
   const parts = [msg.text || ''];
@@ -88,7 +115,7 @@ async function handleReply(reply, parent, channel, stats) {
   if (req) {
     if (isLead(reply.user, member)) {
       const mentioned = slack.mentions(text);
-      const ids = tracker.assignedFromMentions(mentioned, leadId());
+      const ids = [...tracker.assignedFromMentions(mentioned, leadId()), ...simMentions(text)];
       if (ids.length) tracker.addAssignees(req, ids);
       else if (!mentioned.length) {
         const status = P.detectStatus(text);
@@ -133,7 +160,7 @@ async function sync() {
     if (fresh && skip(msg) && msg.subtype !== 'message_deleted' && P.isPlugRequest(botText(msg))) {
       stats.messages++;
       if (tracker.createFromMessage({ ...msg, text: botText(msg) }, channel, leadId())) stats.requests++;
-    } else if (!skip(msg) && fresh) { stats.messages++; await handleTopLevel(msg, channel, stats); }
+    } else if (!skip(msg) && fresh) { stats.messages++; await handleTopLevel(asSim(msg), channel, stats); }
     if (msg.reply_count && parseFloat(msg.latest_reply || msg.ts) > lastTs - 3600) threads.set(msg.ts, msg);
   }
   // also check the threads of older open client requests
@@ -147,7 +174,7 @@ async function sync() {
     for (const reply of replies.sort((a, b) => parseFloat(a.ts) - parseFloat(b.ts))) {
       if (skip(reply)) continue;
       stats.messages++;
-      await handleReply(reply, parent, channel, stats);
+      await handleReply(asSim(reply), asSim(parent), channel, stats);
     }
   }
   setSetting('scout.last_ts', now.toFixed(6));

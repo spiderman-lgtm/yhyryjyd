@@ -265,6 +265,7 @@ function auditOnSuccess(req, res, p, m, body, cx) {
       '/api/integrations/connected': ['integrations', `Connected ${(vs.APPS[body.app] || {}).name || body.app}`],
       '/api/demo/load': ['settings', 'Loaded demo data'],
       '/api/demo/clear': ['settings', 'Cleared demo data'],
+      '/api/sim': ['members', 'Removed the test teammates'],
       '/api/checklist': null,
     }[p] || null;
   }
@@ -589,6 +590,11 @@ async function routes(req, res, url, p, m, body, cx) {
     }
   }
 
+  if (p === '/api/sim' && m === 'DELETE') {
+    const n = db.prepare("DELETE FROM members WHERE slack_user_id LIKE 'SIM_%'").run().changes;
+    U.logActivity('scout', `🧪 Removed ${n} test teammates`);
+    return send(res, 200, { removed: n });
+  }
   if (p === '/api/demo/load' && m === 'POST') return send(res, 200, demo.load());
   if (p === '/api/demo/clear' && m === 'POST') return send(res, 200, demo.clear());
 
