@@ -7,6 +7,7 @@ const { db, getSetting, setSetting, withWorkspace } = require('./db');
 const workspaces = require('./workspaces');
 const history = require('./history');
 const checklist = require('./checklist');
+const manager = require('./manager');
 const U = require('./util');
 const slack = require('./slack');
 const llm = require('./llm');
@@ -81,7 +82,7 @@ function contextOf(req) {
   let wsRole = workspaces.roleIn(se.email, ws);
   if (!wsRole && ws === 1 && !mine.length) wsRole = 'viewer';
   if (!wsRole) return null;
-  return { ws, role: ['owner', 'admin'].includes(wsRole) ? 'admin' : 'viewer', email: se.email, wsRole, workspaces: mine };
+  return { ws, role: ['owner', 'admin'].includes(wsRole) ? 'admin' : wsRole === 'manager' ? 'manager' : 'viewer', email: se.email, wsRole, workspaces: mine };
 }
 // The viewer can only see these (read-only)
 const VIEWER_ROUTES = ['/api/state', '/api/requests', '/api/logs'];
@@ -260,7 +261,7 @@ function auditOnSuccess(req, res, p, m, body, cx) {
       '/api/settings': keys.length ? ['settings', `Changed settings: ${keys.map((k) => SETTING_NAMES[k] || k.replace(/^cfg\./, '').replace(/_/g, ' ').toLowerCase()).join(', ')}`] : null,
       '/api/agents/herald/morning': ['alerts', 'Sent the morning reminder'],
       '/api/workspace': m === 'PATCH' ? ['settings', `Renamed the workspace to “${body.name}”`] : null,
-      '/api/workspace/people': m === 'POST' ? ['settings', `Gave ${body.email} ${body.role === 'admin' ? 'admin' : 'viewer'} access`] : m === 'DELETE' ? ['settings', `Removed ${body.email} from the workspace`] : null,
+      '/api/workspace/people': m === 'POST' ? ['settings', `Gave ${body.email} ${['admin', 'manager'].includes(body.role) ? body.role : 'viewer'} access`] : m === 'DELETE' ? ['settings', `Removed ${body.email} from the workspace`] : null,
       '/api/integrations/connected': ['integrations', `Connected ${(vs.APPS[body.app] || {}).name || body.app}`],
       '/api/demo/load': ['settings', 'Loaded demo data'],
       '/api/demo/clear': ['settings', 'Cleared demo data'],
@@ -273,6 +274,16 @@ function auditOnSuccess(req, res, p, m, body, cx) {
 
 async function routes(req, res, url, p, m, body, cx) {
   const role = cx.role;
+  // ---------- manager view (read-only for a boss; the lead can preview it) ----------
+  if (p === '/api/manager' && m === 'GET') {
+    if (!['admin', 'manager'].includes(role)) return send(res, 403, { error: 'Not available' });
+    // who leads this workspace: its owner's name (workspace 1: the first ADMIN_EMAILS account)
+    const ownerEmail = cx.ws === 1 && adminEmails()[0] ? adminEmails()[0] : (workspaces.members(cx.ws).find((x) => x.role === 'owner') || {}).email;
+    const ownerAcct = ownerEmail ? accounts.find(ownerEmail) : null;
+    const leadName = ownerAcct && ownerAcct.name ? ownerAcct.name.split(' ')[0] : ownerEmail ? ownerEmail.split('@')[0].split(/[._\d]/)[0].replace(/^./, (c) => c.toUpperCase()) : null;
+    return send(res, 200, manager.summary(url.searchParams.get('week'), leadName));
+  }
+  if (role === 'manager' && !(m === 'GET' && ['/api/state', '/api/requests', '/api/logs', '/api/workspaces'].includes(p))) return send(res, 403, { error: 'Managers have a read-only view' });
   // ---------- history & test checklist ----------
   if (p === '/api/history' && m === 'GET') {
     if (role !== 'admin') return send(res, 403, { error: 'Admins only' });

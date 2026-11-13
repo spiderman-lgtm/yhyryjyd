@@ -1,5 +1,5 @@
 // Workspace registry (in the main database): one workspace per team, people join by email.
-// Roles: owner / admin (full dashboard) and viewer (live views only).
+// Roles: owner / admin (full dashboard), manager (read-only manager view) and viewer (live views only).
 const { mainDb: db } = require('./db');
 
 db.exec(`CREATE TABLE IF NOT EXISTS workspaces (
@@ -49,7 +49,7 @@ function members(id) { return db.prepare('SELECT email, role, created_at FROM me
 function invite(id, email, role) {
   const e = norm(email);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw new Error('Enter a valid email');
-  const r = ['admin', 'viewer'].includes(role) ? role : 'viewer';
+  const r = ['admin', 'manager', 'viewer'].includes(role) ? role : 'viewer';
   db.prepare(`INSERT INTO memberships (ws_id, email, role) VALUES (?, ?, ?) ON CONFLICT(ws_id, email) DO UPDATE SET role = excluded.role`).run(Number(id), e, r);
   return members(id);
 }

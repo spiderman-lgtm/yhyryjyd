@@ -8,12 +8,13 @@ const GROWTH_LABEL = { support_request: 'Support request', app_listing: 'App lis
 let state = null;
 let members = [];
 const VIEWER_TABS = ['flow', 'village'];
-const ALL_TABS = ['team', 'requests', 'reviews', 'growth', 'reports', 'history', 'commander', 'flow', 'village', 'integrations', 'settings'];
+const MANAGER_TABS = ['manager', 'flow', 'village'];
+const ALL_TABS = ['team', 'manager', 'requests', 'reviews', 'growth', 'reports', 'history', 'commander', 'flow', 'village', 'integrations', 'settings'];
 let tab = ALL_TABS.includes(location.hash.replace('#', '')) ? location.hash.replace('#', '') : 'team'; // viewers are sent to 'flow' in markTab
 let role = 'admin';
 let myEmail = null;
 let myName = null;
-const PAGE_TITLES = { team: 'Dashboard', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'History', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
+const PAGE_TITLES = { team: 'Dashboard', manager: 'Manager view', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'History', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
 let pollTimer = null;
 let lastActivityId = 0;
 
@@ -125,11 +126,12 @@ $('#tabs').addEventListener('click', (e) => {
 });
 function markTab() {
   if (role === 'viewer' && !VIEWER_TABS.includes(tab)) tab = 'flow';
+  if (role === 'manager' && !MANAGER_TABS.includes(tab)) tab = 'manager';
   document.querySelectorAll('#tabs button').forEach((b) => {
     b.classList.toggle('active', b.dataset.tab === tab);
-    b.classList.toggle('hidden', role === 'viewer' && b.dataset.admin !== undefined);
+    b.classList.toggle('hidden', (role === 'viewer' && (b.dataset.admin !== undefined || b.dataset.mgr !== undefined)) || (role === 'manager' && !MANAGER_TABS.includes(b.dataset.tab)));
   });
-  document.querySelectorAll('#tabs .nav-label').forEach((l) => l.classList.toggle('hidden', role === 'viewer' && l.textContent !== 'Live'));
+  document.querySelectorAll('#tabs .nav-label').forEach((l) => l.classList.toggle('hidden', (role === 'viewer' && l.textContent !== 'Live') || (role === 'manager' && l.textContent === 'Workspace')));
   $('#pageTitle').textContent = PAGE_TITLES[tab] || 'SquadForge';
   document.title = `${PAGE_TITLES[tab] || 'Dashboard'} · SquadForge`;
   const v = $('#view'); v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter');
@@ -144,7 +146,7 @@ function renderHeader() {
   $('#userChip').innerHTML = myEmail ? `<span class="avatar-xs">${esc(myEmail[0].toUpperCase())}</span>${esc(myEmail)}` : role === 'viewer' ? 'Viewer' : '';
   $('#logoutBtn').classList.toggle('hidden', !state.password_set);
   const banners = [];
-  if (role === 'viewer') { $('#banner').innerHTML = ''; return; }
+  if (role === 'viewer' || role === 'manager') { $('#banner').innerHTML = ''; return; }
   if (!state.password_set) banners.push(`<div class="banner red">🔓 <b>ADMIN_PASSWORD</b> is not set, so the dashboard is open to everyone. Set the env var on Embarko.</div>`);
   if (!state.member_count) banners.push(`<div class="banner">👋 Get started: add team members in <b>Settings</b> (or import them from Slack). Just exploring? <a href="#" id="demoLink">Load demo data</a>.</div>`);
   else if (state.has_demo) banners.push(`<div class="banner">🧪 You are looking at demo data. Use "Clear demo" in Settings to see real data.</div>`);
@@ -382,9 +384,9 @@ async function workspaceCard() {
   const h2 = $('#view h2'); if (!h2) return;
   h2.insertAdjacentHTML('afterend', `<div class="card ws-card" id="wsCard"><h3>🗂 Workspace</h3>
     <div class="ws-row"><input id="wsRename" value="${esc(myWorkspace.name)}" aria-label="Workspace name"/><button class="btn small" id="wsSave">Rename</button></div>
-    <p class="muted">Each workspace is one team with its own members, Slack channel, M91 alerts, reports and settings. People below can open it: <b>owners/admins</b> see everything, <b>viewers</b> see the live views.</p>
+    <p class="muted">Each workspace is one team with its own members, Slack channel, M91 alerts, reports and settings. People below can open it: <b>owners/admins</b> see everything, <b>managers</b> see the read-only Manager view (your boss), <b>viewers</b> see the live views.</p>
     <div id="wsPeople" class="ws-people"></div>
-    <div class="ws-row"><input id="wsInvEmail" type="email" placeholder="teammate@company.com" aria-label="Email to invite"/><select id="wsInvRole"><option value="viewer">Viewer</option><option value="admin">Admin</option></select><button class="btn small" id="wsInvite">Add person</button></div>
+    <div class="ws-row"><input id="wsInvEmail" type="email" placeholder="teammate@company.com" aria-label="Email to invite"/><select id="wsInvRole"><option value="viewer">Viewer — live views</option><option value="manager">Manager — read-only manager view</option><option value="admin">Admin — everything</option></select><button class="btn small" id="wsInvite">Add person</button></div>
     <p class="muted small">They sign in (or create an account) with this email and the workspace appears in their switcher.</p></div>`);
   const draw = (list) => {
     $('#wsPeople').innerHTML = list.map((p) => `<div class="ws-person"><span class="avatar-xs">${esc(p.email[0].toUpperCase())}</span><span class="ws-email">${esc(p.email)}</span><span class="pill">${esc(p.role)}</span>${p.env ? '<span class="muted small">from ADMIN_EMAILS</span>' : `<button class="btn ghost small" data-rm="${esc(p.email)}">Remove</button>`}</div>`).join('') || '<p class="muted">Only you so far.</p>';
@@ -531,7 +533,7 @@ async function render() {
   if (!state) return;
   try {
     if (role === 'admin' && (!members.length || tab === 'settings')) members = await api('/api/members');
-    ({ flow: renderFlow, integrations: renderIntegrations, village: renderVillage, team: renderTeam, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, history: renderHistory, commander: renderCommander, settings: renderSettings }[tab] || renderVillage)();
+    ({ flow: renderFlow, integrations: renderIntegrations, village: renderVillage, team: renderTeam, manager: renderManager, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, history: renderHistory, commander: renderCommander, settings: renderSettings }[tab] || renderVillage)();
     if (tab === 'village') lastActivityId = state.activity[0] ? state.activity[0].id : 0;
   } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; }
 }

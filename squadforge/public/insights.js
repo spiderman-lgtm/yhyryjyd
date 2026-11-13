@@ -10,16 +10,47 @@ const QUEUE = [
 ];
 let openRequestAfterNav = null;
 
+// The first thing the lead sees: what is waiting on them, big and actionable.
+const Q_ORDER = ['decisions', 'submissions', 'evidence', 'outcomes', 'analyses']; // which to start with
+const Q_ACTION = { submissions: 'Review', analyses: 'Read', decisions: 'Assign', outcomes: 'Verify', evidence: 'Check' };
+const Q_HINT = { submissions: 'Your team asked you to look', analyses: 'How finished work went', decisions: 'New requests without an owner', outcomes: 'Done — add proof it worked', evidence: 'You asked for more proof' };
 function queueBar(q) {
   const total = QUEUE.reduce((n, c) => n + (q[c.key] || []).length, 0);
-  return `<div class="qbar" role="toolbar" aria-label="Your pending queue">
-    <div class="qbar-h"><b>${total ? total + ' things need you' : 'All clear 🌿'}</b><span class="muted">${total ? 'Tap one to act on it' : 'Nothing waiting on you right now'}</span></div>
-    <div class="qbar-chips">${QUEUE.map((c, i) => { const n = (q[c.key] || []).length; return `<button class="qchip ${n ? 'has' : ''}" data-q="${c.key}" style="--i:${i}"><span class="qi">${c.icon}</span><span class="ql">${c.label}</span><b class="qn tnum">${n}</b></button>`; }).join('')}</div>
-  </div>`;
+  const h = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }).format(new Date()));
+  const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const who = (typeof myName === 'string' && myName) ? myName.split(' ')[0] : (typeof myEmail === 'string' && myEmail) ? myEmail.split('@')[0].split(/[._\d]/)[0] : '';
+  const nameTxt = who ? ', ' + who[0].toUpperCase() + who.slice(1) : '';
+  const start = Q_ORDER.find((k) => (q[k] || []).length);
+  const oldest = Math.max(0, ...(q.decisions || []).map((d) => d.waited || 0));
+  const mins = total * 3;
+  const evening = h >= 16 && h < 19;
+  const tiles = [...QUEUE].sort((a, b) => ((q[b.key] || []).length ? 1 : 0) - ((q[a.key] || []).length ? 1 : 0)).map((c, i) => {
+    const items = q[c.key] || [], n = items.length, first = items[0];
+    if (!n) return `<button class="qtile zero" data-q="${c.key}" style="--i:${i}"><span class="qt-ic">${c.icon}</span><span class="qt-l">${c.label}</span><b class="qt-n tnum">0</b></button>`;
+    const meta = first ? [first.who, first.waited ? `waiting ${first.waited}h` : ''].filter(Boolean).join(' · ') : '';
+    return `<button class="qtile ${c.key === start ? 'start' : ''}" data-q="${c.key}" style="--i:${i}">
+      ${c.key === start ? '<span class="qt-start">Start here</span>' : ''}
+      <div class="qt-top"><span class="qt-ic">${c.icon}</span><b class="qt-n tnum">${n}</b></div>
+      <div class="qt-l">${c.label}</div><div class="qt-hint">${Q_HINT[c.key]}</div>
+      ${first ? `<div class="qt-first"><b>${esc(first.title)}</b>${meta ? `<small>${esc(meta)}</small>` : ''}</div>` : ''}
+      <span class="qt-go">${Q_ACTION[c.key]}${n > 1 ? ` · ${n}` : ''} →</span>
+    </button>`;
+  });
+  return `<section class="qhero ${total ? '' : 'clear'}" aria-label="Things that need you">
+    <div class="qh-head">
+      <div><div class="qh-greet">${greet}${esc(nameTxt)}</div>
+        <h2>${total ? `${total} thing${total === 1 ? '' : 's'} need${total === 1 ? 's' : ''} you` : 'All clear 🌿'}</h2>
+        <div class="qh-sub">${total ? `About ${mins < 60 ? mins + ' minutes' : Math.round(mins / 60) + ' h'} of your time${oldest ? ` · oldest request waiting ${oldest}h` : ''} · tap a card to act` : 'Nothing is waiting on you right now — the team has what it needs.'}</div></div>
+      ${evening ? `<div class="qh-alert">📢 Your 7 PM alert goes out at 7:00 PM <button class="btn small ghost" id="previewAlert">Preview</button></div>` : ''}
+    </div>
+    ${total ? `<div class="qh-tiles">${tiles.filter((t) => !t.includes('qtile zero')).join('')}</div><div class="qh-zero">${tiles.filter((t) => t.includes('qtile zero')).join('')}</div>` : ''}
+  </section>`;
 }
 
 function wireQueue(q) {
   document.querySelectorAll('[data-q]').forEach((b) => (b.onclick = () => openQueue(b.dataset.q, q)));
+  const pa = $('#previewAlert');
+  if (pa) pa.onclick = async () => { pa.disabled = true; try { const r = await api('/api/reports/preview', { method: 'POST' }); modal(`<div class="card-h"><h2 style="margin:0">📢 Today's 7 PM alert (preview)</h2></div><pre class="report">${esc(r.text)}</pre><div class="row"><span class="spacer"></span><button class="btn ghost" data-close>Close</button></div>`); } catch (e) { toast(e.message); } pa.disabled = false; };
 }
 
 function openQueue(key, q) {
