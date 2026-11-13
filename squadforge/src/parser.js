@@ -3,7 +3,7 @@
 const { list } = require('./util');
 
 const DEFAULTS = {
-  REQUEST_KEYWORDS: ['client request', 'new request', 'request:', 'req:', 'client req', 'app request', 'request aayi', 'request aai'],
+  REQUEST_KEYWORDS: ['request for plug', 'client request', 'new request', 'request:', 'req:', 'client req', 'app request', 'request aayi', 'request aai'],
   MORNING_KEYWORDS: ['good morning', 'morning update', 'morning', 'subah', "today's plan", 'todays plan', 'aaj ka plan', 'plan for today', 'standup'],
   EVENING_KEYWORDS: ['evening update', 'evening', 'eod', 'end of day', 'shaam', 'sham', 'aaj kya kiya', 'done today', 'day summary'],
   REVIEW_KEYWORDS: ['ready for review', 'review please', 'please review', 'for review', 'review kr', 'review kar', 'check karo', 'check kr do', 'review'],
@@ -28,7 +28,7 @@ const kw = (key) => list(key, DEFAULTS[key]);
 const norm = (t = '') => t.toLowerCase().replace(/<@[A-Z0-9]+(\|[^>]*)?>/g, ' ').replace(/\s+/g, ' ');
 const hasAny = (text, words) => { const t = norm(text); return words.some((w) => t.includes(w)); };
 
-function isRequest(text) { return hasAny(text, kw('REQUEST_KEYWORDS')); }
+function isRequest(text) { return hasAny(text, kw('REQUEST_KEYWORDS')) || isPlugRequest(text); }
 function isReviewAsk(text) { return hasAny(text, kw('REVIEW_KEYWORDS')); }
 function standupKind(text) {
   const t = norm(text);
@@ -93,7 +93,19 @@ function countItems(text = '') {
   return Math.max(lines.length > 1 ? lines.length - 1 : lines.length, text.trim() ? 1 : 0);
 }
 
+// Website form posts: "Request for plug : … plug Name: Archbee … user Need: New App … App name - Archbee"
+function formField(text, label) {
+  const m = String(text || '').match(new RegExp('(?:^|\\n)\\s*[*_]*' + label + '[*_]*\\s*[:\\-–]\\s*([^\\n]+)', 'i'));
+  return m ? m[1].replace(/[*_`]/g, '').trim() : '';
+}
+function isPlugRequest(text = '') { return /request for plug/i.test(text) || (!!formField(text, 'plug name') && !!formField(text, 'user need')); }
+function plugRequest(text = '') {
+  const clean = String(text).replace(/<mailto:[^|>]+\|([^>]+)>/g, '$1').replace(/<(https?:[^|>]+)\|?([^>]*)>/g, (_, u, l) => l || u);
+  const f = (l) => formField(clean, l);
+  return { app: f('plug name') || f('app name'), need: f('user need'), useCase: f('use case'), user: f('user name'), email: f('user email'), country: f('country'), source: f('source'), env: f('environment') };
+}
 function requestTitle(text = '') {
+  if (isPlugRequest(text)) { const r = plugRequest(text); if (r.app) return `${r.app}${r.need ? ' — ' + r.need : ''}`.slice(0, 120); }
   let t = text.replace(/<@[A-Z0-9]+(\|[^>]*)?>/g, '').replace(/<(https?:[^|>]+)\|?([^>]*)>/g, (_, u, l) => l || u);
   for (const w of kw('REQUEST_KEYWORDS')) t = t.replace(new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '');
   t = t.replace(/^[\s:\-–—*_]+/, '').split('\n').map((l) => l.trim()).filter(Boolean)[0] || 'Client request';
@@ -107,4 +119,4 @@ function mentionsApp(text, title) {
   return words.length > 0 && wordMatch(t, words[0]);
 }
 
-module.exports = { isRequest, isReviewAsk, standupKind, detectStatus, growthKind, parseCounts, countItems, requestTitle, mentionsApp, DEFAULTS };
+module.exports = { isPlugRequest, plugRequest, formField, isRequest, isReviewAsk, standupKind, detectStatus, growthKind, parseCounts, countItems, requestTitle, mentionsApp, DEFAULTS };

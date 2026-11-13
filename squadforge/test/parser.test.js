@@ -29,3 +29,11 @@ test('request + standup + growth', () => {
   assert.equal(P.growthKind('Naya blog publish hua'), 'blog');
   assert.ok(P.mentionsApp('Kommo ke credentials aa gaye', 'Kommo CRM actions'));
 });
+
+test('website plug-request form is a client request with the app as title', () => {
+  const P = require('../src/parser');
+  const t = 'Request for plug :\n\nuser Email: demo@example.com\nuser Name: Demo User\nuse Case: Need integration for this App.\nplug Name: Archbee\nsource: website\nenvironment: prod\nuser Need: New App\n\nApp name -  Archbee';
+  assert.equal(P.isRequest(t), true);
+  assert.equal(P.requestTitle(t), 'Archbee — New App');
+  assert.equal(P.plugRequest(t).source, 'website');
+});

@@ -54,10 +54,23 @@ async function statusFor(text) {
   } catch { return null; }
 }
 
+// Bots and Slack workflows often put the text in attachments or blocks
+function botText(msg) {
+  const parts = [msg.text || ''];
+  for (const a of msg.attachments || []) parts.push(a.pretext, a.title, a.text, ...(a.fields || []).map((f) => `${f.title}: ${f.value}`));
+  for (const b of msg.blocks || []) {
+    if (b.text && b.text.text) parts.push(b.text.text);
+    for (const f of b.fields || []) parts.push(f.text);
+    for (const e of b.elements || []) for (const x of e.elements || []) if (x.text) parts.push(x.text);
+  }
+  return parts.filter(Boolean).join('\n');
+}
+
 async function handleTopLevel(msg, channel, stats) {
   const member = memberBySlack(msg.user);
   const text = msg.text || '';
-  if (isLead(msg.user, member) && P.isRequest(text)) {
+  // the lead posts client requests; a plug request in the website-form format counts whoever pasted it
+  if ((isLead(msg.user, member) && P.isRequest(text)) || P.isPlugRequest(text)) {
     if (tracker.createFromMessage(msg, channel, leadId())) stats.requests++;
     return;
   }
@@ -74,8 +87,13 @@ async function handleReply(reply, parent, channel, stats) {
   const req = db.prepare('SELECT * FROM client_requests WHERE slack_ts = ?').get(parent.ts);
   if (req) {
     if (isLead(reply.user, member)) {
-      const ids = tracker.assignedFromMentions(slack.mentions(text), leadId());
+      const mentioned = slack.mentions(text);
+      const ids = tracker.assignedFromMentions(mentioned, leadId());
       if (ids.length) tracker.addAssignees(req, ids);
+      else if (!mentioned.length) {
+        const status = P.detectStatus(text);
+        if (status && (await tracker.applyStatus(db.prepare('SELECT * FROM client_requests WHERE id = ?').get(req.id), status, reply, member || null))) stats.statusChanges++;
+      }
     } else if (member) {
       const reviewAsk = member.role === 'tech' && P.isReviewAsk(text);
       if (reviewAsk && inspector.queueFromMessage(reply, member, parent.ts, req.id)) stats.reviews++;
@@ -111,7 +129,11 @@ async function sync() {
   const msgs = (await slack.history(channel, oldest.toFixed(6))).sort((a, b) => parseFloat(a.ts) - parseFloat(b.ts));
   const threads = new Map();
   for (const msg of msgs) {
-    if (!skip(msg) && parseFloat(msg.ts) > lastTs - 3600) { stats.messages++; await handleTopLevel(msg, channel, stats); }
+    const fresh = parseFloat(msg.ts) > lastTs - 3600;
+    if (fresh && skip(msg) && msg.subtype !== 'message_deleted' && P.isPlugRequest(botText(msg))) {
+      stats.messages++;
+      if (tracker.createFromMessage({ ...msg, text: botText(msg) }, channel, leadId())) stats.requests++;
+    } else if (!skip(msg) && fresh) { stats.messages++; await handleTopLevel(msg, channel, stats); }
     if (msg.reply_count && parseFloat(msg.latest_reply || msg.ts) > lastTs - 3600) threads.set(msg.ts, msg);
   }
   // also check the threads of older open client requests
