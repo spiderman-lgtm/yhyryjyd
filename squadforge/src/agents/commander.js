@@ -30,21 +30,23 @@ async function broadcast({ message, member_ids = [], important = false, polish =
     slackTs = r.ts;
   }
   let smsStatus = null;
-  if (important && tagged.length) {
+  // Important with nobody tagged = for the whole team: alert everyone except the lead
+  const alertTo = important ? (tagged.length ? tagged : require('../util').members().filter((m) => m.role !== 'lead')) : [];
+  if (important && alertTo.length) {
     if (m91.ready()) {
       // M91: push → SMS → call until someone answers. One direct alert per tagged member.
       const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
       const title = (lines[0] || 'Important message').replace(/[*_`]/g, '').slice(0, 120);
       const stamp = Date.now().toString(36);
       let ok = 0; const fails = [];
-      for (const m of tagged) {
+      for (const m of alertTo) {
         if (!m.phone) { fails.push(`${m.name}: no phone`); continue; }
         try { await m91.sendAlert({ phone: m.phone, title, description: text, severity: 'High', customId: `sf-${stamp}-${m.id}` }); ok++; }
         catch (e) { fails.push(`${m.name}: ${e.message.slice(0, 80)}`); }
       }
-      smsStatus = `M91 ${ok}/${tagged.length}` + (fails.length ? ` (${fails.join('; ')})` : '');
+      smsStatus = `M91 ${ok}/${alertTo.length}` + (fails.length ? ` (${fails.join('; ')})` : '');
     } else if (msg91.enabled()) {
-      const r = await msg91.sendAlert(tagged.map((m) => ({ phone: m.phone, name: m.name, message: 'Check Slack' })));
+      const r = await msg91.sendAlert(alertTo.map((m) => ({ phone: m.phone, name: m.name, message: 'Check Slack' })));
       smsStatus = r.ok ? `sent ${r.sent}` : `failed: ${r.error || r.body}`;
     } else smsStatus = 'M91 not connected';
   }

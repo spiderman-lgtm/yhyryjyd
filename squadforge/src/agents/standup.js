@@ -71,6 +71,7 @@ function dayTally(date) {
   return { short, full, people };
 }
 
+// description: text, or (person) => text for a personal message
 async function nudge(people, title, description, tag) {
   const m91 = require('../m91');
   if (!m91.ready()) return 0;
@@ -78,7 +79,7 @@ async function nudge(people, title, description, tag) {
   for (const p of people) {
     const m = db.prepare('SELECT phone FROM members WHERE id = ?').get(p.id);
     if (!m || !m.phone) continue;
-    try { await m91.sendAlert({ phone: m.phone, title, description, severity: 'Low', customId: `sf-${tag}-${p.id}-${today()}` }); sent++; }
+    try { await m91.sendAlert({ phone: m.phone, title: typeof title === 'function' ? title(p) : title, description: typeof description === 'function' ? description(p) : description, severity: 'Low', customId: `sf-${tag}-${p.id}-${today()}` }); sent++; }
     catch (e) { logActivity('herald', `M91 to ${p.name} failed: ${e.message}`, 'warn'); }
   }
   return sent;
@@ -99,7 +100,11 @@ async function morning(date = today()) {
   const lead = cfg('LEAD_SLACK_USER_ID');
   if (lead && tally.people.length) { try { await slack.dm(lead, tally.full); } catch (e) { logActivity('herald', 'DM failed: ' + e.message, 'warn'); } }
   let m91n = 0;
-  if (getSetting('standup.m91_morning', true)) m91n = await nudge(members().filter((m) => m.role !== 'lead'), 'Good morning ☀️', 'Post your plan for today in the Good morning thread on Slack.', 'am');
+  // each person gets their own yesterday: what they built vs the target
+  const T = target();
+  if (getSetting('standup.m91_morning', true)) m91n = await nudge(members().filter((m) => m.role !== 'lead'),
+    (p) => `Good morning ${p.name.split(' ')[0]} ☀️`,
+    (p) => { const y2 = tally.people.find((x) => x.id === p.id); const yl = !y2 ? '' : y2.role === 'growth' ? `Yesterday: ${y2.growth} growth item(s). ` : !y2.posted && !y2.built ? 'Yesterday: no update posted. ' : `Yesterday you built ${y2.built} (${y2.actions} actions, ${y2.triggers} triggers) — ${y2.met ? 'target met ✅' : `${y2.built}/${T} of the target`}. `; return `${yl}Post today's plan in the Good morning thread.`; }, 'am');
   logActivity('herald', `☀️ Good morning posted · yesterday's tally shared${m91n ? ` · ${m91n} M91 nudges` : ''}`);
   return { message: `Good morning posted${tally.people.length ? ' with yesterday’s tally' : ''}${m91n ? ` · ${m91n} M91 alerts` : ''}` };
 }

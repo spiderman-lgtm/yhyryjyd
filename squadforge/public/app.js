@@ -346,7 +346,7 @@ async function renderCommander() {
         </div>
         <div class="card-h" style="margin:16px 0 6px"><h3 id="cStep">2 · Send</h3></div>
         <label>Who to tag</label>${memberChecks([], 'cm')}
-        <label class="check"><input type="checkbox" id="cImp"/> 🚨 Important — tagged people also get an M91 alert</label>
+        <label class="check"><input type="checkbox" id="cImp"/> 🚨 Important — send an M91 alert too (tagged people, or the whole team if nobody is tagged)</label>
         <button class="btn" id="cSend" style="margin-top:8px">📣 Send to channel</button>
         ${state.integrations.slack ? '' : '<p class="muted">Slack is not connected — the message will only be saved here.</p>'}
         ${state.integrations.msg91 ? '' : '<p class="muted">M91 is not set up — no alert will go out.</p>'}
