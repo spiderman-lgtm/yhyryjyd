@@ -15,9 +15,10 @@
     <div class="qp">
       <header class="qp-nav">
         <div class="qp-logo"><svg viewBox="0 0 8 9" shape-rendering="crispEdges" aria-hidden="true"><path d="M3 0h2v1h1v2h1v2h1v1H5v3H3V6H0V5h1V3h1V1h1z" fill="#1f3b33"/></svg>SquadForge</div>
-        <nav class="qp-links"><a href="#lp-how">How it works</a><a href="#lp-features">Features</a><a href="#lp-agents">Agents</a></nav>
+        <nav class="qp-links"><a href="#lp-how">How it works</a><a href="#lp-diff">Why it's different</a><a href="#lp-fair">Fairness</a><a href="#lp-where">Where you work</a></nav>
       </header>
       <section class="qp-hero">
+        <span class="qp-badge"><i></i>Measure value, not busyness</span>
         <h1>Where your team's<br/>work comes alive.</h1>
         <p>A calm place to see what everyone did today — Slack updates, client requests and reviews, gathered quietly by your agents while you focus on leading.</p>
         <div class="qp-feats">
@@ -34,6 +35,7 @@
           <p class="qp-hint" id="authHint"></p>
           <p id="loginErr" class="err" role="alert"></p>
         </form>
+        <ul class="qp-checks"><li>No screenshots or time tracking</li><li>Task count never counts</li><li>Every flag has a reason</li><li>Works from your Slack</li></ul>
       </section>
       <div class="qp-scene" id="qpScene" aria-hidden="true"></div>
     </div>
@@ -55,6 +57,24 @@
         </ol>
       </section>
 
+      <section class="lp-sec" id="lp-diff">
+        <span class="lp-kicker">Why it's different</span>
+        <h2>Most tools count activity. We look at outcomes.</h2>
+        <div class="lp-vs">
+          <div class="lp-vs-col old"><b>The usual way</b>
+            <ul><li>Counts tasks, messages and hours online</li><li>Chasing people for standups and status</li><li>Stuck work found out at the deadline</li><li>Reports written by hand every Monday</li></ul></div>
+          <div class="lp-vs-col new"><b>With SquadForge</b>
+            <ul><li>Shows what shipped and what it achieved</li><li>Reads the standups your team already posts</li><li>Stuck requests surface the same day, with the reason</li><li>The 7 PM alert and Monday report write themselves</li></ul></div>
+        </div>
+        <div class="lp-sample">
+          <div class="lp-sample-head"><span>7 PM ALERT · SAMPLE</span><span class="lp-tag ok">Sent to the lead</span></div>
+          <div class="lp-sample-row"><b>Aarav</b><span>Shipped the HubSpot “create deal” action — client unblocked</span><span class="lp-tag ok">Shipped</span></div>
+          <div class="lp-sample-row"><b>Meera</b><span>Notion trigger in R&amp;D — testing pagination</span><span class="lp-tag mid">Working on</span></div>
+          <div class="lp-sample-row"><b>Kabir</b><span>Zoho auth — waiting for client credentials</span><span class="lp-tag warn">Stuck · reason given</span></div>
+          <div class="lp-sample-row muted"><b>Isha</b><span>Hasn't posted an evening update yet</span><span class="lp-tag">Reminder sent</span></div>
+        </div>
+      </section>
+
       <section class="lp-sec" id="lp-features">
         <span class="lp-kicker">Features</span>
         <h2>Everything a team lead checks, without asking.</h2>
@@ -64,7 +84,7 @@
           <div><b>🌱 Growth work</b><span>Support requests, listings, blogs, newsletters and the credentials that unblock the tech team.</span></div>
           <div><b>📢 Commander</b><span>Broadcast an instruction to the channel — polished by AI — with M91 alerts until people acknowledge.</span></div>
           <div><b>🚧 Blocked &amp; at risk</b><span>Stuck requests, missed check-ins and deadlines at risk surface before they become problems.</span></div>
-          <div><b>🗂 Workspaces</b><span>One app for all your teams — each with its own members, Slack channel, alerts and reports.</span></div>
+          <div><b>🗓 Personal weekly report</b><span>Every teammate gets their own week: what shipped, what got unblocked and the outcome for the client.</span></div>
         </div>
       </section>
 
@@ -83,15 +103,28 @@
         </div>
       </section>
 
+      <section class="lp-sec" id="lp-fair">
+        <span class="lp-kicker">Fairness</span>
+        <h2>Built to help people, not watch them.</h2>
+        <div class="lp-grid">
+          <div><b>🚫 Never a ranking</b><span>No leaderboards and no “top performer”. Everyone is seen against their own work.</span></div>
+          <div><b>🧭 Stuck is context</b><span>A blocker comes with its reason and who can unblock it — never a mark against someone.</span></div>
+          <div><b>💬 Every flag has a reason</b><span>When Inspector asks for a fix, it says exactly what and why, using the rules you wrote.</span></div>
+          <div><b>👀 Nothing hidden</b><span>Only the channel you choose is read — no screenshots, keystrokes or time tracking.</span></div>
+          <div><b>🧮 Volume doesn't count</b><span>Ten small tasks don't beat one shipped request. Outcomes and evidence do.</span></div>
+          <div><b>✋ You stay in charge</b><span>Agents draft and suggest; nothing goes out to the team until you send it.</span></div>
+        </div>
+      </section>
       <section class="lp-sec lp-value">
         <span class="lp-kicker">Our principle</span>
         <h2>Value, not volume.</h2>
         <p class="lp-lead">More tasks don't mean more productivity. SquadForge measures what work achieved — what shipped, what got unblocked, the outcome for the client — never a ranking, never a penalty. Stuck is context, never a fault.</p>
       </section>
 
-      <section class="lp-sec">
-        <span class="lp-kicker">Works with</span>
+      <section class="lp-sec" id="lp-where">
+        <span class="lp-kicker">Where you work</span>
         <h2>The tools your team already uses.</h2>
+        <p class="lp-lead">No new app for your team to learn. They keep working in Slack; SquadForge listens, and sends alerts where people will see them.</p>
         <div class="lp-apps"><span>Slack</span><span>viaSocket</span><span>M91</span><span>Gmail</span><span>Google Sheets</span><span>Claude AI</span></div>
       </section>
 
