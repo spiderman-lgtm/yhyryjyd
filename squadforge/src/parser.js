@@ -41,7 +41,9 @@ function standupKind(text) {
 // Status from a thread reply. Supports explicit "status: stuck - reason".
 function detectStatus(text) {
   const t = norm(text);
-  const explicit = t.match(/status\s*[:=-]\s*(r\s*&\s*d|rnd|started|start|stuck|blocked|completed|complete|done)/);
+  // "status: stuck" anywhere, or a reply that opens with the status word ("r&d — checking the API docs")
+  const explicit = t.match(/status\s*[:=-]\s*(r\s*&\s*d|rnd|started|start|stuck|blocked|completed|complete|done)/)
+    || t.match(/^[\s*_>•-]*(r\s*&\s*d|rnd|started|stuck|blocked|completed)\s*(?:[—–:,.!-]|$)/);
   if (explicit) {
     const s = explicit[1].replace(/\s/g, '');
     if (s === 'r&d' || s === 'rnd') return 'rnd';
