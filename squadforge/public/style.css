@@ -1234,3 +1234,16 @@ html:has(body.on-login), body.on-login { overflow: hidden !important; }
 @media (max-width: 720px) { .lp-vs { grid-template-columns: 1fr; } .lp-sample-row { grid-template-columns: 1fr auto; } .lp-sample-row b { grid-column: 1 / -1; } }
 .qp-checks { gap: 6px 8px; max-width: 760px; }
 .qp-checks li { background: rgba(246,243,230,.88); border-radius: 999px; padding: 4px 10px 4px 6px; backdrop-filter: blur(2px); }
+
+/* Login inputs: one calm look in every state (light/dark theme, focus, browser autofill) */
+.login .qp-form input, [data-theme="dark"] .login .qp-form input {
+  background: #f6f3e6 !important; color: #1f3b33 !important; -webkit-text-fill-color: #1f3b33; caret-color: #1f3b33;
+  border: 1.5px solid rgba(31,59,51,.22) !important; transition: border-color .2s, box-shadow .2s;
+}
+.login .qp-form input:focus, [data-theme="dark"] .login .qp-form input:focus { background: #f6f3e6 !important; border-color: var(--coral, #e8655a) !important; box-shadow: 0 0 0 3px rgba(232,101,90,.18) !important; }
+.login .qp-form input:-webkit-autofill, .login .qp-form input:-webkit-autofill:hover, .login .qp-form input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 40px #f6f3e6 inset !important; box-shadow: 0 0 0 40px #f6f3e6 inset !important; -webkit-text-fill-color: #1f3b33 !important; transition: background-color 9999s;
+}
+.login .qp-form input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 40px #f6f3e6 inset, 0 0 0 3px rgba(232,101,90,.18) !important; }
+.login .qp-form input::placeholder { color: #7d958d !important; -webkit-text-fill-color: #7d958d; }
+.login { color-scheme: light; }
