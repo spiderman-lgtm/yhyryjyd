@@ -132,22 +132,18 @@ function feedHtml(items) {
   return items.map((a) => `<div class="feed-item ${a.level}"><span class="em">${AGENT_EMOJI[a.agent] || '•'}</span><div>${esc(a.message)}<time>${ago(a.created_at)}</time></div></div>`).join('');
 }
 
+// Person card: what they delivered and are working on — no XP, levels or counts.
 function heroCard(m) {
   const today = state.today_metrics.members.find((x) => x.id === m.id) || {};
-  const nextXp = Math.pow(m.level, 2) * 20, prevXp = Math.pow(m.level - 1, 2) * 20;
-  const pct = Math.min(100, Math.round(((m.xp - prevXp) / Math.max(1, nextXp - prevXp)) * 100));
-  const stats = m.role === 'growth'
-    ? [[Object.values(m.growth).reduce((a, b) => a + b, 0), 'posts'], [m.growth.support_request || 0, 'support'], [m.unblocked, 'unblocks']]
-    : [[m.actions, 'actions'], [m.triggers, 'triggers'], [fmt(m.error_rate), 'err rate']];
+  const me = ((state.week_value || {}).people || []).find((p) => p.id === m.id) || { outcomes: [], working_on: [], unblocked: [] };
   return `<div class="hero ${m.role}">
-    <div class="lvl">LV ${m.level}</div>
-    <div class="top"><div class="avatar">${esc(initials(m.name))}</div><div><div class="name">${esc(m.name)}</div><div class="muted" style="font-size:12px">${m.role === 'growth' ? 'Growth' : 'Plugin builder'} · ${m.xp} XP</div></div></div>
-    <div class="xpbar"><i style="width:${pct}%"></i></div>
-    <div class="stats">${stats.map(([v, l]) => `<div class="stat"><b>${esc(v)}</b><span>${l}</span></div>`).join('')}</div>
+    <div class="top"><div class="avatar">${esc(initials(m.name))}</div><div><div class="name">${esc(m.name)}</div><div class="muted" style="font-size:12px">${m.role === 'growth' ? 'Growth' : 'Plugin builder'}</div></div></div>
+    <div class="hero-sec"><span class="to-k">Delivered</span>${me.outcomes.length ? me.outcomes.slice(0, 3).map((o) => `<div class="to-o">${o.verified ? '🏅' : '✅'} ${esc(o.title)}</div>`).join('') : '<div class="muted to-o">Nothing shipped yet this week</div>'}</div>
+    ${me.working_on.length ? `<div class="hero-sec"><span class="to-k">Working on</span>${me.working_on.slice(0, 2).map((w) => `<div class="to-o">${w.status === 'stuck' ? '🧱' : '🔨'} ${esc(w.title)}</div>`).join('')}</div>` : ''}
+    ${me.unblocked.length ? `<div class="hero-sec"><span class="to-k">Unblocked</span><div class="to-o">🔓 ${esc(me.unblocked.join(', '))}</div></div>` : ''}
     <div class="today-flags">
-      <span class="pill ${today.morning_updates ? 'completed' : 'stuck'}">${today.morning_updates ? '✓' : '✗'} morning</span>
-      <span class="pill ${today.evening_updates ? 'completed' : 'stuck'}">${today.evening_updates ? '✓' : '✗'} evening</span>
-      ${m.role !== 'growth' ? `<span class="pill">📜 ${m.requests_completed}/${m.requests_assigned} req</span>` : ''}
+      <span class="pill ${today.morning_updates ? 'completed' : ''}">${today.morning_updates ? '✓' : '·'} morning</span>
+      <span class="pill ${today.evening_updates ? 'completed' : ''}">${today.evening_updates ? '✓' : '·'} evening</span>
     </div>
   </div>`;
 }
@@ -201,6 +197,12 @@ function reqModal(r) {
     ${r.text ? `<pre class="report" style="max-height:140px">${esc(r.text)}</pre>` : ''}
     <p><b>Time:</b> ${r.hours !== null ? r.hours.toFixed(1) + ' hours' : '–'} · <b>Stuck:</b> ${r.stuck_count} times · <b>Difficulty:</b> <span class="stars">${stars(r.difficulty)}</span></p>
     ${r.ai_analysis ? `<p class="banner">🤖 ${esc(r.ai_analysis)}</p>` : ''}
+    <div class="outcome-box">
+      <h3 style="margin:0 0 4px">Outcome</h3>
+      <div class="muted" style="font-size:11.5px;margin-bottom:6px">What changed, and for whom? This is what we measure — not how many tasks it took.</div>
+      <textarea id="rImpact" placeholder="e.g. Acme can now create Kommo leads automatically from their website form">${esc(r.impact_note || '')}</textarea>
+      <input id="rEvidence" placeholder="Evidence link — published plugin, screenshot or client message (https://…)" value="${esc(r.evidence_url || '')}" style="margin-top:6px"/>
+    </div>
     <h3>Timeline</h3><div class="timeline">${r.events.map((e) => `<div><span class="pill ${e.status}">${STATUS[e.status]}</span> <span class="muted">${new Date(e.at).toLocaleString('en-IN')}</span>${e.member ? ' · ' + esc(e.member) : ''}${e.reason ? `<br>🧱 ${esc(e.reason)}` : ''}</div>`).join('')}</div>
     <h3>Manual update</h3>
     <div class="grid g2"><div><label>Status</label><select id="rStatus">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${k === r.status ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
@@ -208,7 +210,8 @@ function reqModal(r) {
     <label>Assigned</label>${memberChecks(r.assigned.map((a) => a.id), 'rm')}
     <div class="row" style="margin-top:12px"><button class="btn" id="rSave">Save</button><button class="btn red small" id="rDel">Delete</button><span class="spacer"></span><button class="btn ghost" data-close>Close</button></div>`);
   $('#rSave').onclick = async () => {
-    const body = { member_ids: checked('rm') };
+    const body = { member_ids: checked('rm'), impact_note: $('#rImpact').value.trim(), evidence_url: $('#rEvidence').value.trim() };
+    if ($('#rStatus').value === 'completed' && !body.impact_note && !confirm('Mark it completed without saying what changed? You can add it later.')) return;
     if ($('#rStatus').value !== r.status || $('#rStatus').value === 'stuck') { body.status = $('#rStatus').value; body.reason = $('#rReason').value; }
     await api(`/api/requests/${r.id}`, { method: 'PATCH', body }); closeModal(); toast('Updated'); renderRequests();
   };

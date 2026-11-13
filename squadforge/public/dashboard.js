@@ -35,6 +35,7 @@ async function renderTeam(range = dashRange) {
   ]);
   if (tab !== 'team') return;
   const T = cur.team.totals, P = prev.team.totals, S = spark.series;
+  const VV = cur.value || { outcomes: [] }, PV = prev.value || {};
   const open = state.week_metrics.totals.open_by_status || {};
 
   $('#view').innerHTML = `
@@ -51,28 +52,28 @@ async function renderTeam(range = dashRange) {
       </div>
     </div>
     <div class="dash-head">
-      <div><h3 style="margin:0">Team overview</h3><div class="muted" style="font-size:12px">${fmtRange(r.from, r.to)} · compared with ${r.prevLabel}</div></div>
+      <div><h3 style="margin:0">Value delivered</h3><div class="muted" style="font-size:12px">${fmtRange(r.from, r.to)} · compared with ${r.prevLabel} · <i>we measure the value of work, not the number of tasks</i></div></div>
       <div class="seg" role="tablist" aria-label="Date range">${Object.entries(ranges).map(([k, v]) => `<button role="tab" aria-selected="${k === range}" class="${k === range ? 'on' : ''}" data-range="${k}">${v.label}</button>`).join('')}</div>
     </div>
     <div class="kpi-grid">
-      ${tile('Actions published', T.actions, P.actions, S.map((d) => d.actions), true)}
-      ${tile('Triggers published', T.triggers, P.triggers, S.map((d) => d.triggers), true)}
-      ${tile('Apps built', T.apps, P.apps, S.map((d) => d.apps), true)}
-      ${tile('Client requests', T.client_requests, P.client_requests, S.map((d) => d.requests), null, `${T.requests_completed} completed`)}
-      ${tile('Errors per review', T.error_rate, P.error_rate, null, false, `${T.reviews} reviews`)}
-      ${tile('Missed check-ins', T.missed_updates, P.missed_updates, null, false)}
+      ${tile('Outcomes delivered', VV.delivered, PV.delivered, null, true, `${VV.verified} verified 🏅`)}
+      ${tile('Time to value', VV.time_to_value_h, PV.time_to_value_h, null, false, 'median · request → live', 'h')}
+      ${tile('First-pass quality', VV.first_pass_pct, PV.first_pass_pct, null, true, VV.first_pass_n ? `${VV.first_pass_n} first reviews` : 'no reviews yet', '%')}
+      ${tile('Blockers cleared', VV.blockers_cleared, PV.blockers_cleared, null, true, 'unblocked & moving again')}
+      ${tile('Time lost to blockers', VV.stuck_share_pct, PV.stuck_share_pct, null, false, 'share of delivery time', '%')}
+      ${tile('Waiting on us', VV.waiting_on_us, null, null, false, 'requests not started yet')}
     </div>
     <div class="dash-main">
       <div class="card chart-card">
-        <div class="card-h"><div><h3 style="margin:0">Output by day</h3><div class="muted" style="font-size:12px">Actions, triggers and apps published</div></div><span class="spacer"></span>
-          <div class="legend">${SERIES.map((x) => `<span><i style="background:${x.color}"></i>${x.label}</span>`).join('')}</div></div>
-        <div class="chart-wrap" id="dayChart">${stackChart(cur.series)}</div>
+        <div class="card-h"><div><h3 style="margin:0">Request → Live</h3><div class="muted" style="font-size:12px">Where the time went for each delivered request</div></div><span class="spacer"></span>
+          <div class="legend"><span><i style="background:#c9c2b2"></i>Waiting to start</span><span><i style="background:var(--accent)"></i>Working</span><span><i style="background:var(--coral)"></i>Blocked</span></div></div>
+        <div id="journeyChart">${journeyChart(VV.outcomes.filter((o) => o.journey))}</div>
       </div>
       <div class="card"><div class="card-h"><h3>To-do</h3><span class="muted">client requests</span></div>${todo(reqs)}</div>
     </div>
     <div class="dash-main">
-      <div class="card"><div class="card-h"><h3 style="margin:0">Team leaderboard</h3><span class="spacer"></span><span class="muted" style="font-size:12px">${fmtRange(r.from, r.to)}</span></div>
-        <div class="table-wrap">${leaderboard(cur.team.members)}</div></div>
+      <div class="card"><div class="card-h"><h3 style="margin:0">Team outcomes</h3><span class="spacer"></span><span class="muted" style="font-size:12px">${fmtRange(r.from, r.to)} · A–Z, not a ranking</span></div>
+        ${teamOutcomes(cur.people || [])}</div>
       <div class="card"><div class="card-h"><h3>Today's check-ins</h3></div>${checkins(logs.logs)}</div>
     </div>`;
 
@@ -97,7 +98,6 @@ async function renderTeam(range = dashRange) {
   };
   document.querySelectorAll('[data-goto]').forEach((el) => (el.onclick = () => { tab = el.dataset.goto; location.hash = tab; render(); }));
   document.querySelectorAll('[data-range]').forEach((b) => (b.onclick = () => renderTeam(b.dataset.range)));
-  wireChart(cur.series);
   wireBirds(state.today_metrics, logs.logs);
   animateDash();
 }
@@ -113,7 +113,7 @@ function fmtRange(a, b) {
 const compact = (n) => (n === null || n === undefined ? '–' : Math.abs(n) >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : String(n));
 
 // upGood: true (up is good), false (up is bad), null (neutral)
-function tile(label, val, prevVal, series, upGood, foot) {
+function tile(label, val, prevVal, series, upGood, foot, unit = '') {
   let delta = '';
   if (val !== null && val !== undefined && prevVal !== null && prevVal !== undefined) {
     const diff = +(val - prevVal).toFixed(2);
@@ -127,7 +127,7 @@ function tile(label, val, prevVal, series, upGood, foot) {
   const isNum = typeof val === 'number' && Number.isInteger(val);
   return `<div class="card kpi-tile">
     <div class="kpi-label">${esc(label)}</div>
-    <div class="kpi-row"><div class="kpi-value tnum" ${isNum ? `data-count="${val}"` : ''}>${isNum ? '0' : esc(compact(val))}</div>${delta}</div>
+    <div class="kpi-row"><div class="kpi-value tnum"><span ${isNum ? `data-count="${val}"` : ''}>${isNum ? '0' : esc(compact(val))}</span>${unit && val !== null && val !== undefined ? `<small class="kpi-unit">${unit}</small>` : ''}</div>${delta}</div>
     <div class="kpi-foot">${series ? sparkline(series) : `<span class="muted">${esc(foot || '')}</span>`}${series && foot ? `<span class="muted">${esc(foot)}</span>` : ''}</div>
   </div>`;
 }
@@ -287,4 +287,34 @@ function todo(reqs) {
   if (!list.length) return '<div class="empty">Nothing to do — enjoy the quiet 🌿</div>';
   return `<ul class="todo">${list.map((r) => `<li class="${r.status === 'completed' ? 'done' : ''}" data-goto="requests" title="${esc(r.title)}"><span class="box">${r.status === 'completed' ? '✓' : ''}</span><span class="tt">${esc(r.title)}</span><span class="pill ${r.status}">${STATUS[r.status]}</span></li>`).join('')}</ul>
     <button class="btn ghost small" data-goto="requests" style="margin-top:8px">+ Add request</button>`;
+}
+
+// Horizontal bar per delivered request: waiting (grey) → working (sage) → blocked (coral).
+function journeyChart(list) {
+  if (!list.length) return '<div class="empty">Delivered requests will show where their time went.</div>';
+  const rows = list.slice(0, 10), max = Math.max(1, ...rows.map((o) => o.journey.total));
+  const fmtH = (h) => (h >= 24 ? (h / 24).toFixed(1) + 'd' : h.toFixed(1) + 'h');
+  return `<div class="jc">${rows.map((o, i) => {
+    const j = o.journey, w = (v) => (v / max) * 100;
+    const who = (o.who || []).map((id) => { const m = (state.today_metrics.members || []).find((x) => x.id === id); return m ? m.name.replace(/\s*\(.*\)/, '') : ''; }).filter(Boolean).join(', ');
+    return `<div class="jc-row" style="--i:${i}" title="${esc(o.title)}: waiting ${fmtH(j.waiting)}, working ${fmtH(j.working)}, blocked ${fmtH(j.stuck)}">
+      <div class="jc-label"><b>${esc(o.title)}</b><span class="muted">${esc(who)}${o.verified ? ' · 🏅' : ''}</span></div>
+      <div class="jc-bar"><i class="w" style="--w:${w(j.waiting)}%"></i><i class="k" style="--w:${w(j.working)}%"></i><i class="s" style="--w:${w(j.stuck)}%"></i></div>
+      <div class="jc-total tnum">${fmtH(j.total)}</div></div>`;
+  }).join('')}</div>`;
+}
+
+// What each person delivered and how — names A–Z, no scores, no medals.
+function teamOutcomes(people) {
+  if (!people.length) return '<div class="empty">Add your team in Settings.</div>';
+  return `<div class="to-grid">${people.map((p) => `<div class="to-card">
+    <div class="who"><span class="av ${p.role}">${esc(initials(p.name))}</span><div><div class="who-n">${esc(p.name)}</div><div class="muted" style="font-size:11.5px">${p.role === 'growth' ? 'Growth' : 'Plugin builder'}</div></div></div>
+    <div class="to-sec"><span class="to-k">Delivered</span>${p.outcomes.length ? p.outcomes.slice(0, 4).map((o) => `<div class="to-o">${o.verified ? '🏅' : '✅'} ${esc(o.title)}${o.impact ? `<div class="to-impact">${esc(o.impact)}</div>` : ''}</div>`).join('') + (p.outcomes.length > 4 ? `<div class="muted" style="font-size:11px">+${p.outcomes.length - 4} more</div>` : '') : '<div class="muted to-o">Nothing shipped in this period</div>'}</div>
+    ${p.working_on.length ? `<div class="to-sec"><span class="to-k">Working on</span>${p.working_on.slice(0, 2).map((w) => `<div class="to-o">${w.status === 'stuck' ? '🧱' : '🔨'} ${esc(w.title)}</div>`).join('')}</div>` : ''}
+    <div class="to-tags">
+      ${p.hardest ? `<span>Hardest: ${esc(p.hardest.title)} (${p.hardest.difficulty}/5)</span>` : ''}
+      ${p.through_blockers ? `<span>Got through ${p.through_blockers} blocker${p.through_blockers > 1 ? 's' : ''}</span>` : ''}
+      ${p.first_pass ? `<span>First-pass reviews ${p.first_pass}</span>` : ''}
+      ${p.unblocked.length ? `<span>Unblocked: ${esc(p.unblocked.join(', '))}</span>` : ''}
+    </div></div>`).join('')}</div>`;
 }

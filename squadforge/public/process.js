@@ -87,7 +87,7 @@ function renderFlow() {
         <p class="muted" style="margin:2px 0 0">How work is moving, live. For numbers, open <b>📊 Dashboard</b>.</p>
       </div>
       <div class="counters">
-        ${counter('⚡', tm.actions, 'actions today')}${counter('🎯', tm.triggers, 'triggers today')}
+        ${counter('✅', (state.week_value || {}).delivered || 0, 'outcomes this week')}${counter('⏱️', Math.round((state.week_value || {}).time_to_value_h || 0), 'h to value')}
         ${counter('📜', Object.values(tm.open_by_status || {}).reduce((a, b) => a + b, 0), 'open requests')}
         ${counter('🧱', (tm.open_by_status || {}).stuck || 0, 'stuck')}
       </div>

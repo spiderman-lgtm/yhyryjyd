@@ -201,6 +201,7 @@ async function api(req, res, url) {
       activity: db.prepare('SELECT * FROM activity ORDER BY id DESC LIMIT 60').all(),
       today_metrics: metrics.teamMetrics(t, t),
       week_metrics: metrics.teamMetrics(U.weekStart(t), t),
+      week_value: (() => { const v = metrics.valueMetrics(U.weekStart(t), t); return { ...v, people: metrics.memberOutcomes(U.weekStart(t), t, v) }; })(),
       integrations: { slack: slack.enabled(), ai: llm.enabled(), msg91: msg91.enabled() || vs.connected('m91'), lead: !!U.cfg('LEAD_SLACK_USER_ID'), review_instructions: !!getSetting('inspector.instructions', '') },
       has_demo: !!db.prepare('SELECT 1 FROM members WHERE is_demo = 1').get(),
       member_count: db.prepare('SELECT COUNT(*) c FROM members WHERE active = 1').get().c,
@@ -211,7 +212,8 @@ async function api(req, res, url) {
   if (p === '/api/metrics') {
     const to = url.searchParams.get('to') || U.today();
     const from = url.searchParams.get('from') || U.addDays(to, -13);
-    return send(res, 200, { team: metrics.teamMetrics(from, to), series: metrics.dailySeries(from, to) });
+    const value = metrics.valueMetrics(from, to);
+    return send(res, 200, { team: metrics.teamMetrics(from, to), series: metrics.dailySeries(from, to), value, people: metrics.memberOutcomes(from, to, value) });
   }
   if (p === '/api/logs') {
     const date = url.searchParams.get('date') || U.today();
@@ -245,6 +247,8 @@ async function api(req, res, url) {
     if (body.member_ids) db.prepare('UPDATE client_requests SET assigned_member_ids = ? WHERE id = ?').run(JSON.stringify(body.member_ids.map(Number)), r.id);
     if (body.difficulty) db.prepare('UPDATE client_requests SET difficulty = ? WHERE id = ?').run(Math.min(5, Math.max(1, Number(body.difficulty))), r.id);
     if (body.title) db.prepare('UPDATE client_requests SET title = ? WHERE id = ?').run(String(body.title).slice(0, 200), r.id);
+    if (body.impact_note !== undefined) db.prepare('UPDATE client_requests SET impact_note = ? WHERE id = ?').run(String(body.impact_note).slice(0, 1000) || null, r.id);
+    if (body.evidence_url !== undefined) db.prepare('UPDATE client_requests SET evidence_url = ? WHERE id = ?').run(/^https?:\/\//.test(body.evidence_url) ? String(body.evidence_url).slice(0, 500) : null, r.id);
     return send(res, 200, requestView(db.prepare('SELECT * FROM client_requests WHERE id = ?').get(r.id)));
   }
   if ((mm = p.match(/^\/api\/requests\/(\d+)$/)) && m === 'DELETE') {

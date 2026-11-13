@@ -36,7 +36,7 @@ const STORY = [
 ];
 const STOP_AT = { new: 2, rnd: 3, started: 3, stuck: 3, completed: 6 };
 const MEMBER_COLORS = ['#7b6fd6', '#2aa3b8', '#f08a3c', '#e0628f', '#5fb84a', '#d9b032', '#4f86d9', '#9a6bc4'];
-const CRATE = { actions: '#3987e5', triggers: '#eb6834', apps: '#1baf7a' };
+const CRATE = { actions: '#3987e5', triggers: '#eb6834', apps: '#1baf7a', verified: '#f5c542' };
 // where each agent walks while it works
 const PATROL = {
   scout: ['scout', 'gate', 'tracker'], tracker: ['tracker', 'commander'], growth: ['growth', 'gate'],
@@ -53,18 +53,18 @@ function renderVillage() {
   $('#view').innerHTML = `
     <div class="vil-wrap">
       <div class="vil-hud">
-        <div class="res-bar" title="Actions this week"><span>⚡</span><b data-r="actions">${w.actions}</b><small>actions</small></div>
-        <div class="res-bar" title="Triggers this week"><span>🎯</span><b data-r="triggers">${w.triggers}</b><small>triggers</small></div>
-        <div class="res-bar" title="Apps this week"><span>🧩</span><b data-r="apps">${w.apps}</b><small>apps</small></div>
+        <div class="res-bar" title="Outcomes delivered this week"><span>✅</span><b data-r="delivered">${state.week_value.delivered}</b><small>outcomes</small></div>
+        <div class="res-bar" title="Median time from request to live"><span>⏱️</span><b data-r="ttv">${state.week_value.time_to_value_h ?? '–'}</b><small>h to value</small></div>
+        <div class="res-bar" title="Reviews passed first time"><span>✨</span><b data-r="fp">${state.week_value.first_pass_pct ?? '–'}</b><small>% first-pass</small></div>
         <span class="spacer"></span>
-        <div class="vil-legend"><i style="background:${CRATE.actions}"></i>action <i style="background:${CRATE.triggers}"></i>trigger <i style="background:${CRATE.apps}"></i>app</div>
+        <div class="vil-legend">1 crate = 1 delivered outcome · <i style="background:${CRATE.actions}"></i>request <i style="background:${CRATE.apps}"></i>task <i style="background:#f5c542"></i>verified</div>
       </div>
       <div class="vil-story" id="vilStory" aria-live="polite"><div class="vs-title" id="vsTitle">Watching the next piece of work…</div><div class="vs-steps">${STORY.map((st, i) => `<span class="vs-step" data-s="${i}"><i>${st.icon}</i>${st.label}</span>`).join('<b class="vs-arrow">›</b>')}</div></div>
       <canvas id="vilCanvas" aria-label="Forge Village: agents and the team at work"></canvas>
       <div class="vil-tip" id="vilTip"></div>
       <div class="vil-ticker" id="vilTicker">${state.activity[0] ? `${AGENT_EMOJI[state.activity[0].agent] || '•'} ${esc(state.activity[0].message)}` : 'Waiting for the first bit of work…'}</div>
     </div>
-    <h2 style="margin-top:18px">Heroes — this week</h2>
+    <h2 style="margin-top:18px">Team outcomes — this week</h2>
     <div class="heroes">${state.week_metrics.members.map((m) => heroCard(m)).join('') || '<div class="empty">No members yet. Add them in Settings.</div>'}</div>`;
   startVillage();
   api('/api/requests').then((r) => { if (vil) { vil.jobs = r; vil.jobsAt = Date.now(); } }).catch(() => {});
@@ -113,10 +113,12 @@ function levels() {
   const ms = state.week_metrics.members || [];
   const sum = (k) => ms.reduce((a, m) => a + (m[k] || 0), 0);
   const L = (v, step) => Math.max(1, Math.min(5, 1 + Math.floor((v || 0) / step)));
+  // levels grow with value: outcomes, verified outcomes, blockers cleared, first-pass quality
+  const v = state.week_value || {};
   return {
-    commander: L(wk.requests_completed, 2), scout: L(sum('morning_updates') + sum('evening_updates'), 6),
-    tracker: L(wk.client_requests, 2), growth: L(wk.growth_items, 3), inspector: L(wk.reviews, 2),
-    analyst: L(wk.actions + wk.triggers, 8), herald: L(sum('workdays'), 4), scribe: L((wk.actions + wk.triggers + wk.apps) / 2, 8),
+    commander: L(v.verified, 1), scout: L(sum('morning_updates') + sum('evening_updates'), 6),
+    tracker: L(v.delivered, 1), growth: L(v.blockers_cleared, 1), inspector: L((v.first_pass_pct || 0) / 25, 1),
+    analyst: L(v.delivered, 2), herald: L(sum('workdays'), 4), scribe: L(v.verified, 2),
   };
 }
 
@@ -126,11 +128,9 @@ function buildWorld() {
   // houses for the team along the west and south
   vil.houses = ms.map((m, i) => ({ m, x: 2 + (i % 4) * 2.2, y: 15 - Math.floor(i / 4) * 2.2, color: MEMBER_COLORS[i % MEMBER_COLORS.length] }));
   vil.houses.forEach((h) => {
-    const m = h.m, out = m.actions + m.triggers + m.apps;
-    const mix = [];
-    for (let k = 0; k < m.actions; k++) mix.push('actions');
-    for (let k = 0; k < m.triggers; k++) mix.push('triggers');
-    for (let k = 0; k < m.apps; k++) mix.push('apps');
+    const m = h.m, me = (state.week_value.people || []).find((p) => p.id === m.id) || { outcomes: [], working_on: [] };
+    const out = me.outcomes.length + me.working_on.length;
+    const mix = me.outcomes.length ? ['actions'] : [];
     vil.units.push({ kind: 'worker', m, color: h.color, home: { x: h.x + 0.5, y: h.y + 1.2 }, x: h.x + 0.5, y: h.y + 1.2,
       route: out ? ['forge', 'vault', 'home'] : [], step: 0, speed: 1.1 + Math.min(1.4, out / 6), mix: mix.length ? mix : ['actions'], carry: null, wait: Math.random() * 2, idle: !out });
   });
@@ -141,9 +141,8 @@ function buildWorld() {
     vil.units.push({ kind: 'agent', key: a.key, x: p.x, y: p.y + 0.6, route, step: 1, speed: 0.9, wait: Math.random() * 3 });
   });
   // crates in the vault from this week's work
-  const wk = state.week_metrics.totals;
-  vil.crates = []; let n = 0;
-  [['actions', wk.actions], ['triggers', wk.triggers], ['apps', wk.apps]].forEach(([k, v]) => { for (let i = 0; i < Math.min(v, 40); i++) vil.crates.push({ k, i: n++ }); });
+  // the vault holds delivered outcomes (not volume): blue = client request, green = task, gold = verified
+  vil.crates = (state.week_value.outcomes || []).slice(0, 40).map((o, i) => ({ k: o.verified ? 'verified' : o.kind === 'task' ? 'apps' : 'actions', i }));
 }
 function spot(name) {
   if (SPOTS[name]) return SPOTS[name];
@@ -422,7 +421,8 @@ function villageUpdate() {
   if (!vil) return;
   if (!vil.jobsAt || Date.now() - vil.jobsAt > 30000) { vil.jobsAt = Date.now(); api('/api/requests').then((r) => { if (vil) vil.jobs = r; }).catch(() => {}); }
   const w = state.week_metrics.totals;
-  ['actions', 'triggers', 'apps'].forEach((k) => { const el = document.querySelector(`[data-r="${k}"]`); if (el && el.textContent !== String(w[k])) { el.textContent = w[k]; el.parentElement.classList.remove('bump'); void el.offsetWidth; el.parentElement.classList.add('bump'); } });
+  const wv = state.week_value || {};
+  [['delivered', wv.delivered], ['ttv', wv.time_to_value_h ?? '–'], ['fp', wv.first_pass_pct ?? '–']].forEach(([k, val]) => { const el = document.querySelector(`[data-r="${k}"]`); if (el && el.textContent !== String(val)) { el.textContent = val; el.parentElement.classList.remove('bump'); void el.offsetWidth; el.parentElement.classList.add('bump'); } });
   const fresh = state.activity.filter((a) => a.id > vil.lastAct).reverse();
   if (!fresh.length) return;
   vil.lastAct = state.activity[0].id;

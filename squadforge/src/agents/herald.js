@@ -10,37 +10,40 @@ function prettyDate(d) {
   return new Date(d + 'T12:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short', timeZone: 'UTC' });
 }
 
+// 7 PM: what changed today (outcomes and movement) first; volume only as a footnote.
+// Missing updates are a gentle "no update yet", never a penalty.
 function buildDaily(date) {
+  const { valueMetrics, memberOutcomes } = require('../metrics');
+  const v = valueMetrics(date, date);
+  const people = memberOutcomes(date, date, v);
   const ms = members().filter((m) => m.role !== 'lead');
-  const lines = [];
   const missing = [];
+  const lines = [];
   for (const m of ms) {
     const log = db.prepare('SELECT * FROM daily_logs WHERE member_id = ? AND date = ?').get(m.id, date) || {};
-    const mm = memberMetrics(m, date, date);
+    const p = people.find((x) => x.id === m.id) || { outcomes: [], working_on: [], unblocked: [] };
     const miss = [];
     if (!log.morning_text) miss.push('morning');
     if (!log.evening_text) miss.push('evening');
     if (miss.length) missing.push({ m, miss });
-    const bits = [];
-    if (m.role === 'growth') {
-      const g = Object.entries(mm.growth).map(([k, v]) => `${v} ${k.replace('_', ' ')}`);
-      if (g.length) bits.push(g.join(' · '));
-      if (mm.unblocked) bits.push(`${mm.unblocked} unblock`);
-    } else {
-      bits.push(`${mm.actions} actions · ${mm.triggers} triggers${mm.apps ? ' · ' + mm.apps + ' apps' : ''}`);
-      if (log.planned_count) bits.push(`plan ${log.done_count || 0}/${log.planned_count}`);
-    }
     const moved = db.prepare(`SELECT r.title, e.status FROM request_events e JOIN client_requests r ON r.id = e.request_id
-                              WHERE e.member_id = ? AND date(e.at, '${tzMod()}') = ?`).all(m.id, date);
-    if (moved.length) bits.push('req: ' + moved.map((x) => `${x.title.slice(0, 30)} → ${LABEL[x.status]}`).join(', '));
-    const icon = miss.length === 2 ? '❌' : miss.length ? '⚠️' : '✅';
-    lines.push(`${icon} *${m.name}* — ${bits.join(' | ') || 'nothing recorded'}${miss.length ? ` _(${miss.join(' + ')} update missing)_` : ''}`);
+                              WHERE e.member_id = ? AND date(e.at, '${tzMod()}') = ? AND e.status != 'completed'`).all(m.id, date);
+    const bits = [];
+    if (p.outcomes.length) bits.push('shipped ' + p.outcomes.map((o) => `“${o.title}”`).join(', '));
+    if (p.unblocked.length) bits.push('unblocked ' + p.unblocked.map((t) => `“${t}”`).join(', '));
+    if (moved.length) bits.push(moved.map((x) => `${x.title.slice(0, 30)} → ${LABEL[x.status]}`).join(', '));
+    if (!bits.length && p.working_on.length) bits.push('working on ' + p.working_on.map((w) => `“${w.title}”`).join(', '));
+    lines.push(`• *${m.name}* — ${bits.join(' · ') || (log.summary || 'no update yet')}${miss.length === 2 ? ' _(no update yet)_' : ''}`);
   }
-  const open = db.prepare(`SELECT status, COUNT(*) c FROM client_requests WHERE status != 'completed' AND is_demo = 0 GROUP BY status`).all();
   const stuck = db.prepare(`SELECT title, stuck_reason FROM client_requests WHERE status = 'stuck' AND is_demo = 0 LIMIT 5`).all();
-  let text = `📢 *SquadForge — Today's report (${prettyDate(date)})*\n\n${lines.join('\n') || 'No members are set up.'}`;
-  if (open.length) text += `\n\n📜 *Open client requests:* ${open.map((o) => `${LABEL[o.status]} ${o.c}`).join(' · ')}`;
-  if (stuck.length) text += '\n' + stuck.map((s) => `   🧱 ${s.title.slice(0, 50)} — ${(s.stuck_reason || '').slice(0, 80)}`).join('\n');
+  const waiting = db.prepare(`SELECT COUNT(*) c FROM client_requests WHERE status = 'new' AND is_demo = 0`).get().c;
+  let text = `📢 *SquadForge — Today (${prettyDate(date)})*`;
+  text += v.delivered ? `\n\n✅ *Delivered today:*\n${v.outcomes.map((o) => `• ${o.title}${o.impact ? ' — ' + o.impact : ''}`).join('\n')}` : '\n\n✅ Nothing shipped today — that is fine; here is what moved.';
+  text += `\n\n👥 *The team:*\n${lines.join('\n') || 'No members are set up.'}`;
+  if (stuck.length) text += `\n\n🧱 *Waiting on something (context, not fault):*\n` + stuck.map((s) => `• ${s.title.slice(0, 50)} — ${(s.stuck_reason || '').slice(0, 80)}`).join('\n');
+  if (waiting) text += `\n\n🧭 ${waiting} request(s) still need an owner.`;
+  const t = require('../metrics').teamMetrics(date, date).totals;
+  text += `\n\n_Detail: ${t.actions} actions · ${t.triggers} triggers · ${t.apps} apps published (volume, for context only)._`;
   return { text, missing };
 }
 

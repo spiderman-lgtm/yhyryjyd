@@ -26,11 +26,19 @@ function birdSvg(i, mood) {
   </svg>`;
 }
 
+// Mood and words come from the work itself (what shipped, what is in progress), never from counts.
 function birdMood(m, log, nowHour) {
-  const out = m.actions + m.triggers + m.apps;
-  if (m.requests_stuck) return { mood: 'worried', say: 'Stuck on a request!', cls: 'bad' };
-  if (log.evening_text) return { mood: 'happy', say: m.role === 'growth' ? 'Day wrapped up!' : `${out} published today`, cls: 'good' };
-  if (log.morning_text) return { mood: 'busy', say: 'Working on it…', cls: '' };
+  const wv = (typeof state !== 'undefined' && state.week_value) || { outcomes: [], people: [] };
+  const me = (wv.people || []).find((p) => p.id === m.id) || { working_on: [] };
+  const short = (t) => (t.length > 22 ? t.slice(0, 21) + '…' : t);
+  const blocked = me.working_on.find((w) => w.status === 'stuck');
+  if (blocked) return { mood: 'worried', say: `Blocked: ${short(blocked.title)}`, cls: 'bad' };
+  const shipped = (wv.outcomes || []).find((o) => o.who.includes(m.id) && o.date === state.today);
+  if (shipped) return { mood: 'happy', say: `Shipped: ${short(shipped.title)}`, cls: 'good' };
+  const busy = me.working_on[0];
+  if (busy) return { mood: 'busy', say: `Working on ${short(busy.title)}`, cls: '' };
+  if (log.evening_text) return { mood: 'happy', say: 'Day wrapped up', cls: 'good' };
+  if (log.morning_text) return { mood: 'busy', say: 'Plan is in', cls: '' };
   if (nowHour >= 11.5) return { mood: 'sleepy', say: 'No update yet', cls: 'warn' };
   return { mood: 'busy', say: 'Good morning!', cls: '' };
 }

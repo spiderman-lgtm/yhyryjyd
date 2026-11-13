@@ -122,7 +122,7 @@ function queue() {
     .map((r) => ({ kind: 'request', id: r.id, title: r.title, at: r.created_at, waited: Math.round(hoursSince(r.created_at) || 0) }));
   const outcomes = [];
   reqs.filter((r) => r.status === 'completed' && (r.completed_at || '').slice(0, 10) >= since && !verOf('request', r.id))
-    .forEach((r) => outcomes.push({ kind: 'request', id: r.id, title: r.title, who: r.assigned.map(name).join(', '), at: r.completed_at }));
+    .forEach((r) => outcomes.push({ kind: 'request', id: r.id, title: r.title, who: r.assigned.map(name).join(', '), at: r.completed_at, evidence: [r.impact_note, r.evidence_url].filter(Boolean).join(' · ') || null }));
   db.prepare(`SELECT * FROM tasks WHERE status = 'done' AND date(done_at, '${tzMod()}') >= ?`).all(since).filter((t) => !verOf('task', t.id))
     .forEach((t) => outcomes.push({ kind: 'task', id: t.id, title: t.title, who: name(t.member_id), at: t.done_at, evidence: t.evidence_url || t.evidence_note || null }));
   const evidence = [];

@@ -25,21 +25,31 @@ function requestRows(from, to) {
 
 function fmt(v, suffix = '') { return v === null || v === undefined ? '-' : v + suffix; }
 
+// Weekly report: value first (outcomes, time to value, quality, blockers), people by what they
+// delivered, contributions with reasons. Volume only as context at the end.
 function buildTeamReport(t, reqs) {
+  const { valueMetrics, memberOutcomes } = require('../metrics');
+  const v = valueMetrics(t.from, t.to), people = memberOutcomes(t.from, t.to, v);
   const L = [];
-  L.push(`📜 *SquadForge — Weekly Team Report (${t.from} → ${t.to})*`, '');
-  L.push(`*Team total:* ${t.totals.apps} apps · ${t.totals.actions} actions · ${t.totals.triggers} triggers`);
-  L.push(`*Client requests:* ${t.totals.client_requests} received · ${t.totals.requests_completed} completed`);
-  L.push(`*Reviews:* ${t.totals.reviews} · errors ${t.totals.review_errors} · error rate ${fmt(t.totals.error_rate)} per review`);
-  L.push(`*Missed updates:* ${t.totals.missed_updates}`, '');
-  L.push('*By member:*');
-  for (const m of t.members) {
-    if (m.role === 'growth') {
-      const g = Object.entries(m.growth).map(([k, v]) => `${v} ${KIND_LABEL[k] || k}`).join(', ') || 'nothing recorded';
-      L.push(`• *${m.name}* (growth) — ${g}; ${m.unblocked} requests unblocked; updates ${m.morning_updates + m.evening_updates}/${m.workdays * 2}`);
-    } else {
-      L.push(`• *${m.name}* — ${m.apps} apps, ${m.actions} actions, ${m.triggers} triggers | requests ${m.requests_completed}/${m.requests_assigned} (avg ${fmt(m.avg_request_hours, 'h')}, difficulty ${fmt(m.avg_difficulty)}) | error rate ${fmt(m.error_rate)}, first-pass ${fmt(m.first_pass_pct, '%')} | plan→done ${fmt(m.plan_done_pct, '%')} | updates ${m.morning_updates + m.evening_updates}/${m.workdays * 2}`);
-    }
+  L.push(`📜 *SquadForge — Weekly report (${t.from} → ${t.to})*`, '_We measure the value of work, not the number of tasks._', '');
+  L.push('*Value delivered*');
+  L.push(`• Outcomes delivered: *${v.delivered}* (${v.verified} verified)`);
+  L.push(`• Time to value: *${fmt(v.time_to_value_h, 'h')}* median from request to live${v.stuck_share_pct !== null ? ` · ${v.stuck_share_pct}% of that time was spent blocked` : ''}`);
+  L.push(`• First-pass quality: *${fmt(v.first_pass_pct, '%')}*${v.first_pass_n ? ` of ${v.first_pass_n} first reviews` : ''}`);
+  L.push(`• Blockers cleared: *${v.blockers_cleared}* · Requests still waiting for an owner: ${v.waiting_on_us}`);
+  if (v.outcomes.length) {
+    L.push('', '*What changed*');
+    for (const o of v.outcomes.slice(0, 10)) L.push(`• ${o.verified ? '🏅' : '✅'} ${o.title}${o.impact ? ' — ' + o.impact : ''}${o.evidence ? ` (<${o.evidence}|evidence>)` : ''}`);
+  }
+  L.push('', '*The team* (A–Z, not a ranking)');
+  for (const p of people) {
+    const bits = [];
+    bits.push(p.outcomes.length ? 'delivered ' + p.outcomes.map((o) => `“${o.title}”`).join(', ') : 'nothing shipped this week');
+    if (p.hardest) bits.push(`hardest: ${p.hardest.title} (${p.hardest.difficulty}/5)`);
+    if (p.through_blockers) bits.push(`got through ${p.through_blockers} blocker(s)`);
+    if (p.unblocked.length) bits.push('unblocked ' + p.unblocked.join(', '));
+    if (p.working_on.length) bits.push('now on ' + p.working_on.map((w) => w.title).join(', '));
+    L.push(`• *${p.name}* — ${bits.join(' · ')}`);
   }
   try {
     const notable = require('../work').contributions(t.from, t.to).slice(0, 8);
@@ -48,10 +58,9 @@ function buildTeamReport(t, reqs) {
       for (const c of notable) L.push(`• ${c.title} — ${c.who} — ${c.reasons.join('; ')}`);
     }
   } catch (e) { /* work module unavailable */ }
-  if (reqs.length) {
-    L.push('', '*Client requests detail:*');
-    for (const r of reqs) L.push(`• ${r.title} — ${r.status} — ${r.assignees}${r.hours !== null ? ` — ${r.hours}h` : ''}${r.difficulty ? ` — difficulty ${r.difficulty}/5` : ''}${r.stuck_reason ? ` — 🧱 ${r.stuck_reason.slice(0, 80)}` : ''}`);
-  }
+  const stuck = reqs.filter((r) => r.stuck_reason);
+  if (stuck.length) { L.push('', '*Still waiting on something* (context, not fault)'); for (const r of stuck) L.push(`• ${r.title} — ${r.assignees} — 🧱 ${r.stuck_reason.slice(0, 80)}`); }
+  L.push('', `_Volume, for context only: ${t.totals.actions} actions · ${t.totals.triggers} triggers · ${t.totals.apps} apps · ${t.totals.client_requests} requests received._`);
   return L.join('\n');
 }
 
@@ -61,7 +70,7 @@ function buildPersonalReport(t, reqs) {
     `🔐 *Personal weekly metrics (${t.from} → ${t.to})*`, '',
     `• Client requests received: *${t.totals.client_requests}*`,
     `• Completed: *${t.totals.requests_completed}*  · Still open: ${Object.entries(t.totals.open_by_status).map(([k, v]) => `${LABEL[k]} ${v}`).join(', ') || '0'}`,
-    `• Apps built: *${t.totals.apps}*  · Actions: *${t.totals.actions}*  · Triggers: *${t.totals.triggers}*`,
+    `• Outcomes delivered: *${require('../metrics').valueMetrics(t.from, t.to).delivered}*  · time to value ${fmt(require('../metrics').valueMetrics(t.from, t.to).time_to_value_h, 'h')}`,
     `• Time spent on client requests: ~${interrupted.toFixed(1)} hours (taken away from planned work)`,
     `• Review error rate: ${fmt(t.totals.error_rate)} per review`,
   ].join('\n');
