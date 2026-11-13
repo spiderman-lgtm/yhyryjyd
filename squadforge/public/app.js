@@ -500,6 +500,7 @@ async function renderSettings() {
   };
   $('#addMem').onclick = () => memberModal();
   workspaceCard();
+  standupCard(s);
   if (members.some((x) => /^SIM_/.test(x.slack_user_id || ''))) {
     $('#view h2').insertAdjacentHTML('afterend', `<div class="banner">🧪 <b>Test teammates are on</b> (Aarav, Meera, Kabir, Isha). In Slack, start a message with <code>[Aarav]</code> and it counts as Aarav's; write <code>@Aarav</code> in a request thread to assign. <a href="#" id="simOff">Remove test teammates</a></div>`);
     $('#simOff').onclick = async (e) => { e.preventDefault(); if (!confirm('Remove the 4 test teammates and their updates?')) return; await api('/api/sim', { method: 'DELETE' }); toast('Test teammates removed'); renderSettings(); };
