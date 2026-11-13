@@ -1,7 +1,7 @@
 // Sign-up accounts: email + scrypt password hash. Role is decided at login from ADMIN_EMAILS
 // (admins), everyone else is a viewer of the live views.
 const crypto = require('crypto');
-const { db } = require('./db');
+const { mainDb: db } = require('./db'); // accounts are shared across workspaces
 
 db.exec(`CREATE TABLE IF NOT EXISTS accounts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

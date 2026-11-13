@@ -35,9 +35,11 @@ function hoursBetween(a, b) {
 // Config: env var wins, then dashboard setting, then default.
 // Slack via viaSocket connection: channel and "me" are chosen once on the Integrations page.
 const VS_FALLBACK = { SLACK_CHANNEL_ID: 'channel_id', LEAD_SLACK_USER_ID: 'me_id' };
+const WS_SCOPED = new Set(['SLACK_BOT_TOKEN', 'SLACK_CHANNEL_ID', 'LEAD_SLACK_USER_ID', 'ALERT_CHANNEL_ID', 'SLACK_WORKSPACE_URL']);
 function cfg(key, fallback = null) {
   const env = process.env[key];
-  if (env !== undefined && env !== '') return env;
+  const ws1 = require('./db').currentWorkspace() === 1;
+  if (env !== undefined && env !== '' && (ws1 || !WS_SCOPED.has(key))) return env;
   if (VS_FALLBACK[key]) {
     const vs = require('./viasocket'); // lazy: avoids a require cycle
     const v = vs.connected('slack') ? vs.settings('slack')[VS_FALLBACK[key]] : null;
@@ -69,8 +71,9 @@ function setAgent(agent, state, message) {
 // Wrap an agent run: status bubble + activity + error capture. One run at a time per agent.
 const running = new Set();
 async function runAgent(agent, label, fn) {
-  if (running.has(agent)) return { skipped: true, reason: 'already running' };
-  running.add(agent);
+  const key = require('./db').currentWorkspace() + ':' + agent; // one run per agent per workspace
+  if (running.has(key)) return { skipped: true, reason: 'already running' };
+  running.add(key);
   setAgent(agent, 'working', label);
   try {
     const result = await fn();
@@ -82,7 +85,7 @@ async function runAgent(agent, label, fn) {
     logActivity(agent, 'Error: ' + String(err.message || err).slice(0, 300), 'error');
     return { error: String(err.message || err) };
   } finally {
-    running.delete(agent);
+    running.delete(key);
   }
 }
 

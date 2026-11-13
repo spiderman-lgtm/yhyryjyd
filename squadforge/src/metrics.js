@@ -110,7 +110,7 @@ module.exports = { memberMetrics, teamMetrics, dailySeries, workdays };
 // Outcomes delivered, time to value, quality on first review, blockers cleared and work waiting.
 // Counts of actions/triggers are kept only as detail inside an outcome.
 for (const sql of ['ALTER TABLE client_requests ADD COLUMN impact_note TEXT', 'ALTER TABLE client_requests ADD COLUMN evidence_url TEXT']) {
-  try { db.exec(sql); } catch { /* exists */ }
+  require('./db').addSchema(sql);
 }
 const median = (a) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = Math.floor(s.length / 2); return +(s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2).toFixed(1); };
 

@@ -1,48 +1,55 @@
-// SQLite database. File lives under DATA_DIR (Embarko keeps it across redeploys).
+// SQLite databases under DATA_DIR (Embarko keeps them across redeploys).
+// Multi-workspace: the main file (squadforge.db) holds workspace 1's data plus the shared
+// registry (accounts, workspaces, memberships); every other workspace gets its own file.
+// `db` is a proxy: inside a request or job it talks to that workspace's database
+// (AsyncLocalStorage), elsewhere to the main one.
 const path = require('path');
 const fs = require('fs');
+const { AsyncLocalStorage } = require('async_hooks');
 // Node's built-in SQLite (no native module to build).
 const { DatabaseSync } = require('node:sqlite');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
+const als = new AsyncLocalStorage();
 
-const raw = new DatabaseSync(path.join(DATA_DIR, 'squadforge.db'));
-raw.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
-
-// Small wrapper: prepare/exec/transaction (nested transactions via savepoints).
-let depth = 0;
-const cache = new Map();
-const db = {
-  exec: (sql) => raw.exec(sql),
-  prepare(sql) {
-    let st = cache.get(sql);
-    if (!st) {
-      const s = raw.prepare(sql);
-      if (typeof s.setAllowUnknownNamedParameters === 'function') s.setAllowUnknownNamedParameters(true);
-      // undefined → null, and turn null-prototype rows into plain objects
-      const fix = (args) => args.map((a) => (a === undefined ? null
-        : a && typeof a === 'object' && !Buffer.isBuffer(a)
-          ? Object.fromEntries(Object.entries(a).map(([k, v]) => [k, v === undefined ? null : v])) : a));
-      st = {
-        run: (...a) => s.run(...fix(a)),
-        get: (...a) => { const r = s.get(...fix(a)); return r ? { ...r } : undefined; },
-        all: (...a) => s.all(...fix(a)).map((r) => ({ ...r })),
+// One wrapped connection: prepare/exec/transaction (nested transactions via savepoints).
+function wrap(file) {
+  const raw = new DatabaseSync(file);
+  raw.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+  let depth = 0;
+  const cache = new Map();
+  return {
+    exec: (sql) => raw.exec(sql),
+    prepare(sql) {
+      let st = cache.get(sql);
+      if (!st) {
+        const s = raw.prepare(sql);
+        if (typeof s.setAllowUnknownNamedParameters === 'function') s.setAllowUnknownNamedParameters(true);
+        // undefined → null, and turn null-prototype rows into plain objects
+        const fix = (args) => args.map((a) => (a === undefined ? null
+          : a && typeof a === 'object' && !Buffer.isBuffer(a)
+            ? Object.fromEntries(Object.entries(a).map(([k, v]) => [k, v === undefined ? null : v])) : a));
+        st = {
+          run: (...a) => s.run(...fix(a)),
+          get: (...a) => { const r = s.get(...fix(a)); return r ? { ...r } : undefined; },
+          all: (...a) => s.all(...fix(a)).map((r) => ({ ...r })),
+        };
+        cache.set(sql, st);
+      }
+      return st;
+    },
+    transaction(fn) {
+      return (...args) => {
+        const sp = 'sp' + depth++;
+        raw.exec(`SAVEPOINT ${sp}`);
+        try { const r = fn(...args); raw.exec(`RELEASE ${sp}`); return r; }
+        catch (e) { raw.exec(`ROLLBACK TO ${sp}; RELEASE ${sp}`); throw e; }
+        finally { depth--; }
       };
-      cache.set(sql, st);
-    }
-    return st;
-  },
-  transaction(fn) {
-    return (...args) => {
-      const sp = 'sp' + depth++;
-      raw.exec(`SAVEPOINT ${sp}`);
-      try { const r = fn(...args); raw.exec(`RELEASE ${sp}`); return r; }
-      catch (e) { raw.exec(`ROLLBACK TO ${sp}; RELEASE ${sp}`); throw e; }
-      finally { depth--; }
-    };
-  },
-};
+    },
+  };
+}
 
 // Committed, append-only migrations. Never drop tables we don't own
 // (Embarko keeps its own _litestream_* bookkeeping tables in this file).
@@ -188,20 +195,49 @@ const MIGRATIONS = [
   `,
 ];
 
-function migrate() {
-  db.exec('CREATE TABLE IF NOT EXISTS sf_schema_version (version INTEGER NOT NULL)');
-  const row = db.prepare('SELECT version FROM sf_schema_version').get();
+// Extra schema registered by modules (tables/columns added after the first migration).
+// Each entry runs on every workspace database, now and when one is opened later.
+const extraSchema = [];
+const open = new Map(); // workspace id → wrapped db
+
+function migrateOne(d) {
+  d.exec('CREATE TABLE IF NOT EXISTS sf_schema_version (version INTEGER NOT NULL)');
+  const row = d.prepare('SELECT version FROM sf_schema_version').get();
   let v = row ? row.version : 0;
-  if (!row) db.prepare('INSERT INTO sf_schema_version (version) VALUES (0)').run();
+  if (!row) d.prepare('INSERT INTO sf_schema_version (version) VALUES (0)').run();
   while (v < MIGRATIONS.length) {
-    db.transaction(() => {
-      db.exec(MIGRATIONS[v]);
-      db.prepare('UPDATE sf_schema_version SET version = ?').run(v + 1);
-    })();
+    d.transaction(() => { d.exec(MIGRATIONS[v]); d.prepare('UPDATE sf_schema_version SET version = ?').run(v + 1); })();
     v++;
   }
+  for (const sql of extraSchema) { try { d.exec(sql); } catch { /* column already there */ } }
 }
-migrate();
+
+const mainDb = wrap(path.join(DATA_DIR, 'squadforge.db'));
+migrateOne(mainDb);
+open.set(1, mainDb);
+
+function workspaceDb(id) {
+  id = Number(id) || 1;
+  if (open.has(id)) return open.get(id);
+  const d = wrap(path.join(DATA_DIR, `workspace-${id}.db`));
+  migrateOne(d);
+  open.set(id, d);
+  return d;
+}
+function addSchema(sql) {
+  extraSchema.push(sql);
+  for (const d of open.values()) { try { d.exec(sql); } catch { /* exists */ } }
+}
+function currentDb() { const s = als.getStore(); return (s && s.db) || mainDb; }
+function currentWorkspace() { const s = als.getStore(); return (s && s.ws) || 1; }
+// Run fn with `db` pointing at that workspace (requests and background jobs).
+function withWorkspace(id, fn) { return als.run({ ws: Number(id) || 1, db: workspaceDb(id) }, fn); }
+
+const db = {
+  exec: (sql) => currentDb().exec(sql),
+  prepare: (sql) => currentDb().prepare(sql),
+  transaction: (fn) => (...a) => currentDb().transaction(fn)(...a),
+};
 
 function getSetting(key, fallback = null) {
   const r = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
@@ -213,4 +249,4 @@ function setSetting(key, value) {
     .run(key, JSON.stringify(value));
 }
 
-module.exports = { db, getSetting, setSetting, DATA_DIR };
+module.exports = { db, mainDb, getSetting, setSetting, DATA_DIR, addSchema, withWorkspace, currentWorkspace, workspaceDb };

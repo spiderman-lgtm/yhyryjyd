@@ -3,7 +3,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { db, getSetting, setSetting } = require('./db');
+const { db, getSetting, setSetting, withWorkspace } = require('./db');
+const workspaces = require('./workspaces');
 const U = require('./util');
 const slack = require('./slack');
 const llm = require('./llm');
@@ -61,11 +62,25 @@ function sessionOf(req) {
   const good = sign(`${role}.${em}.${exp}`);
   if (sig.length !== good.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) return null;
   const email = unb64(em);
-  // admin list changed after login → that session is no longer admin
-  if (role === 'admin' && adminEmails().length && !adminEmails().includes(email)) return null;
   return { role, email };
 }
-function roleOf(req) { const s = sessionOf(req); return s ? s.role : null; }
+// Which workspace this request is for, and the person's rights there.
+//   owner/admin of that workspace → 'admin' (full dashboard); viewer → live views only.
+//   Workspace 1 (the original team) keeps the old rules: ADMIN_EMAILS are owners, the viewer
+//   password gives live views, and an account that belongs to no workspace can watch it.
+function contextOf(req) {
+  const se = sessionOf(req);
+  if (!se) return null;
+  const asked = Number(req.headers['x-sf-workspace']) || 0;
+  if (se.open) return { ws: asked || 1, role: 'admin', email: null, wsRole: 'owner' };
+  if (!se.email) return { ws: 1, role: se.role === 'admin' && !adminEmails().length ? 'admin' : 'viewer', email: null, wsRole: se.role };
+  const mine = workspaces.forEmail(se.email);
+  let ws = asked && mine.find((w) => w.id === asked) ? asked : (mine[0] ? mine[0].id : 1);
+  let wsRole = workspaces.roleIn(se.email, ws);
+  if (!wsRole && ws === 1 && !mine.length) wsRole = 'viewer';
+  if (!wsRole) return null;
+  return { ws, role: ['owner', 'admin'].includes(wsRole) ? 'admin' : 'viewer', email: se.email, wsRole, workspaces: mine };
+}
 // The viewer can only see these (read-only)
 const VIEWER_ROUTES = ['/api/state', '/api/requests', '/api/logs'];
 function safeEqual(a, b) {
@@ -137,9 +152,15 @@ async function api(req, res, url) {
 
   if (p === '/api/health') return send(res, 200, { ok: true });
   if (p === '/api/me') {
-    const se = sessionOf(req);
-    const acct = se && se.email ? accounts.find(se.email) : null;
-    return send(res, 200, { authed: !!se, role: se ? se.role : null, email: se ? se.email : null, name: acct ? acct.name : null, password_set: !!process.env.ADMIN_PASSWORD, admin_emails_set: adminEmails().length > 0 });
+    const cx = contextOf(req);
+    const acct = cx && cx.email ? accounts.find(cx.email) : null;
+    const list = cx ? (cx.workspaces && cx.workspaces.length ? cx.workspaces : [{ ...workspaces.get(cx.ws), role: cx.wsRole }]) : [];
+    return send(res, 200, {
+      authed: !!cx, role: cx ? cx.role : null, email: cx ? cx.email : null, name: acct ? acct.name : null,
+      workspace: cx ? { id: cx.ws, name: (workspaces.get(cx.ws) || {}).name, role: cx.wsRole } : null,
+      workspaces: list.map((w) => ({ id: w.id, name: w.name, role: w.role })),
+      password_set: !!process.env.ADMIN_PASSWORD, admin_emails_set: adminEmails().length > 0,
+    });
   }
   const issue = (role, email, extra = {}) => {
     const token = makeSession(role, email || '');
@@ -157,6 +178,24 @@ async function api(req, res, url) {
     accounts.create(email, name, pw.trim(), role);
     console.log(`[signup] new ${role} account`);
     return issue(role, email, { created: true });
+  }
+  if (p === '/api/workspace-signup' && m === 'POST') {
+    const email = String(body.email || '').trim().toLowerCase();
+    const name = String(body.name || '').trim().slice(0, 60);
+    const pw = String(body.password || '').trim();
+    const wsName = String(body.workspace || '').trim();
+    if (!wsName) return send(res, 400, { error: 'Give your workspace a name (for example, your team name)' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { error: 'Please enter a valid email' });
+    const acct = accounts.find(email);
+    if (acct) {
+      if (!accounts.verify(acct, pw)) return send(res, 401, { error: 'This email already has an account — use its password' });
+    } else {
+      if (pw.length < 8) return send(res, 400, { error: 'Password must be at least 8 characters' });
+      accounts.create(email, name, pw, 'viewer');
+    }
+    const ws = workspaces.create(wsName, email);
+    console.log(`[workspace] created #${ws.id}`);
+    return issue(adminEmails().includes(email) ? 'admin' : 'viewer', email, { created: true, workspace: ws.id });
   }
   if (p === '/api/login' && m === 'POST') {
     const email = String(body.email || '').trim().toLowerCase();
@@ -184,8 +223,34 @@ async function api(req, res, url) {
   }
   if (p === '/api/logout' && m === 'POST') return send(res, 200, { ok: true }, { 'Set-Cookie': 'sf_session=; Path=/; Max-Age=0' });
 
-  const role = roleOf(req);
-  if (!role) return send(res, 401, { error: 'Please log in' });
+  const cx = contextOf(req);
+  if (!cx) return send(res, sessionOf(req) ? 403 : 401, { error: sessionOf(req) ? 'You are not a member of this workspace' : 'Please log in' });
+  return withWorkspace(cx.ws, () => routes(req, res, url, p, m, body, cx));
+}
+
+async function routes(req, res, url, p, m, body, cx) {
+  const role = cx.role;
+  // ---------- workspaces ----------
+  if (p === '/api/workspaces' && m === 'GET') return send(res, 200, cx.email ? workspaces.forEmail(cx.email) : [workspaces.get(1)]);
+  if (p === '/api/workspaces' && m === 'POST') {
+    if (!cx.email) return send(res, 400, { error: 'Sign in with your email to create a workspace' });
+    try { return send(res, 200, workspaces.create(body.name, cx.email)); } catch (e) { return send(res, 400, { error: e.message }); }
+  }
+  if (p === '/api/workspace' && m === 'PATCH') {
+    if (role !== 'admin') return send(res, 403, { error: 'Admins only' });
+    if (!String(body.name || '').trim()) return send(res, 400, { error: 'Name cannot be empty' });
+    return send(res, 200, workspaces.rename(cx.ws, body.name));
+  }
+  if (p === '/api/workspace/people') {
+    if (role !== 'admin') return send(res, 403, { error: 'Admins only' });
+    try {
+      if (m === 'POST') workspaces.invite(cx.ws, body.email, body.role);
+      if (m === 'DELETE') workspaces.remove(cx.ws, body.email);
+      const list = workspaces.members(cx.ws);
+      if (cx.ws === 1) for (const e of adminEmails()) if (!list.find((x) => x.email === e)) list.unshift({ email: e, role: 'owner', env: true });
+      return send(res, 200, list);
+    } catch (e) { return send(res, 400, { error: e.message }); }
+  }
   if (role === 'viewer' && !(m === 'GET' && VIEWER_ROUTES.includes(p))) return send(res, 403, { error: 'Admins only' });
 
   if (p === '/api/state') {
@@ -373,7 +438,7 @@ async function api(req, res, url) {
     return send(res, 200, work.contributions(from, to));
   }
   if (p === '/api/verify' && m === 'POST') {
-    try { work.verify(body.kind, Number(body.id), body.status, body.note, (sessionOf(req) || {}).email); return send(res, 200, { ok: true }); }
+    try { work.verify(body.kind, Number(body.id), body.status, body.note, cx.email); return send(res, 200, { ok: true }); }
     catch (e) { return send(res, 400, { error: e.message }); }
   }
   if ((mm = p.match(/^\/api\/requests\/(\d+)\/ack-analysis$/)) && m === 'POST') {
@@ -390,11 +455,10 @@ async function api(req, res, url) {
   // ---------- viaSocket integrations (admin only) ----------
   // Connections act as the lead: never open to anyone without a login.
   if (p.startsWith('/api/integrations')) {
-    const se = sessionOf(req);
     if (!process.env.ADMIN_PASSWORD || !adminEmails().length) {
       return send(res, 403, { error: 'To use Integrations, first set ADMIN_PASSWORD and ADMIN_EMAILS (Embarko → App setup), then log in with your email.' });
     }
-    if (!se || se.role !== 'admin' || !adminEmails().includes(se.email)) return send(res, 403, { error: 'Integrations are only for admin emails' });
+    if (role !== 'admin' || !cx.email) return send(res, 403, { error: 'Integrations are only for workspace owners and admins' });
   }
   if (p === '/api/integrations' && m === 'GET') return send(res, 200, await vs.status());
   if (p === '/api/integrations/connect-info' && m === 'GET') {
@@ -403,7 +467,7 @@ async function api(req, res, url) {
   }
   if (p === '/api/integrations/connected' && m === 'POST') {
     if (!vs.APPS[body.app]) return send(res, 400, { error: 'Unknown app' });
-    return send(res, 200, await vs.onConnected(body.app, body.authId, (sessionOf(req) || {}).email));
+    return send(res, 200, await vs.onConnected(body.app, body.authId, cx.email));
   }
   if ((mm = p.match(/^\/api\/integrations\/([a-z-]+)\/(disconnect|settings|test|options)$/))) {
     const app = mm[1], action = mm[2];
@@ -486,12 +550,15 @@ function cron(req, res, url) {
     weekly: () => background('scribe', 'Writing the weekly report…', () => scribe.run()),
   };
   if (!jobs[job]) return send(res, 404, { error: 'unknown job' });
-  jobs[job]();
+  for (const w of workspaces.all()) withWorkspace(w.id, () => jobs[job]());
   return send(res, 202, { accepted: job });
 }
 
 // Publish counts from a viaSocket flow (or any tool): POST /webhooks/publish
-async function publishWebhook(req, res) {
+async function publishWebhook(req, res, url) {
+  return withWorkspace(Number(url.searchParams.get('ws')) || 1, () => publishWebhookIn(req, res));
+}
+async function publishWebhookIn(req, res) {
   const secret = process.env.WEBHOOK_SECRET;
   if (!secret || !safeEqual(req.headers['x-webhook-secret'], secret)) return send(res, 401, { error: 'unauthorized' });
   const b = await readBody(req);
@@ -518,7 +585,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (url.pathname.startsWith('/api/')) return await api(req, res, url);
     if (url.pathname.startsWith('/cron/') && req.method === 'GET') return cron(req, res, url);
-    if (url.pathname === '/webhooks/publish' && req.method === 'POST') return await publishWebhook(req, res);
+    if (url.pathname === '/webhooks/publish' && req.method === 'POST') return await publishWebhook(req, res, url);
     return serveStatic(req, res, url.pathname);
   } catch (e) {
     console.error(e);

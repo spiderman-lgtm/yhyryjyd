@@ -20,8 +20,9 @@ let lastActivityId = 0;
 async function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json' };
   const tok = sessionToken(); if (tok) headers['X-SF-Session'] = tok;
+  const ws = currentWs(); if (ws) headers['X-SF-Workspace'] = ws;
   const res = await fetch(path, { headers, credentials: 'same-origin', ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined });
-  if (res.status === 401 && !path.startsWith('/api/login') && !path.startsWith('/api/signup')) { saveToken(null); showLogin(); throw new Error('Please log in'); }
+  if (res.status === 401 && !path.startsWith('/api/login') && !path.startsWith('/api/signup') && !path.startsWith('/api/workspace-signup')) { saveToken(null); showLogin(); throw new Error('Please log in'); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || res.statusText);
   return data;
@@ -51,33 +52,72 @@ function showLogin() { $('#login').classList.remove('hidden'); document.body.cla
 // session token kept in the browser too (some proxies drop cookies)
 function sessionToken() { try { return localStorage.getItem('sf_token'); } catch { return null; } }
 function saveToken(t) { try { t ? localStorage.setItem('sf_token', t) : localStorage.removeItem('sf_token'); } catch { /* private mode */ } }
-let signupMode = false;
-$('#authToggle').addEventListener('click', (e) => {
-  e.preventDefault();
-  signupMode = !signupMode;
-  $('#signupName').classList.toggle('hidden', !signupMode);
-  $('#authBtn').textContent = signupMode ? 'Create account →' : 'Sign in →';
-  $('#password').setAttribute('autocomplete', signupMode ? 'new-password' : 'current-password');
-  $('#password').placeholder = signupMode ? 'Choose a password (8+ characters)' : 'Password';
-  $('#authHint').innerHTML = signupMode ? 'Already have an account? <a href="#" id="authToggle2">Sign in</a>' : 'New here? <a href="#" id="authToggle2">Create an account</a>';
-  $('#authToggle2').onclick = (ev) => { ev.preventDefault(); $('#authToggle').click(); };
+function currentWs() { try { return localStorage.getItem('sf_ws'); } catch { return null; } }
+function saveWs(id) { try { id ? localStorage.setItem('sf_ws', String(id)) : localStorage.removeItem('sf_ws'); } catch { /* private mode */ } }
+// Login modes: sign in, create an account, or create a workspace (a new team).
+let authMode = 'signin';
+const AUTH = {
+  signin: { btn: 'Sign in →', pw: 'Password', hint: 'New here? <a href="#" data-auth="signup">Create an account</a> · <a href="#" data-auth="workspace">Create a workspace</a>' },
+  signup: { btn: 'Create account →', pw: 'Choose a password (8+ characters)', hint: 'Already have an account? <a href="#" data-auth="signin">Sign in</a> · <a href="#" data-auth="workspace">Create a workspace</a>' },
+  workspace: { btn: 'Create workspace →', pw: 'Password (8+ characters, or your existing one)', hint: 'One workspace per team. Already have one? <a href="#" data-auth="signin">Sign in</a>' },
+};
+function setAuthMode(mode) {
+  authMode = mode; const a = AUTH[mode];
+  $('#wsName').classList.toggle('hidden', mode !== 'workspace');
+  $('#signupName').classList.toggle('hidden', mode === 'signin');
+  $('#authBtn').textContent = a.btn;
+  $('#password').setAttribute('autocomplete', mode === 'signin' ? 'current-password' : 'new-password');
+  $('#password').placeholder = a.pw;
+  $('#authHint').innerHTML = a.hint;
   $('#loginErr').textContent = '';
-  (signupMode ? $('#signupName') : $('#email')).focus();
+}
+setAuthMode('signin');
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-auth]'); if (!a || !$('#login').contains(a)) return;
+  e.preventDefault(); setAuthMode(a.dataset.auth);
+  $('#login').scrollTo({ top: 0, behavior: 'smooth' });
+  setTimeout(() => (authMode === 'workspace' ? $('#wsName') : authMode === 'signup' ? $('#signupName') : $('#email')).focus(), 300);
 });
 $('#loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = $('#authBtn'); btn.disabled = true; $('#loginErr').textContent = '';
   try {
     const body = { email: $('#email').value, password: $('#password').value };
-    const r = signupMode ? await api('/api/signup', { method: 'POST', body: { ...body, name: $('#signupName').value } }) : await api('/api/login', { method: 'POST', body });
+    let r;
+    if (authMode === 'workspace') r = await api('/api/workspace-signup', { method: 'POST', body: { ...body, name: $('#signupName').value, workspace: $('#wsName').value } });
+    else if (authMode === 'signup') r = await api('/api/signup', { method: 'POST', body: { ...body, name: $('#signupName').value } });
+    else r = await api('/api/login', { method: 'POST', body });
     saveToken(r.token);
+    if (r.workspace) saveWs(r.workspace);
     $('#login').classList.add('hidden'); document.body.classList.remove('on-login');
-    if (r.created) toast(r.role === 'admin' ? 'Welcome! Your admin account is ready.' : 'Welcome! You can see the live views.');
+    if (r.workspace) toast('Your workspace is ready — add your team in Settings.');
+    else if (r.created) toast(r.role === 'admin' ? 'Welcome! Your admin account is ready.' : 'Welcome! You can see the live views.');
     boot();
   } catch (err) { $('#loginErr').textContent = err.message; }
   btn.disabled = false;
 });
-$('#logoutBtn').addEventListener('click', async () => { saveToken(null); await api('/api/logout', { method: 'POST' }); location.reload(); });
+// ---------- workspace switcher ----------
+let myWorkspaces = [];
+let myWorkspace = null;
+function renderWsSwitch() {
+  const sel = $('#wsSwitch');
+  if (!myEmail || !myWorkspace) { sel.classList.add('hidden'); return; }
+  sel.classList.remove('hidden');
+  sel.innerHTML = myWorkspaces.map((w) => `<option value="${w.id}" ${w.id === myWorkspace.id ? 'selected' : ''}>${esc(w.name)}</option>`).join('') + '<option value="new">＋ New workspace…</option>';
+}
+$('#wsSwitch').addEventListener('change', async (e) => {
+  const v = e.target.value;
+  if (v === 'new') {
+    e.target.value = String(myWorkspace.id);
+    const name = prompt('Name of the new workspace (for example, your team name):');
+    if (!name || !name.trim()) return;
+    try { const w = await api('/api/workspaces', { method: 'POST', body: { name } }); saveWs(w.id); toast(`Workspace "${w.name}" created`); }
+    catch (err) { return toast(err.message); }
+  } else saveWs(v);
+  members = []; state = null; $('#view').innerHTML = '';
+  boot();
+});
+$('#logoutBtn').addEventListener('click', async () => { saveToken(null); saveWs(null); await api('/api/logout', { method: 'POST' }); location.reload(); });
 
 // ---------- tabs ----------
 $('#tabs').addEventListener('click', (e) => {
@@ -337,6 +377,32 @@ async function renderCommander() {
     } catch (e) { toast(e.message); b.disabled = false; }
   };
 }
+// Workspace (team) settings: name and who can open it.
+async function workspaceCard() {
+  if (!myWorkspace || !myEmail) return;
+  const h2 = $('#view h2'); if (!h2) return;
+  h2.insertAdjacentHTML('afterend', `<div class="card ws-card" id="wsCard"><h3>🗂 Workspace</h3>
+    <div class="ws-row"><input id="wsRename" value="${esc(myWorkspace.name)}" aria-label="Workspace name"/><button class="btn small" id="wsSave">Rename</button></div>
+    <p class="muted">Each workspace is one team with its own members, Slack channel, M91 alerts, reports and settings. People below can open it: <b>owners/admins</b> see everything, <b>viewers</b> see the live views.</p>
+    <div id="wsPeople" class="ws-people"></div>
+    <div class="ws-row"><input id="wsInvEmail" type="email" placeholder="teammate@company.com" aria-label="Email to invite"/><select id="wsInvRole"><option value="viewer">Viewer</option><option value="admin">Admin</option></select><button class="btn small" id="wsInvite">Add person</button></div>
+    <p class="muted small">They sign in (or create an account) with this email and the workspace appears in their switcher.</p></div>`);
+  const draw = (list) => {
+    $('#wsPeople').innerHTML = list.map((p) => `<div class="ws-person"><span class="avatar-xs">${esc(p.email[0].toUpperCase())}</span><span class="ws-email">${esc(p.email)}</span><span class="pill">${esc(p.role)}</span>${p.env ? '<span class="muted small">from ADMIN_EMAILS</span>' : `<button class="btn ghost small" data-rm="${esc(p.email)}">Remove</button>`}</div>`).join('') || '<p class="muted">Only you so far.</p>';
+    $('#wsPeople').querySelectorAll('[data-rm]').forEach((b) => (b.onclick = async () => {
+      if (!confirm(`Remove ${b.dataset.rm} from this workspace?`)) return;
+      try { draw(await api('/api/workspace/people', { method: 'DELETE', body: { email: b.dataset.rm } })); } catch (e) { toast(e.message); }
+    }));
+  };
+  try { draw(await api('/api/workspace/people')); } catch (e) { $('#wsPeople').innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+  $('#wsSave').onclick = async () => {
+    try { const w = await api('/api/workspace', { method: 'PATCH', body: { name: $('#wsRename').value } }); myWorkspace.name = w.name; const mine = myWorkspaces.find((x) => x.id === w.id); if (mine) mine.name = w.name; renderWsSwitch(); toast('Workspace renamed'); } catch (e) { toast(e.message); }
+  };
+  $('#wsInvite').onclick = async () => {
+    try { draw(await api('/api/workspace/people', { method: 'POST', body: { email: $('#wsInvEmail').value, role: $('#wsInvRole').value } })); $('#wsInvEmail').value = ''; toast('Added — they can sign in now'); } catch (e) { toast(e.message); }
+  };
+}
+
 // little typewriter so the AI draft visibly "writes itself"
 function typeIn(el, text) {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { el.value = text; return; }
@@ -414,6 +480,7 @@ async function renderSettings() {
     await api('/api/settings', { method: 'POST', body }); toast('Keywords saved');
   };
   $('#addMem').onclick = () => memberModal();
+  workspaceCard();
   $('#impMem').onclick = async () => { const r = await api('/api/members/import-slack', { method: 'POST' }); toast(`${r.added} members imported — please check their roles`); renderSettings(); };
   document.querySelectorAll('[data-edit]').forEach((b) => (b.onclick = () => memberModal(members.find((m) => m.id == b.dataset.edit))));
   document.querySelectorAll('[data-m91]').forEach((b) => (b.onclick = async () => {
@@ -470,6 +537,10 @@ async function boot() {
   role = me.role || 'admin';
   myEmail = me.email || null;
   myName = me.name || null;
+  myWorkspaces = me.workspaces || [];
+  myWorkspace = me.workspace || null;
+  if (myWorkspace) saveWs(myWorkspace.id);
+  renderWsSwitch();
   state = await api('/api/state');
   if (role === 'admin') members = await api('/api/members');
   renderHeader();

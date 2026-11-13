@@ -1,11 +1,10 @@
 // Work module: tasks, contribution verification, and the manager insights built on top of the
 // records (queue, where to intervene, blocked work, deadline risks, contributions that matter,
 // journeys) plus the member-side "My Work". Rules are fixed and explainable — no scoring of people.
-const { db } = require('./db');
+const { db, addSchema } = require('./db');
 const { today, tzMod, addDays, hoursBetween, memberById, members, logActivity } = require('./util');
 
-db.exec(`
-CREATE TABLE IF NOT EXISTS tasks (
+addSchema(`CREATE TABLE IF NOT EXISTS tasks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT NOT NULL,
   description TEXT,
@@ -20,14 +19,14 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   done_at TEXT
-);
-CREATE TABLE IF NOT EXISTS task_events (
+)`);
+addSchema(`CREATE TABLE IF NOT EXISTS task_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   kind TEXT NOT NULL, text TEXT, by TEXT,
   at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE TABLE IF NOT EXISTS verifications (
+)`);
+addSchema(`CREATE TABLE IF NOT EXISTS verifications (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   kind TEXT NOT NULL,                        -- task | request
   ref_id INTEGER NOT NULL,
@@ -35,10 +34,10 @@ CREATE TABLE IF NOT EXISTS verifications (
   note TEXT, by TEXT,
   at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(kind, ref_id)
-);
-`);
+)`);
+
 for (const sql of ['ALTER TABLE members ADD COLUMN email TEXT', 'ALTER TABLE client_requests ADD COLUMN analysis_ack TEXT']) {
-  try { db.exec(sql); } catch { /* already there */ }
+  addSchema(sql);
 }
 
 const nowIso = () => new Date().toISOString();

@@ -5,7 +5,8 @@ const { db } = require('./db');
 const { logActivity } = require('./util');
 
 // One viaSocket end user per SquadForge workspace (only the admin login can connect).
-const USER_ID = 'squadforge-lead';
+// One viaSocket end user per workspace (workspace 1 keeps the original id so its connections stay).
+const userId = () => { const ws = require('./db').currentWorkspace(); return ws === 1 ? 'squadforge-lead' : `squadforge-ws-${ws}`; };
 
 // App catalog used by SquadForge. Action ids only scope the Connect popup's consent screen.
 const APPS = {
@@ -33,7 +34,7 @@ const APPS = {
   },
 };
 
-db.exec(`CREATE TABLE IF NOT EXISTS integrations (
+require('./db').addSchema(`CREATE TABLE IF NOT EXISTS integrations (
   app TEXT PRIMARY KEY,
   auth_id TEXT NOT NULL,
   script_id TEXT,
@@ -41,7 +42,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS integrations (
   connected_at TEXT NOT NULL DEFAULT (datetime('now')),
   last_error TEXT
 )`);
-try { db.exec('ALTER TABLE integrations ADD COLUMN connected_by TEXT'); } catch { /* already there */ }
+require('./db').addSchema('ALTER TABLE integrations ADD COLUMN connected_by TEXT');
 
 let client = null;
 function configured() {
@@ -58,7 +59,7 @@ function vs() {
   }
   return client;
 }
-const user = () => vs().user(USER_ID);
+const user = () => vs().user(userId());
 
 function row(app) {
   const r = db.prepare('SELECT * FROM integrations WHERE app = ?').get(app);
@@ -253,6 +254,6 @@ return { spreadsheetId: id, url: c.data.spreadsheetUrl, updatedRange: r.data.upd
 }
 
 module.exports = { runActionFor, actionSchema, sheetsTest,
-  USER_ID, APPS, configured, connected, settings, saveSettings, connectInfo, onConnected, disconnect, status,
+  userId, APPS, configured, connected, settings, saveSettings, connectInfo, onConnected, disconnect, status,
   slackCall, slackReady, slackChannels, slackUsers, gmailSend, gmailMe, sheetsList, sheetsTabs, sheetsAppend,
 };

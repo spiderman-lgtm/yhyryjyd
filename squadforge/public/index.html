@@ -15,7 +15,7 @@
     <div class="qp">
       <header class="qp-nav">
         <div class="qp-logo"><svg viewBox="0 0 8 9" shape-rendering="crispEdges" aria-hidden="true"><path d="M3 0h2v1h1v2h1v2h1v1H5v3H3V6H0V5h1V3h1V1h1z" fill="#1f3b33"/></svg>SquadForge</div>
-        <nav class="qp-links"><span>Live Flow</span><span>Bird Town</span><span>Reports</span></nav>
+        <nav class="qp-links"><a href="#lp-how">How it works</a><a href="#lp-features">Features</a><a href="#lp-agents">Agents</a><a href="#lp-faq">FAQ</a></nav>
       </header>
       <section class="qp-hero">
         <h1>Where your team's<br/>work comes alive.</h1>
@@ -26,15 +26,92 @@
           <div><span class="qp-ic">🌿</span><b>Weekly Reports</b><small>Monday's report, written before you ask.</small></div>
         </div>
         <form id="loginForm" class="qp-form" autocomplete="on">
+          <input type="text" id="wsName" placeholder="Workspace name (e.g. Plugins team)" aria-label="Workspace name" class="hidden" />
           <input type="text" id="signupName" placeholder="Your name" autocomplete="name" aria-label="Name" class="hidden" />
           <input type="email" id="email" placeholder="you@company.com" autocomplete="username" aria-label="Email" />
           <input type="password" id="password" placeholder="Password" autocomplete="current-password" required aria-label="Password" />
           <button class="qp-btn" type="submit" id="authBtn">Sign in →</button>
-          <p class="qp-hint" id="authHint">New here? <a href="#" id="authToggle">Create an account</a></p>
+          <p class="qp-hint" id="authHint"></p>
           <p id="loginErr" class="err" role="alert"></p>
         </form>
       </section>
       <div class="qp-scene" id="qpScene" aria-hidden="true"></div>
+    </div>
+    <div class="lp">
+      <section class="lp-sec" id="lp-what">
+        <span class="lp-kicker">What it is</span>
+        <h2>Your team's standups, requests and reviews — in one calm place.</h2>
+        <p class="lp-lead">SquadForge reads your team's Slack channel, understands what everyone is working on, and turns it into a live dashboard, a 7 PM daily alert and a Monday report. Eight small agents do the reading and writing, so you can spend your time leading instead of chasing updates.</p>
+      </section>
+
+      <section class="lp-sec" id="lp-how">
+        <span class="lp-kicker">How it works</span>
+        <h2>Slack in, clarity out.</h2>
+        <ol class="lp-steps">
+          <li><b>1 · Slack</b><span>Morning and evening standup threads, client requests you post and tag people on, and status words like <i>r&amp;d</i>, <i>started</i>, <i>stuck</i>, <i>completed</i>.</span></li>
+          <li><b>2 · Agents</b><span>Scout syncs the channel, Tracker follows each request, Inspector reviews work with your own instructions, Analyst finds what's blocked.</span></li>
+          <li><b>3 · Dashboard</b><span>What shipped, what's moving, who's blocked and why — live, with a Village and Live Flow view of every request's journey.</span></li>
+          <li><b>4 · Reports</b><span>A 7 PM alert of who did what (and who hasn't posted), a Monday team report and a personal weekly report for everyone.</span></li>
+        </ol>
+      </section>
+
+      <section class="lp-sec" id="lp-features">
+        <span class="lp-kicker">Features</span>
+        <h2>Everything a team lead checks, without asking.</h2>
+        <div class="lp-grid">
+          <div><b>📋 Client requests</b><span>Every request from post to publish: who owns it, its status, how long it's been stuck and the outcome.</span></div>
+          <div><b>🔍 Reviews</b><span>Inspector checks work against the rules you write and posts what to fix in the thread.</span></div>
+          <div><b>🌱 Growth work</b><span>Support requests, listings, blogs, newsletters and the credentials that unblock the tech team.</span></div>
+          <div><b>📢 Commander</b><span>Broadcast an instruction to the channel — polished by AI — with M91 alerts until people acknowledge.</span></div>
+          <div><b>🚧 Blocked &amp; at risk</b><span>Stuck requests, missed check-ins and deadlines at risk surface before they become problems.</span></div>
+          <div><b>🗂 Workspaces</b><span>One app for all your teams — each with its own members, Slack channel, alerts and reports.</span></div>
+        </div>
+      </section>
+
+      <section class="lp-sec" id="lp-agents">
+        <span class="lp-kicker">The agents</span>
+        <h2>Eight agents, one job each.</h2>
+        <div class="lp-agents">
+          <div><span>🔭</span><b>Scout</b><small>Reads the Slack channel</small></div>
+          <div><span>🎯</span><b>Tracker</b><small>Follows every request</small></div>
+          <div><span>🌱</span><b>Growth</b><small>Tracks growth work</small></div>
+          <div><span>🔍</span><b>Inspector</b><small>Reviews with your rules</small></div>
+          <div><span>📊</span><b>Analyst</b><small>Finds blockers &amp; trends</small></div>
+          <div><span>📢</span><b>Herald</b><small>Sends the 7 PM alert</small></div>
+          <div><span>📜</span><b>Scribe</b><small>Writes weekly reports</small></div>
+          <div><span>⚔️</span><b>Commander</b><small>Broadcasts with M91</small></div>
+        </div>
+      </section>
+
+      <section class="lp-sec lp-value">
+        <span class="lp-kicker">Our principle</span>
+        <h2>Value, not volume.</h2>
+        <p class="lp-lead">More tasks don't mean more productivity. SquadForge measures what work achieved — what shipped, what got unblocked, the outcome for the client — never a ranking, never a penalty. Stuck is context, never a fault.</p>
+      </section>
+
+      <section class="lp-sec">
+        <span class="lp-kicker">Works with</span>
+        <h2>The tools your team already uses.</h2>
+        <div class="lp-apps"><span>Slack</span><span>viaSocket</span><span>M91</span><span>Gmail</span><span>Google Sheets</span><span>Claude AI</span></div>
+      </section>
+
+      <section class="lp-sec" id="lp-faq">
+        <span class="lp-kicker">FAQ</span>
+        <h2>Questions</h2>
+        <div class="lp-faq">
+          <details><summary>Do my teammates need to change how they work?</summary><p>No. They keep posting in Slack the way they do today. SquadForge only reads the channel you choose.</p></details>
+          <details><summary>What is a workspace?</summary><p>One team. Each workspace has its own members, Slack channel, M91 alerts, reports and settings. If you lead several teams, create one workspace per team and switch between them from the top bar.</p></details>
+          <details><summary>Who can see the dashboard?</summary><p>Workspace owners and admins see everything. People you invite as viewers see the live views (Live Flow and Village).</p></details>
+          <details><summary>How are apps connected?</summary><p>Through viaSocket on the Integrations page. Only owners and admins can connect apps, and connections belong to that workspace.</p></details>
+          <details><summary>Does it rank people?</summary><p>No. It shows outcomes and blockers so you can help — not leaderboards or task counts.</p></details>
+        </div>
+      </section>
+
+      <section class="lp-sec lp-cta">
+        <h2>Ready when your team is.</h2>
+        <div class="lp-cta-btns"><a href="#" class="qp-btn" data-auth="signin">Sign in</a><a href="#" class="qp-btn ghost" data-auth="workspace">Create a workspace</a></div>
+      </section>
+      <footer class="lp-foot">SquadForge · built for team leads</footer>
     </div>
   </div>
 
@@ -63,6 +140,7 @@
     <div><div class="page-title" id="pageTitle">Dashboard</div><div class="page-sub" id="pageSub"></div></div>
     <div class="resources" id="resources" hidden></div>
     <div class="top-right">
+      <select class="ws-switch hidden" id="wsSwitch" aria-label="Workspace"></select>
       <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" title="Dark / light mode"><span class="tt-sun">☀︎</span><span class="tt-moon">☾</span></button>
       <span class="live-dot" title="Live: refreshes every 5 seconds"><i></i>Live</span>
       <span class="user-chip" id="userChip"></span>
