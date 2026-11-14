@@ -16,29 +16,49 @@ function voiceBar(id) {
 function wireVoice(id, box, onDone) {
   const bar = document.getElementById(id); if (!bar || !SR) return;
   const btn = bar.querySelector('[data-mic]'), live = bar.querySelector('[data-live]'), sel = bar.querySelector('[data-lang]');
-  let rec = null, base = '', finalText = '', on = false;
+  const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  let rec = null, base = '', said = '', wanted = false, gotAny = false;
   sel.onchange = () => { try { localStorage.setItem('sf_voice_lang', sel.value); } catch { /* ignore */ } };
-  const stop = () => { if (rec) rec.stop(); };
-  btn.onclick = () => {
-    if (on) return stop();
-    rec = new SR(); rec.lang = sel.value; rec.continuous = true; rec.interimResults = true;
-    base = box.value.trim(); finalText = '';
-    rec.onstart = () => { on = true; bar.classList.add('rec'); btn.querySelector('b').textContent = '■ Stop'; live.textContent = 'Listening… speak now'; };
+  // a big live panel, so you see every word as you speak
+  let panel = bar.querySelector('.voice-panel');
+  if (!panel) { panel = document.createElement('div'); panel.className = 'voice-panel hidden'; panel.innerHTML = '<div class="vp-dot"></div><div class="vp-text" data-vp>Listening… start speaking</div>'; bar.appendChild(panel); }
+  const vp = panel.querySelector('[data-vp]');
+  const show = (txt) => { const t = [base, txt].filter(Boolean).join(' '); box.value = t; vp.textContent = txt || 'Listening… start speaking'; };
+  const setUi = (on) => { bar.classList.toggle('rec', on); panel.classList.toggle('hidden', !on); btn.querySelector('b').textContent = on ? '■ Stop' : '🎤 Speak'; };
+  const ERR = {
+    'not-allowed': 'Microphone blocked — allow the mic for this site (lock icon in the address bar), then tap Speak again.',
+    'service-not-allowed': 'This browser does not allow voice typing here — open the app in Chrome or Safari.',
+    'audio-capture': 'No microphone found.',
+    network: 'The voice service is not reachable in this browser (Brave and in-app browsers block it) — open in Chrome or Safari, or use the keyboard mic.',
+    'no-speech': 'Didn’t hear anything — speak a little louder or closer.',
+    'language-not-supported': 'This language is not supported here — switch to English / Hinglish.',
+  };
+  function start() {
+    rec = new SR(); rec.lang = sel.value; rec.interimResults = true; rec.maxAlternatives = 1;
+    rec.continuous = !mobile; // phones behave better with short sessions that we restart
+    const before = said;
     rec.onresult = (e) => {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) finalText += (finalText ? ' ' : '') + t.trim(); else interim += t;
-      }
-      box.value = [base, finalText, interim.trim()].filter(Boolean).join(base || finalText ? ' ' : '');
-      live.textContent = interim ? '…' + interim.slice(-60) : 'Listening…';
+      gotAny = true;
+      // rebuild from all results each time: works the same on Chrome desktop, Android and Safari
+      let fin = '', interim = '';
+      for (let i = 0; i < e.results.length; i++) { const t = e.results[i][0].transcript.trim(); if (!t) continue; if (e.results[i].isFinal) fin += (fin ? ' ' : '') + t; else interim += (interim ? ' ' : '') + t; }
+      said = [before, fin].filter(Boolean).join(' ');
+      show([said, interim].filter(Boolean).join(' '));
     };
-    rec.onerror = (e) => { live.textContent = e.error === 'not-allowed' ? 'Allow the microphone for this site, then try again' : e.error === 'no-speech' ? 'Didn’t hear anything — tap Speak and try again' : 'Voice error: ' + e.error; };
+    rec.onerror = (e) => { if (e.error === 'no-speech' && wanted) return; if (e.error === 'aborted') return; wanted = false; live.textContent = ERR[e.error] || 'Voice error: ' + e.error; };
     rec.onend = () => {
-      on = false; bar.classList.remove('rec'); btn.querySelector('b').textContent = '🎤 Speak';
-      if (finalText) { live.textContent = '✓ Got it — check the text, then send'; box.value = [base, finalText].filter(Boolean).join(' '); if (onDone) onDone(finalText); }
-      else if (!/Allow|Didn|error/.test(live.textContent)) live.textContent = '';
+      if (wanted) { try { start(); return; } catch { /* fall through */ } } // Chrome stops after a pause: keep listening until Stop
+      setUi(false); box.value = [base, said].filter(Boolean).join(' ');
+      if (said) { live.textContent = '✓ Got it — check the text, then send'; if (onDone) onDone(said); }
+      else if (!live.textContent || live.textContent.startsWith('Listening')) live.textContent = gotAny ? '' : 'Didn’t catch anything — tap Speak and try again.';
     };
-    try { rec.start(); } catch (e) { live.textContent = 'Could not start the microphone'; }
+    try { rec.start(); } catch (err) { wanted = false; setUi(false); live.textContent = 'Could not start the microphone'; }
+  }
+  btn.onclick = () => {
+    if (wanted) { wanted = false; try { rec && rec.stop(); } catch { /* ignore */ } return; }
+    base = box.value.trim(); said = ''; gotAny = false; wanted = true;
+    live.textContent = 'Listening… tap Stop when you are done';
+    setUi(true); show('');
+    start();
   };
 }
