@@ -8,6 +8,15 @@ const { requestTitle } = require('../parser');
 
 const LABEL = { new: 'New', rnd: 'R&D', started: 'Started', stuck: 'Stuck', completed: 'Completed' };
 
+for (const sql of ['ALTER TABLE client_requests ADD COLUMN urgent INTEGER NOT NULL DEFAULT 0', 'ALTER TABLE client_requests ADD COLUMN urgent_at TEXT']) require('../db').addSchema(sql);
+// The lead calls a request urgent (in the request or later in its thread)
+function markUrgent(req, at) {
+  if (req.urgent) return false;
+  db.prepare('UPDATE client_requests SET urgent = 1, urgent_at = ? WHERE id = ?').run(at || new Date().toISOString(), req.id);
+  logActivity('tracker', `🔥 "${req.title}" marked urgent`);
+  return true;
+}
+
 function createFromMessage(msg, channel, leadId) {
   const exists = db.prepare('SELECT id FROM client_requests WHERE slack_ts = ?').get(msg.ts);
   if (exists) return null;
@@ -18,6 +27,7 @@ function createFromMessage(msg, channel, leadId) {
     .run(msg.ts, channel, requestTitle(msg.text), msg.text, JSON.stringify(assigned), at, msg.ts);
   db.prepare('INSERT INTO request_events (request_id, status, slack_ts, at) VALUES (?, ?, ?, ?)').run(info.lastInsertRowid, 'new', msg.ts, at);
   logActivity('tracker', `New client request: "${requestTitle(msg.text)}"`);
+  if (require('../parser').isUrgent(msg.text) && !require('../parser').isPlugRequest(msg.text)) markUrgent({ id: info.lastInsertRowid, title: requestTitle(msg.text), urgent: 0 }, at);
   return info.lastInsertRowid;
 }
 
@@ -106,4 +116,4 @@ async function analyze(requestId) {
   logActivity('tracker', `"${req.title}" completed: difficulty ${difficulty}/5, ${hours !== null ? hours.toFixed(1) + 'h' : ''}`);
 }
 
-module.exports = { createFromMessage, applyStatus, addAssignees, assignedFromMentions, analyze, LABEL };
+module.exports = { markUrgent, createFromMessage, applyStatus, addAssignees, assignedFromMentions, analyze, LABEL };

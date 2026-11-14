@@ -6,7 +6,7 @@ const llm = require('../llm');
 const tracker = require('./tracker');
 const growth = require('./growth');
 const inspector = require('./inspector');
-const { cfg, logActivity, memberBySlack, tsToDate, today: U_today } = require('../util');
+const { cfg, logActivity, memberBySlack, tsToDate, tsToIso, today: U_today } = require('../util');
 const P = require('../parser');
 const standup = require('./standup');
 const istHour = (ts) => Number(new Intl.DateTimeFormat('en-US', { timeZone: process.env.TEAM_TIMEZONE || 'Asia/Kolkata', hour: 'numeric', hour12: false }).format(new Date(parseFloat(ts) * 1000)));
@@ -154,6 +154,7 @@ async function handleReply(reply, parent, channel, stats) {
   const req = db.prepare('SELECT * FROM client_requests WHERE slack_ts = ?').get(parent.ts);
   if (req) {
     if (isLead(reply.user, member)) {
+      if (P.isUrgent(text)) tracker.markUrgent(req, tsToIso(reply.ts));
       const mentioned = slack.mentions(text);
       const ids = [...tracker.assignedFromMentions(mentioned, leadId()), ...simMentions(text)];
       if (ids.length) tracker.addAssignees(req, ids);

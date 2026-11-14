@@ -33,6 +33,7 @@ const m91 = require('./m91');
 const work = require('./work');
 const scribeAgent = require('./agents/scribe');
 const standup = require('./agents/standup');
+const digest = require('./agents/digest');
 
 const PORT = process.env.PORT || 3000;
 
@@ -270,7 +271,7 @@ async function routes(req, res, url, p, m, body, cx) {
       totals: { teams: teams.length, shipped: add((t) => t.kpis.delivered), prev_shipped: add((t) => t.kpis.prev_delivered), verified: add((t) => t.kpis.verified), blockers_cleared: add((t) => t.kpis.blockers_cleared), blocked_now: add((t) => t.kpis.blocked_now), moving: add((t) => t.moving), waiting: add((t) => t.waiting), people: add((t) => t.today.people), posted: add((t) => t.today.posted), on_leave: add((t) => t.today.on_leave), at_target: add((t) => t.today.at_target), tech: add((t) => t.today.tech), reviews: add((t) => t.lead_work.reviews) },
     });
   }
-  if (role === 'manager' && !(m === 'GET' && (['/api/state', '/api/requests', '/api/logs', '/api/workspaces', '/api/now', '/api/manager/all'].includes(p) || /^\/api\/member\/\d+\/profile$/.test(p)))) return send(res, 403, { error: 'Managers have a read-only view' });
+  if (role === 'manager' && !(m === 'GET' && (['/api/state', '/api/requests', '/api/logs', '/api/workspaces', '/api/now', '/api/manager/all', '/api/leaderboard', '/api/digest'].includes(p) || /^\/api\/member\/\d+\/profile$/.test(p)))) return send(res, 403, { error: 'Managers have a read-only view' });
   // ---------- history & test checklist ----------
   if (p === '/api/history' && m === 'GET') {
     if (role !== 'admin') return send(res, 403, { error: 'Admins only' });
@@ -537,6 +538,13 @@ async function routes(req, res, url, p, m, body, cx) {
     console.log(`[diag] ${clean(body.what, 20)} ${clean(body.event, 20)}: ${clean(body.detail, 120)} | framed=${!!body.framed} secure=${!!body.secure} | ${clean(body.ua, 160)}`);
     return send(res, 200, { ok: true });
   }
+  if (p === '/api/leaderboard' && m === 'GET') return send(res, 200, standup.leaderboard(['today', 'week', 'month'].includes(url.searchParams.get('range')) ? url.searchParams.get('range') : 'week'));
+  if (p === '/api/digest' && m === 'GET') { const d = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('date') || '') ? url.searchParams.get('date') : U.today(); return send(res, 200, digest.get(d)); }
+  if (p === '/api/digest' && m === 'POST') {
+    if (role !== 'admin') return send(res, 403, { error: 'Admins only' });
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(body.date || '') ? body.date : U.today();
+    return send(res, 200, await digest.generate(d));
+  }
   if (p === '/api/now' && m === 'GET') return send(res, 200, standup.nowBoard());
   if (p === '/api/standup/tally' && m === 'GET') { const d = url.searchParams.get('date') || standup.prevWorkday(U.today()); const t = standup.dayTally(d); return send(res, 200, { date: d, short: t.short, full: t.full, people: t.people, target: standup.target(), thread: standup.threadOf(U.today()) }); }
   if (p === '/api/agents/herald/morning' && m === 'POST') return send(res, 200, await U.runAgent('herald', 'Sending the morning reminder…', () => herald.morning()));
@@ -680,6 +688,7 @@ function cron(req, res, url) {
       await U.runAgent('scout', 'Final sync…', () => scout.sync({ manual: true }));
       await U.runAgent('analyst', 'Analysing today…', () => analyst.run());
       await standup.eveningNudge();
+      await digest.generate().catch((e) => console.error('[digest]', e.message));
       return herald.evening();
     }),
     weekly: () => background('scribe', 'Writing the weekly report…', () => scribe.run()),

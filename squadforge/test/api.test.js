@@ -131,3 +131,17 @@ test('manager sees all their teams added up', async () => {
   assert.equal(all.totals.people, all.teams.reduce((n, t) => n + t.today.people, 0));
   assert.equal((await call('/api/manager/all', { token: await login('v@viasocket.com', 'password9') })).status, 403);
 });
+
+test('Live Team: everyone sees the leaderboard and the day analysis; urgent requests are flagged', async () => {
+  const v = await login('v@viasocket.com', 'password9');
+  const lb = (await call('/api/leaderboard?range=week', { token: v })).data;
+  assert.ok(Array.isArray(lb.tech) && lb.tech.length > 0);
+  for (let i = 1; i < lb.tech.length; i++) assert.ok(lb.tech[i - 1].built >= lb.tech[i].built, 'sorted by work built');
+  assert.equal(lb.tech[0].rank, 1);
+  const d = (await call('/api/digest', { token: v })).data;
+  assert.ok(Array.isArray(d.assignments) && Array.isArray(d.people));
+  assert.equal((await call('/api/digest', { method: 'POST', token: v, body: {} })).status, 403, 'only admins re-run the analysis');
+  const P = require('../src/parser');
+  assert.equal(P.isUrgent('@Aarav this is urgent, aaj hi chahiye'), true);
+  assert.equal(P.isUrgent('normal request'), false);
+});

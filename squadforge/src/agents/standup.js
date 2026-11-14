@@ -207,4 +207,35 @@ function memberProfile(memberId, weekStartDate) {
   };
 }
 
-module.exports = { memberProfile, onLeave, setLeave, nowBoard, morning, eveningNudge, dayTally, weekSection, isStandupThread, threadOf, prevWorkday, target };
+// Leaderboard: ranked by actions + triggers built; ties go to the lower review error rate.
+// range: today | week | month. Growth people are listed on their own (they don't build actions).
+function leaderboard(range = 'week') {
+  const { weekStart } = require('../util');
+  const t = today();
+  const from = range === 'today' ? t : range === 'month' ? t.slice(0, 8) + '01' : weekStart(t);
+  const days = []; for (let d = from; d <= t; d = addDays(d, 1)) if (weekday(d) !== 0) days.push(d);
+  const T = tzMod();
+  const rows = members().filter((m) => m.role !== 'lead').map((m) => {
+    const ps = days.map((d) => personDay(m, d));
+    const leave = ps.filter((p) => p.leave).length;
+    const rv = db.prepare(`SELECT passed, errors_count FROM reviews WHERE member_id = ? AND status = 'done' AND date BETWEEN ? AND ?`).all(m.id, from, t);
+    const reviews = rv.length, passed = rv.filter((r) => r.passed).length, mistakes = rv.reduce((n, r) => n + (r.errors_count || 0), 0);
+    const completed = db.prepare(`SELECT assigned_member_ids FROM client_requests WHERE status = 'completed' AND date(completed_at, '${T}') BETWEEN ? AND ?`).all(from, t)
+      .filter((r) => JSON.parse(r.assigned_member_ids || '[]').includes(m.id)).length;
+    return {
+      id: m.id, name: m.name, role: m.role,
+      actions: ps.reduce((n, p) => n + p.actions, 0), triggers: ps.reduce((n, p) => n + p.triggers, 0), built: ps.reduce((n, p) => n + p.built, 0),
+      growth: ps.reduce((n, p) => n + p.growth, 0), days_met: ps.filter((p) => p.met).length, workdays: days.length - leave, leave,
+      updates: ps.filter((p) => !p.leave && (p.posted || p.built)).length, completed, reviews, passed, mistakes,
+      error_rate: reviews ? Math.round(((reviews - passed) / reviews) * 100) : null,
+    };
+  });
+  const er = (x) => (x.error_rate === null ? 101 : x.error_rate);
+  const tech = rows.filter((r) => r.role !== 'growth').sort((a, b) => b.built - a.built || er(a) - er(b) || a.name.localeCompare(b.name));
+  tech.forEach((r, i) => { r.rank = i > 0 && r.built === tech[i - 1].built && er(r) === er(tech[i - 1]) ? tech[i - 1].rank : i + 1; });
+  const growth = rows.filter((r) => r.role === 'growth').sort((a, b) => b.growth - a.growth || a.name.localeCompare(b.name));
+  return { range, from, to: t, target: target(), workdays: days.length, tech, growth,
+    team: { built: tech.reduce((n, r) => n + r.built, 0), reviews: rows.reduce((n, r) => n + r.reviews, 0), passed: rows.reduce((n, r) => n + r.passed, 0), completed: tech.reduce((n, r) => n + r.completed, 0) } };
+}
+
+module.exports = { leaderboard, memberProfile, onLeave, setLeave, nowBoard, morning, eveningNudge, dayTally, weekSection, isStandupThread, threadOf, prevWorkday, target };

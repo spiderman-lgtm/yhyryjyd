@@ -74,6 +74,6 @@ function mayCreateAccount(email, invited) {
 }
 
 // The viewer can only see these (read-only)
-const VIEWER_ROUTES = ['/api/state', '/api/requests', '/api/logs', '/api/now'];
+const VIEWER_ROUTES = ['/api/state', '/api/requests', '/api/logs', '/api/now', '/api/leaderboard', '/api/digest'];
 
 module.exports = { VIEWER_ROUTES, sessionSecret, sign, adminEmails, makeSession, cookies, sessionOf, contextOf, clientIp, lockedFor, failed, succeeded, mayCreateAccount };

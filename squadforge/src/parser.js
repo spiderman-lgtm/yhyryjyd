@@ -144,4 +144,6 @@ function mentionsApp(text, title) {
 
 // "on leave today", "aaj chhutti hai", "sick leave", "off today"
 function isLeave(text = '') { return /\b(on leave|leave today|leave hai|leave pe|leave par|aaj leave|chh?utti|holiday today|off today|sick leave|half day|not working today|ooo|out of office)\b/i.test(String(text)); }
-module.exports = { isLeave, isAppSubmission, namedLists, isPlugRequest, plugRequest, formField, isRequest, isReviewAsk, standupKind, detectStatus, growthKind, parseCounts, countItems, requestTitle, mentionsApp, DEFAULTS };
+// "urgent", "asap", "priority", "jaldi", "aaj hi" — the lead marking work as urgent
+function isUrgent(text = '') { return /\b(urgent|asap|high priority|top priority|priority|jaldi|aaj hi|today itself|immediately|critical)\b/i.test(String(text)); }
+module.exports = { isUrgent, isLeave, isAppSubmission, namedLists, isPlugRequest, plugRequest, formField, isRequest, isReviewAsk, standupKind, detectStatus, growthKind, parseCounts, countItems, requestTitle, mentionsApp, DEFAULTS };

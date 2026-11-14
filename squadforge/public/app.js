@@ -7,16 +7,17 @@ const GROWTH_LABEL = { support_request: 'Support request', app_listing: 'App lis
 
 let state = null;
 let members = [];
-const VIEWER_TABS = ['now', 'flow', 'village'];
-const MANAGER_TABS = ['manager', 'now', 'live', 'flow', 'village'];
+const VIEWER_TABS = ['now', 'leaderboard', 'analysis', 'flow', 'village'];
+const MANAGER_TABS = ['manager', 'now', 'leaderboard', 'analysis', 'live', 'flow', 'village'];
+const TEAM_TABS = ['now', 'leaderboard', 'analysis'];
 const LIVE_TABS = ['flow', 'village'];
 const lastLive = () => { try { return localStorage.getItem('sf_live') === 'village' ? 'village' : 'flow'; } catch { return 'flow'; } };
-const ALL_TABS = ['team', 'manager', 'requests', 'reviews', 'growth', 'reports', 'history', 'now', 'commander', 'flow', 'village', 'integrations', 'settings'];
+const ALL_TABS = ['team', 'manager', 'requests', 'reviews', 'growth', 'reports', 'history', 'now', 'leaderboard', 'analysis', 'commander', 'flow', 'village', 'integrations', 'settings'];
 let tab = ALL_TABS.includes(location.hash.replace('#', '')) ? location.hash.replace('#', '') : 'team'; // viewers are sent to 'flow' in markTab
 let role = 'admin';
 let myEmail = null;
 let myName = null;
-const PAGE_TITLES = { team: 'Dashboard', manager: 'Manager view', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'Reports · History', now: 'Right now', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
+const PAGE_TITLES = { team: 'Dashboard', manager: 'Manager view', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'Reports · History', now: 'Live Team · Right now', leaderboard: 'Live Team · Leaderboard', analysis: 'Live Team · Analysis', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
 let pollTimer = null;
 let lastActivityId = 0;
 
@@ -160,7 +161,7 @@ function markTab() {
   if (role === 'manager' && !MANAGER_TABS.includes(tab)) tab = 'manager';
   document.querySelectorAll('#tabs button').forEach((b) => {
     const t = b.dataset.tab;
-    b.classList.toggle('active', t === tab || (t === 'live' && LIVE_TABS.includes(tab)) || (t === 'reports' && tab === 'history'));
+    b.classList.toggle('active', t === tab || (t === 'live' && LIVE_TABS.includes(tab)) || (t === 'reports' && tab === 'history') || (t === 'now' && TEAM_TABS.includes(tab)));
     b.classList.toggle('hidden', (t === 'live' && !liveOn) || (role === 'viewer' && (b.dataset.admin !== undefined || b.dataset.mgr !== undefined)) || (role === 'manager' && !MANAGER_TABS.includes(t)));
   });
   document.querySelectorAll('#tabs .nav-label').forEach((l) => l.classList.toggle('hidden', (role === 'viewer' && l.textContent !== 'Live') || (role === 'manager' && l.textContent === 'Workspace')));
@@ -671,9 +672,9 @@ async function refresh() {
 }
 // Two pages shown as one sidebar item: a small switch on top (Flow | Village, Reports | History)
 function subTabs() {
-  const groups = { flow: ['flow', 'village'], village: ['flow', 'village'], reports: ['reports', 'history'], history: ['reports', 'history'] };
+  const groups = { flow: ['flow', 'village'], village: ['flow', 'village'], reports: ['reports', 'history'], history: ['reports', 'history'], now: TEAM_TABS, leaderboard: TEAM_TABS, analysis: TEAM_TABS };
   const g = groups[tab]; if (!g || $('#subTabs')) return;
-  const names = { flow: '〰 Live Flow', village: '🏡 Village', reports: '📜 Reports', history: '🕘 History' };
+  const names = { flow: '〰 Live Flow', village: '🏡 Village', reports: '📜 Reports', history: '🕘 History', now: '👥 Right now', leaderboard: '🏆 Leaderboard', analysis: '🧭 Analysis' };
   $('#view').insertAdjacentHTML('afterbegin', `<div class="seg subtabs" id="subTabs" role="tablist">${g.map((t) => `<button role="tab" class="${t === tab ? 'on' : ''}" aria-selected="${t === tab}" data-sub="${t}">${names[t]}</button>`).join('')}</div>`);
   document.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => { tab = b.dataset.sub; if (LIVE_TABS.includes(tab)) { try { localStorage.setItem('sf_live', tab); } catch { /* ignore */ } } location.hash = tab; render(); }));
 }
@@ -683,7 +684,7 @@ async function render() {
   try {
     if (role === 'admin' && (!members.length || tab === 'settings')) members = await api('/api/members');
     const shown = tab;
-    Promise.resolve(({ flow: renderFlow, integrations: renderIntegrations, village: renderVillage, team: renderTeam, manager: renderManager, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, history: renderHistory, now: renderNow, commander: renderCommander, settings: renderSettings }[tab] || renderNow)())
+    Promise.resolve(({ flow: renderFlow, integrations: renderIntegrations, village: renderVillage, team: renderTeam, manager: renderManager, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, history: renderHistory, now: renderNow, leaderboard: renderLeaderboard, analysis: renderAnalysis, commander: renderCommander, settings: renderSettings }[tab] || renderNow)())
       .then(() => { if (tab === shown) subTabs(); }).catch(() => {});
     if (tab === 'village') lastActivityId = state.activity[0] ? state.activity[0].id : 0;
   } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; }
