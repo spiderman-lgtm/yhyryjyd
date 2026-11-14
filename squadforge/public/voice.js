@@ -5,13 +5,17 @@ function voiceLang() { try { return localStorage.getItem('sf_voice_lang') || 'en
 
 // box: the textarea · onDone(text): called after you stop talking (e.g. to improve with AI)
 function voiceBar(id) {
-  if (!SR) return `<div class="voice-bar off" id="${id}"><span class="muted">🎤 Voice typing isn’t supported in this browser — tap the mic on your phone keyboard instead.</span></div>`;
+  if (!SR) { setTimeout(() => voiceDiag('unsupported', 'no SpeechRecognition'), 0); return `<div class="voice-bar off" id="${id}"><span class="muted">🎤 Voice typing isn’t supported in this browser — tap the mic on your phone keyboard instead.</span></div>`; }
   const lang = voiceLang();
   return `<div class="voice-bar" id="${id}">
     <button type="button" class="mic" data-mic aria-label="Speak your message"><span class="mic-dot"></span><b>🎤 Speak</b></button>
     <select data-lang aria-label="Language you speak"><option value="en-IN" ${lang === 'en-IN' ? 'selected' : ''}>English / Hinglish</option><option value="hi-IN" ${lang === 'hi-IN' ? 'selected' : ''}>हिन्दी</option></select>
     <span class="voice-live muted" data-live></span>
   </div>`;
+}
+// tell the server what went wrong (browser + error only, never what was said) so it can be fixed
+function voiceDiag(event, detail) {
+  try { api('/api/diag', { method: 'POST', body: { what: 'voice', event, detail: String(detail || '').slice(0, 120), ua: navigator.userAgent.slice(0, 160), framed: window.top !== window.self, secure: window.isSecureContext } }).catch(() => {}); } catch { /* ignore */ }
 }
 function wireVoice(id, box, onDone) {
   const bar = document.getElementById(id); if (!bar || !SR) return;
@@ -45,18 +49,18 @@ function wireVoice(id, box, onDone) {
       said = [before, fin].filter(Boolean).join(' ');
       show([said, interim].filter(Boolean).join(' '));
     };
-    rec.onerror = (e) => { if (e.error === 'no-speech' && wanted) return; if (e.error === 'aborted') return; wanted = false; live.textContent = ERR[e.error] || 'Voice error: ' + e.error; };
+    rec.onerror = (e) => { voiceDiag('error', e.error); if (e.error === 'no-speech' && wanted) return; if (e.error === 'aborted') return; wanted = false; live.textContent = ERR[e.error] || 'Voice error: ' + e.error; };
     rec.onend = () => {
       if (wanted) { try { start(); return; } catch { /* fall through */ } } // Chrome stops after a pause: keep listening until Stop
       setUi(false); box.value = [base, said].filter(Boolean).join(' ');
       if (said) { live.textContent = '✓ Got it — check the text, then send'; if (onDone) onDone(said); }
-      else if (!live.textContent || live.textContent.startsWith('Listening')) live.textContent = gotAny ? '' : 'Didn’t catch anything — tap Speak and try again.';
+      else { if (!gotAny) voiceDiag('no-result', 'ended without any words'); if (!live.textContent || live.textContent.startsWith('Listening')) live.textContent = gotAny ? '' : 'Didn’t catch anything — tap Speak and try again.'; }
     };
-    try { rec.start(); } catch (err) { wanted = false; setUi(false); live.textContent = 'Could not start the microphone'; }
+    try { rec.start(); } catch (err) { voiceDiag('start-failed', err && err.message); wanted = false; setUi(false); live.textContent = 'Could not start the microphone'; }
   }
   btn.onclick = () => {
     if (wanted) { wanted = false; try { rec && rec.stop(); } catch { /* ignore */ } return; }
-    base = box.value.trim(); said = ''; gotAny = false; wanted = true;
+    base = box.value.trim(); said = ''; gotAny = false; wanted = true; voiceDiag('start', sel.value);
     live.textContent = 'Listening… tap Stop when you are done';
     setUi(true); show('');
     start();

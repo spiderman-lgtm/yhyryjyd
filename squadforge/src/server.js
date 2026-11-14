@@ -532,6 +532,11 @@ async function routes(req, res, url, p, m, body, cx) {
     const prof = standup.memberProfile(Number(mm[1]), url.searchParams.get('week'));
     return prof ? send(res, 200, prof) : send(res, 404, { error: 'Member not found' });
   }
+  if (p === '/api/diag' && m === 'POST') {
+    const clean = (v, n) => String(v || '').replace(/[^\w .:;,()/+\-]/g, '').slice(0, n);
+    console.log(`[diag] ${clean(body.what, 20)} ${clean(body.event, 20)}: ${clean(body.detail, 120)} | framed=${!!body.framed} secure=${!!body.secure} | ${clean(body.ua, 160)}`);
+    return send(res, 200, { ok: true });
+  }
   if (p === '/api/now' && m === 'GET') return send(res, 200, standup.nowBoard());
   if (p === '/api/standup/tally' && m === 'GET') { const d = url.searchParams.get('date') || standup.prevWorkday(U.today()); const t = standup.dayTally(d); return send(res, 200, { date: d, short: t.short, full: t.full, people: t.people, target: standup.target(), thread: standup.threadOf(U.today()) }); }
   if (p === '/api/agents/herald/morning' && m === 'POST') return send(res, 200, await U.runAgent('herald', 'Sending the morning reminder…', () => herald.morning()));
