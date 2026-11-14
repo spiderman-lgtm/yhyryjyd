@@ -7,14 +7,16 @@ const GROWTH_LABEL = { support_request: 'Support request', app_listing: 'App lis
 
 let state = null;
 let members = [];
-const VIEWER_TABS = ['flow', 'village'];
-const MANAGER_TABS = ['manager', 'flow', 'village'];
-const ALL_TABS = ['team', 'manager', 'requests', 'reviews', 'growth', 'reports', 'history', 'commander', 'flow', 'village', 'integrations', 'settings'];
+const VIEWER_TABS = ['now', 'flow', 'village'];
+const MANAGER_TABS = ['manager', 'now', 'live', 'flow', 'village'];
+const LIVE_TABS = ['flow', 'village'];
+const lastLive = () => { try { return localStorage.getItem('sf_live') === 'village' ? 'village' : 'flow'; } catch { return 'flow'; } };
+const ALL_TABS = ['team', 'manager', 'requests', 'reviews', 'growth', 'reports', 'history', 'now', 'commander', 'flow', 'village', 'integrations', 'settings'];
 let tab = ALL_TABS.includes(location.hash.replace('#', '')) ? location.hash.replace('#', '') : 'team'; // viewers are sent to 'flow' in markTab
 let role = 'admin';
 let myEmail = null;
 let myName = null;
-const PAGE_TITLES = { team: 'Dashboard', manager: 'Manager view', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'History', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
+const PAGE_TITLES = { team: 'Dashboard', manager: 'Manager view', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'Reports · History', now: 'Right now', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
 let pollTimer = null;
 let lastActivityId = 0;
 
@@ -134,14 +136,17 @@ $('#logoutBtn').addEventListener('click', async () => { saveToken(null); saveWs(
 // ---------- tabs ----------
 $('#tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-tab]'); if (!b) return;
-  tab = b.dataset.tab; location.hash = tab; render();
+  tab = b.dataset.tab === 'live' ? lastLive() : b.dataset.tab; location.hash = tab; render();
 });
 function markTab() {
-  if (role === 'viewer' && !VIEWER_TABS.includes(tab)) tab = 'flow';
+  const liveOn = !!(state && state.live_views);
+  if (LIVE_TABS.includes(tab) && state && !liveOn) tab = role === 'admin' ? 'team' : role === 'manager' ? 'manager' : 'now';
+  if (role === 'viewer' && !VIEWER_TABS.includes(tab)) tab = 'now';
   if (role === 'manager' && !MANAGER_TABS.includes(tab)) tab = 'manager';
   document.querySelectorAll('#tabs button').forEach((b) => {
-    b.classList.toggle('active', b.dataset.tab === tab);
-    b.classList.toggle('hidden', (role === 'viewer' && (b.dataset.admin !== undefined || b.dataset.mgr !== undefined)) || (role === 'manager' && !MANAGER_TABS.includes(b.dataset.tab)));
+    const t = b.dataset.tab;
+    b.classList.toggle('active', t === tab || (t === 'live' && LIVE_TABS.includes(tab)) || (t === 'reports' && tab === 'history'));
+    b.classList.toggle('hidden', (t === 'live' && !liveOn) || (role === 'viewer' && (b.dataset.admin !== undefined || b.dataset.mgr !== undefined)) || (role === 'manager' && !MANAGER_TABS.includes(t)));
   });
   document.querySelectorAll('#tabs .nav-label').forEach((l) => l.classList.toggle('hidden', (role === 'viewer' && l.textContent !== 'Live') || (role === 'manager' && l.textContent === 'Workspace')));
   $('#pageTitle').textContent = PAGE_TITLES[tab] || 'SquadForge';
@@ -334,6 +339,13 @@ async function renderReports() {
     <p class="muted" style="margin-top:0">The 7 PM daily alert and the Monday weekly report (team + your personal one) are generated automatically and sent to you as a Slack DM.</p>
     <div class="grid g2">${reports.length ? reports.map((r) => `<div class="card"><div class="row"><span class="pill ${r.kind === 'weekly' ? 'started' : r.kind === 'personal' ? 'rnd' : 'new'}">${r.kind}</span><span class="muted">${r.period_start}${r.period_end !== r.period_start ? ' → ' + r.period_end : ''}</span><span class="spacer"></span><button class="btn ghost small" data-copy="${r.id}">Copy</button></div><pre class="report">${esc(r.content)}</pre></div>`).join('') : '<div class="card empty">No reports yet</div>'}</div>`;
   document.querySelectorAll('[data-copy]').forEach((b) => (b.onclick = () => { navigator.clipboard.writeText(reports.find((r) => r.id == b.dataset.copy).content); toast('Copied'); }));
+  // where the time went for each delivered request (moved here from the dashboard)
+  api(`/api/metrics?from=${addDays(state.today, -29)}&to=${state.today}`).then((m) => {
+    const list = ((m.value || {}).outcomes || []).filter((o) => o.journey);
+    const host = $('#view .grid.g2'); if (!host || tab !== 'reports') return;
+    host.insertAdjacentHTML('beforebegin', `<div class="card chart-card" style="margin-bottom:16px"><div class="card-h"><div><h3 style="margin:0">Request → Live · last 30 days</h3><div class="muted" style="font-size:12px">Where the time went for each delivered request</div></div><span class="spacer"></span>
+      <div class="legend"><span><i style="background:#c9c2b2"></i>Waiting to start</span><span><i style="background:var(--accent)"></i>Working</span><span><i style="background:var(--coral)"></i>Blocked</span></div></div>${journeyChart(list)}</div>`);
+  }).catch(() => {});
   $('#genWeekly').onclick = async () => { $('#genWeekly').disabled = true; const r = await api('/api/agents/scribe/run', { method: 'POST' }); toast(r.message || r.error); renderReports(); };
   $('#pvDaily').onclick = async () => { const r = await api('/api/reports/preview', { method: 'POST' }); modal(`<h2>7 PM preview</h2><pre class="report">${esc(r.text)}</pre><button class="btn ghost" data-close>Close</button>`); };
 }
@@ -393,6 +405,15 @@ async function renderCommander() {
     } catch (e) { toast(e.message); b.disabled = false; }
   };
 }
+// Display: optional pages
+function displayCard(s) {
+  const h2 = $('#view h2'); if (!h2) return;
+  h2.insertAdjacentHTML('afterend', `<div class="card disp-card"><h3>🖥️ Display</h3>
+    <label class="switch-row"><span><b>Show live views</b><small class="muted">Live Flow and Village, as one “Live views” item in the sidebar (with a Flow | Village switch). Off keeps the sidebar simple; “Right now” is always there.</small></span>
+      <input type="checkbox" class="switch" id="dispLive" ${s['ui.live_views'] ? 'checked' : ''}/></label></div>`);
+  $('#dispLive').onchange = async (e) => { await api('/api/settings', { method: 'POST', body: { 'ui.live_views': e.target.checked } }); state.live_views = e.target.checked; markTab(); toast(e.target.checked ? 'Live views are on' : 'Live views are hidden'); };
+}
+
 // Daily standup: 11 AM Good morning thread, yesterday's tally, the target, M91 nudges.
 function standupCard(s) {
   const h2 = $('#view h2'); if (!h2) return;
@@ -516,6 +537,7 @@ async function renderSettings() {
   $('#addMem').onclick = () => memberModal();
   workspaceCard();
   standupCard(s);
+  displayCard(s);
   if (members.some((x) => /^SIM_/.test(x.slack_user_id || ''))) {
     $('#view h2').insertAdjacentHTML('afterend', `<div class="banner">🧪 <b>Test teammates are on</b> (Aarav, Meera, Kabir, Isha). In Slack, start a message with <code>[Aarav]</code> and it counts as Aarav's; write <code>@Aarav</code> in a request thread to assign. <a href="#" id="simOff">Remove test teammates</a></div>`);
     $('#simOff').onclick = async (e) => { e.preventDefault(); if (!confirm('Remove the 4 test teammates and their updates?')) return; await api('/api/sim', { method: 'DELETE' }); toast('Test teammates removed'); renderSettings(); };
@@ -564,14 +586,25 @@ async function refresh() {
     if (tab === 'flow' && typeof updateFlow === 'function') updateFlow();
     if (tab === 'team' && typeof birdReact === 'function') birdReact(state);
     if (tab === 'village' && typeof villageUpdate === 'function') villageUpdate();
+    if (tab === 'now' && typeof renderNow === 'function') renderNow(true);
   } catch (e) { console.warn(e); }
+}
+// Two pages shown as one sidebar item: a small switch on top (Flow | Village, Reports | History)
+function subTabs() {
+  const groups = { flow: ['flow', 'village'], village: ['flow', 'village'], reports: ['reports', 'history'], history: ['reports', 'history'] };
+  const g = groups[tab]; if (!g || $('#subTabs')) return;
+  const names = { flow: '〰 Live Flow', village: '🏡 Village', reports: '📜 Reports', history: '🕘 History' };
+  $('#view').insertAdjacentHTML('afterbegin', `<div class="seg subtabs" id="subTabs" role="tablist">${g.map((t) => `<button role="tab" class="${t === tab ? 'on' : ''}" aria-selected="${t === tab}" data-sub="${t}">${names[t]}</button>`).join('')}</div>`);
+  document.querySelectorAll('[data-sub]').forEach((b) => (b.onclick = () => { tab = b.dataset.sub; if (LIVE_TABS.includes(tab)) { try { localStorage.setItem('sf_live', tab); } catch { /* ignore */ } } location.hash = tab; render(); }));
 }
 async function render() {
   markTab();
   if (!state) return;
   try {
     if (role === 'admin' && (!members.length || tab === 'settings')) members = await api('/api/members');
-    ({ flow: renderFlow, integrations: renderIntegrations, village: renderVillage, team: renderTeam, manager: renderManager, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, history: renderHistory, commander: renderCommander, settings: renderSettings }[tab] || renderVillage)();
+    const shown = tab;
+    Promise.resolve(({ flow: renderFlow, integrations: renderIntegrations, village: renderVillage, team: renderTeam, manager: renderManager, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, history: renderHistory, now: renderNow, commander: renderCommander, settings: renderSettings }[tab] || renderNow)())
+      .then(() => { if (tab === shown) subTabs(); }).catch(() => {});
     if (tab === 'village') lastActivityId = state.activity[0] ? state.activity[0].id : 0;
   } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; }
 }

@@ -1397,3 +1397,47 @@ html:has(body.on-login), body.on-login { overflow: hidden !important; }
 .voice-live:empty { display: none; }
 .voice-auto { margin-top: 6px; font-size: 12.5px; }
 @media (max-width: 640px) { .voice-bar .mic { flex: 1; justify-content: center; padding: 12px 16px; font-size: 14px; } }
+
+/* ===== Right now ===== */
+.now-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.now-sum { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
+.now-sum span { padding: 6px 12px; border-radius: 99px; background: var(--panel); border: 1px solid var(--line); }
+.now-sum span.warn { background: #f8e6c8; color: #8a5a12; border-color: #f1d3a0; }
+.now-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.now-card { display: flex; flex-direction: column; gap: 10px; }
+.now-card.has-stuck { border-left: 4px solid var(--coral, #e8655a); }
+.now-head { display: flex; align-items: center; gap: 8px; }
+.now-flags, .today-flags { display: inline-flex; gap: 6px; font-size: 11px; }
+.now-flags span, .today-flags span { padding: 2px 8px; border-radius: 99px; background: var(--panel-2); color: var(--text-3, #9aa79f); }
+.now-flags span.ok, .today-flags span.ok { background: #dcebdf; color: #2f6b52; }
+.now-day { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.now-bar { flex: 0 0 110px; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.now-bar i { display: block; height: 100%; background: #f2b84b; border-radius: 99px; } .now-bar i.met { background: var(--accent, #5f8a7a); }
+.now-built { color: var(--text-2); }
+.now-plan { font-size: 12.5px; line-height: 1.5; padding: 8px 10px; border-radius: 10px; background: var(--panel-2); }
+.now-work { display: flex; flex-direction: column; gap: 6px; }
+.now-req { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12.5px; }
+.now-title { font-weight: 600; flex: 1; min-width: 0; }
+.now-why { flex-basis: 100%; font-size: 12px; color: var(--coral-2, #b4503f); padding-left: 2px; }
+/* ===== Dashboard (clean) ===== */
+.dash-compact .scene { max-height: 230px; }
+.dash-today { grid-template-columns: 1.2fr 1fr !important; align-items: start; }
+.dash-stack { display: flex; flex-direction: column; gap: 16px; }
+.kpi-grid.kpi-4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 1000px) { .dash-today { grid-template-columns: 1fr !important; } .kpi-grid.kpi-4 { grid-template-columns: repeat(2, 1fr); } }
+.today-row { display: grid; grid-template-columns: 120px auto 70px 1fr; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+.today-row:last-of-type { border-bottom: 0; }
+.today-built { font-weight: 700; color: #a2711c; } .today-built.met { color: var(--accent-2, #2f6b52); }
+.today-on { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 640px) { .today-row { grid-template-columns: 1fr auto auto; } .today-on { grid-column: 1 / -1; } }
+/* sub-page switch + display switch */
+.subtabs { margin-bottom: 14px; }
+.disp-card { margin-bottom: 16px; }
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; cursor: pointer; }
+.switch-row span { display: flex; flex-direction: column; gap: 3px; } .switch-row small { font-size: 12px; }
+input.switch { appearance: none; -webkit-appearance: none; width: 44px; height: 24px; border-radius: 99px; background: var(--line); position: relative; cursor: pointer; flex: 0 0 auto; transition: background .2s; border: 0; padding: 0; }
+input.switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: left .2s; }
+input.switch:checked { background: var(--accent, #5f8a7a); } input.switch:checked::after { left: 23px; }
+.now-head { flex-wrap: wrap; row-gap: 6px; } .now-head b { min-width: 0; }
+.now-flags span, .today-flags span { white-space: nowrap; }
+.now-day { flex-wrap: wrap; }

@@ -158,4 +158,18 @@ function weekSection(from, to) {
   return L.join('\n');
 }
 
-module.exports = { morning, eveningNudge, dayTally, weekSection, isStandupThread, threadOf, prevWorkday, target };
+// "Right now": what each person is on today — plan, update, built vs target, open requests with blockers.
+function nowBoard(date = today()) {
+  const STATUS = { rnd: 'R&D', started: 'Building', stuck: 'Stuck', new: 'Not started' };
+  const reqs = db.prepare(`SELECT * FROM client_requests WHERE status IN ('new','rnd','started','stuck') ORDER BY created_at`).all();
+  const people = members().filter((m) => m.role !== 'lead').map((m) => {
+    const d = personDay(m, date);
+    const working = reqs.filter((r) => JSON.parse(r.assigned_member_ids || '[]').includes(m.id))
+      .map((r) => ({ id: r.id, title: r.title, status: r.status, label: STATUS[r.status], reason: r.status === 'stuck' ? r.stuck_reason : null, since: r.status === 'stuck' ? r.stuck_at : (r.started_at || r.rnd_at || r.created_at) }));
+    return { ...d, working };
+  }).sort((a, b) => a.name.localeCompare(b.name));
+  const count = (st) => reqs.filter((r) => r.status === st).length;
+  return { date, target: target(), people, open: { new: count('new'), rnd: count('rnd'), started: count('started'), stuck: count('stuck') }, unassigned: reqs.filter((r) => JSON.parse(r.assigned_member_ids || '[]').length === 0).length };
+}
+
+module.exports = { nowBoard, morning, eveningNudge, dayTally, weekSection, isStandupThread, threadOf, prevWorkday, target };

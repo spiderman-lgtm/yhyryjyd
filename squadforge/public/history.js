@@ -40,6 +40,7 @@ async function renderHistory() {
         <select id="histDays" aria-label="Period">${[[1, 'Today'], [7, 'Last 7 days'], [30, 'Last 30 days'], [90, 'Last 90 days']].map(([d, l]) => `<option value="${d}" ${d === histDays ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
     </div>
     <div id="histList" class="card hist-card"><div class="muted">Loading…</div></div>`;
+  if (typeof subTabs === 'function') subTabs();
   document.querySelectorAll('[data-hk]').forEach((b) => (b.onclick = () => { histKind = b.dataset.hk; renderHistory(); }));
   $('#histDays').onchange = (e) => { histDays = Number(e.target.value); renderHistory(); };
   let rows = [];

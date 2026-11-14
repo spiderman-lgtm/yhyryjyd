@@ -24,7 +24,7 @@ async function renderTeam(range = dashRange) {
   $('#view').classList.remove('drawn');
   $('#view').innerHTML = skeleton();
   const monthStart = t.slice(0, 8) + '01';
-  const [cur, prev, spark, logs, month, reqs, ins, check] = await Promise.all([
+  const [cur, prev, spark, logs, month, reqs, ins, check, now] = await Promise.all([
     api(`/api/metrics?from=${r.from}&to=${r.to}`),
     api(`/api/metrics?from=${prevFrom}&to=${prevTo}`),
     api(`/api/metrics?from=${addDays(t, -13)}&to=${t}`),
@@ -33,6 +33,7 @@ async function renderTeam(range = dashRange) {
     api('/api/requests'),
     api('/api/insights').catch(() => ({ queue: {}, interventions: [], blocked: [] })),
     api('/api/checklist').catch(() => null),
+    api('/api/now').catch(() => null),
   ]);
   if (tab !== 'team') return;
   const T = cur.team.totals, P = prev.team.totals, S = spark.series;
@@ -40,45 +41,22 @@ async function renderTeam(range = dashRange) {
   const open = state.week_metrics.totals.open_by_status || {};
 
   $('#view').innerHTML = `
-    ${birdScene(state.today_metrics, logs.logs)}
+    <div class="dash-compact">${birdScene(state.today_metrics, logs.logs)}</div>
     ${queueBar(ins.queue)}
-    ${checklistCard(check)}
-    <div class="dash-main" style="grid-template-columns:1.25fr 1fr">${interventionsCard(ins.interventions)}${blockedCard(ins.blocked)}</div>
-    <div class="qp-row3">
-      <div class="card"><div class="card-h"><h3>Work calendar</h3><span class="muted">${new Date(t + 'T12:00:00Z').toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</span></div>${calendar(month.series, t)}</div>
-      <div class="card"><div class="card-h"><h3>Request preview</h3></div>${requestPreview(reqs, open, T.requests_completed)}</div>
-      <div class="card"><div class="card-h"><h3>Quick message</h3><span class="muted">to the team channel</span></div>
-        ${voiceBar('qmVoice')}
-        <textarea id="qmText" class="qm" placeholder="What should the team know? Type or tap 🎤 Speak"></textarea>
-        <div class="qm-bar"><label class="check" title="Also send an M91 alert"><input type="checkbox" id="qmImp"/> Important</label><span class="spacer"></span><button class="btn ghost small" id="qmAi" title="Let AI improve the wording">✨ Improve</button><button class="btn" id="qmSend">Send ✦</button></div>
-        <div class="muted" style="font-size:11px">Tag people and polish with AI in Commander.</div>
-      </div>
-    </div>
+    ${check && check.done < check.total ? checklistCard(check) : ''}
+    <div class="dash-main dash-today">${todayCard(now)}<div class="dash-stack">${blockedCard(ins.blocked)}${interventionsCard(ins.interventions)}</div></div>
     <div class="dash-head">
-      <div><h3 style="margin:0">Value delivered</h3><div class="muted" style="font-size:12px">${fmtRange(r.from, r.to)} · compared with ${r.prevLabel} · <i>we measure the value of work, not the number of tasks</i></div></div>
+      <div><h3 style="margin:0">This week</h3><div class="muted" style="font-size:12px">${fmtRange(r.from, r.to)} · compared with ${r.prevLabel} · <i>the value of work, not the number of tasks</i></div></div>
       <div class="seg" role="tablist" aria-label="Date range">${Object.entries(ranges).map(([k, v]) => `<button role="tab" aria-selected="${k === range}" class="${k === range ? 'on' : ''}" data-range="${k}">${v.label}</button>`).join('')}</div>
     </div>
-    <div class="kpi-grid">
+    <div class="kpi-grid kpi-4">
       ${tile('Outcomes delivered', VV.delivered, PV.delivered, null, true, `${VV.verified} verified 🏅`)}
       ${tile('Time to value', VV.time_to_value_h, PV.time_to_value_h, null, false, 'median · request → live', 'h')}
       ${tile('First-pass quality', VV.first_pass_pct, PV.first_pass_pct, null, true, VV.first_pass_n ? `${VV.first_pass_n} first reviews` : 'no reviews yet', '%')}
       ${tile('Blockers cleared', VV.blockers_cleared, PV.blockers_cleared, null, true, 'unblocked & moving again')}
-      ${tile('Time lost to blockers', VV.stuck_share_pct, PV.stuck_share_pct, null, false, 'share of delivery time', '%')}
-      ${tile('Waiting on us', VV.waiting_on_us, null, null, false, 'requests not started yet')}
     </div>
-    <div class="dash-main">
-      <div class="card chart-card">
-        <div class="card-h"><div><h3 style="margin:0">Request → Live</h3><div class="muted" style="font-size:12px">Where the time went for each delivered request</div></div><span class="spacer"></span>
-          <div class="legend"><span><i style="background:#c9c2b2"></i>Waiting to start</span><span><i style="background:var(--accent)"></i>Working</span><span><i style="background:var(--coral)"></i>Blocked</span></div></div>
-        <div id="journeyChart">${journeyChart(VV.outcomes.filter((o) => o.journey))}</div>
-      </div>
-      <div class="card"><div class="card-h"><h3>To-do</h3><span class="muted">client requests</span></div>${todo(reqs)}</div>
-    </div>
-    <div class="dash-main">
-      <div class="card"><div class="card-h"><h3 style="margin:0">Team outcomes</h3><span class="spacer"></span><span class="muted" style="font-size:12px">${fmtRange(r.from, r.to)} · A–Z, not a ranking</span></div>
-        ${teamOutcomes(cur.people || [])}</div>
-      <div class="card"><div class="card-h"><h3>Today's check-ins</h3></div>${checkins(logs.logs)}</div>
-    </div>`;
+    <div class="card"><div class="card-h"><h3 style="margin:0">Team outcomes</h3><span class="spacer"></span><span class="muted" style="font-size:12px">${fmtRange(r.from, r.to)} · A–Z, not a ranking</span></div>
+      ${teamOutcomes(cur.people || [])}</div>`;
 
   placeBirds();
   wireChecklist();

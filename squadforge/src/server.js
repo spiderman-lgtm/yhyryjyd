@@ -87,7 +87,7 @@ function contextOf(req) {
   return { ws, role: ['owner', 'admin'].includes(wsRole) ? 'admin' : wsRole === 'manager' ? 'manager' : 'viewer', email: se.email, wsRole, workspaces: mine };
 }
 // The viewer can only see these (read-only)
-const VIEWER_ROUTES = ['/api/state', '/api/requests', '/api/logs'];
+const VIEWER_ROUTES = ['/api/state', '/api/requests', '/api/logs', '/api/now'];
 function safeEqual(a, b) {
   if (!a || !b) return false;
   const x = Buffer.from(String(a)), y = Buffer.from(String(b));
@@ -158,7 +158,7 @@ const SETTING_KEYS = [
   'cfg.SLACK_CHANNEL_ID', 'cfg.LEAD_SLACK_USER_ID', 'cfg.ALERT_CHANNEL_ID', 'cfg.SLACK_WORKSPACE_URL',
   'cfg.REQUEST_KEYWORDS', 'cfg.MORNING_KEYWORDS', 'cfg.EVENING_KEYWORDS', 'cfg.REVIEW_KEYWORDS',
   'inspector.instructions', 'herald.channel_reminder', 'herald.sunday', 'growth.notify_thread',
-  'standup.target', 'standup.m91_morning', 'standup.m91_missing',
+  'standup.target', 'standup.m91_morning', 'standup.m91_missing', 'ui.live_views',
 ];
 
 // Background job runner for cron routes (Embarko: reply fast, keep working).
@@ -305,7 +305,7 @@ async function routes(req, res, url, p, m, body, cx) {
     const leadName = ownerAcct && ownerAcct.name ? ownerAcct.name.split(' ')[0] : ownerEmail ? ownerEmail.split('@')[0].split(/[._\d]/)[0].replace(/^./, (c) => c.toUpperCase()) : null;
     return send(res, 200, manager.summary(url.searchParams.get('week'), leadName));
   }
-  if (role === 'manager' && !(m === 'GET' && ['/api/state', '/api/requests', '/api/logs', '/api/workspaces'].includes(p))) return send(res, 403, { error: 'Managers have a read-only view' });
+  if (role === 'manager' && !(m === 'GET' && ['/api/state', '/api/requests', '/api/logs', '/api/workspaces', '/api/now'].includes(p))) return send(res, 403, { error: 'Managers have a read-only view' });
   // ---------- history & test checklist ----------
   if (p === '/api/history' && m === 'GET') {
     if (role !== 'admin') return send(res, 403, { error: 'Admins only' });
@@ -353,6 +353,7 @@ async function routes(req, res, url, p, m, body, cx) {
       week_value: (() => { const v = metrics.valueMetrics(U.weekStart(t), t); return { ...v, people: metrics.memberOutcomes(U.weekStart(t), t, v) }; })(),
       integrations: { slack: slack.enabled(), ai: llm.enabled(), msg91: msg91.enabled() || vs.connected('m91') || m91.hasLink(), lead: !!U.cfg('LEAD_SLACK_USER_ID'), review_instructions: !!getSetting('inspector.instructions', '') },
       has_demo: !!db.prepare('SELECT 1 FROM members WHERE is_demo = 1').get(),
+      live_views: !!getSetting('ui.live_views', false),
       member_count: db.prepare('SELECT COUNT(*) c FROM members WHERE active = 1').get().c,
       password_set: !!process.env.ADMIN_PASSWORD,
       role,
@@ -508,6 +509,7 @@ async function routes(req, res, url, p, m, body, cx) {
     return send(res, 200, result || {});
   }
   if (p === '/api/standup/morning' && m === 'POST') return send(res, 200, await U.runAgent('herald', 'Posting Good morning…', async () => { await scout.sync({ manual: true }).catch(() => {}); return standup.morning(); }));
+  if (p === '/api/now' && m === 'GET') return send(res, 200, standup.nowBoard());
   if (p === '/api/standup/tally' && m === 'GET') { const d = url.searchParams.get('date') || standup.prevWorkday(U.today()); const t = standup.dayTally(d); return send(res, 200, { date: d, short: t.short, full: t.full, people: t.people, target: standup.target(), thread: standup.threadOf(U.today()) }); }
   if (p === '/api/agents/herald/morning' && m === 'POST') return send(res, 200, await U.runAgent('herald', 'Sending the morning reminder…', () => herald.morning()));
   if (p === '/api/broadcast' && m === 'POST') {
