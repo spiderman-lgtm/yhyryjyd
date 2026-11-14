@@ -495,7 +495,7 @@ async function routes(req, res, url, p, m, body, cx) {
       agents: agentsNow,
       slack: { mode: slack.viaViaSocket() ? 'viaSocket' : (U.cfg('SLACK_BOT_TOKEN') ? 'bot token' : 'off'), channel: !!U.cfg('SLACK_CHANNEL_ID'), lead: !!U.cfg('LEAD_SLACK_USER_ID'), paused_until: backoff > Date.now() ? new Date(backoff).toISOString() : null },
       m91: { send_link: m91.hasLink(), viasocket: vs.connected('m91'), admin_link: m91.hasAdminLink() },
-      ai: llm.enabled(), gmail: vs.connected('gmail'), sheets: vs.connected('google-sheets'),
+      ai: llm.enabled(), ai_status: llm.status(), gmail: vs.connected('gmail'), sheets: vs.connected('google-sheets'),
       backup: bk[0] || null,
     });
   }
@@ -509,7 +509,7 @@ async function routes(req, res, url, p, m, body, cx) {
       }
       if (body.what === 'ai') {
         if (!llm.enabled()) throw new Error('ANTHROPIC_API_KEY is not set');
-        const r = await llm.askJson({ system: 'Reply with the word ok.', prompt: 'Health check', schema: { type: 'object', additionalProperties: false, properties: { ok: { type: 'string' } }, required: ['ok'] }, maxTokens: 200 });
+        const r = await llm.askJson({ system: 'Reply with the word ok.', prompt: 'Health check', schema: { type: 'object', additionalProperties: false, properties: { ok: { type: 'string' } }, required: ['ok'] }, maxTokens: 200, force: true });
         return send(res, 200, { ok: true, detail: 'The AI answered: ' + String(r.ok).slice(0, 20) });
       }
       if (body.what === 'm91admin') {

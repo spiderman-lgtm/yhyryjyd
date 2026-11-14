@@ -436,7 +436,7 @@ async function healthCard() {
     ${row(ok(sl.mode !== 'off' && sl.channel && !sl.paused_until), 'Slack', slackDetail, 'slack', sl.mode !== 'off' && sl.channel && !sl.paused_until)}
     ${row(ok(h.m91.send_link || h.m91.viasocket), 'M91 alerts', h.m91.send_link ? 'Send link → the M91 channel' : h.m91.viasocket ? 'viaSocket connection' : 'Not set up', h.m91.send_link ? 'm91' : null, h.m91.send_link || h.m91.viasocket)}
     ${row(ok(h.m91.admin_link), 'Admin failure alerts', h.m91.admin_link ? 'M91 admin channel — only you get “something is failing” alerts' : 'Not set — create a private M91 channel with only you in it and put its send link in Embarko as <code>M91_ADMIN_LINK</code>', h.m91.admin_link ? 'm91admin' : null, h.m91.admin_link)}
-    ${row(ok(h.ai), 'AI (reviews, wording)', h.ai ? 'ANTHROPIC_API_KEY is set' : 'ANTHROPIC_API_KEY is not set', 'ai', h.ai)}
+    ${row(ok(h.ai && !(h.ai_status || {}).paused), 'AI (reviews, wording)', !h.ai ? 'ANTHROPIC_API_KEY is not set' : (h.ai_status || {}).paused ? esc(h.ai_status.reason) : 'ANTHROPIC_API_KEY is set', 'ai', h.ai && !(h.ai_status || {}).paused)}
     ${row(h.gmail ? '✅' : '·', 'Gmail', h.gmail ? 'Connected — Monday report by email' : 'Optional · not connected', h.gmail ? 'gmail' : null, true)}
     ${row(h.sheets ? '✅' : '·', 'Google Sheets', h.sheets ? 'Connected — weekly rows' : 'Optional · not connected', h.sheets ? 'google-sheets' : null, true)}
     ${row(ok(!!h.backup), 'Backups', h.backup ? `last nightly backup ${esc(h.backup.date)}` : 'no backup yet', 'backup', !!h.backup)}
