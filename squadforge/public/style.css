@@ -1444,3 +1444,11 @@ input.switch:checked { background: var(--accent, #5f8a7a); } input.switch:checke
 .bk-card { margin-bottom: 16px; }
 .now-card.on-leave { opacity: .72; border-style: dashed; }
 .now-actions { display: flex; justify-content: flex-end; margin-top: -4px; }
+/* ===== System health ===== */
+.hl-card { margin-bottom: 16px; border-left: 4px solid var(--accent, #5f8a7a); }
+.hl-row { display: grid; grid-template-columns: 22px 170px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+.hl-row.bad b { color: var(--coral-2, #b4503f); }
+.hl-detail { font-size: 12.5px; min-width: 0; }
+.hl-guide { margin: 10px 0 4px; font-size: 13px; } .hl-guide summary { cursor: pointer; font-weight: 700; }
+.hl-guide ol { margin: 8px 0 0; padding-left: 20px; line-height: 1.7; }
+@media (max-width: 640px) { .hl-row { grid-template-columns: 22px 1fr auto; } .hl-detail { grid-column: 2 / -1; grid-row: 2; } }

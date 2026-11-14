@@ -382,6 +382,7 @@ async function routes(req, res, url, p, m, body, cx) {
       integrations: { slack: slack.enabled(), ai: llm.enabled(), msg91: msg91.enabled() || vs.connected('m91') || m91.hasLink(), lead: !!U.cfg('LEAD_SLACK_USER_ID'), review_instructions: !!getSetting('inspector.instructions', '') },
       has_demo: !!db.prepare('SELECT 1 FROM members WHERE is_demo = 1').get(),
       live_views: !!getSetting('ui.live_views', false),
+      failing: role === 'admin' ? U.failing().map((f) => ({ agent: f.agent, name: U.AGENT_NAMES[f.agent] || f.agent, count: f.count, error: f.error })) : [],
       member_count: db.prepare('SELECT COUNT(*) c FROM members WHERE active = 1').get().c,
       password_set: !!process.env.ADMIN_PASSWORD,
       role,
@@ -545,6 +546,38 @@ async function routes(req, res, url, p, m, body, cx) {
     res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Disposition': `attachment; filename="${name}"`, 'Content-Length': require('fs').statSync(file).size, 'Cache-Control': 'no-store' });
     const st = require('fs').createReadStream(file); const done = () => require('fs').unlink(file, () => {}); res.on('close', done); st.on('error', done); st.pipe(res);
     return;
+  }
+  // ---------- system health ----------
+  if (p === '/api/health/status' && m === 'GET') {
+    if (role !== 'admin') return send(res, 403, { error: 'Admins only' });
+    const fails = Object.fromEntries(U.failing().concat(db.prepare("SELECT key, value FROM settings WHERE key LIKE 'health.fail.%'").all().map((r) => { try { return { agent: r.key.slice(12), ...JSON.parse(r.value) }; } catch { return null; } }).filter(Boolean)).map((f) => [f.agent, f]));
+    const agentsNow = db.prepare('SELECT * FROM agent_status').all().map((a) => ({ ...a, name: U.AGENT_NAMES[a.agent] || a.agent, fails: (fails[a.agent] || {}).count || 0, error: a.state === 'error' ? a.message : (fails[a.agent] || {}).error || null }));
+    const backoff = Number(getSetting('scout.backoff_until', 0)) || 0;
+    const bk = backup.list();
+    return send(res, 200, {
+      agents: agentsNow,
+      slack: { mode: slack.viaViaSocket() ? 'viaSocket' : (U.cfg('SLACK_BOT_TOKEN') ? 'bot token' : 'off'), channel: !!U.cfg('SLACK_CHANNEL_ID'), lead: !!U.cfg('LEAD_SLACK_USER_ID'), paused_until: backoff > Date.now() ? new Date(backoff).toISOString() : null },
+      m91: { send_link: m91.hasLink(), viasocket: vs.connected('m91') },
+      ai: llm.enabled(), gmail: vs.connected('gmail'), sheets: vs.connected('google-sheets'),
+      backup: bk[0] || null,
+    });
+  }
+  if (p === '/api/health/test' && m === 'POST') {
+    if (role !== 'admin') return send(res, 403, { error: 'Admins only' });
+    try {
+      if (body.what === 'slack') {
+        if (!slack.enabled()) throw new Error('Slack is not connected');
+        const r = await slack.call('conversations.info', { channel: U.cfg('SLACK_CHANNEL_ID') });
+        return send(res, 200, { ok: true, detail: `Reading #${(r.channel && r.channel.name) || 'channel'} works (${slack.viaViaSocket() ? 'via viaSocket' : 'bot token'})` });
+      }
+      if (body.what === 'ai') {
+        if (!llm.enabled()) throw new Error('ANTHROPIC_API_KEY is not set');
+        const r = await llm.askJson({ system: 'Reply with the word ok.', prompt: 'Health check', schema: { type: 'object', additionalProperties: false, properties: { ok: { type: 'string' } }, required: ['ok'] }, maxTokens: 200 });
+        return send(res, 200, { ok: true, detail: 'The AI answered: ' + String(r.ok).slice(0, 20) });
+      }
+      if (body.what === 'backup') { const r = backup.nightly(U.today()); return send(res, 200, { ok: true, detail: `Backup saved for ${r.workspaces} workspace(s)` }); }
+      return send(res, 400, { error: 'Unknown test' });
+    } catch (e) { return send(res, 200, { ok: false, detail: e.message }); }
   }
   if (p === '/api/backups' && m === 'GET') { if (role !== 'admin') return send(res, 403, { error: 'Admins only' }); return send(res, 200, backup.list()); }
   if (p === '/api/leave' && m === 'POST') {

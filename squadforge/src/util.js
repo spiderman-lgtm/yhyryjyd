@@ -77,16 +77,43 @@ async function runAgent(agent, label, fn) {
   setAgent(agent, 'working', label);
   try {
     const result = await fn();
-    setAgent(agent, 'idle', (result && result.message) || 'Done');
+    if (result && result.error) { setAgent(agent, 'error', String(result.error).slice(0, 200)); trackFailure(agent, result.error); }
+    else { setAgent(agent, 'idle', (result && result.message) || 'Done'); trackSuccess(agent); }
     return result;
   } catch (err) {
     console.error(err);
     setAgent(agent, 'error', String(err.message || err).slice(0, 200));
     logActivity(agent, 'Error: ' + String(err.message || err).slice(0, 300), 'error');
+    trackFailure(agent, err.message || err);
     return { error: String(err.message || err) };
   } finally {
     running.delete(key);
   }
+}
+
+// Two failures in a row → tell the lead (Slack DM + M91), at most once every 6 hours per agent.
+const AGENT_NAMES = { scout: 'Scout (reads Slack)', herald: 'Herald (alerts)', scribe: 'Scribe (weekly report)', inspector: 'Inspector (reviews)', analyst: 'Analyst', commander: 'Commander', tracker: 'Tracker', growth: 'Sprout' };
+function trackSuccess(agent) { const { setSetting } = require('./db'); if (getSetting('health.fail.' + agent, null)) setSetting('health.fail.' + agent, null); }
+function trackFailure(agent, error) {
+  const { setSetting } = require('./db');
+  const cur = getSetting('health.fail.' + agent, null) || { count: 0 };
+  const next = { count: (cur.count || 0) + 1, error: String(error).slice(0, 300), at: new Date().toISOString() };
+  setSetting('health.fail.' + agent, next);
+  const last = Number(getSetting('health.alerted.' + agent, 0)) || 0;
+  if (next.count < 2 || Date.now() - last < 6 * 3600 * 1000) return;
+  setSetting('health.alerted.' + agent, Date.now());
+  const title = `${AGENT_NAMES[agent] || agent} is failing`;
+  const text = `⚠️ *${title}* — ${next.count} times in a row.\nLast error: ${next.error}\nOpen SquadForge → Settings → System health.`;
+  setImmediate(async () => {
+    try { const lead = cfg('LEAD_SLACK_USER_ID'); const slack = require('./slack'); if (lead && slack.enabled() && agent !== 'scout') await slack.dm(lead, text); } catch { /* Slack may be the thing that is down */ }
+    // M91 only to the lead's own phone (a send link would ring the whole team)
+    try {
+      const m91 = require('./m91'), vs = require('./viasocket');
+      const leadM = db.prepare("SELECT phone FROM members WHERE role = 'lead' AND active = 1 AND phone IS NOT NULL LIMIT 1").get();
+      if (vs.connected('m91') && leadM) await m91.sendAlert({ phone: leadM.phone, title, description: `Failed ${next.count} times in a row. Last error: ${next.error}`, severity: 'Low', customId: 'health-' + agent });
+    } catch { /* ignore */ }
+    logActivity(agent, `Told the lead: ${title}`, 'warn');
+  });
 }
 
 function members({ includeInactive = false } = {}) {
@@ -97,7 +124,12 @@ function memberBySlack(id) {
 }
 function memberById(id) { return db.prepare('SELECT * FROM members WHERE id = ?').get(id); }
 
-module.exports = {
+function failing() {
+  return db.prepare("SELECT key, value FROM settings WHERE key LIKE 'health.fail.%'").all()
+    .map((r) => { try { return { agent: r.key.slice(12), ...JSON.parse(r.value) }; } catch { return null; } })
+    .filter((x) => x && x.count >= 2);
+}
+module.exports = { failing, AGENT_NAMES,
   TZ, today, tzMod, addDays, weekday, weekStart, tsToDate, tsToIso, hoursBetween, dateInTz,
   cfg, list, logActivity, setAgent, runAgent, members, memberBySlack, memberById,
 };

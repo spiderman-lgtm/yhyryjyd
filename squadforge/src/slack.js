@@ -94,4 +94,4 @@ function permalinkish(channel, ts) {
   return `${team.replace(/\/$/, '')}/archives/${channel}/p${String(ts).replace('.', '')}`;
 }
 
-module.exports = { viaViaSocket, enabled, viaViaSocket, call, history, replies, post, dm, channelMembers, userInfo, mentions, permalinkish };
+module.exports = { viaViaSocket, enabled, call, history, replies, post, dm, channelMembers, userInfo, mentions, permalinkish };

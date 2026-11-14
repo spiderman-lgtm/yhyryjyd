@@ -164,6 +164,7 @@ function renderHeader() {
   $('#logoutBtn').classList.toggle('hidden', !state.password_set);
   const banners = [];
   if (role === 'viewer' || role === 'manager') { $('#banner').innerHTML = ''; return; }
+  for (const f of state.failing || []) banners.push(`<div class="banner red">⚠️ <b>${esc(f.name)}</b> has failed ${f.count} times in a row: ${esc(String(f.error).slice(0, 140))} — <a href="#settings" data-goto="settings">open System health</a></div>`);
   if (!state.password_set) banners.push(`<div class="banner red">🔓 <b>ADMIN_PASSWORD</b> is not set, so the dashboard is open to everyone. Set the env var on Embarko.</div>`);
   if (!state.member_count) banners.push(`<div class="banner">👋 Get started: add team members in <b>Settings</b> (or import them from Slack). Just exploring? <a href="#" id="demoLink">Load demo data</a>.</div>`);
   else if (state.has_demo) banners.push(`<div class="banner">🧪 You are looking at demo data. Use "Clear demo" in Settings to see real data.</div>`);
@@ -405,6 +406,44 @@ async function renderCommander() {
     } catch (e) { toast(e.message); b.disabled = false; }
   };
 }
+// System health: every agent's last run and error, every connection, a test button for each
+async function healthCard() {
+  let h; try { h = await api('/api/health/status'); } catch { return; }
+  if (!$('#view h2') || tab !== 'settings') return;
+  const ok = (b) => (b ? '✅' : '⚠️');
+  const row = (icon, name, detail, test, good) => `<div class="hl-row ${good ? '' : 'bad'}"><span>${icon}</span><b>${name}</b><span class="hl-detail muted">${detail}</span>${test ? `<button class="btn ghost small" data-htest="${test}">Test</button>` : '<span></span>'}</div>`;
+  const sl = h.slack;
+  const slackDetail = sl.mode === 'off' ? 'Not connected' : `${sl.mode === 'bot token' ? 'Slack bot token (no limits)' : 'via viaSocket (counts against its plan)'}${sl.channel ? '' : ' · no channel chosen'}${sl.lead ? '' : ' · lead not chosen'}${sl.paused_until ? ` · <b>paused until ${new Date(sl.paused_until).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}</b> (usage limit)` : ''}`;
+  const agents = h.agents.sort((a, b) => a.name.localeCompare(b.name)).map((a) => row(a.state === 'error' || a.fails >= 2 ? '⚠️' : '🤖', esc(a.name), `${a.last_run_at ? 'last run ' + ago(a.last_run_at) : 'not run yet'}${a.error ? ' · ' + esc(String(a.error).slice(0, 110)) : ''}${a.fails >= 2 ? ` · failed ${a.fails}× in a row` : ''}`, null, !(a.state === 'error' || a.fails >= 2))).join('');
+  $('#view h2').insertAdjacentHTML('afterend', `<div class="card hl-card"><div class="card-h"><h3>🩺 System health</h3><span class="muted small">Connections, agents and backups — test any of them</span></div>
+    <div class="nav-label">Connections</div>
+    ${row(ok(sl.mode !== 'off' && sl.channel && !sl.paused_until), 'Slack', slackDetail, 'slack', sl.mode !== 'off' && sl.channel && !sl.paused_until)}
+    ${row(ok(h.m91.send_link || h.m91.viasocket), 'M91 alerts', h.m91.send_link ? 'Send link → the M91 channel' : h.m91.viasocket ? 'viaSocket connection' : 'Not set up', h.m91.send_link ? 'm91' : null, h.m91.send_link || h.m91.viasocket)}
+    ${row(ok(h.ai), 'AI (reviews, wording)', h.ai ? 'ANTHROPIC_API_KEY is set' : 'ANTHROPIC_API_KEY is not set', 'ai', h.ai)}
+    ${row(h.gmail ? '✅' : '·', 'Gmail', h.gmail ? 'Connected — Monday report by email' : 'Optional · not connected', h.gmail ? 'gmail' : null, true)}
+    ${row(h.sheets ? '✅' : '·', 'Google Sheets', h.sheets ? 'Connected — weekly rows' : 'Optional · not connected', h.sheets ? 'google-sheets' : null, true)}
+    ${row(ok(!!h.backup), 'Backups', h.backup ? `last nightly backup ${esc(h.backup.date)}` : 'no backup yet', 'backup', !!h.backup)}
+    ${sl.mode === 'viaSocket' || sl.mode === 'off' ? `<details class="hl-guide"><summary>💡 Use a Slack bot token — free, no usage limits</summary><ol>
+      <li>Open <a href="https://api.slack.com/apps" target="_blank" rel="noopener">api.slack.com/apps</a> → <b>Create New App</b> → <b>From scratch</b> → name it “SquadForge”, pick your workspace.</li>
+      <li><b>OAuth &amp; Permissions → Bot Token Scopes</b>: add <code>channels:history</code> <code>groups:history</code> <code>channels:read</code> <code>groups:read</code> <code>chat:write</code> <code>users:read</code> <code>im:write</code>.</li>
+      <li><b>Install to Workspace</b> → Allow, then copy the <b>Bot User OAuth Token</b> (starts with <code>xoxb-</code>).</li>
+      <li>Embarko → squadforge → App setup → add <code>SLACK_BOT_TOKEN</code> with that value. Don't paste it in chat.</li>
+      <li>In your Slack channel type <code>/invite @SquadForge</code>. SquadForge switches to the bot token by itself.</li></ol></details>` : ''}
+    <div class="nav-label" style="margin-top:12px">Agents</div>${agents || '<p class="muted">No agent has run yet.</p>'}
+    <div id="hlOut"></div></div>`);
+  document.querySelectorAll('[data-htest]').forEach((b) => (b.onclick = async () => {
+    const what = b.dataset.htest; b.disabled = true; b.textContent = '…';
+    try {
+      let r;
+      if (what === 'm91') r = await api('/api/m91/test', { method: 'POST' }).then((x) => ({ ok: true, detail: `Test alert sent${x.delivered !== undefined ? ' to ' + x.delivered + ' phone(s)' : ''}` }));
+      else if (what === 'gmail' || what === 'google-sheets') r = await api(`/api/integrations/${what}/test`, { method: 'POST' }).then(() => ({ ok: true, detail: what === 'gmail' ? 'Test email sent to you' : 'Test sheet written' }));
+      else r = await api('/api/health/test', { method: 'POST', body: { what } });
+      $('#hlOut').innerHTML = `<div class="banner ${r.ok ? '' : 'red'}" style="margin-top:10px">${r.ok ? '✅' : '⚠️'} ${esc(r.detail || '')}</div>`;
+    } catch (e) { $('#hlOut').innerHTML = `<div class="banner red" style="margin-top:10px">⚠️ ${esc(e.message)}</div>`; }
+    b.disabled = false; b.textContent = 'Test';
+  }));
+}
+
 // Backups: nightly copies + a download for the owner
 async function backupCard() {
   const h2 = $('#view h2'); if (!h2) return;
@@ -560,6 +599,7 @@ async function renderSettings() {
   standupCard(s);
   displayCard(s);
   backupCard();
+  healthCard();
   if (members.some((x) => /^SIM_/.test(x.slack_user_id || ''))) {
     $('#view h2').insertAdjacentHTML('afterend', `<div class="banner">🧪 <b>Test teammates are on</b> (Aarav, Meera, Kabir, Isha). In Slack, start a message with <code>[Aarav]</code> and it counts as Aarav's; write <code>@Aarav</code> in a request thread to assign. <a href="#" id="simOff">Remove test teammates</a></div>`);
     $('#simOff').onclick = async (e) => { e.preventDefault(); if (!confirm('Remove the 4 test teammates and their updates?')) return; await api('/api/sim', { method: 'DELETE' }); toast('Test teammates removed'); renderSettings(); };
