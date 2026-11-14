@@ -239,15 +239,38 @@ function auditOnSuccess(req, res, p, m, body, cx) {
 async function routes(req, res, url, p, m, body, cx) {
   const role = cx.role;
   // ---------- manager view (read-only for a boss; the lead can preview it) ----------
+  // who leads a workspace: its owner's first name (workspace 1: the first ADMIN_EMAILS account)
+  const leadNameOf = (wsId) => {
+    const ownerEmail = wsId === 1 && adminEmails()[0] ? adminEmails()[0] : (workspaces.members(wsId).find((x) => x.role === 'owner') || {}).email;
+    const ownerAcct = ownerEmail ? accounts.find(ownerEmail) : null;
+    return ownerAcct && ownerAcct.name ? ownerAcct.name.split(' ')[0] : ownerEmail ? ownerEmail.split('@')[0].split(/[._\d]/)[0].replace(/^./, (c) => c.toUpperCase()) : null;
+  };
   if (p === '/api/manager' && m === 'GET') {
     if (!['admin', 'manager'].includes(role)) return send(res, 403, { error: 'Not available' });
-    // who leads this workspace: its owner's name (workspace 1: the first ADMIN_EMAILS account)
-    const ownerEmail = cx.ws === 1 && adminEmails()[0] ? adminEmails()[0] : (workspaces.members(cx.ws).find((x) => x.role === 'owner') || {}).email;
-    const ownerAcct = ownerEmail ? accounts.find(ownerEmail) : null;
-    const leadName = ownerAcct && ownerAcct.name ? ownerAcct.name.split(' ')[0] : ownerEmail ? ownerEmail.split('@')[0].split(/[._\d]/)[0].replace(/^./, (c) => c.toUpperCase()) : null;
-    return send(res, 200, manager.summary(url.searchParams.get('week'), leadName));
+    return send(res, 200, manager.summary(url.searchParams.get('week'), leadNameOf(cx.ws)));
   }
-  if (role === 'manager' && !(m === 'GET' && (['/api/state', '/api/requests', '/api/logs', '/api/workspaces', '/api/now'].includes(p) || /^\/api\/member\/\d+\/profile$/.test(p)))) return send(res, 403, { error: 'Managers have a read-only view' });
+  // Every team this person may see as owner/admin/manager, side by side and added up
+  if (p === '/api/manager/all' && m === 'GET') {
+    if (!['admin', 'manager'].includes(role)) return send(res, 403, { error: 'Not available' });
+    const mine = (cx.email ? workspaces.forEmail(cx.email) : [{ ...workspaces.get(1), role: 'owner' }]).filter((w) => ['owner', 'admin', 'manager'].includes(w.role));
+    const week = url.searchParams.get('week');
+    const teams = mine.map((w) => withWorkspace(w.id, () => {
+      const sum = manager.summary(week, leadNameOf(w.id)), now = standup.nowBoard();
+      const tech = now.people.filter((x) => x.role !== 'growth' && !x.leave);
+      return {
+        id: w.id, name: w.name, role: w.role, lead: sum.lead, from: sum.from, to: sum.to, story: sum.story, kpis: sum.kpis, lead_work: { ...sum.lead_work, timeline: undefined },
+        blocked: sum.blocked.slice(0, 3), moving: sum.moving.length, waiting: sum.waiting,
+        today: { people: now.people.length, on_leave: now.people.filter((x) => x.leave).length, posted: now.people.filter((x) => !x.leave && (x.plan || x.update)).length, at_target: tech.filter((x) => x.met).length, tech: tech.length, target: now.target },
+        people: now.people.map((x) => ({ id: x.id, name: x.name, role: x.role, leave: x.leave, built: x.built, met: x.met, plan: !!x.plan, update: !!x.update, growth: x.growth, working: x.working.slice(0, 2) })),
+      };
+    }));
+    const add = (f) => teams.reduce((n, t) => n + (f(t) || 0), 0);
+    return send(res, 200, {
+      from: teams[0] ? teams[0].from : null, to: teams[0] ? teams[0].to : null, teams,
+      totals: { teams: teams.length, shipped: add((t) => t.kpis.delivered), prev_shipped: add((t) => t.kpis.prev_delivered), verified: add((t) => t.kpis.verified), blockers_cleared: add((t) => t.kpis.blockers_cleared), blocked_now: add((t) => t.kpis.blocked_now), moving: add((t) => t.moving), waiting: add((t) => t.waiting), people: add((t) => t.today.people), posted: add((t) => t.today.posted), on_leave: add((t) => t.today.on_leave), at_target: add((t) => t.today.at_target), tech: add((t) => t.today.tech), reviews: add((t) => t.lead_work.reviews) },
+    });
+  }
+  if (role === 'manager' && !(m === 'GET' && (['/api/state', '/api/requests', '/api/logs', '/api/workspaces', '/api/now', '/api/manager/all'].includes(p) || /^\/api\/member\/\d+\/profile$/.test(p)))) return send(res, 403, { error: 'Managers have a read-only view' });
   // ---------- history & test checklist ----------
   if (p === '/api/history' && m === 'GET') {
     if (role !== 'admin') return send(res, 403, { error: 'Admins only' });

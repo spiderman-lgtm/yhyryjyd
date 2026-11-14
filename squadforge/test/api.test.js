@@ -119,3 +119,15 @@ test('system health answers for admins', async () => {
   assert.equal(h.data.slack.mode, 'off');
   assert.equal((await call('/api/health/status', { token: await login('v@viasocket.com', 'password9') })).status, 403);
 });
+
+test('manager sees all their teams added up', async () => {
+  const lead = await login('lead@viasocket.com', 'adminpass1');
+  const w2 = (await call('/api/workspaces', { method: 'POST', token: lead, body: { name: 'Second team' } })).data.id;
+  await call('/api/demo/load', { method: 'POST', token: lead, ws: w2 });
+  await call('/api/workspace/people', { method: 'POST', token: lead, ws: w2, body: { email: 'boss@viasocket.com', role: 'manager' } });
+  const b = await login('boss@viasocket.com', 'password9');
+  const all = (await call('/api/manager/all', { token: b })).data;
+  assert.ok(all.teams.length >= 2);
+  assert.equal(all.totals.people, all.teams.reduce((n, t) => n + t.today.people, 0));
+  assert.equal((await call('/api/manager/all', { token: await login('v@viasocket.com', 'password9') })).status, 403);
+});
