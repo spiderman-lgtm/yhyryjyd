@@ -26,11 +26,12 @@
           <input type="email" id="email" placeholder="you@company.com" autocomplete="username" aria-label="Email" />
           <input type="text" id="wsName" placeholder="Team / workspace name" aria-label="Workspace name" class="hidden" />
           <input type="password" id="password" placeholder="Password" autocomplete="current-password" required aria-label="Password" />
+          <input type="text" id="codeIn" class="hidden code-in" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="6-digit code" aria-label="Code from your email" />
           <button class="qp-btn" type="submit" id="authBtn">Sign in →</button>
           <p class="qp-hint" id="authHint"></p>
           <p id="loginErr" class="err" role="alert"></p>
         </form>
-        <a href="#lp-video" class="qp-tour" data-watch><span>▶</span> See how SquadForge works — 3-min video tour</a>
+        <a href="#lp-video" class="qp-tour" data-watch><span>▶</span> See how SquadForge works — watch the tour</a>
         <ul class="qp-checks"><li>No screenshots or time tracking</li><li>Task count never counts</li><li>Every flag has a reason</li><li>Works from your Slack</li></ul>
       </section>
       <div class="qp-scene" id="qpScene" aria-hidden="true"></div>
@@ -38,7 +39,7 @@
     <div class="lp">
       <section class="lp-sec lp-video" id="lp-video">
         <span class="lp-kicker">See it in action</span>
-        <h2>How a team lead uses SquadForge — in 3 minutes.</h2>
+        <h2>How a team lead uses SquadForge.</h2>
         <p class="lp-lead">From the 11 AM good-morning thread and M91 alerts, to reviews, the 7 PM summary, the Monday report and the Manager view. With voice-over — turn your sound on.</p>
         <div class="lp-player">
           <video id="tourVideo" controls preload="none" playsinline poster="/media/squadforge-poster.jpg">

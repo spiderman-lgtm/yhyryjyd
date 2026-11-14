@@ -1501,3 +1501,4 @@ input.switch:checked { background: var(--accent, #5f8a7a); } input.switch:checke
 [data-theme="dark"] .m91-ans span { background: rgba(95,138,122,.28); color: #a9d5c2; } [data-theme="dark"] .m91-ans span.q { background: rgba(242,184,75,.18); color: #f2c98a; }
 [data-theme="dark"] .qtile.start { background: rgba(232,101,90,.08); }
 [data-theme="dark"] .mg-now-why, [data-theme="dark"] .now-why { color: #f19a8f; }
+.qp-form input.code-in { letter-spacing: .4em; text-align: center; font-size: 18px; font-weight: 700; max-width: 260px; }

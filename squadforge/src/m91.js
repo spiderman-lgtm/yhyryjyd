@@ -89,9 +89,12 @@ function sendLink() {
   return /^https:\/\/[a-z0-9.-]+\/s\/sk_[A-Za-z0-9]+$/.test(v) ? v : '';
 }
 const hasLink = () => !!sendLink();
+// A private M91 channel with only the admin(s) in it — for "something is failing" alerts.
+function adminLink() { const v = String(process.env.M91_ADMIN_LINK || '').trim(); return /^https:\/\/[a-z0-9.-]+\/s\/sk_[A-Za-z0-9]+$/.test(v) ? v : ''; }
+const hasAdminLink = () => !!adminLink();
 const clip = (t, n) => String(t || '').slice(0, n);
-async function linkCall(path, body) {
-  const link = sendLink();
+async function linkCall(path, body, linkOverride) {
+  const link = linkOverride || sendLink();
   if (!link) throw new Error('M91 send link is not set');
   const res = await fetch(link + path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const data = await res.json().catch(() => ({}));
@@ -103,7 +106,7 @@ async function linkCall(path, body) {
   return data.data || data;
 }
 // Alert the whole channel. Notification-only unless responseOptions are given.
-async function channelAlert({ title, description, severity = 'LOW', responseOptions, customId, callbackUrl }) {
+async function channelAlert({ title, description, severity = 'LOW', responseOptions, customId, callbackUrl, admin = false }) {
   let t = String(title || '').trim(); if (t.length < 5) t = `${t} — SquadForge`;
   const body = { title: clip(t, 2000), severity: String(severity).toUpperCase() };
   if (description) body.description = clip(description, 2000);
@@ -111,11 +114,12 @@ async function channelAlert({ title, description, severity = 'LOW', responseOpti
   else { body.responseOptions = []; body.isAutoClose = true; } // a clean notification that closes itself
   if (customId) body.customId = clip(customId, 200);
   if (callbackUrl) body.callbackUrl = callbackUrl;
-  return linkCall('', body);
+  if (admin && !adminLink()) throw new Error('M91_ADMIN_LINK is not set');
+  return linkCall('', body, admin ? adminLink() : null);
 }
 const linkStatus = (alertId) => linkCall('/alerts/' + encodeURIComponent(alertId));
 async function linkInfo() { try { return await linkCall(''); } catch (e) { return { error: e.message }; } }
 
 function ready() { return vs.connected('m91') || hasLink(); }
 
-module.exports = { ready, sendAlert, invite, alertStatus, hasLink, channelAlert, linkStatus, linkInfo };
+module.exports = { ready, sendAlert, invite, alertStatus, hasLink, hasAdminLink, channelAlert, linkStatus, linkInfo };

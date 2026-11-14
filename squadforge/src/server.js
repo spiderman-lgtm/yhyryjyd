@@ -10,6 +10,8 @@ const checklist = require('./checklist');
 const manager = require('./manager');
 const m91hooks = require('./m91-hooks');
 const backup = require('./backup');
+const codes = require('./codes');
+const mailer = require('./mailer');
 const U = require('./util');
 const slack = require('./slack');
 const llm = require('./llm');
@@ -85,28 +87,62 @@ async function api(req, res, url) {
     console.log(`[login] ok: ${role}${email ? ' (' + email.replace(/(.).*@/, '$1***@') + ')' : ''}`);
     return send(res, 200, { ok: true, role, token, ...extra }, { 'Set-Cookie': `sf_session=${token}; HttpOnly; Path=/; Max-Age=${30 * 86400}; SameSite=Lax; Secure` });
   };
-  // Create account = a new account that owns its own workspace (team).
-  // Someone already invited to a workspace can leave the workspace name empty and just join.
+  // Create account: anyone can sign up; the email is proved with a 6-digit code before the account works.
+  // A new account owns its own workspace; someone invited can leave the workspace name empty and join.
+  const finishSignup = (email, wsName) => {
+    const invited = workspaces.forEmail(email);
+    const ws = wsName ? workspaces.create(wsName, email) : invited[0];
+    if (!ws) return send(res, 400, { error: 'Give your workspace a name (for example, your team name)' });
+    console.log(wsName ? `[workspace] created #${ws.id}` : `[signup] joined invited workspace #${ws.id}`);
+    return issue(adminEmails().includes(email) ? 'admin' : 'viewer', email, { created: true, workspace: ws.id, joined: !wsName });
+  };
   if ((p === '/api/signup' || p === '/api/workspace-signup') && m === 'POST') {
     const email = String(body.email || '').trim().toLowerCase();
     const name = String(body.name || '').trim().slice(0, 60);
     const pw = String(body.password || '').trim();
-    const wsName = String(body.workspace || '').trim();
+    const wsName = String(body.workspace || '').trim().slice(0, 60);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { error: 'Please enter a valid email' });
     const invited = workspaces.forEmail(email);
     if (!mayCreateAccount(email, invited.length > 0)) return send(res, 403, { error: 'Accounts are invite-only here — ask your team lead to add your email in Settings → Workspace' });
     if (!wsName && !invited.length) return send(res, 400, { error: 'Give your workspace a name (for example, your team name)' });
     const acct = accounts.find(email);
-    if (acct) {
+    if (acct && acct.verified) {
       if (!wsName) return send(res, 409, { error: 'An account with this email already exists — sign in instead' });
       if (!accounts.verify(acct, pw)) return send(res, 401, { error: 'This email already has an account — use its password' });
-    } else {
-      if (pw.length < 8) return send(res, 400, { error: 'Password must be at least 8 characters' });
-      accounts.create(email, name, pw, 'viewer');
+      return finishSignup(email, wsName); // an existing person starting another team
     }
-    const ws = wsName ? workspaces.create(wsName, email) : invited[0];
-    console.log(wsName ? `[workspace] created #${ws.id}` : `[signup] joined invited workspace #${ws.id}`);
-    return issue(adminEmails().includes(email) ? 'admin' : 'viewer', email, { created: true, workspace: ws.id, joined: !wsName });
+    if (pw.length < 8) return send(res, 400, { error: 'Password must be at least 8 characters' });
+    if (adminEmails().includes(email)) { // admins listed by the host are trusted
+      if (!acct) accounts.create(email, name, pw, 'viewer', 1); else { accounts.resetUnverified(email, name, pw); accounts.markVerified(email); }
+      return finishSignup(email, wsName);
+    }
+    if (!mailer.ready()) return send(res, 503, { error: 'Email is not set up yet, so new accounts cannot be confirmed — ask the team lead to connect Gmail (Integrations) or add RESEND_API_KEY' });
+    if (!acct) accounts.create(email, name, pw, 'viewer', 0); else accounts.resetUnverified(email, name, pw);
+    try { await codes.issue(email, 'signup', { workspace: wsName }); }
+    catch (e) { return send(res, e.status || 502, { error: e.message }); }
+    return send(res, 200, { verify: true, purpose: 'signup', email });
+  }
+  // Sign in without a password: email a code (same answer whether or not the account exists)
+  if (p === '/api/login-code' && m === 'POST') {
+    const email = String(body.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { error: 'Please enter a valid email' });
+    if (!mailer.ready()) return send(res, 503, { error: 'Email codes are not set up yet — sign in with your password' });
+    const acct = accounts.find(email);
+    if (acct) { try { await codes.issue(email, acct.verified ? 'login' : 'signup'); } catch (e) { return send(res, e.status || 502, { error: e.message }); } }
+    return send(res, 200, { verify: true, purpose: acct && !acct.verified ? 'signup' : 'login', email });
+  }
+  if (p === '/api/verify-code' && m === 'POST') {
+    const email = String(body.email || '').trim().toLowerCase();
+    const purpose = body.purpose === 'login' ? 'login' : 'signup';
+    const lock = lockedFor(req, email);
+    if (lock) return send(res, 429, { error: `Too many wrong tries — try again in ${lock} minute${lock === 1 ? '' : 's'}` });
+    let payload;
+    try { payload = codes.check(email, purpose, body.code); } catch (e) { failed(req, email); return send(res, 400, { error: e.message }); }
+    const acct = accounts.find(email);
+    if (!acct) return send(res, 400, { error: 'No account for this email' });
+    succeeded(email);
+    if (purpose === 'signup') { accounts.markVerified(email); return finishSignup(email, payload.workspace || ''); }
+    return issue(adminEmails().includes(email) ? 'admin' : 'viewer', email);
   }
   if (p === '/api/login' && m === 'POST') {
     const email = String(body.email || '').trim().toLowerCase();
@@ -117,6 +153,10 @@ async function api(req, res, url) {
     const acct = email ? accounts.find(email) : null;
     if (acct) {
       if (!accounts.verify(acct, pw)) { failed(req, email); console.log('[login] wrong password for an existing account'); return send(res, 401, { error: 'Wrong password' }); }
+      if (!acct.verified) {
+        try { await codes.issue(email, 'signup'); } catch (e) { return send(res, e.status || 502, { error: e.message }); }
+        return send(res, 200, { verify: true, purpose: 'signup', email });
+      }
       succeeded(email);
       const role = adminEmails().includes(email) ? 'admin' : 'viewer';
       return issue(role, email);
@@ -431,7 +471,7 @@ async function routes(req, res, url, p, m, body, cx) {
     return send(res, 200, {
       agents: agentsNow,
       slack: { mode: slack.viaViaSocket() ? 'viaSocket' : (U.cfg('SLACK_BOT_TOKEN') ? 'bot token' : 'off'), channel: !!U.cfg('SLACK_CHANNEL_ID'), lead: !!U.cfg('LEAD_SLACK_USER_ID'), paused_until: backoff > Date.now() ? new Date(backoff).toISOString() : null },
-      m91: { send_link: m91.hasLink(), viasocket: vs.connected('m91') },
+      m91: { send_link: m91.hasLink(), viasocket: vs.connected('m91'), admin_link: m91.hasAdminLink() },
       ai: llm.enabled(), gmail: vs.connected('gmail'), sheets: vs.connected('google-sheets'),
       backup: bk[0] || null,
     });
@@ -448,6 +488,10 @@ async function routes(req, res, url, p, m, body, cx) {
         if (!llm.enabled()) throw new Error('ANTHROPIC_API_KEY is not set');
         const r = await llm.askJson({ system: 'Reply with the word ok.', prompt: 'Health check', schema: { type: 'object', additionalProperties: false, properties: { ok: { type: 'string' } }, required: ['ok'] }, maxTokens: 200 });
         return send(res, 200, { ok: true, detail: 'The AI answered: ' + String(r.ok).slice(0, 20) });
+      }
+      if (body.what === 'm91admin') {
+        const r = await m91.channelAlert({ admin: true, title: 'SquadForge admin alerts work ✅', description: 'Failure alerts will come to this channel. Nothing to do.', severity: 'LOW', customId: 'sf-admin-test-' + Date.now().toString(36) });
+        return send(res, 200, { ok: true, detail: `Admin test alert sent${r && r.delivered !== undefined ? ' to ' + r.delivered + ' phone(s)' : ''}` });
       }
       if (body.what === 'backup') { const r = backup.nightly(U.today()); return send(res, 200, { ok: true, detail: `Backup saved for ${r.workspaces} workspace(s)` }); }
       return send(res, 400, { error: 'Unknown test' });

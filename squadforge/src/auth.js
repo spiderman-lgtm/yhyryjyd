@@ -66,10 +66,10 @@ function lockedFor(req, email) {
 function failed(req, email) { recent('e:' + email).push(Date.now()); recent('ip:' + clientIp(req)).push(Date.now()); }
 function succeeded(email) { failures.delete('e:' + email); }
 // Who may create an account: invited people, admin emails, or emails at the allowed domains
-// (ALLOWED_SIGNUP_DOMAINS, comma separated, default viasocket.com; "*" lets anyone in).
+// (ALLOWED_SIGNUP_DOMAINS, comma separated; default "*" = anyone, who then proves the email with a code).
 function mayCreateAccount(email, invited) {
   if (invited || adminEmails().includes(email)) return true;
-  const list = String(process.env.ALLOWED_SIGNUP_DOMAINS || 'viasocket.com').split(',').map((d) => d.trim().toLowerCase()).filter(Boolean);
+  const list = String(process.env.ALLOWED_SIGNUP_DOMAINS || '*').split(',').map((d) => d.trim().toLowerCase()).filter(Boolean);
   return list.includes('*') || list.includes(email.split('@')[1]);
 }
 

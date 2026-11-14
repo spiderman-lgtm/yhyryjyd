@@ -8,6 +8,14 @@ const PORT = 3900 + Math.floor(Math.random() * 90);
 const BASE = `http://127.0.0.1:${PORT}`;
 let proc;
 const DATA = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-api-'));
+const MAIL = path.join(DATA, 'mail.log');
+const lastCode = (to) => { const lines = fs.existsSync(MAIL) ? fs.readFileSync(MAIL, 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((m) => m.to === to) : []; return lines.length ? lines[lines.length - 1].subject.slice(0, 6) : null; };
+// sign up and confirm the email with the code that was "sent"
+async function signup(email, extra = {}) {
+  const r = await call('/api/signup', { method: 'POST', body: { email, name: 'T', password: 'password9', ...extra } });
+  if (r.status !== 200 || !r.data.verify) return r;
+  return call('/api/verify-code', { method: 'POST', body: { email, purpose: 'signup', code: lastCode(email) } });
+}
 
 async function call(p, { method = 'GET', body, token, ws } = {}) {
   const headers = { 'Content-Type': 'application/json' };
@@ -22,7 +30,7 @@ const login = async (email, password) => (await call('/api/login', { method: 'PO
 before(async () => {
   proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/server.js'], {
     cwd: path.join(__dirname, '..'),
-    env: { ...process.env, PORT: String(PORT), DATA_DIR: DATA, ADMIN_PASSWORD: 'adminpass1', ADMIN_EMAILS: 'lead@viasocket.com', CRON_SECRET: 'cs', SESSION_SECRET: 'test-secret', ALLOWED_SIGNUP_DOMAINS: 'viasocket.com', M91_SEND_LINK: '', SLACK_BOT_TOKEN: '', ANTHROPIC_API_KEY: '' },
+    env: { ...process.env, PORT: String(PORT), DATA_DIR: DATA, ADMIN_PASSWORD: 'adminpass1', ADMIN_EMAILS: 'lead@viasocket.com', CRON_SECRET: 'cs', SESSION_SECRET: 'test-secret', MAIL_DEV_FILE: MAIL, M91_SEND_LINK: '', SLACK_BOT_TOKEN: '', ANTHROPIC_API_KEY: '' },
     stdio: 'ignore',
   });
   for (let i = 0; i < 50; i++) { try { if ((await fetch(BASE + '/api/health')).ok) return; } catch { /* starting */ } await new Promise((r) => setTimeout(r, 100)); }
@@ -36,9 +44,22 @@ test('admin can sign in; wrong passwords lock the email after 5 tries', async ()
   assert.equal((await call('/api/login', { method: 'POST', body: { email: 'x@viasocket.com', password: 'nope' } })).status, 429);
 });
 
-test('create account: allowed domain or invited only; each workspace keeps its own data', async () => {
-  assert.equal((await call('/api/signup', { method: 'POST', body: { email: 'someone@gmail.com', name: 'S', password: 'password9', workspace: 'X' } })).status, 403);
-  const r = await call('/api/signup', { method: 'POST', body: { email: 'neha@viasocket.com', name: 'Neha', password: 'password9', workspace: 'Growth team' } });
+test('anyone can create an account, but only with the code from their email', async () => {
+  const r1 = await call('/api/signup', { method: 'POST', body: { email: 'someone@gmail.com', name: 'S', password: 'password9', workspace: 'X' } });
+  assert.equal(r1.data.verify, true);
+  assert.equal((await call('/api/login', { method: 'POST', body: { email: 'someone@gmail.com', password: 'password9' } })).data.verify, true, 'no session before the code');
+  assert.equal((await call('/api/verify-code', { method: 'POST', body: { email: 'someone@gmail.com', purpose: 'signup', code: '000000' } })).status, 400);
+  const code = lastCode('someone@gmail.com');
+  const ok = await call('/api/verify-code', { method: 'POST', body: { email: 'someone@gmail.com', purpose: 'signup', code } });
+  assert.ok(ok.data.token);
+  assert.equal((await call('/api/verify-code', { method: 'POST', body: { email: 'someone@gmail.com', purpose: 'signup', code } })).status, 400, 'a code works once');
+  // sign in with an emailed code instead of the password
+  assert.equal((await call('/api/login-code', { method: 'POST', body: { email: 'someone@gmail.com' } })).data.purpose, 'login');
+  assert.ok((await call('/api/verify-code', { method: 'POST', body: { email: 'someone@gmail.com', purpose: 'login', code: lastCode('someone@gmail.com') } })).data.token);
+});
+
+test('each workspace keeps its own data; invited people join', async () => {
+  const r = await signup('neha@viasocket.com', { name: 'Neha', workspace: 'Growth team' });
   assert.equal(r.status, 200);
   const neha = r.data.token, ws = r.data.workspace;
   const lead = await login('lead@viasocket.com', 'adminpass1');
@@ -47,15 +68,17 @@ test('create account: allowed domain or invited only; each workspace keeps its o
   assert.equal((await call('/api/members', { token: neha, ws })).data.length, 0, 'the new workspace starts empty');
   // invited gmail can join without the domain
   await call('/api/workspace/people', { method: 'POST', token: neha, ws, body: { email: 'friend@gmail.com', role: 'viewer' } });
-  assert.equal((await call('/api/signup', { method: 'POST', body: { email: 'friend@gmail.com', name: 'F', password: 'password9' } })).status, 200);
+  const f = await signup('friend@gmail.com');
+  assert.equal(f.status, 200);
+  assert.equal(f.data.joined, true);
 });
 
 test('viewer sees Right now only; manager sees the Manager view and profiles, read-only', async () => {
   const lead = await login('lead@viasocket.com', 'adminpass1');
   await call('/api/workspace/people', { method: 'POST', token: lead, body: { email: 'v@viasocket.com', role: 'viewer' } });
   await call('/api/workspace/people', { method: 'POST', token: lead, body: { email: 'boss@viasocket.com', role: 'manager' } });
-  const v = (await call('/api/signup', { method: 'POST', body: { email: 'v@viasocket.com', name: 'V', password: 'password9' } })).data.token;
-  const b = (await call('/api/signup', { method: 'POST', body: { email: 'boss@viasocket.com', name: 'B', password: 'password9' } })).data.token;
+  const v = (await signup('v@viasocket.com')).data.token;
+  const b = (await signup('boss@viasocket.com')).data.token;
   assert.equal((await call('/api/now', { token: v })).status, 200);
   assert.equal((await call('/api/members', { token: v })).status, 403);
   assert.equal((await call('/api/manager', { token: b })).status, 200);

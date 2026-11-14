@@ -25,7 +25,7 @@ async function api(path, opts = {}) {
   const tok = sessionToken(); if (tok) headers['X-SF-Session'] = tok;
   const ws = currentWs(); if (ws) headers['X-SF-Workspace'] = ws;
   const res = await fetch(path, { headers, credentials: 'same-origin', ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined });
-  if (res.status === 401 && !path.startsWith('/api/login') && !path.startsWith('/api/signup') && !path.startsWith('/api/workspace-signup')) { saveToken(null); showLogin(); throw new Error('Please log in'); }
+  if (res.status === 401 && !path.startsWith('/api/login') && !path.startsWith('/api/signup') && !path.startsWith('/api/workspace-signup') && !path.startsWith('/api/verify-code') && !path.startsWith('/api/login-code')) { saveToken(null); showLogin(); throw new Error('Please log in'); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || res.statusText);
   return data;
@@ -59,19 +59,28 @@ function currentWs() { try { return localStorage.getItem('sf_ws'); } catch { ret
 function saveWs(id) { try { id ? localStorage.setItem('sf_ws', String(id)) : localStorage.removeItem('sf_ws'); } catch { /* private mode */ } }
 // Login modes: sign in, create an account, or create a workspace (a new team).
 let authMode = 'signin';
+let codeFor = null; // { email, purpose } while waiting for an email code
 const AUTH = {
-  signin: { btn: 'Sign in →', pw: 'Password', hint: 'New here? <a href="#" data-auth="signup">Create an account</a>' },
+  signin: { btn: 'Sign in →', pw: 'Password', hint: 'New here? <a href="#" data-auth="signup">Create an account</a> · <a href="#" data-auth="emailcode">Email me a sign-in code</a>' },
   signup: { btn: 'Create account →', pw: 'Choose a password (8+ characters)', hint: 'Already have an account? <a href="#" data-auth="signin">Sign in</a>' },
+  emailcode: { btn: 'Email me a code →', hint: 'Remember your password? <a href="#" data-auth="signin">Sign in with it</a>' },
+  code: { btn: 'Verify →', hint: '' },
 };
 function setAuthMode(mode) {
   authMode = mode; const a = AUTH[mode];
-  $('#wsName').classList.toggle('hidden', mode !== 'signup');
-  $('#signupName').classList.toggle('hidden', mode === 'signin');
+  const show = (id, on) => $(id).classList.toggle('hidden', !on);
+  show('#wsName', mode === 'signup'); show('#signupName', mode === 'signup');
+  show('#email', mode !== 'code'); show('#password', mode === 'signin' || mode === 'signup'); show('#codeIn', mode === 'code');
+  $('#password').required = mode === 'signin' || mode === 'signup';
   $('#authBtn').textContent = a.btn;
   $('#password').setAttribute('autocomplete', mode === 'signin' ? 'current-password' : 'new-password');
-  $('#password').placeholder = a.pw;
-  $('#authHint').innerHTML = a.hint;
+  if (a.pw) $('#password').placeholder = a.pw;
+  $('#authHint').innerHTML = mode === 'code' && codeFor
+    ? `We sent a 6-digit code to <b>${esc(codeFor.email)}</b> — check your inbox (and spam). <a href="#" id="codeResend">Send again</a> · <a href="#" data-auth="${codeFor.purpose === 'signup' ? 'signup' : 'signin'}">Use a different email</a>`
+    : a.hint;
   $('#loginErr').textContent = '';
+  const rs = $('#codeResend');
+  if (rs) rs.onclick = async (e) => { e.preventDefault(); try { await api('/api/login-code', { method: 'POST', body: { email: codeFor.email } }); toast('A new code is on its way'); } catch (err) { $('#loginErr').textContent = err.message; } };
 }
 setAuthMode('signin');
 document.addEventListener('click', (e) => {
@@ -80,21 +89,27 @@ document.addEventListener('click', (e) => {
   $('#login').scrollTo({ top: 0, behavior: 'smooth' });
   setTimeout(() => (authMode === 'signup' ? $('#signupName') : $('#email')).focus(), 300);
 });
+function signedIn(r) {
+  saveToken(r.token);
+  saveWs(r.workspace || null);
+  members = []; state = null; tab = 'team'; codeFor = null;
+  $('#login').classList.add('hidden'); document.body.classList.remove('on-login');
+  if (r.joined) toast('Welcome! You joined the workspace you were invited to.');
+  else if (r.created) toast('Your workspace is ready — add your team in Settings.');
+  boot();
+}
 $('#loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = $('#authBtn'); btn.disabled = true; $('#loginErr').textContent = '';
   try {
     const body = { email: $('#email').value, password: $('#password').value };
     let r;
-    if (authMode === 'signup') r = await api('/api/signup', { method: 'POST', body: { ...body, name: $('#signupName').value, workspace: $('#wsName').value } });
+    if (authMode === 'code') r = await api('/api/verify-code', { method: 'POST', body: { email: codeFor.email, purpose: codeFor.purpose, code: $('#codeIn').value } });
+    else if (authMode === 'emailcode') r = await api('/api/login-code', { method: 'POST', body: { email: body.email } });
+    else if (authMode === 'signup') r = await api('/api/signup', { method: 'POST', body: { ...body, name: $('#signupName').value, workspace: $('#wsName').value } });
     else r = await api('/api/login', { method: 'POST', body });
-    saveToken(r.token);
-    saveWs(r.workspace || null);
-    members = []; state = null; tab = 'team';
-    $('#login').classList.add('hidden'); document.body.classList.remove('on-login');
-    if (r.joined) toast('Welcome! You joined the workspace you were invited to.');
-    else if (r.created) toast('Your workspace is ready — add your team in Settings.');
-    boot();
+    if (r.verify) { codeFor = { email: r.email, purpose: r.purpose }; $('#codeIn').value = ''; setAuthMode('code'); setTimeout(() => $('#codeIn').focus(), 100); }
+    else signedIn(r);
   } catch (err) { $('#loginErr').textContent = err.message; }
   btn.disabled = false;
 });
@@ -420,6 +435,7 @@ async function healthCard() {
     <div class="nav-label">Connections</div>
     ${row(ok(sl.mode !== 'off' && sl.channel && !sl.paused_until), 'Slack', slackDetail, 'slack', sl.mode !== 'off' && sl.channel && !sl.paused_until)}
     ${row(ok(h.m91.send_link || h.m91.viasocket), 'M91 alerts', h.m91.send_link ? 'Send link → the M91 channel' : h.m91.viasocket ? 'viaSocket connection' : 'Not set up', h.m91.send_link ? 'm91' : null, h.m91.send_link || h.m91.viasocket)}
+    ${row(ok(h.m91.admin_link), 'Admin failure alerts', h.m91.admin_link ? 'M91 admin channel — only you get “something is failing” alerts' : 'Not set — create a private M91 channel with only you in it and put its send link in Embarko as <code>M91_ADMIN_LINK</code>', h.m91.admin_link ? 'm91admin' : null, h.m91.admin_link)}
     ${row(ok(h.ai), 'AI (reviews, wording)', h.ai ? 'ANTHROPIC_API_KEY is set' : 'ANTHROPIC_API_KEY is not set', 'ai', h.ai)}
     ${row(h.gmail ? '✅' : '·', 'Gmail', h.gmail ? 'Connected — Monday report by email' : 'Optional · not connected', h.gmail ? 'gmail' : null, true)}
     ${row(h.sheets ? '✅' : '·', 'Google Sheets', h.sheets ? 'Connected — weekly rows' : 'Optional · not connected', h.sheets ? 'google-sheets' : null, true)}

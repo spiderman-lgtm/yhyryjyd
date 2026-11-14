@@ -106,11 +106,17 @@ function trackFailure(agent, error) {
   const text = `⚠️ *${title}* — ${next.count} times in a row.\nLast error: ${next.error}\nOpen SquadForge → Settings → System health.`;
   setImmediate(async () => {
     try { const lead = cfg('LEAD_SLACK_USER_ID'); const slack = require('./slack'); if (lead && slack.enabled() && agent !== 'scout') await slack.dm(lead, text); } catch { /* Slack may be the thing that is down */ }
-    // M91 only to the lead's own phone (a send link would ring the whole team)
+    // M91 to the admin only: the private admin channel (M91_ADMIN_LINK), else the lead's own phone via viaSocket.
+    // Never the team channel — that would ring everyone.
     try {
       const m91 = require('./m91'), vs = require('./viasocket');
+      if (m91.hasAdminLink()) {
+        await m91.channelAlert({ admin: true, title: `SquadForge: ${title}`, description: `Failed ${next.count} times in a row.\nLast error: ${next.error}\nOpen SquadForge → Settings → System health.`, severity: 'MEDIUM', customId: 'health-' + agent,
+          responseOptions: [{ label: "I'll look at it", effect: 'SHARED' }, { label: 'Seen', effect: 'PERSONAL' }] });
+        return logActivity(agent, `Told the admin on M91: ${title}`, 'warn');
+      }
       const leadM = db.prepare("SELECT phone FROM members WHERE role = 'lead' AND active = 1 AND phone IS NOT NULL LIMIT 1").get();
-      if (vs.connected('m91') && leadM) await m91.sendAlert({ phone: leadM.phone, title, description: `Failed ${next.count} times in a row. Last error: ${next.error}`, severity: 'Low', customId: 'health-' + agent });
+      if (vs.connected('m91') && leadM) return await m91.sendAlert({ phone: leadM.phone, title, description: `Failed ${next.count} times in a row. Last error: ${next.error}`, severity: 'Low', customId: 'health-' + agent });
     } catch { /* ignore */ }
     logActivity(agent, `Told the lead: ${title}`, 'warn');
   });
