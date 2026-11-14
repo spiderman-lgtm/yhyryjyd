@@ -74,7 +74,7 @@ function dayTally(date) {
 // description: text, or (person) => text for a personal message
 async function nudge(people, title, description, tag) {
   const m91 = require('../m91');
-  if (!m91.ready()) return 0;
+  if (!m91.ready() || m91.hasLink()) return 0;
   let sent = 0;
   for (const p of people) {
     const m = db.prepare('SELECT phone FROM members WHERE id = ?').get(p.id);
@@ -100,9 +100,17 @@ async function morning(date = today()) {
   const lead = cfg('LEAD_SLACK_USER_ID');
   if (lead && tally.people.length) { try { await slack.dm(lead, tally.full); } catch (e) { logActivity('herald', 'DM failed: ' + e.message, 'warn'); } }
   let m91n = 0;
+  const m91 = require('../m91');
+  if (getSetting('standup.m91_morning', true) && m91.hasLink()) {
+    // send link = the whole M91 channel: one calm notification with everyone's tally
+    try {
+      await m91.channelAlert({ title: 'Good morning team ☀️ Post today’s plan in Slack', description: tally.people.length ? tally.short.replace(/[*_]/g, '') : 'Reply in the Good morning thread with your plan for today.', severity: 'LOW', customId: `standup-am-${date}` });
+      m91n = 1;
+    } catch (e) { logActivity('herald', 'M91 morning alert failed: ' + e.message, 'warn'); }
+  }
   // each person gets their own yesterday: what they built vs the target
   const T = target();
-  if (getSetting('standup.m91_morning', true)) m91n = await nudge(members().filter((m) => m.role !== 'lead'),
+  if (getSetting('standup.m91_morning', true) && !m91.hasLink()) m91n = await nudge(members().filter((m) => m.role !== 'lead'),
     (p) => `Good morning ${p.name.split(' ')[0]} ☀️`,
     (p) => { const y2 = tally.people.find((x) => x.id === p.id); const yl = !y2 ? '' : y2.role === 'growth' ? `Yesterday: ${y2.growth} growth item(s). ` : !y2.posted && !y2.built ? 'Yesterday: no update posted. ' : `Yesterday you built ${y2.built} (${y2.actions} actions, ${y2.triggers} triggers) — ${y2.met ? 'target met ✅' : `${y2.built}/${T} of the target`}. `; return `${yl}Post today's plan in the Good morning thread.`; }, 'am');
   logActivity('herald', `☀️ Good morning posted · yesterday's tally shared${m91n ? ` · ${m91n} M91 nudges` : ''}`);
@@ -112,7 +120,16 @@ async function morning(date = today()) {
 // 7 PM: nudge whoever has nothing in today's thread
 async function eveningNudge(date = today()) {
   if (!getSetting('standup.m91_missing', true)) return 0;
-  const missing = members().filter((m) => m.role !== 'lead').map((m) => personDay(m, date)).filter((p) => !p.update && !p.built);
+  const missing = members().filter((m) => m.role !== 'lead').map((m) => personDay(m, date)).filter((p) => !p.update && !p.built && !p.growth);
+  const m91 = require('../m91');
+  if (m91.hasLink()) {
+    if (!missing.length) return 0;
+    try {
+      await m91.channelAlert({ title: `Update missing: ${missing.map((p) => p.name.split(' ')[0]).join(', ')}`.slice(0, 200), description: 'Please post what you finished today (app name + actions & triggers) in the Good morning thread on Slack.', severity: 'LOW', customId: `standup-pm-${date}` });
+      logActivity('herald', `⏰ M91 channel nudge: ${missing.length} without an update`);
+      return missing.length;
+    } catch (e) { logActivity('herald', 'M91 evening alert failed: ' + e.message, 'warn'); return 0; }
+  }
   const n = await nudge(missing, 'Your update is missing', 'Please post what you finished today (app + actions & triggers) in the Good morning thread.', 'pm');
   if (n) logActivity('herald', `⏰ M91 nudge to ${n} without an evening update`);
   return n;

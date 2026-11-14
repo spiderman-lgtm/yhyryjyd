@@ -14,9 +14,13 @@ async function renderIntegrations() {
     <div class="row" style="margin-bottom:6px"><h2 style="margin:0">Integrations</h2><span class="spacer"></span><span class="muted" style="font-size:12px">via viaSocket: 2,300+ apps</span></div>
     <p class="muted" style="margin-top:0">Click <b>Connect</b> once and choose your account. viaSocket handles sign-in and tokens; SquadForge only does the jobs you switch on.</p>
     ${st.configured ? '' : '<div class="banner red">viaSocket keys are not set on the server (VIASOCKET_ORG_ID, VIASOCKET_PROJECT_ID, VIASOCKET_EMBED_SECRET).</div>'}
+    ${st.m91_link ? `<div class="card m91-link"><div class="row"><h3 style="margin:0">🔔 M91 — send link</h3><span class="pill ${st.m91_link.error ? 'stuck' : 'completed'}">${st.m91_link.error ? 'problem' : 'connected'}</span><span class="spacer"></span><button class="btn ghost small" id="m91LinkTest">🔔 Send a test alert</button></div>
+      <p class="muted" style="margin:8px 0 0">${st.m91_link.error ? esc(st.m91_link.error) : `Alerts go to everyone in the M91 channel <b>${esc(st.m91_link.channel || '')}</b>: the 11 AM tally (quiet), the 7 PM “update missing” nudge, and important Commander messages (rings until answered; you see who tapped “Got it”). Add teammates to that channel in the M91 app.`}</p><div id="m91LinkOut"></div></div>` : ''}
     <div class="grid integ-grid">${st.apps.map(appCard).join('')}</div>
     <div class="card" style="margin-top:16px"><h3>➕ More apps</h3><p class="muted" style="margin:0">Jira, ClickUp, Trello, Notion, HubSpot… tell us what you need. Creating a task there when a client request arrives, or updating it when the request completes, plugs in the same way.</p></div>`;
   st.apps.forEach(wireCard);
+  const lt = $('#m91LinkTest');
+  if (lt) lt.onclick = async () => { lt.disabled = true; try { const r = await api('/api/m91/test', { method: 'POST' }); $('#m91LinkOut').innerHTML = `<div class="banner" style="margin-top:10px">✅ Test alert sent${r.delivered !== undefined ? ' to ' + r.delivered + ' phone(s)' : ''} — check the M91 app.</div>`; } catch (e) { $('#m91LinkOut').innerHTML = `<div class="banner red" style="margin-top:10px">${esc(e.message)}</div>`; } lt.disabled = false; };
 }
 
 function appCard(a) {

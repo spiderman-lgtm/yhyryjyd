@@ -1378,3 +1378,7 @@ html:has(body.on-login), body.on-login { overflow: hidden !important; }
 .lp-principles { justify-content: center; }
 @media (max-width: 1000px) { .lp-steps.lp-day { grid-template-columns: 1fr 1fr; } .lp-steps.lp-day li::after { display: none; } }
 @media (max-width: 520px) { .lp-steps.lp-day { grid-template-columns: 1fr; } }
+.m91-link { margin-bottom: 14px; border-left: 4px solid #e8455a; }
+.m91-ans { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.m91-ans span { font-size: 11.5px; padding: 2px 9px; border-radius: 99px; background: #dcebdf; color: #2f6b52; }
+.m91-ans span.q { background: #f8e6c8; color: #8a5a12; }

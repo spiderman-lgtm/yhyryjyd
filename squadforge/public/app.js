@@ -358,12 +358,12 @@ async function renderCommander() {
         </div>
         <div class="card-h" style="margin:16px 0 6px"><h3 id="cStep">2 · Send</h3></div>
         <label>Who to tag</label>${memberChecks([], 'cm')}
-        <label class="check"><input type="checkbox" id="cImp"/> 🚨 Important — send an M91 alert too (tagged people, or the whole team if nobody is tagged)</label>
+        <label class="check"><input type="checkbox" id="cImp"/> 🚨 Important — also ring everyone on M91 (they tap “Got it” or ask a question)</label>
         <button class="btn" id="cSend" style="margin-top:8px">📣 Send to channel</button>
         ${state.integrations.slack ? '' : '<p class="muted">Slack is not connected — the message will only be saved here.</p>'}
         ${state.integrations.msg91 ? '' : '<p class="muted">M91 is not set up — no alert will go out.</p>'}
       </div>
-      <div class="card"><h3>History</h3>${hist.length ? hist.map((b) => `<div class="feed-item"><span class="em">${b.important ? '🚨' : '📣'}</span><div>${esc(b.message)}<time>${ago(b.created_at)}${b.sms_status ? ' · M91: ' + esc(b.sms_status) : ''}</time></div></div>`).join('') : '<div class="empty">Nothing sent yet</div>'}</div>
+      <div class="card"><h3>History</h3>${hist.length ? hist.map((b) => `<div class="feed-item"><span class="em">${b.important ? '🚨' : '📣'}</span><div>${esc(b.message)}<time>${ago(b.created_at)}${b.sms_status ? ' · ' + esc(b.sms_status) : ''}</time>${(b.answers || []).length ? `<div class="m91-ans">${b.answers.map((a) => `<span class="${/question/i.test(a.label) ? 'q' : ''}" title="${esc(a.note || '')}">${/question/i.test(a.label) ? '❓' : '✅'} ${esc(a.name)}${a.note ? ': ' + esc(a.note.slice(0, 60)) : ''}</span>`).join('')}</div>` : ''}</div></div>`).join('') : '<div class="empty">Nothing sent yet</div>'}</div>
     </div>`;
   let tone = 'friendly';
   document.querySelectorAll('#cTone button').forEach((b) => (b.onclick = () => { tone = b.dataset.tone; document.querySelectorAll('#cTone button').forEach((x) => x.classList.toggle('on', x === b)); }));

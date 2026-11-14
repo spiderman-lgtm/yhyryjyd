@@ -8,6 +8,7 @@ const workspaces = require('./workspaces');
 const history = require('./history');
 const checklist = require('./checklist');
 const manager = require('./manager');
+const m91hooks = require('./m91-hooks');
 const U = require('./util');
 const slack = require('./slack');
 const llm = require('./llm');
@@ -350,7 +351,7 @@ async function routes(req, res, url, p, m, body, cx) {
       today_metrics: metrics.teamMetrics(t, t),
       week_metrics: metrics.teamMetrics(U.weekStart(t), t),
       week_value: (() => { const v = metrics.valueMetrics(U.weekStart(t), t); return { ...v, people: metrics.memberOutcomes(U.weekStart(t), t, v) }; })(),
-      integrations: { slack: slack.enabled(), ai: llm.enabled(), msg91: msg91.enabled() || vs.connected('m91'), lead: !!U.cfg('LEAD_SLACK_USER_ID'), review_instructions: !!getSetting('inspector.instructions', '') },
+      integrations: { slack: slack.enabled(), ai: llm.enabled(), msg91: msg91.enabled() || vs.connected('m91') || m91.hasLink(), lead: !!U.cfg('LEAD_SLACK_USER_ID'), review_instructions: !!getSetting('inspector.instructions', '') },
       has_demo: !!db.prepare('SELECT 1 FROM members WHERE is_demo = 1').get(),
       member_count: db.prepare('SELECT COUNT(*) c FROM members WHERE active = 1').get().c,
       password_set: !!process.env.ADMIN_PASSWORD,
@@ -457,6 +458,7 @@ async function routes(req, res, url, p, m, body, cx) {
   if ((mm = p.match(/^\/api\/members\/(\d+)\/m91-invite$/)) && m === 'POST') {
     const mem = U.memberById(mm[1]);
     if (!mem || !mem.phone) return send(res, 400, { error: 'Add a phone number for this member first' });
+    if (m91.hasLink() && !vs.connected('m91')) return send(res, 400, { error: 'With the M91 send link, add people to the Squadforge channel in the M91 app (Channel → Invite)' });
     if (!m91.ready()) return send(res, 400, { error: 'Connect M91 on the Integrations page first' });
     try { return send(res, 200, { ok: true, result: await m91.invite(mem.phone) }); }
     catch (e) { return send(res, 400, { error: e.message }); }
@@ -534,7 +536,7 @@ async function routes(req, res, url, p, m, body, cx) {
     try { return send(res, 200, await commander.polish(body.message, body.tone)); }
     catch (e) { return send(res, 400, { error: e.message }); }
   }
-  if (p === '/api/broadcasts') return send(res, 200, db.prepare('SELECT * FROM broadcasts ORDER BY id DESC LIMIT 50').all());
+  if (p === '/api/broadcasts') return send(res, 200, db.prepare('SELECT * FROM broadcasts ORDER BY id DESC LIMIT 50').all().map((b) => ({ ...b, answers: m91hooks.answersFor(b.m91_alert) })));
 
 
   // ---------- viaSocket integrations (admin only) ----------
@@ -545,7 +547,16 @@ async function routes(req, res, url, p, m, body, cx) {
     }
     if (role !== 'admin' || !cx.email) return send(res, 403, { error: 'Integrations are only for workspace owners and admins' });
   }
-  if (p === '/api/integrations' && m === 'GET') return send(res, 200, await vs.status());
+  if (p === '/api/integrations' && m === 'GET') {
+    const st = await vs.status();
+    if (m91.hasLink()) { const info = await m91.linkInfo(); st.m91_link = { set: true, channel: info.channel ? info.channel.name : null, error: info.error || null }; }
+    return send(res, 200, st);
+  }
+  if (p === '/api/m91/test' && m === 'POST') {
+    if (!m91.hasLink()) return send(res, 400, { error: 'M91 send link is not set' });
+    try { const r = await m91.channelAlert({ title: 'SquadForge test alert ✅', description: 'If you see this, SquadForge can reach your M91 channel. Nothing to do.', severity: 'LOW', customId: 'sf-test-' + Date.now().toString(36) }); U.logActivity('scout', '🔔 M91 test alert sent (channel)'); return send(res, 200, { ok: true, delivered: r && r.delivered }); }
+    catch (e) { return send(res, 400, { error: e.message }); }
+  }
   if (p === '/api/integrations/connect-info' && m === 'GET') {
     if (!vs.configured()) return send(res, 400, { error: 'viaSocket keys (VIASOCKET_ORG_ID, VIASOCKET_PROJECT_ID, VIASOCKET_EMBED_SECRET) are not set' });
     return send(res, 200, await vs.connectInfo());
@@ -680,6 +691,12 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/')) return await api(req, res, url);
     if (url.pathname.startsWith('/cron/') && req.method === 'GET') return cron(req, res, url);
     if (url.pathname === '/webhooks/publish' && req.method === 'POST') return await publishWebhook(req, res, url);
+    if (url.pathname === '/webhooks/m91' && req.method === 'POST') {
+      const ws = Number(url.searchParams.get('ws')) || 1;
+      if (!m91hooks.validToken(ws, url.searchParams.get('k'))) return send(res, 401, { error: 'unauthorized' });
+      const body = await readBody(req);
+      return send(res, 200, await withWorkspace(ws, () => m91hooks.handle(body).catch((e) => ({ ok: false, error: e.message }))));
+    }
     return serveStatic(req, res, url.pathname);
   } catch (e) {
     console.error(e);

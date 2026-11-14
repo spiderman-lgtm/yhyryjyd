@@ -5,6 +5,7 @@ const slack = require('../slack');
 const llm = require('../llm');
 const msg91 = require('../msg91');
 const m91 = require('../m91');
+require('../db').addSchema('ALTER TABLE broadcasts ADD COLUMN m91_alert TEXT');
 const { logActivity, memberById, cfg } = require('../util');
 
 async function broadcast({ message, member_ids = [], important = false, polish = false }) {
@@ -32,7 +33,21 @@ async function broadcast({ message, member_ids = [], important = false, polish =
   let smsStatus = null;
   // Important with nobody tagged = for the whole team: alert everyone except the lead
   const alertTo = important ? (tagged.length ? tagged : require('../util').members().filter((m) => m.role !== 'lead')) : [];
-  if (important && alertTo.length) {
+  let m91Alert = null;
+  if (important && m91.hasLink()) {
+    // the M91 channel: everyone confirms individually; answers come back to /webhooks/m91
+    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+    const who = tagged.length ? `For ${tagged.map((m) => m.name.split(' ')[0]).join(', ')}: ` : '';
+    const title = (who + (lines[0] || 'Important message')).replace(/[*_`]/g, '').slice(0, 200);
+    const cid = 'cmd-' + Date.now().toString(36);
+    try {
+      const a = await m91.channelAlert({ title, description: text, severity: 'HIGH', customId: cid,
+        responseOptions: [{ label: 'Got it 👍', effect: 'PERSONAL' }, { label: 'I have a question', effect: 'PERSONAL', required: ['note'] }],
+        callbackUrl: require('../m91-hooks').callbackUrl() });
+      m91Alert = (a && (a._id || a.id || (a.alert && (a.alert._id || a.alert.id)))) || cid;
+      smsStatus = `M91 channel alert sent${a && a.delivered !== undefined ? ` to ${a.delivered}` : ''}`;
+    } catch (e) { smsStatus = 'M91 failed: ' + e.message.slice(0, 120); }
+  } else if (important && alertTo.length) {
     if (m91.ready()) {
       // M91: push → SMS → call until someone answers. One direct alert per tagged member.
       const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -50,8 +65,8 @@ async function broadcast({ message, member_ids = [], important = false, polish =
       smsStatus = r.ok ? `sent ${r.sent}` : `failed: ${r.error || r.body}`;
     } else smsStatus = 'M91 not connected';
   }
-  db.prepare('INSERT INTO broadcasts (message, tagged, important, slack_ts, sms_status) VALUES (?, ?, ?, ?, ?)')
-    .run(text, JSON.stringify(tagged.map((m) => m.id)), important ? 1 : 0, slackTs, smsStatus);
+  db.prepare('INSERT INTO broadcasts (message, tagged, important, slack_ts, sms_status, m91_alert) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(text, JSON.stringify(tagged.map((m) => m.id)), important ? 1 : 0, slackTs, smsStatus, m91Alert);
   logActivity('commander', `${important ? '🚨 ' : ''}Message sent${tagged.length ? ' → ' + tagged.map((m) => m.name).join(', ') : ''}${smsStatus ? ' | ' + smsStatus : ''}${slack.enabled() ? '' : ' (Slack off — saved only)'}`);
   return { text: full, slack_ts: slackTs, sms: smsStatus };
 }
