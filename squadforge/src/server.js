@@ -333,7 +333,7 @@ async function routes(req, res, url, p, m, body, cx) {
     const leadName = ownerAcct && ownerAcct.name ? ownerAcct.name.split(' ')[0] : ownerEmail ? ownerEmail.split('@')[0].split(/[._\d]/)[0].replace(/^./, (c) => c.toUpperCase()) : null;
     return send(res, 200, manager.summary(url.searchParams.get('week'), leadName));
   }
-  if (role === 'manager' && !(m === 'GET' && ['/api/state', '/api/requests', '/api/logs', '/api/workspaces', '/api/now'].includes(p))) return send(res, 403, { error: 'Managers have a read-only view' });
+  if (role === 'manager' && !(m === 'GET' && (['/api/state', '/api/requests', '/api/logs', '/api/workspaces', '/api/now'].includes(p) || /^\/api\/member\/\d+\/profile$/.test(p)))) return send(res, 403, { error: 'Managers have a read-only view' });
   // ---------- history & test checklist ----------
   if (p === '/api/history' && m === 'GET') {
     if (role !== 'admin') return send(res, 403, { error: 'Admins only' });
@@ -585,6 +585,11 @@ async function routes(req, res, url, p, m, body, cx) {
     const mem = U.memberById(Number(body.member_id)); if (!mem) return send(res, 404, { error: 'Member not found' });
     standup.setLeave(mem.id, /^\d{4}-\d{2}-\d{2}$/.test(body.date || '') ? body.date : U.today(), !!body.on, 'dashboard');
     return send(res, 200, { ok: true });
+  }
+  if ((mm = p.match(/^\/api\/member\/(\d+)\/profile$/)) && m === 'GET') {
+    if (!['admin', 'manager'].includes(role)) return send(res, 403, { error: 'Not available' });
+    const prof = standup.memberProfile(Number(mm[1]), url.searchParams.get('week'));
+    return prof ? send(res, 200, prof) : send(res, 404, { error: 'Member not found' });
   }
   if (p === '/api/now' && m === 'GET') return send(res, 200, standup.nowBoard());
   if (p === '/api/standup/tally' && m === 'GET') { const d = url.searchParams.get('date') || standup.prevWorkday(U.today()); const t = standup.dayTally(d); return send(res, 200, { date: d, short: t.short, full: t.full, people: t.people, target: standup.target(), thread: standup.threadOf(U.today()) }); }

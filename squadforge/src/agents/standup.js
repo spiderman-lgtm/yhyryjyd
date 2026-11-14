@@ -58,7 +58,7 @@ function personDay(m, date) {
   const built = actions + triggers;
   const growth = m.role === 'growth' ? db.prepare('SELECT COUNT(*) c FROM growth_items WHERE member_id = ? AND date = ?').get(m.id, date).c : 0;
   const leave = onLeave(m.id, date);
-  return { id: m.id, name: m.name, role: m.role, growth, leave, posted, plan: log.morning_text || '', update: log.evening_text || '', actions, triggers, apps: Math.max(log.apps_count || 0, pubN('app')), built,
+  return { id: m.id, date, name: m.name, role: m.role, growth, leave, posted, plan: log.morning_text || '', update: log.evening_text || '', actions, triggers, apps: Math.max(log.apps_count || 0, pubN('app')), built,
     met: !leave && built >= target(), reviews: rv.length, passed: rv.filter((r) => r.passed).length, mistakes: rv.reduce((s, r) => s + (r.errors_count || 0), 0) };
 }
 
@@ -185,4 +185,26 @@ function nowBoard(date = today()) {
   return { date, target: target(), people, open: { new: count('new'), rnd: count('rnd'), started: count('started'), stuck: count('stuck') }, unassigned: reqs.filter((r) => JSON.parse(r.assigned_member_ids || '[]').length === 0).length };
 }
 
-module.exports = { onLeave, setLeave, nowBoard, morning, eveningNudge, dayTally, weekSection, isStandupThread, threadOf, prevWorkday, target };
+// One person's week, for the profile a manager or lead opens from Right now / Manager view.
+function memberProfile(memberId, weekStartDate) {
+  const m = db.prepare('SELECT * FROM members WHERE id = ?').get(memberId);
+  if (!m) return null;
+  const { weekStart } = require('../util');
+  const t = today(), from = weekStart(weekStartDate || t);
+  const end = addDays(from, 6) < t ? addDays(from, 6) : t;
+  const days = []; for (let d = from; d <= end; d = addDays(d, 1)) if (weekday(d) !== 0) days.push(personDay(m, d));
+  const STATUS = { new: 'Not started', rnd: 'R&D', started: 'Building', stuck: 'Stuck', completed: 'Completed' };
+  const reqs = db.prepare(`SELECT * FROM client_requests WHERE (status != 'completed' OR date(completed_at, '${tzMod()}') BETWEEN ? AND ?) ORDER BY created_at DESC`).all(from, end)
+    .filter((r) => JSON.parse(r.assigned_member_ids || '[]').includes(m.id))
+    .map((r) => ({ id: r.id, title: r.title, status: r.status, label: STATUS[r.status], reason: r.stuck_reason, completed_at: r.completed_at, impact: r.impact_note }));
+  const reviews = db.prepare(`SELECT * FROM reviews WHERE member_id = ? AND date BETWEEN ? AND ? AND status = 'done' ORDER BY date DESC`).all(m.id, from, end)
+    .map((r) => { let f = []; try { f = JSON.parse(r.findings || '[]'); } catch { /* none */ } return { subject: r.subject, date: r.date, passed: !!r.passed, attempt: r.attempt, mistakes: r.errors_count, summary: r.summary, findings: f.slice(0, 5).map((x) => x.title) }; });
+  const work = days.filter((d) => !d.leave);
+  return {
+    member: { id: m.id, name: m.name, role: m.role }, from, to: end, target: target(), days,
+    totals: { built: days.reduce((s, d) => s + d.built, 0), actions: days.reduce((s, d) => s + d.actions, 0), triggers: days.reduce((s, d) => s + d.triggers, 0), met: days.filter((d) => d.met).length, workdays: work.length, leave: days.length - work.length, updates: work.filter((d) => d.posted || d.built).length, growth: days.reduce((s, d) => s + d.growth, 0), reviews: reviews.length, passed: reviews.filter((r) => r.passed).length, mistakes: reviews.reduce((s, r) => s + (r.mistakes || 0), 0), shipped: reqs.filter((r) => r.status === 'completed').length },
+    requests: reqs, reviews,
+  };
+}
+
+module.exports = { memberProfile, onLeave, setLeave, nowBoard, morning, eveningNudge, dayTally, weekSection, isStandupThread, threadOf, prevWorkday, target };

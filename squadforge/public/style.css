@@ -1452,3 +1452,22 @@ input.switch:checked { background: var(--accent, #5f8a7a); } input.switch:checke
 .hl-guide { margin: 10px 0 4px; font-size: 13px; } .hl-guide summary { cursor: pointer; font-weight: 700; }
 .hl-guide ol { margin: 8px 0 0; padding-left: 20px; line-height: 1.7; }
 @media (max-width: 640px) { .hl-row { grid-template-columns: 22px 1fr auto; } .hl-detail { grid-column: 2 / -1; grid-row: 2; } }
+/* ===== Team right now (Manager view) + profile ===== */
+.mg-now { margin-bottom: 16px; }
+.mg-now-row { display: grid; grid-template-columns: 150px 1fr 110px auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+.mg-now-row:last-child { border-bottom: 0; } .mg-now-row.stuck .mg-now-name { color: var(--coral-2, #b4503f); }
+.mg-now-name, [data-prof] { font-weight: 700; color: inherit; text-decoration: none; border-bottom: 1px dashed currentColor; }
+.mg-now-name:hover, [data-prof]:hover { color: var(--coral, #e8655a); text-decoration: none; }
+.mg-now-on { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .mg-now-why { color: var(--coral-2, #b4503f); font-size: 12px; }
+.pf-met { color: var(--accent-2, #2f6b52); }
+@media (max-width: 760px) { .mg-now-row { grid-template-columns: 1fr auto; } .mg-now-on { grid-column: 1 / -1; white-space: normal; } }
+.pf { max-width: 860px; } .pf h3 { margin: 18px 0 8px; }
+#modalCard:has(.pf) { width: min(920px, 96vw); max-height: 90vh; overflow: auto; }
+.pf-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+.pf-kpis > div { padding: 12px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.pf-kpis b { font-size: 22px; } .pf-kpis span { font-size: 11.5px; color: var(--text-2); }
+.pf-table { overflow-x: auto; } .pf-table table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.pf-table th, .pf-table td { text-align: left; padding: 8px 6px; border-bottom: 1px dashed var(--line); vertical-align: top; }
+.pf-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-2); }
+.pf-leave td { color: var(--text-3, #9aa79f); }
+.pf-rev { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0; font-size: 13px; } .pf-rev div { flex-basis: 100%; }

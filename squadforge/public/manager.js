@@ -3,8 +3,8 @@
 let mgrWeek = null;
 async function renderManager() {
   $('#view').innerHTML = `<div class="card"><div class="muted">Loading the week…</div></div>`;
-  let d;
-  try { d = await api(`/api/manager${mgrWeek ? '?week=' + mgrWeek : ''}`); } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; return; }
+  let d, now = null;
+  try { [d, now] = await Promise.all([api(`/api/manager${mgrWeek ? '?week=' + mgrWeek : ''}`), api('/api/now').catch(() => null)]); } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; return; }
   if (tab !== 'manager') return;
   const K = d.kpis, L = d.lead_work;
   const isThisWeek = d.from === weekStartOf(state.today);
@@ -29,6 +29,14 @@ async function renderManager() {
       <div class="mg-story">${d.story.map((x) => `<p>${esc(x)}</p>`).join('')}</div>
     </section>
 
+    ${now && now.people.length && isThisWeek ? `<section class="card mg-now"><div class="card-h"><h3>👥 Team right now</h3><span class="muted small">today · tap a name for their week</span></div>
+      ${now.people.map((p) => { const w = p.working.find((x) => x.status === 'stuck') || p.working.find((x) => x.status === 'started') || p.working[0];
+        return `<div class="mg-now-row ${w && w.status === 'stuck' ? 'stuck' : ''}">
+          <a href="#" data-prof="${p.id}" class="mg-now-name">${esc(p.name)}</a>
+          <span class="mg-now-on">${p.leave ? '🌴 On leave' : w ? `<span class="pill ${w.status}">${esc(w.label)}</span> ${esc(w.title)}${w.reason ? ` <span class="mg-now-why">— ${esc(w.reason.slice(0, 70))}</span>` : ''}` : '<span class="muted">No open request</span>'}</span>
+          <span class="mg-now-today">${p.leave ? '' : p.role === 'growth' ? `🌱 ${p.growth} today` : `<b class="${p.met ? 'pf-met' : ''}">${p.built}/${now.target}</b> today`}</span>
+          <span class="today-flags">${p.leave ? '' : `<span class="${p.plan ? 'ok' : ''}">${p.plan ? '✓' : '·'} plan</span><span class="${p.update ? 'ok' : ''}">${p.update ? '✓' : '·'} update</span>`}</span>
+        </div>`; }).join('')}</section>` : ''}
     <div class="mg-kpis">
       <div class="card mg-k"><span>Work shipped</span><b class="tnum">${K.delivered}</b>${delta(K.delivered, K.prev_delivered)}</div>
       <div class="card mg-k"><span>Verified with proof</span><b class="tnum">${K.verified}</b><span class="mg-d same">${K.delivered ? Math.round(K.verified / K.delivered * 100) + '% of shipped' : '—'}</span></div>
