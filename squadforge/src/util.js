@@ -122,6 +122,9 @@ function trackFailure(agent, error) {
   });
 }
 
+// <@U…> for real Slack users; test teammates and demo people (SIM_…, DEMO…) are written as plain names
+function tag(m) { return m && /^[UW][A-Z0-9]{6,}$/.test(m.slack_user_id || '') ? `<@${m.slack_user_id}>` : (m ? `*${String(m.name || '').replace(/\s*\((test|demo)\)$/, '')}*` : ''); }
+
 function members({ includeInactive = false } = {}) {
   return db.prepare(`SELECT * FROM members ${includeInactive ? '' : 'WHERE active = 1'} ORDER BY role, name`).all();
 }
@@ -135,7 +138,7 @@ function failing() {
     .map((r) => { try { return { agent: r.key.slice(12), ...JSON.parse(r.value) }; } catch { return null; } })
     .filter((x) => x && x.count >= 2);
 }
-module.exports = { failing, AGENT_NAMES,
+module.exports = { tag, failing, AGENT_NAMES,
   TZ, today, tzMod, addDays, weekday, weekStart, tsToDate, tsToIso, hoursBetween, dateInTz,
   cfg, list, logActivity, setAgent, runAgent, members, memberBySlack, memberById,
 };

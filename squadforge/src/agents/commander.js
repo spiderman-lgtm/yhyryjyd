@@ -22,7 +22,7 @@ async function broadcast({ message, member_ids = [], important = false, polish =
     } catch (e) { logActivity('commander', 'Polish failed, sent the original: ' + e.message, 'warn'); }
   }
   const tagged = member_ids.map((id) => memberById(Number(id))).filter(Boolean);
-  const tags = tagged.filter((m) => m.slack_user_id).map((m) => `<@${m.slack_user_id}>`).join(' ');
+  const tags = tagged.map((m) => require('../util').tag(m)).join(' ');
   const full = `${important ? '🚨 *IMPORTANT* ' : '📣 '}${tags ? tags + ' ' : ''}${text}`;
 
   let slackTs = null;

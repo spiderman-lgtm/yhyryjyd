@@ -56,10 +56,10 @@ async function tryUnblock(itemId, msg, member) {
   if (slack.enabled() && match.slack_ts && getSetting('growth.notify_thread', true)) {
     const ids = JSON.parse(match.assigned_member_ids || '[]');
     const tags = ids.map((id) => db.prepare('SELECT slack_user_id FROM members WHERE id = ?').get(id))
-      .filter((m) => m && m.slack_user_id).map((m) => `<@${m.slack_user_id}>`).join(' ');
+      .filter(Boolean).map((m) => require('../util').tag(m)).join(' ');
     try {
       await slack.post(match.channel || cfg('SLACK_CHANNEL_ID'),
-        `🔓 *Unblocked:* <@${member.slack_user_id}> has shared the credentials/docs for this app. ${tags} you can start building it now.`, match.slack_ts);
+        `🔓 *Unblocked:* ${require('../util').tag(member)} has shared the credentials/docs for this app. ${tags} you can start building it now.`, match.slack_ts);
     } catch (e) { logActivity('growth', 'Posting in the thread failed: ' + e.message, 'warn'); }
   }
 }

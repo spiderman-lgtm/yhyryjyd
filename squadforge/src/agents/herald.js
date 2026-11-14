@@ -61,7 +61,7 @@ async function evening(date = today()) {
   db.prepare(`INSERT INTO reports (kind, period_start, period_end, content) VALUES ('daily', ?, ?, ?)`).run(date, date, text);
   const where = await deliverToLead(text);
   if (slack.enabled() && missing.length && getSetting('herald.channel_reminder', false)) {
-    const tags = missing.filter((x) => x.m.slack_user_id).map((x) => `<@${x.m.slack_user_id}>`).join(' ');
+    const tags = missing.map((x) => require('../util').tag(x.m)).join(' ');
     if (tags) await slack.post(cfg('SLACK_CHANNEL_ID'), `⏰ ${tags} today's update hasn't come in yet — please post it in the thread.`);
   }
   logActivity('herald', `7 PM alert: ${missing.length} member(s) missing an update. ${where}`);
@@ -76,7 +76,7 @@ async function morning(date = today()) {
   const text = `🌅 *Morning plan not posted yet:* ${missing.map((m) => m.name).join(', ')}`;
   await deliverToLead(text);
   if (slack.enabled() && getSetting('herald.channel_reminder', false)) {
-    const tags = missing.filter((m) => m.slack_user_id).map((m) => `<@${m.slack_user_id}>`).join(' ');
+    const tags = missing.map((m) => require('../util').tag(m)).join(' ');
     if (tags) await slack.post(cfg('SLACK_CHANNEL_ID'), `🌅 ${tags} good morning! Please post today's plan in the thread.`);
   }
   logActivity('herald', text.replace(/\*/g, ''));

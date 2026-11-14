@@ -141,7 +141,7 @@ async function handleTopLevel(msg, channel, stats) {
     return;
   }
   if (!member || member.role === 'lead') return; // standup parent posts by lead/bots: their replies are handled instead
-  if (P.isLeave(text) && text.length < 200) { standup.setLeave(member.id, tsToDate(msg.ts), true, 'slack', text.slice(0, 200)); logActivity('scout', `🌴 ${member.name} is on leave today`); stats.updates++; return; }
+  if (P.isLeave(text) && text.length < 200) { if (!standup.onLeave(member.id, tsToDate(msg.ts))) { standup.setLeave(member.id, tsToDate(msg.ts), true, 'slack', text.slice(0, 200)); logActivity('scout', `🌴 ${member.name} is on leave today`); stats.updates++; } return; }
   const kind = P.standupKind(text);
   if (kind) { if (recordStandup(member, kind, msg)) stats.updates++; return; }
   if (member.role === 'growth') { if (await growth.handle(msg, member)) stats.growth++; return; }
@@ -180,7 +180,7 @@ async function handleReply(reply, parent, channel, stats) {
   if (!member || member.role === 'lead') return;
   // the day's Good morning thread: plan in the morning, what got built later (app + actions/triggers)
   if (standup.isStandupThread(parent.ts)) {
-    if (P.isLeave(text) && !P.isAppSubmission(text)) { standup.setLeave(member.id, tsToDate(reply.ts), true, 'slack', text.slice(0, 200)); logActivity('scout', `🌴 ${member.name} is on leave today`); stats.updates++; return; }
+    if (P.isLeave(text) && !P.isAppSubmission(text)) { if (!standup.onLeave(member.id, tsToDate(reply.ts))) { standup.setLeave(member.id, tsToDate(reply.ts), true, 'slack', text.slice(0, 200)); logActivity('scout', `🌴 ${member.name} is on leave today`); stats.updates++; } return; }
     const sub = await submissionOf(reply, member);
     const app = !!sub.submission;
     const kind = P.standupKind(text) || (/\b(plan|planning|aaj karunga|will do|today i will)\b/i.test(text) && !app ? 'morning' : null) || (app || P.detectStatus(text) === 'completed' || /\b\d+\s*(actions?|triggers?)\b/i.test(text) || istHour(reply.ts) >= 15 ? 'evening' : 'morning');

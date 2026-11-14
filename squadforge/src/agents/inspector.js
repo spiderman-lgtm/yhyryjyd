@@ -75,7 +75,7 @@ async function reviewOne(review) {
     .run(errors.length, JSON.stringify(errors), out.summary, out.passed ? 1 : 0, correct.length, JSON.stringify(missing), review.id);
 
   if (slack.enabled() && review.thread_ts) {
-    const tag = member && member.slack_user_id ? `<@${member.slack_user_id}> ` : '';
+    const tag = member ? require('../util').tag(member) + ' ' : '';
     const icon = { high: '🔴', medium: '🟠', low: '🟡' };
     const head = `${tag}🔍 *Inspector review* (attempt ${review.attempt}) — ✅ ${correct.length} correct · ❌ ${errors.length} mistake${errors.length === 1 ? '' : 's'}${missing.length ? ` · 📌 ${missing.length} missing` : ''}`;
     const body = [head,
