@@ -1,0 +1,35 @@
+{
+  "appId": "cmwagmnlm0068gk67u6k2jxql",
+  "schedules": [
+    {
+      "name": "Scout: Slack sync",
+      "cron": "*/10 8-22 * * *",
+      "path": "/cron/sync",
+      "timezone": "Asia/Kolkata"
+    },
+    {
+      "name": "Standup: 11 AM Good morning + yesterday's tally",
+      "cron": "0 11 * * 1-6",
+      "path": "/cron/morning",
+      "timezone": "Asia/Kolkata"
+    },
+    {
+      "name": "Herald: 7 PM daily alert",
+      "cron": "0 19 * * *",
+      "path": "/cron/evening",
+      "timezone": "Asia/Kolkata"
+    },
+    {
+      "name": "Scribe: Monday weekly report",
+      "cron": "30 9 * * 1",
+      "path": "/cron/weekly",
+      "timezone": "Asia/Kolkata"
+    },
+    {
+      "name": "Nightly backup of every workspace",
+      "cron": "30 2 * * *",
+      "path": "/cron/backup",
+      "timezone": "Asia/Kolkata"
+    }
+  ]
+}
