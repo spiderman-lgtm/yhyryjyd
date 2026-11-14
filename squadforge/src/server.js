@@ -508,9 +508,9 @@ async function routes(req, res, url, p, m, body, cx) {
         return send(res, 200, { ok: true, detail: `Reading #${(r.channel && r.channel.name) || 'channel'} works (${slack.viaViaSocket() ? 'via viaSocket' : 'bot token'})` });
       }
       if (body.what === 'ai') {
-        if (!llm.enabled()) throw new Error('ANTHROPIC_API_KEY is not set');
+        if (!llm.enabled()) throw new Error('No AI is set up');
         const r = await llm.askJson({ system: 'Reply with the word ok.', prompt: 'Health check', schema: { type: 'object', additionalProperties: false, properties: { ok: { type: 'string' } }, required: ['ok'] }, maxTokens: 200, force: true });
-        return send(res, 200, { ok: true, detail: 'The AI answered: ' + String(r.ok).slice(0, 20) });
+        return send(res, 200, { ok: true, detail: `The AI answered (${llm.status().last || 'AI'}): ` + String(r.ok).slice(0, 20) });
       }
       if (body.what === 'm91admin') {
         const r = await m91.channelAlert({ admin: true, title: 'SquadForge admin alerts work ✅', description: 'Failure alerts will come to this channel. Nothing to do.', severity: 'LOW', customId: 'sf-admin-test-' + Date.now().toString(36) });
