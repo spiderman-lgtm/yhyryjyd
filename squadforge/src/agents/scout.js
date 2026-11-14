@@ -43,9 +43,43 @@ function recordStandup(member, kind, msg) {
   return true;
 }
 
-async function statusFor(text) {
+// Every message is read again on later syncs: keep the AI's answer per message, ask once.
+require('../db').addSchema(`CREATE TABLE IF NOT EXISTS ai_cache (key TEXT PRIMARY KEY, value TEXT, at TEXT NOT NULL DEFAULT (datetime('now')))`);
+async function cached(key, fn) {
+  const hit = db.prepare('SELECT value FROM ai_cache WHERE key = ?').get(key);
+  if (hit) return JSON.parse(hit.value);
+  const v = await fn();
+  db.prepare('INSERT OR REPLACE INTO ai_cache (key, value) VALUES (?, ?)').run(key, JSON.stringify(v === undefined ? null : v));
+  db.prepare("DELETE FROM ai_cache WHERE at < datetime('now', '-60 days')").run();
+  return v;
+}
+
+// Is this reply a teammate handing in an app they built? The "actions: …, triggers: …" format is
+// recognised without AI; anything else that sounds like finished work is asked once.
+const SUBMIT_HINT = /\b(done|completed?|ready|built|bana (liya|diya)|ban gaya|published|live|submit|submitted|review|plugin|integration|actions?|triggers?)\b/i;
+async function submissionOf(msg, member) {
+  const text = msg.text || '';
+  if (P.isAppSubmission(text)) return { submission: true, ...P.parseCounts(text) };
+  if (!member || member.role !== 'tech' || !llm.enabled() || text.length < 25 || !SUBMIT_HINT.test(text)) return { submission: false };
+  return cached('sub:' + msg.ts, async () => {
+    try {
+      return await llm.askJson({
+        system: 'You read Slack replies from developers who build app integrations (plugins with actions and triggers) on viaSocket. Messages may be in Hinglish.',
+        prompt: `Reply:\n${text}\n\nIs the developer handing in a plugin/app they finished (or a new version of it) for review? If yes, how many actions and triggers does it say were built? Use 0 when not stated.`,
+        schema: { type: 'object', additionalProperties: false, properties: { submission: { type: 'boolean' }, actions: { type: 'integer' }, triggers: { type: 'integer' } }, required: ['submission', 'actions', 'triggers'] },
+      });
+    } catch { return { submission: false }; }
+  });
+}
+
+async function statusFor(text, ts) {
   const s = P.detectStatus(text);
-  if (s || !llm.enabled() || (text || '').length < 15) return s;
+  // a clear status word, or a short reply: trust the word. A long reply with a status word: let the AI confirm.
+  if (s && (!llm.enabled() || text.length <= 60 || /^\s*(r\s*&\s*d|rnd|started|stuck|blocked|completed)\b/i.test(text))) return s;
+  if (!llm.enabled() || (text || '').length < 15) return s;
+  return cached('st:' + (ts || text.slice(0, 80)), () => aiStatus(text, s));
+}
+async function aiStatus(text, fallback) {
   try {
     const out = await llm.askJson({
       system: 'Classify a developer\'s reply in a Slack thread about a client request to build an app integration. Messages may be in Hinglish.',
@@ -53,7 +87,7 @@ async function statusFor(text) {
       schema: { type: 'object', additionalProperties: false, properties: { status: { type: 'string', enum: ['rnd', 'started', 'stuck', 'completed', 'none'] } }, required: ['status'] },
     });
     return out.status === 'none' ? null : out.status;
-  } catch { return null; }
+  } catch { return fallback || null; }
 }
 
 // Test teammates: Slack has no accounts for them, so the lead writes "[Aarav] started …" and the
@@ -125,13 +159,13 @@ async function handleReply(reply, parent, channel, stats) {
         if (status && (await tracker.applyStatus(db.prepare('SELECT * FROM client_requests WHERE id = ?').get(req.id), status, reply, member || null))) stats.statusChanges++;
       }
     } else if (member) {
-      const reviewAsk = member.role === 'tech' && (P.isReviewAsk(text) || P.isAppSubmission(text));
+      const reviewAsk = member.role === 'tech' && (P.isReviewAsk(text) || (await submissionOf(reply, member)).submission);
       if (reviewAsk && inspector.queueFromMessage(reply, member, parent.ts, req.id)) stats.reviews++;
       if (member.role === 'growth') {
         if (await growth.handle(reply, member)) stats.growth++;
       } else {
         // "completed, review please" → both a status and a review. Do not ask the AI for a status on a bare "review please".
-        const status = reviewAsk ? P.detectStatus(text) : await statusFor(text);
+        const status = reviewAsk ? P.detectStatus(text) : await statusFor(text, reply.ts);
         if (status && (await tracker.applyStatus(db.prepare('SELECT * FROM client_requests WHERE id = ?').get(req.id), status, reply, member))) stats.statusChanges++;
       }
     }
@@ -143,9 +177,18 @@ async function handleReply(reply, parent, channel, stats) {
   // the day's Good morning thread: plan in the morning, what got built later (app + actions/triggers)
   if (standup.isStandupThread(parent.ts)) {
     if (P.isLeave(text) && !P.isAppSubmission(text)) { standup.setLeave(member.id, tsToDate(reply.ts), true, 'slack', text.slice(0, 200)); logActivity('scout', `🌴 ${member.name} is on leave today`); stats.updates++; return; }
-    const app = P.isAppSubmission(text);
+    const sub = await submissionOf(reply, member);
+    const app = !!sub.submission;
     const kind = P.standupKind(text) || (/\b(plan|planning|aaj karunga|will do|today i will)\b/i.test(text) && !app ? 'morning' : null) || (app || P.detectStatus(text) === 'completed' || /\b\d+\s*(actions?|triggers?)\b/i.test(text) || istHour(reply.ts) >= 15 ? 'evening' : 'morning');
-    if (recordStandup(member, kind, reply)) stats.updates++;
+    if (recordStandup(member, kind, reply)) {
+      stats.updates++;
+      // AI counted actions/triggers the text did not list: add them to the day's numbers
+      const own = P.parseCounts(text);
+      if (app && !P.isAppSubmission(text) && !own.actions && !own.triggers && (sub.actions || sub.triggers)) {
+        // write it into the day's text so later recounts keep it
+        recordStandup(member, 'evening', { ...reply, ts: reply.ts + '1', text: `(counted by AI: ${sub.actions || 0} actions, ${sub.triggers || 0} triggers)` });
+      }
+    }
     if (app && member.role === 'tech' && inspector.queueFromMessage(reply, member, parent.ts, null)) stats.reviews++;
     return;
   }

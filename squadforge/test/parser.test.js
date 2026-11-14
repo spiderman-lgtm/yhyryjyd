@@ -46,3 +46,11 @@ test('an app posted with its actions/triggers list is a submission and is counte
   assert.equal(P.isAppSubmission('Archbee — 6 actions, 4 triggers done'), false);
   assert.equal(P.parseCounts('Archbee — 6 actions, 4 triggers done').actions, 6);
 });
+
+test('actions and triggers listed on one line are both counted; leave words are recognised', () => {
+  const P = require('../src/parser');
+  const c = P.parseCounts('Archbee done — actions: create doc, update doc · triggers: new doc');
+  assert.deepEqual([c.actions, c.triggers], [2, 1]);
+  assert.equal(P.isLeave('aaj chhutti hai'), true);
+  assert.equal(P.isLeave('leaving early at 5'), false);
+});

@@ -77,6 +77,9 @@ function growthKind(text) {
 const LIST_RE = /\b(actions?|triggers?)\s*(?:\(\s*\d+\s*\))?\s*[:\-–]\s*([^\n]*(?:\n\s*[-•*\d.)]+\s*[^\n]+)*)/gi;
 function namedLists(text = '') {
   const out = { actions: [], triggers: [] };
+  // "actions: a, b · triggers: c" on one line: give each list its own line first
+  text = String(text).replace(/\s*[·|;]?\s*\b(actions?|triggers?)(\s*\(\s*\d+\s*\))?\s*(?=[:\-–])/gi, '\n$1$2');
+  LIST_RE.lastIndex = 0;
   let m;
   while ((m = LIST_RE.exec(text))) {
     const key = m[1].toLowerCase().startsWith('action') ? 'actions' : 'triggers';
