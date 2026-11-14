@@ -7,9 +7,9 @@ const inspector = require('./inspector');
 const { runAgent } = require('../util');
 
 const AGENTS = {
-  scout: { name: 'Scout', emoji: '🔭', building: 'Watchtower', job: 'Reads the Slack channel and threads', run: () => scout.sync() },
-  tracker: { name: 'Tracker', emoji: '🎯', building: 'Command Tent', job: 'Client request status, time and difficulty', run: () => scout.sync() },
-  growth: { name: 'Sprout', emoji: '🌱', building: 'Greenhouse', job: 'Growth posts: listing, blog, newsletter, credentials', run: () => scout.sync() },
+  scout: { name: 'Scout', emoji: '🔭', building: 'Watchtower', job: 'Reads the Slack channel and threads', run: () => scout.sync({ manual: true }) },
+  tracker: { name: 'Tracker', emoji: '🎯', building: 'Command Tent', job: 'Client request status, time and difficulty', run: () => scout.sync({ manual: true }) },
+  growth: { name: 'Sprout', emoji: '🌱', building: 'Greenhouse', job: 'Growth posts: listing, blog, newsletter, credentials', run: () => scout.sync({ manual: true }) },
   inspector: { name: 'Inspector', emoji: '🔍', building: 'Lab', job: 'Reviews apps and posts mistakes in the thread', run: () => inspector.runPending() },
   analyst: { name: 'Analyst', emoji: '📊', building: 'Observatory', job: 'Plan vs done, actions/triggers count', run: () => analyst.run() },
   herald: { name: 'Herald', emoji: '📢', building: 'Bell Tower', job: '7 PM alert + morning reminder', run: () => herald.evening() },

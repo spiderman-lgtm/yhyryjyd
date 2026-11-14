@@ -6,8 +6,8 @@ const { cfg } = require('./util');
 const vs = require('./viasocket');
 
 function token() { return cfg('SLACK_BOT_TOKEN'); }
-// viaSocket connection (Integrations page) wins; bot token is the fallback.
-function viaViaSocket() { return vs.slackReady(); }
+// A Slack bot token, when set, is used directly (no viaSocket usage limits); otherwise the viaSocket connection.
+function viaViaSocket() { return vs.slackReady() && !token(); }
 function enabled() { return viaViaSocket() || (!!token() && !!cfg('SLACK_CHANNEL_ID')); }
 
 async function call(method, params = {}, { post = false } = {}) {
@@ -94,4 +94,4 @@ function permalinkish(channel, ts) {
   return `${team.replace(/\/$/, '')}/archives/${channel}/p${String(ts).replace('.', '')}`;
 }
 
-module.exports = { enabled, viaViaSocket, call, history, replies, post, dm, channelMembers, userInfo, mentions, permalinkish };
+module.exports = { viaViaSocket, enabled, viaViaSocket, call, history, replies, post, dm, channelMembers, userInfo, mentions, permalinkish };

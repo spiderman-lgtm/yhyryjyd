@@ -158,8 +158,31 @@ async function handleReply(reply, parent, channel, stats) {
   if (member.role === 'tech' && (P.isReviewAsk(text) || P.isAppSubmission(text))) { if (inspector.queueFromMessage(reply, member, parent.ts, null)) stats.reviews++; }
 }
 
-async function sync() {
+// viaSocket runs count against a plan limit: sync less often through it, and back off when the limit is hit.
+const LIMIT_RE = /usage limit|limit has been exhausted|upgrade your plan|quota/i;
+async function sync({ manual = false } = {}) {
   if (!slack.enabled()) return { message: 'Slack is not configured (connect it on Integrations, or set SLACK_BOT_TOKEN + SLACK_CHANNEL_ID)' };
+  const viaVs = slack.viaViaSocket();
+  const nowMs = Date.now();
+  if (viaVs && !manual) {
+    const backoff = Number(getSetting('scout.backoff_until', 0)) || 0;
+    if (backoff > nowMs) return { message: 'Paused: the viaSocket usage limit was reached — add a Slack bot token or upgrade the viaSocket plan' };
+    const last = Number(getSetting('scout.last_run_ms', 0)) || 0;
+    if (nowMs - last < 29 * 60 * 1000) return { message: 'Skipped: syncing every 30 minutes through viaSocket' };
+  }
+  setSetting('scout.last_run_ms', nowMs);
+  try { return await syncNow(viaVs, manual); }
+  catch (e) {
+    if (viaVs && LIMIT_RE.test(e.message || '')) {
+      setSetting('scout.backoff_until', nowMs + 6 * 3600 * 1000);
+      logActivity('scout', 'viaSocket usage limit reached — Slack sync paused for 6 hours. Add a Slack bot token (Settings) or upgrade the viaSocket plan.', 'error');
+      return { error: 'viaSocket usage limit reached — sync paused for 6 hours' };
+    }
+    throw e;
+  }
+}
+
+async function syncNow(viaVs, manual) {
   const channel = cfg('SLACK_CHANNEL_ID');
   const now = Date.now() / 1000;
   const lastTs = parseFloat(getSetting('scout.last_ts', 0)) || 0;
@@ -180,9 +203,13 @@ async function sync() {
   // the last two Good morning threads (replies keep coming all day)
   for (const d of [U_today(), standup.prevWorkday(U_today())]) { const ts = standup.threadOf(d); if (ts && !threads.has(ts)) threads.set(ts, { ts, text: 'good morning' }); }
   // also check the threads of older open client requests
-  const open = db.prepare(`SELECT slack_ts, text FROM client_requests WHERE status != 'completed' AND slack_ts IS NOT NULL
-                           AND is_demo = 0 AND created_at > datetime('now', '-45 days')`).all();
-  for (const r of open) if (!threads.has(r.slack_ts)) threads.set(r.slack_ts, { ts: r.slack_ts, text: r.text });
+  const deepAt = Number(getSetting('scout.deep_at', 0)) || 0;
+  if (!viaVs || manual || Date.now() - deepAt > 2 * 3600 * 1000) {
+    const open = db.prepare(`SELECT slack_ts, text FROM client_requests WHERE status != 'completed' AND slack_ts IS NOT NULL
+                             AND is_demo = 0 AND created_at > datetime('now', '-45 days')`).all();
+    for (const r of open) if (!threads.has(r.slack_ts)) threads.set(r.slack_ts, { ts: r.slack_ts, text: r.text });
+    setSetting('scout.deep_at', Date.now());
+  }
 
   for (const parent of threads.values()) {
     let replies;

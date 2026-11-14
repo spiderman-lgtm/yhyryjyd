@@ -507,7 +507,7 @@ async function routes(req, res, url, p, m, body, cx) {
     const result = await agents.run(mm[1]);
     return send(res, 200, result || {});
   }
-  if (p === '/api/standup/morning' && m === 'POST') return send(res, 200, await U.runAgent('herald', 'Posting Good morning…', async () => { await scout.sync().catch(() => {}); return standup.morning(); }));
+  if (p === '/api/standup/morning' && m === 'POST') return send(res, 200, await U.runAgent('herald', 'Posting Good morning…', async () => { await scout.sync({ manual: true }).catch(() => {}); return standup.morning(); }));
   if (p === '/api/standup/tally' && m === 'GET') { const d = url.searchParams.get('date') || standup.prevWorkday(U.today()); const t = standup.dayTally(d); return send(res, 200, { date: d, short: t.short, full: t.full, people: t.people, target: standup.target(), thread: standup.threadOf(U.today()) }); }
   if (p === '/api/agents/herald/morning' && m === 'POST') return send(res, 200, await U.runAgent('herald', 'Sending the morning reminder…', () => herald.morning()));
   if (p === '/api/broadcast' && m === 'POST') {
@@ -643,11 +643,11 @@ function cron(req, res, url) {
   const jobs = {
     sync: () => background('scout', 'Syncing Slack…', () => scout.sync()),
     morning: () => background('herald', 'Posting Good morning…', async () => {
-      await U.runAgent('scout', 'Sync before the tally…', () => scout.sync());
+      await U.runAgent('scout', 'Sync before the tally…', () => scout.sync({ manual: true }));
       return standup.morning();
     }),
     evening: () => background('herald', 'Building the 7 PM alert…', async () => {
-      await U.runAgent('scout', 'Final sync…', () => scout.sync());
+      await U.runAgent('scout', 'Final sync…', () => scout.sync({ manual: true }));
       await U.runAgent('analyst', 'Analysing today…', () => analyst.run());
       await standup.eveningNudge();
       return herald.evening();
