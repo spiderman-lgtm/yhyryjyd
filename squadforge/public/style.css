@@ -1372,3 +1372,9 @@ html:has(body.on-login), body.on-login { overflow: hidden !important; }
 .lp-chapters button { font: 500 12px 'JetBrains Mono', monospace; padding: 7px 12px; border-radius: 999px; border: 1.5px solid #d9d3bf; background: #fffdf6; color: #1f3b33; cursor: pointer; transition: border-color .2s, transform .2s; }
 .lp-chapters button:hover { border-color: #e8655a; transform: translateY(-1px); }
 @media (max-width: 720px) { .lp-player { border-width: 3px; border-radius: 12px; } }
+/* front page v3: a day in 5 steps, principles as chips */
+.lp-steps.lp-day { grid-template-columns: repeat(5, 1fr); }
+.lp-day + .lp-sample { margin-top: 22px; }
+.lp-principles { justify-content: center; }
+@media (max-width: 1000px) { .lp-steps.lp-day { grid-template-columns: 1fr 1fr; } .lp-steps.lp-day li::after { display: none; } }
+@media (max-width: 520px) { .lp-steps.lp-day { grid-template-columns: 1fr; } }
