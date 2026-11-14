@@ -14,8 +14,8 @@ npm test --silent >/dev/null 2>&1 || { echo "✋ Tests are failing — run npm t
 
 TOKEN="${EMBARKO_TOKEN:-}"
 if [ -z "$TOKEN" ] && [ -f ~/.embarko/credentials ]; then
-  TOKEN=$(grep -o '"[^"]*token[^"]*"[^"]*"[^"]*"' ~/.embarko/credentials | head -1 | sed 's/.*: *"\(.*\)"/\1/')
-  [ -z "$TOKEN" ] && TOKEN=$(tr -d '\n' < ~/.embarko/credentials | sed 's/.*=\s*//')
+  TOKEN=$(grep -o '"[^"]*token[^"]*"[^"]*"[^"]*"' ~/.embarko/credentials 2>/dev/null | head -1 | sed 's/.*: *"\(.*\)"/\1/' || true)
+  [ -z "$TOKEN" ] && TOKEN=$(tr -d '\n' < ~/.embarko/credentials | sed 's/.*=\s*//' || true)
 fi
 [ -z "$TOKEN" ] && { echo "✋ No Embarko token (set EMBARKO_TOKEN)."; exit 1; }
 
