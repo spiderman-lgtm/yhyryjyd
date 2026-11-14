@@ -61,6 +61,6 @@ Secrets (deploy token, viaSocket embed secret, admin password, API keys) are **n
 - `ANTHROPIC_API_KEY` is not set in Embarko yet. Inspector reviews and AI wording need it.
 - Real Slack test: the test channel is `#testing-team`. Add teammates and their phone numbers for M91.
 - Store key records in the lead's viaSocket DB as well. Needs: the DB/table link, an API key (in Embarko env, not chat) and docs.
-- Front-page video with a voice-over. A walkthrough video exists; still to decide on an English or Hinglish voice, either text-to-speech or the lead's own recording.
+- Front-page video: a 20-second tour of the new UI (Slack + reviews, Things need you, Live Team, Leaderboard, M91) with an English voice-over and a tune. Recorded with Playwright on demo data.
 - Client Signups feature (separate channel and weekly report). The plan was shared; it needs a sample message.
 - Ideas not built yet: setup guide, loading skeletons, empty-state art, phone layout, celebration moments, workspace colours.
