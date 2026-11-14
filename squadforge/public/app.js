@@ -149,6 +149,7 @@ function markTab() {
     b.classList.toggle('hidden', (t === 'live' && !liveOn) || (role === 'viewer' && (b.dataset.admin !== undefined || b.dataset.mgr !== undefined)) || (role === 'manager' && !MANAGER_TABS.includes(t)));
   });
   document.querySelectorAll('#tabs .nav-label').forEach((l) => l.classList.toggle('hidden', (role === 'viewer' && l.textContent !== 'Live') || (role === 'manager' && l.textContent === 'Workspace')));
+  if (window.innerWidth <= 720) { const a = document.querySelector('#tabs button.active'); if (a) a.scrollIntoView({ inline: 'center', block: 'nearest' }); }
   $('#pageTitle').textContent = PAGE_TITLES[tab] || 'SquadForge';
   document.title = `${PAGE_TITLES[tab] || 'Dashboard'} · SquadForge`;
   const v = $('#view'); v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter');
