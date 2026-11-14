@@ -405,6 +405,27 @@ async function renderCommander() {
     } catch (e) { toast(e.message); b.disabled = false; }
   };
 }
+// Backups: nightly copies + a download for the owner
+async function backupCard() {
+  const h2 = $('#view h2'); if (!h2) return;
+  let list = []; try { list = await api('/api/backups'); } catch { /* ignore */ }
+  if (!$('#view h2')) return;
+  $('#view h2').insertAdjacentHTML('afterend', `<div class="card bk-card"><h3>💾 Backups</h3>
+    <p class="muted">Every night at 2:30 AM SquadForge saves a copy of every workspace and keeps the last 7 days. ${list.length ? `Last backup: <b>${esc(list[0].date)}</b> · ${list.length} day(s) kept.` : 'The first nightly backup has not run yet.'} The copies live on the same server — download one now and then to keep it somewhere else too.</p>
+    <button class="btn small" id="bkDown">⬇ Download this workspace's backup</button></div>`);
+  $('#bkDown').onclick = async () => {
+    const b = $('#bkDown'); b.disabled = true; b.textContent = 'Preparing…';
+    try {
+      const res = await fetch('/api/backup', { headers: { 'X-SF-Session': sessionToken() || '', 'X-SF-Workspace': currentWs() || '' }, credentials: 'same-origin' });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
+      const blob = await res.blob(), cd = res.headers.get('Content-Disposition') || '', name = (cd.match(/filename="([^"]+)"/) || [])[1] || 'squadforge-backup.db';
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      toast('Backup downloaded');
+    } catch (e) { toast(e.message); }
+    b.disabled = false; b.textContent = "⬇ Download this workspace's backup";
+  };
+}
+
 // Display: optional pages
 function displayCard(s) {
   const h2 = $('#view h2'); if (!h2) return;
@@ -538,6 +559,7 @@ async function renderSettings() {
   workspaceCard();
   standupCard(s);
   displayCard(s);
+  backupCard();
   if (members.some((x) => /^SIM_/.test(x.slack_user_id || ''))) {
     $('#view h2').insertAdjacentHTML('afterend', `<div class="banner">🧪 <b>Test teammates are on</b> (Aarav, Meera, Kabir, Isha). In Slack, start a message with <code>[Aarav]</code> and it counts as Aarav's; write <code>@Aarav</code> in a request thread to assign. <a href="#" id="simOff">Remove test teammates</a></div>`);
     $('#simOff').onclick = async (e) => { e.preventDefault(); if (!confirm('Remove the 4 test teammates and their updates?')) return; await api('/api/sim', { method: 'DELETE' }); toast('Test teammates removed'); renderSettings(); };
@@ -610,6 +632,7 @@ async function render() {
 }
 async function boot() {
   const me = await api('/api/me');
+  if (me.no_workspace) { saveToken(null); showLogin(); $('#loginErr').textContent = 'Your account is not in any workspace yet — ask your team lead to add your email in Settings → Workspace.'; return; }
   if (!me.authed) return showLogin();
   role = me.role || 'admin';
   myEmail = me.email || null;

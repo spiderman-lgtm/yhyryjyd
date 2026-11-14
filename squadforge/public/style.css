@@ -1441,3 +1441,6 @@ input.switch:checked { background: var(--accent, #5f8a7a); } input.switch:checke
 .now-head { flex-wrap: wrap; row-gap: 6px; } .now-head b { min-width: 0; }
 .now-flags span, .today-flags span { white-space: nowrap; }
 .now-day { flex-wrap: wrap; }
+.bk-card { margin-bottom: 16px; }
+.now-card.on-leave { opacity: .72; border-style: dashed; }
+.now-actions { display: flex; justify-content: flex-end; margin-top: -4px; }

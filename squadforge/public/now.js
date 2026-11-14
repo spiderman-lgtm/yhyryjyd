@@ -4,6 +4,8 @@ const NOW_PILL = { rnd: 'rnd', started: 'started', stuck: 'stuck', new: 'new' };
 function nowSince(iso) { return iso ? ago(iso) : ''; }
 function nowPerson(p, T) {
   const pct = Math.min(100, Math.round((p.built / T) * 100));
+  const leaveBtn = role === 'admin' ? `<button class="btn ghost small now-leave" data-leave="${p.id}" data-on="${p.leave ? 0 : 1}">${p.leave ? 'Back today' : '🌴 On leave'}</button>` : '';
+  if (p.leave) return `<div class="card now-card on-leave"><div class="now-head"><span class="avatar-xs">${esc(initials(p.name))}</span><b>${esc(p.name)}</b><span class="muted small">${esc(p.role)}</span><span class="spacer"></span>${leaveBtn}</div><div class="now-plan">🌴 On leave today — no target, no reminders.</div></div>`;
   const day = p.role === 'growth'
     ? `<span class="now-built">🌱 ${p.growth} growth item${p.growth === 1 ? '' : 's'} today</span>`
     : `<div class="now-bar" title="${p.built} of ${T}"><i style="width:${pct}%" class="${p.met ? 'met' : ''}"></i></div><span class="now-built">${p.built}/${T} built${p.built ? ` · ${p.actions} actions, ${p.triggers} triggers` : ''}${p.met ? ' ✅' : ''}</span>`;
@@ -12,6 +14,7 @@ function nowPerson(p, T) {
       <span class="now-flags"><span class="${p.plan ? 'ok' : ''}" title="Morning plan">${p.plan ? '✓' : '·'} plan</span><span class="${p.update ? 'ok' : ''}" title="Evening update">${p.update ? '✓' : '·'} update</span></span></div>
     <div class="now-day">${day}</div>
     ${p.plan ? `<div class="now-plan"><span class="muted small">Today</span> ${esc(p.plan.replace(/\s+/g, ' ').slice(0, 140))}</div>` : `<div class="now-plan muted small">No plan posted yet</div>`}
+    ${leaveBtn ? `<div class="now-actions">${leaveBtn}</div>` : ''}
     <div class="now-work">${p.working.length ? p.working.map((w) => `<div class="now-req"><span class="pill ${NOW_PILL[w.status] || ''}">${esc(w.label)}</span><span class="now-title">${esc(w.title)}</span><span class="muted small">${nowSince(w.since)}</span>${w.reason ? `<div class="now-why">🧱 ${esc(w.reason.slice(0, 120))}</div>` : ''}</div>`).join('') : '<div class="muted small">No open requests</div>'}</div>
   </div>`;
 }
@@ -25,14 +28,15 @@ async function renderNow(quiet) {
       <div class="now-sum"><span><b>${o.started}</b> building</span><span><b>${o.rnd}</b> in R&amp;D</span><span class="${o.stuck ? 'warn' : ''}"><b>${o.stuck}</b> stuck</span><span><b>${o.new}</b> not started${d.unassigned ? ` (${d.unassigned} without an owner)` : ''}</span></div>
     </div>
     ${d.people.length ? `<div class="now-grid">${d.people.map((p) => nowPerson(p, d.target)).join('')}</div>` : '<div class="card empty">No team members yet — add them in Settings.</div>'}`;
+  document.querySelectorAll('[data-leave]').forEach((b) => (b.onclick = async () => { b.disabled = true; try { await api('/api/leave', { method: 'POST', body: { member_id: Number(b.dataset.leave), on: b.dataset.on === '1' } }); renderNow(true); } catch (e) { toast(e.message); b.disabled = false; } }));
 }
 // Dashboard card: today's standup at a glance
 function todayCard(d) {
   if (!d || !d.people) return '';
-  const T = d.target, tech = d.people.filter((p) => p.role !== 'growth');
-  const posted = d.people.filter((p) => p.plan || p.update).length;
-  return `<div class="card today-card"><div class="card-h"><h3>☀️ Today's standup</h3><span class="muted">${posted}/${d.people.length} posted · ${tech.filter((p) => p.met).length}/${tech.length} at target</span></div>
-    ${d.people.length ? d.people.map((p) => `<div class="today-row">
+  const T = d.target, tech = d.people.filter((p) => p.role !== 'growth' && !p.leave);
+  const posted = d.people.filter((p) => !p.leave && (p.plan || p.update)).length, away = d.people.filter((p) => p.leave).length;
+  return `<div class="card today-card"><div class="card-h"><h3>☀️ Today's standup</h3><span class="muted">${posted}/${d.people.length - away} posted · ${tech.filter((p) => p.met).length}/${tech.length} at target${away ? ` · 🌴 ${away}` : ''}</span></div>
+    ${d.people.length ? d.people.map((p) => p.leave ? `<div class="today-row"><b>${esc(p.name)}</b><span class="today-flags"><span>🌴 on leave</span></span><span></span><span></span></div>` : `<div class="today-row">
       <b>${esc(p.name)}</b>
       <span class="today-flags"><span class="${p.plan ? 'ok' : ''}">${p.plan ? '✓' : '·'} plan</span><span class="${p.update ? 'ok' : ''}">${p.update ? '✓' : '·'} update</span></span>
       ${p.role === 'growth' ? `<span class="today-built">🌱 ${p.growth}</span>` : `<span class="today-built ${p.met ? 'met' : ''}">${p.built}/${T}${p.met ? ' ✅' : ''}</span>`}

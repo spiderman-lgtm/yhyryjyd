@@ -24,6 +24,12 @@
       "cron": "30 9 * * 1",
       "path": "/cron/weekly",
       "timezone": "Asia/Kolkata"
+    },
+    {
+      "name": "Nightly backup of every workspace",
+      "cron": "30 2 * * *",
+      "path": "/cron/backup",
+      "timezone": "Asia/Kolkata"
     }
   ]
 }

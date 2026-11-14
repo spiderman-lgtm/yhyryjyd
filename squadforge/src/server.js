@@ -9,6 +9,7 @@ const history = require('./history');
 const checklist = require('./checklist');
 const manager = require('./manager');
 const m91hooks = require('./m91-hooks');
+const backup = require('./backup');
 const U = require('./util');
 const slack = require('./slack');
 const llm = require('./llm');
@@ -82,10 +83,30 @@ function contextOf(req) {
   const mine = workspaces.forEmail(se.email);
   let ws = asked && mine.find((w) => w.id === asked) ? asked : (mine[0] ? mine[0].id : 1);
   let wsRole = workspaces.roleIn(se.email, ws);
-  if (!wsRole && ws === 1 && !mine.length) wsRole = 'viewer';
   if (!wsRole) return null;
   return { ws, role: ['owner', 'admin'].includes(wsRole) ? 'admin' : wsRole === 'manager' ? 'manager' : 'viewer', email: se.email, wsRole, workspaces: mine };
 }
+// ---------- login protection ----------
+// 5 wrong tries for one email (or 20 from one address) in 15 minutes → locked for 15 minutes.
+const failures = new Map(); // key → [timestamps]
+const WINDOW = 15 * 60 * 1000;
+function clientIp(req) { return String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim(); }
+function recent(key) { const now = Date.now(); const arr = (failures.get(key) || []).filter((t) => now - t < WINDOW); failures.set(key, arr); return arr; }
+function lockedFor(req, email) {
+  const a = recent('e:' + email), b = recent('ip:' + clientIp(req));
+  const hit = a.length >= 5 ? a : b.length >= 20 ? b : null;
+  return hit ? Math.max(1, Math.ceil((hit[0] + WINDOW - Date.now()) / 60000)) : 0;
+}
+function failed(req, email) { recent('e:' + email).push(Date.now()); recent('ip:' + clientIp(req)).push(Date.now()); }
+function succeeded(email) { failures.delete('e:' + email); }
+// Who may create an account: invited people, admin emails, or emails at the allowed domains
+// (ALLOWED_SIGNUP_DOMAINS, comma separated, default viasocket.com; "*" lets anyone in).
+function mayCreateAccount(email, invited) {
+  if (invited || adminEmails().includes(email)) return true;
+  const list = String(process.env.ALLOWED_SIGNUP_DOMAINS || 'viasocket.com').split(',').map((d) => d.trim().toLowerCase()).filter(Boolean);
+  return list.includes('*') || list.includes(email.split('@')[1]);
+}
+
 // The viewer can only see these (read-only)
 const VIEWER_ROUTES = ['/api/state', '/api/requests', '/api/logs', '/api/now'];
 function safeEqual(a, b) {
@@ -175,6 +196,7 @@ async function api(req, res, url) {
   if (p === '/api/health') return send(res, 200, { ok: true });
   if (p === '/api/me') {
     const cx = contextOf(req);
+    if (!cx && sessionOf(req)) return send(res, 200, { authed: false, no_workspace: true });
     const acct = cx && cx.email ? accounts.find(cx.email) : null;
     const list = cx ? (cx.workspaces && cx.workspaces.length ? cx.workspaces : [{ ...workspaces.get(cx.ws), role: cx.wsRole }]) : [];
     return send(res, 200, {
@@ -198,6 +220,7 @@ async function api(req, res, url) {
     const wsName = String(body.workspace || '').trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { error: 'Please enter a valid email' });
     const invited = workspaces.forEmail(email);
+    if (!mayCreateAccount(email, invited.length > 0)) return send(res, 403, { error: 'Accounts are invite-only here — ask your team lead to add your email in Settings → Workspace' });
     if (!wsName && !invited.length) return send(res, 400, { error: 'Give your workspace a name (for example, your team name)' });
     const acct = accounts.find(email);
     if (acct) {
@@ -215,9 +238,12 @@ async function api(req, res, url) {
     const email = String(body.email || '').trim().toLowerCase();
     // phones and password managers often add a trailing space: compare trimmed values
     const pw = String(body.password || '').trim();
+    const lock = lockedFor(req, email);
+    if (lock) return send(res, 429, { error: `Too many wrong tries — try again in ${lock} minute${lock === 1 ? '' : 's'}` });
     const acct = email ? accounts.find(email) : null;
     if (acct) {
-      if (!accounts.verify(acct, pw)) { console.log('[login] wrong password for an existing account'); return send(res, 401, { error: 'Wrong password' }); }
+      if (!accounts.verify(acct, pw)) { failed(req, email); console.log('[login] wrong password for an existing account'); return send(res, 401, { error: 'Wrong password' }); }
+      succeeded(email);
       const role = adminEmails().includes(email) ? 'admin' : 'viewer';
       return issue(role, email);
     }
@@ -228,11 +254,12 @@ async function api(req, res, url) {
         console.log(`[login] admin password ok but email not on the list (email ${email ? 'given' : 'empty'})`);
         return send(res, 403, { error: email ? 'This email is not on the admin list' : 'Please enter your admin email' });
       }
+      succeeded(email);
       return issue('admin', email);
     }
     if (viewerPw && safeEqual(pw, viewerPw)) return issue('viewer', '');
-    // diagnostics without the secret: lengths only
-    console.log(`[login] wrong password (typed ${pw.length} chars, admin password is ${adminPw.length} chars; email ${email ? (adminEmails().includes(email) ? 'on list' : 'no account') : 'empty'})`);
+    failed(req, email);
+    console.log(`[login] wrong password (email ${email ? (adminEmails().includes(email) ? 'on list' : 'no account') : 'empty'})`);
     return send(res, 401, { error: email && !adminEmails().includes(email) ? 'No account for this email — create one first' : 'Wrong password' });
   }
   if (p === '/api/logout' && m === 'POST') return send(res, 200, { ok: true }, { 'Set-Cookie': 'sf_session=; Path=/; Max-Age=0' });
@@ -286,6 +313,7 @@ function auditOnSuccess(req, res, p, m, body, cx) {
       '/api/integrations/connected': ['integrations', `Connected ${(vs.APPS[body.app] || {}).name || body.app}`],
       '/api/demo/load': ['settings', 'Loaded demo data'],
       '/api/demo/clear': ['settings', 'Cleared demo data'],
+      '/api/leave': ['members', `${body.on ? 'Marked' : 'Unmarked'} leave for ${(U.memberById(Number(body.member_id)) || {}).name || 'a member'}${body.date ? ' on ' + body.date : ' today'}`],
       '/api/sim': ['members', 'Removed the test teammates'],
       '/api/checklist': null,
     }[p] || null;
@@ -509,6 +537,22 @@ async function routes(req, res, url, p, m, body, cx) {
     return send(res, 200, result || {});
   }
   if (p === '/api/standup/morning' && m === 'POST') return send(res, 200, await U.runAgent('herald', 'Posting Good morning…', async () => { await scout.sync({ manual: true }).catch(() => {}); return standup.morning(); }));
+  if (p === '/api/backup' && m === 'GET') {
+    if (role !== 'admin' || cx.wsRole !== 'owner') return send(res, 403, { error: 'Only the workspace owner can download a backup' });
+    let file;
+    try { file = backup.exportWorkspace(cx.ws); } catch (e) { return send(res, 500, { error: e.message }); }
+    const name = `squadforge-${(workspaces.get(cx.ws) || {}).name || 'workspace'}-${U.today()}.db`.replace(/[^\w.-]+/g, '-');
+    res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Disposition': `attachment; filename="${name}"`, 'Content-Length': require('fs').statSync(file).size, 'Cache-Control': 'no-store' });
+    const st = require('fs').createReadStream(file); const done = () => require('fs').unlink(file, () => {}); res.on('close', done); st.on('error', done); st.pipe(res);
+    return;
+  }
+  if (p === '/api/backups' && m === 'GET') { if (role !== 'admin') return send(res, 403, { error: 'Admins only' }); return send(res, 200, backup.list()); }
+  if (p === '/api/leave' && m === 'POST') {
+    if (role !== 'admin') return send(res, 403, { error: 'Admins only' });
+    const mem = U.memberById(Number(body.member_id)); if (!mem) return send(res, 404, { error: 'Member not found' });
+    standup.setLeave(mem.id, /^\d{4}-\d{2}-\d{2}$/.test(body.date || '') ? body.date : U.today(), !!body.on, 'dashboard');
+    return send(res, 200, { ok: true });
+  }
   if (p === '/api/now' && m === 'GET') return send(res, 200, standup.nowBoard());
   if (p === '/api/standup/tally' && m === 'GET') { const d = url.searchParams.get('date') || standup.prevWorkday(U.today()); const t = standup.dayTally(d); return send(res, 200, { date: d, short: t.short, full: t.full, people: t.people, target: standup.target(), thread: standup.threadOf(U.today()) }); }
   if (p === '/api/agents/herald/morning' && m === 'POST') return send(res, 200, await U.runAgent('herald', 'Sending the morning reminder…', () => herald.morning()));
@@ -656,6 +700,10 @@ function cron(req, res, url) {
     }),
     weekly: () => background('scribe', 'Writing the weekly report…', () => scribe.run()),
   };
+  if (job === 'backup') {
+    try { const r = backup.nightly(U.today()); console.log(`[backup] ${r.workspaces} workspace(s) saved, ${r.kept} day(s) kept`); return send(res, 200, r); }
+    catch (e) { console.error('[backup]', e); return send(res, 500, { error: e.message }); }
+  }
   if (!jobs[job]) return send(res, 404, { error: 'unknown job' });
   for (const w of workspaces.all()) withWorkspace(w.id, () => jobs[job]());
   return send(res, 202, { accepted: job });

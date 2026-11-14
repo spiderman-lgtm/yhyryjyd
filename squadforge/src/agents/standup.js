@@ -21,6 +21,15 @@ const LINES = [
 const ASK = '👉 *Reply in this thread* with your plan for today, and come back before 7 PM with what you finished (app name + how many actions & triggers).';
 
 const target = () => Number(getSetting('standup.target', 10)) || 10;
+require('../db').addSchema(`CREATE TABLE IF NOT EXISTS leaves (
+  member_id INTEGER NOT NULL, date TEXT NOT NULL, source TEXT, note TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (member_id, date)
+)`);
+function onLeave(memberId, date) { return !!db.prepare('SELECT 1 FROM leaves WHERE member_id = ? AND date = ?').get(memberId, date); }
+function setLeave(memberId, date, on, source = 'dashboard', note = null) {
+  if (on) db.prepare('INSERT INTO leaves (member_id, date, source, note) VALUES (?, ?, ?, ?) ON CONFLICT(member_id, date) DO UPDATE SET source = excluded.source, note = excluded.note').run(memberId, date, source, note);
+  else db.prepare('DELETE FROM leaves WHERE member_id = ? AND date = ?').run(memberId, date);
+}
 const threadOf = (date) => getSetting('standup.thread.' + date, null);
 function isStandupThread(ts) { return !!getSetting('standup.ts.' + ts, null); }
 // last working day before `date` (Mon → Sat)
@@ -48,8 +57,9 @@ function personDay(m, date) {
   const posted = !!(log.morning_text || log.evening_text);
   const built = actions + triggers;
   const growth = m.role === 'growth' ? db.prepare('SELECT COUNT(*) c FROM growth_items WHERE member_id = ? AND date = ?').get(m.id, date).c : 0;
-  return { id: m.id, name: m.name, role: m.role, growth, posted, plan: log.morning_text || '', update: log.evening_text || '', actions, triggers, apps: Math.max(log.apps_count || 0, pubN('app')), built,
-    met: built >= target(), reviews: rv.length, passed: rv.filter((r) => r.passed).length, mistakes: rv.reduce((s, r) => s + (r.errors_count || 0), 0) };
+  const leave = onLeave(m.id, date);
+  return { id: m.id, name: m.name, role: m.role, growth, leave, posted, plan: log.morning_text || '', update: log.evening_text || '', actions, triggers, apps: Math.max(log.apps_count || 0, pubN('app')), built,
+    met: !leave && built >= target(), reviews: rv.length, passed: rv.filter((r) => r.passed).length, mistakes: rv.reduce((s, r) => s + (r.errors_count || 0), 0) };
 }
 
 function dayTally(date) {
@@ -58,13 +68,15 @@ function dayTally(date) {
   const T = target();
   const label = new Date(date + 'T12:00:00Z').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' });
   const pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
-  const line = (p) => !p.posted && !p.built && !p.growth ? `• *${p.name}* — 💤 no update posted`
+  const line = (p) => p.leave ? `• *${p.name}* — 🌴 on leave`
+    : !p.posted && !p.built && !p.growth ? `• *${p.name}* — 💤 no update posted`
     : p.role === 'growth' ? `• *${p.name}* — 🌱 ${p.growth ? pl(p.growth, 'growth item') : 'update posted'}`
     : `• *${p.name}* — ${p.built} built (${pl(p.actions, 'action')}, ${pl(p.triggers, 'trigger')}) ${p.met ? '✅ target met' : `⚠️ ${p.built}/${T}`}${p.reviews ? ` · reviews: ${p.passed}/${p.reviews} passed, ${p.mistakes} mistake${p.mistakes === 1 ? '' : 's'}` : ''}`;
-  const tech = people.filter((p) => p.role !== 'growth');
-  const met = tech.filter((p) => p.met).length, none = people.filter((p) => !p.posted && !p.built && !p.growth).length;
+  const tech = people.filter((p) => p.role !== 'growth' && !p.leave);
+  const met = tech.filter((p) => p.met).length, none = people.filter((p) => !p.leave && !p.posted && !p.built && !p.growth).length;
+  const away = people.filter((p) => p.leave).length;
   const short = [`📋 *Yesterday — ${label}* (target: ${T} actions + triggers each)`, ...people.map(line),
-    '', `${met}/${tech.length} met the target${none ? ` · ${none} without an update` : ''}. Have a great day! 💪`].join('\n');
+    '', `${met}/${tech.length} met the target${none ? ` · ${none} without an update` : ''}${away ? ` · ${away} on leave` : ''}. Have a great day! 💪`].join('\n');
   const full = [`📋 *Full tally — ${label}*`, '', ...people.map((p) => [line(p),
     p.plan ? `   _Plan:_ ${p.plan.replace(/\s+/g, ' ').slice(0, 160)}` : '', p.update ? `   _Done:_ ${p.update.replace(/\s+/g, ' ').slice(0, 220)}` : ''].filter(Boolean).join('\n')),
     '', `Team total: ${people.reduce((s, p) => s + p.built, 0)} actions + triggers · ${met}/${tech.length} met the target · ${people.reduce((s, p) => s + p.reviews, 0)} reviews, ${people.reduce((s, p) => s + p.mistakes, 0)} mistakes found`].join('\n');
@@ -110,7 +122,7 @@ async function morning(date = today()) {
   }
   // each person gets their own yesterday: what they built vs the target
   const T = target();
-  if (getSetting('standup.m91_morning', true) && !m91.hasLink()) m91n = await nudge(members().filter((m) => m.role !== 'lead'),
+  if (getSetting('standup.m91_morning', true) && !m91.hasLink()) m91n = await nudge(members().filter((m) => m.role !== 'lead' && !onLeave(m.id, date)),
     (p) => `Good morning ${p.name.split(' ')[0]} ☀️`,
     (p) => { const y2 = tally.people.find((x) => x.id === p.id); const yl = !y2 ? '' : y2.role === 'growth' ? `Yesterday: ${y2.growth} growth item(s). ` : !y2.posted && !y2.built ? 'Yesterday: no update posted. ' : `Yesterday you built ${y2.built} (${y2.actions} actions, ${y2.triggers} triggers) — ${y2.met ? 'target met ✅' : `${y2.built}/${T} of the target`}. `; return `${yl}Post today's plan in the Good morning thread.`; }, 'am');
   logActivity('herald', `☀️ Good morning posted · yesterday's tally shared${m91n ? ` · ${m91n} M91 nudges` : ''}`);
@@ -120,7 +132,7 @@ async function morning(date = today()) {
 // 7 PM: nudge whoever has nothing in today's thread
 async function eveningNudge(date = today()) {
   if (!getSetting('standup.m91_missing', true)) return 0;
-  const missing = members().filter((m) => m.role !== 'lead').map((m) => personDay(m, date)).filter((p) => !p.update && !p.built && !p.growth);
+  const missing = members().filter((m) => m.role !== 'lead').map((m) => personDay(m, date)).filter((p) => !p.leave && !p.update && !p.built && !p.growth);
   const m91 = require('../m91');
   if (m91.hasLink()) {
     if (!missing.length) return 0;
@@ -145,14 +157,15 @@ function weekSection(from, to) {
   for (const m of ms.sort((a, b) => a.name.localeCompare(b.name))) {
     const ps = days.map((d) => personDay(m, d));
     if (m.role === 'growth') { L.push(`• *${m.name}* (growth) — ${ps.reduce((s, p) => s + p.growth, 0)} growth items · updates ${ps.filter((p) => p.posted || p.growth).length}/${days.length} days`); continue; }
-    const built = ps.reduce((s, p) => s + p.built, 0), met = ps.filter((p) => p.met).length, posted = ps.filter((p) => p.posted || p.built).length;
+    const away = ps.filter((p) => p.leave).length, work = days.length - away;
+    const built = ps.reduce((s, p) => s + p.built, 0), met = ps.filter((p) => p.met).length, posted = ps.filter((p) => !p.leave && (p.posted || p.built)).length;
     const a = ps.reduce((s, p) => s + p.actions, 0), t = ps.reduce((s, p) => s + p.triggers, 0);
     const rv = db.prepare(`SELECT * FROM reviews WHERE member_id = ? AND date BETWEEN ? AND ? AND status = 'done'`).all(m.id, from, to);
     const mis = rv.reduce((s, r) => s + (r.errors_count || 0), 0), pass = rv.filter((r) => r.passed).length;
     const titles = {}; rv.forEach((r) => { try { JSON.parse(r.findings || '[]').forEach((f) => (titles[f.title] = (titles[f.title] || 0) + 1)); } catch { /* none */ } });
     const top = Object.entries(titles).sort((x, y) => y[1] - x[1]).slice(0, 2).map(([k]) => k);
-    L.push(`• *${m.name}* — ${a} actions + ${t} triggers = *${built}* · target met ${met}/${days.length} days · updates ${posted}/${days.length}${rv.length ? ` · reviews ${pass}/${rv.length} passed, ${mis} mistakes${top.length ? ` (most common: ${top.join('; ')})` : ''}` : ''}`);
-    teamBuilt += built; teamMet += met; teamDays += days.length; teamRev += rv.length; teamPass += pass; teamMis += mis;
+    L.push(`• *${m.name}* — ${a} actions + ${t} triggers = *${built}* · target met ${met}/${work} days · updates ${posted}/${work}${away ? ` · 🌴 ${away} day${away === 1 ? '' : 's'} on leave` : ''}${rv.length ? ` · reviews ${pass}/${rv.length} passed, ${mis} mistakes${top.length ? ` (most common: ${top.join('; ')})` : ''}` : ''}`);
+    teamBuilt += built; teamMet += met; teamDays += work; teamRev += rv.length; teamPass += pass; teamMis += mis;
   }
   if (ms.length) L.push(`_Team: ${teamBuilt} actions + triggers · target met on ${teamDays ? Math.round(teamMet / teamDays * 100) : 0}% of person-days · ${teamRev} reviews, ${teamPass} passed first time or later, ${teamMis} mistakes found._`);
   return L.join('\n');
@@ -172,4 +185,4 @@ function nowBoard(date = today()) {
   return { date, target: target(), people, open: { new: count('new'), rnd: count('rnd'), started: count('started'), stuck: count('stuck') }, unassigned: reqs.filter((r) => JSON.parse(r.assigned_member_ids || '[]').length === 0).length };
 }
 
-module.exports = { nowBoard, morning, eveningNudge, dayTally, weekSection, isStandupThread, threadOf, prevWorkday, target };
+module.exports = { onLeave, setLeave, nowBoard, morning, eveningNudge, dayTally, weekSection, isStandupThread, threadOf, prevWorkday, target };

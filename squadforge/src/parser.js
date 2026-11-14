@@ -139,4 +139,6 @@ function mentionsApp(text, title) {
   return words.length > 0 && wordMatch(t, words[0]);
 }
 
-module.exports = { isAppSubmission, namedLists, isPlugRequest, plugRequest, formField, isRequest, isReviewAsk, standupKind, detectStatus, growthKind, parseCounts, countItems, requestTitle, mentionsApp, DEFAULTS };
+// "on leave today", "aaj chhutti hai", "sick leave", "off today"
+function isLeave(text = '') { return /\b(on leave|leave today|leave hai|leave pe|leave par|aaj leave|chh?utti|holiday today|off today|sick leave|half day|not working today|ooo|out of office)\b/i.test(String(text)); }
+module.exports = { isLeave, isAppSubmission, namedLists, isPlugRequest, plugRequest, formField, isRequest, isReviewAsk, standupKind, detectStatus, growthKind, parseCounts, countItems, requestTitle, mentionsApp, DEFAULTS };
