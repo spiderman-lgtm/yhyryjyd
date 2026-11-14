@@ -1561,14 +1561,12 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   --bg: #eef3ef; --panel: #ffffff; --panel-2: #f3f7f4; --panel-3: #e4ece6;
   --line: #d8e3dc; --line-2: #c3d4c9; --text: #173027; --text-2: #3f5a4e; --muted: #6f857a;
   --accent: #3d8a6e; --accent-2: #2e7259; --accent-soft: rgba(61,138,110,.14);
-  --sage: #1f3b33; --sage-2: #163029;
-  --shadow: 0 1px 2px rgba(23,48,39,.04), 0 4px 14px rgba(23,48,39,.05);
 }
 :root:not([data-theme="dark"]) body { background: var(--bg); color: var(--text); }
 /* sidebar */
 :root:not([data-theme="dark"]) .sidebar { background: #1f3b33 !important; border-right: 0 !important; }
 :root:not([data-theme="dark"]) .brand, :root:not([data-theme="dark"]) .brand-name { color: #eef6f1 !important; }
-:root:not([data-theme="dark"]) .brand-mark { background: #8fc1ab !important; color: #10221b !important; border-color: transparent !important; }
+:root:not([data-theme="dark"]) .brand-mark::before { filter: invert(.9); }
 :root:not([data-theme="dark"]) .nav-label { color: #8fb3a3 !important; }
 :root:not([data-theme="dark"]) .tabs button { color: #d6e6dd; }
 :root:not([data-theme="dark"]) .tabs button svg { color: #a9cbbb; }
@@ -1583,7 +1581,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 :root:not([data-theme="dark"]) .topbar { background: rgba(255,255,255,.88) !important; border-bottom: 1px solid var(--line) !important; backdrop-filter: blur(10px); }
 :root:not([data-theme="dark"]) .ws-switch { background: #fff; border-color: var(--line-2); color: var(--text); }
 /* cards and blocks: white on soft green */
-:root:not([data-theme="dark"]) .card, :root:not([data-theme="dark"]) .qhero, :root:not([data-theme="dark"]) .mg-hero, :root:not([data-theme="dark"]) .lb-pod { background: #fff; border-color: var(--line); box-shadow: var(--shadow); }
+:root:not([data-theme="dark"]) .card, :root:not([data-theme="dark"]) .lb-pod { background: #fff; border-color: var(--line); }
+:root:not([data-theme="dark"]) .qhero, :root:not([data-theme="dark"]) .mg-hero { background: #fff; }
 :root:not([data-theme="dark"]) .qtile { background: var(--panel-2); border-color: var(--line); }
 :root:not([data-theme="dark"]) .qtile.start { background: #fff; }
 :root:not([data-theme="dark"]) .seg { background: #fff; border-color: var(--line-2); }
