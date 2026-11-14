@@ -96,6 +96,18 @@ $('#loginForm').addEventListener('submit', async (e) => {
   } catch (err) { $('#loginErr').textContent = err.message; }
   btn.disabled = false;
 });
+// ---------- front-page video tour ----------
+document.addEventListener('click', (e) => {
+  const w = e.target.closest('[data-watch]');
+  const ch = e.target.closest('.lp-chapters [data-t]');
+  if (!w && !ch) return;
+  e.preventDefault();
+  const v = $('#tourVideo'); if (!v) return;
+  $('#lp-video').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (ch) { const go = () => { v.currentTime = Number(ch.dataset.t); v.play().catch(() => {}); }; v.readyState ? go() : (v.addEventListener('loadedmetadata', go, { once: true }), v.load()); }
+  else setTimeout(() => v.play().catch(() => {}), 600);
+});
+
 // ---------- workspace switcher ----------
 let myWorkspaces = [];
 let myWorkspace = null;

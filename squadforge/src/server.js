@@ -110,7 +110,7 @@ function readBody(req) {
     req.on('error', reject);
   });
 }
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.mp4': 'video/mp4', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
 function serveStatic(req, res, pathname) {
   let file = path.normalize(path.join(PUBLIC, pathname === '/' ? 'index.html' : pathname));
   if (!file.startsWith(PUBLIC)) return send(res, 403, 'Forbidden');
@@ -121,7 +121,23 @@ function serveStatic(req, res, pathname) {
     res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store' });
     return res.end(html);
   }
-  res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+  const type = MIME[path.extname(file)] || 'application/octet-stream';
+  // videos: answer byte ranges so browsers can seek and Safari/iOS will play
+  if (type.startsWith('video/')) {
+    const size = fs.statSync(file).size;
+    const m = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
+    if (m) {
+      let start = m[1] ? Number(m[1]) : size - Number(m[2]);
+      let end = m[1] && m[2] ? Number(m[2]) : size - 1;
+      if (!m[1]) end = size - 1;
+      if (isNaN(start) || start < 0 || start >= size || end >= size || start > end) { res.writeHead(416, { 'Content-Range': `bytes */${size}` }); return res.end(); }
+      res.writeHead(206, { 'Content-Type': type, 'Content-Range': `bytes ${start}-${end}/${size}`, 'Accept-Ranges': 'bytes', 'Content-Length': end - start + 1, 'Cache-Control': 'public, max-age=86400' });
+      return fs.createReadStream(file, { start, end }).pipe(res);
+    }
+    res.writeHead(200, { 'Content-Type': type, 'Content-Length': size, 'Accept-Ranges': 'bytes', 'Cache-Control': 'public, max-age=86400' });
+    return fs.createReadStream(file).pipe(res);
+  }
+  res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-cache' });
   fs.createReadStream(file).pipe(res);
 }
 

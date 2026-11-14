@@ -15,7 +15,7 @@
     <div class="qp">
       <header class="qp-nav">
         <div class="qp-logo"><svg viewBox="0 0 8 9" shape-rendering="crispEdges" aria-hidden="true"><path d="M3 0h2v1h1v2h1v2h1v1H5v3H3V6H0V5h1V3h1V1h1z" fill="#1f3b33"/></svg>SquadForge</div>
-        <nav class="qp-links"><a href="#lp-how">How it works</a><a href="#lp-diff">Why it's different</a><a href="#lp-fair">Fairness</a><a href="#lp-where">Where you work</a></nav>
+        <nav class="qp-links"><a href="#lp-video" class="qp-watch" data-watch>▶ Watch the tour</a><a href="#lp-how">How it works</a><a href="#lp-diff">Why it's different</a><a href="#lp-fair">Fairness</a><a href="#lp-where">Where you work</a></nav>
       </header>
       <section class="qp-hero">
         <span class="qp-badge"><i></i>Measure value, not busyness</span>
@@ -35,11 +35,26 @@
           <p class="qp-hint" id="authHint"></p>
           <p id="loginErr" class="err" role="alert"></p>
         </form>
+        <a href="#lp-video" class="qp-tour" data-watch><span>▶</span> See how SquadForge works — 3-min video tour</a>
         <ul class="qp-checks"><li>No screenshots or time tracking</li><li>Task count never counts</li><li>Every flag has a reason</li><li>Works from your Slack</li></ul>
       </section>
       <div class="qp-scene" id="qpScene" aria-hidden="true"></div>
     </div>
     <div class="lp">
+      <section class="lp-sec lp-video" id="lp-video">
+        <span class="lp-kicker">See it in action</span>
+        <h2>How a team lead uses SquadForge — in 3 minutes.</h2>
+        <p class="lp-lead">From the 11 AM good-morning thread and M91 alerts, to reviews, the 7 PM summary, the Monday report and the Manager view. With voice-over — turn your sound on.</p>
+        <div class="lp-player">
+          <video id="tourVideo" controls preload="none" playsinline poster="/media/squadforge-poster.jpg">
+            <source src="/media/squadforge-walkthrough.mp4" type="video/mp4" />
+            Your browser can't play this video. <a href="/media/squadforge-walkthrough.mp4">Download it</a>.
+          </video>
+        </div>
+        <div class="lp-chapters">
+          <button data-t="7">☀️ A day with SquadForge</button><button data-t="35">📱 M91 alerts</button><button data-t="69">📊 Dashboard</button><button data-t="97">📋 Requests &amp; reviews</button><button data-t="122">👔 Manager view</button><button data-t="145">⚔️ Commander</button><button data-t="161">⚙️ Setup</button>
+        </div>
+      </section>
       <section class="lp-sec" id="lp-what">
         <span class="lp-kicker">What it is</span>
         <h2>Your team's standups, requests and reviews — in one calm place.</h2>
