@@ -43,6 +43,10 @@ require('./db').addSchema(`CREATE TABLE IF NOT EXISTS integrations (
   last_error TEXT
 )`);
 require('./db').addSchema('ALTER TABLE integrations ADD COLUMN connected_by TEXT');
+// Connections live inside one viaSocket project. Rows from before this column belong to the first project.
+require('./db').addSchema('ALTER TABLE integrations ADD COLUMN project_id TEXT');
+const FIRST_PROJECT = 'projD6mFNfX5';
+const sameProject = (r) => (r.project_id || FIRST_PROJECT) === process.env.VIASOCKET_PROJECT_ID;
 
 let client = null;
 function configured() {
@@ -63,7 +67,7 @@ const user = () => vs().user(userId());
 
 function row(app) {
   const r = db.prepare('SELECT * FROM integrations WHERE app = ?').get(app);
-  if (!r) return null;
+  if (!r || !sameProject(r)) return null; // made in another viaSocket project: connect again
   return { ...r, settings: JSON.parse(r.settings || '{}') };
 }
 function connected(app) { const r = row(app); return !!(r && r.script_id); }
@@ -89,9 +93,11 @@ async function onConnected(app, authId, by = null) {
   if (!authId || typeof authId !== 'string') throw new Error('authId missing');
   const u = user();
   const scriptId = (await u.findEnabled(app)) || (await u.enable(app, authId)).scriptId;
-  db.prepare(`INSERT INTO integrations (app, auth_id, script_id, connected_by) VALUES (?, ?, ?, ?)
-              ON CONFLICT(app) DO UPDATE SET auth_id = excluded.auth_id, script_id = excluded.script_id, connected_by = excluded.connected_by, connected_at = datetime('now'), last_error = NULL`)
-    .run(app, authId, scriptId, by);
+  // keep the channel / "who am I" choices from before when reconnecting the same app
+  db.prepare(`INSERT INTO integrations (app, auth_id, script_id, connected_by, project_id) VALUES (?, ?, ?, ?, ?)
+              ON CONFLICT(app) DO UPDATE SET auth_id = excluded.auth_id, script_id = excluded.script_id, connected_by = excluded.connected_by, project_id = excluded.project_id, connected_at = datetime('now'), last_error = NULL`)
+    .run(app, authId, scriptId, by, process.env.VIASOCKET_PROJECT_ID);
+  if (app === 'slack') { const { setSetting } = require('./db'); setSetting('scout.backoff_until', 0); setSetting('scout.last_run_ms', 0); } // a fresh connection: sync right away
   logActivity('scout', `🔌 ${APPS[app].name} connected${by ? ' (' + by + ')' : ''}`);
   return status();
 }
