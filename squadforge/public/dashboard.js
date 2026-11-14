@@ -48,7 +48,8 @@ async function renderTeam(range = dashRange) {
       <div class="card"><div class="card-h"><h3>Work calendar</h3><span class="muted">${new Date(t + 'T12:00:00Z').toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</span></div>${calendar(month.series, t)}</div>
       <div class="card"><div class="card-h"><h3>Request preview</h3></div>${requestPreview(reqs, open, T.requests_completed)}</div>
       <div class="card"><div class="card-h"><h3>Quick message</h3><span class="muted">to the team channel</span></div>
-        <textarea id="qmText" class="qm" placeholder="What should the team know?"></textarea>
+        ${voiceBar('qmVoice')}
+        <textarea id="qmText" class="qm" placeholder="What should the team know? Type or tap 🎤 Speak"></textarea>
         <div class="qm-bar"><label class="check" title="Also send an M91 alert"><input type="checkbox" id="qmImp"/> Important</label><span class="spacer"></span><button class="btn ghost small" id="qmAi" title="Let AI improve the wording">✨ Improve</button><button class="btn" id="qmSend">Send ✦</button></div>
         <div class="muted" style="font-size:11px">Tag people and polish with AI in Commander.</div>
       </div>
@@ -82,6 +83,7 @@ async function renderTeam(range = dashRange) {
   placeBirds();
   wireChecklist();
   wireQueue(ins.queue);
+  wireVoice('qmVoice', $('#qmText'));
   const qs = $('#qmSend');
   if (qs) qs.onclick = async () => {
     const message = $('#qmText').value.trim();

@@ -345,7 +345,9 @@ async function renderCommander() {
     <div class="grid g2">
       <div class="card cmd">
         <div class="card-h"><h3>1 · Write your message</h3><span class="muted">Hinglish is fine</span></div>
-        <textarea id="cMsg" style="min-height:120px" placeholder="sab log aaj Shopify plugin ke triggers pe focus karo, shaam tak review me daalna"></textarea>
+        ${voiceBar('cVoice')}
+        <textarea id="cMsg" style="min-height:120px" placeholder="Type, or tap 🎤 Speak — e.g. sab log aaj Shopify plugin ke triggers pe focus karo, shaam tak review me daalna"></textarea>
+        <label class="check voice-auto"><input type="checkbox" id="cVoiceAI" ${state.integrations.ai ? 'checked' : 'disabled'}/> ✨ After I speak, improve it with AI${state.integrations.ai ? '' : ' (needs the AI key)'}</label>
         <div class="row" style="margin-top:8px">
           <div class="seg" id="cTone" role="tablist" aria-label="Tone"><button class="on" data-tone="friendly">Friendly</button><button data-tone="firm">Firm</button><button data-tone="short">Short</button></div>
           <span class="spacer"></span>
@@ -379,6 +381,7 @@ async function renderCommander() {
     btn.disabled = false; btn.textContent = '✨ Improve with AI'; $('#cDraft').classList.remove('thinking');
   };
   $('#cPolish').onclick = improve; $('#cAgain').onclick = improve;
+  wireVoice('cVoice', $('#cMsg'), () => { if ($('#cVoiceAI').checked) improve(); else $('#cSend').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
   $('#cUndo').onclick = () => { $('#cDraft').classList.add('hidden'); $('#cOut').value = ''; $('#cStep').textContent = '2 · Send'; };
   $('#cSend').onclick = async () => {
     const message = ($('#cDraft').classList.contains('hidden') ? $('#cMsg').value : $('#cOut').value).trim();
