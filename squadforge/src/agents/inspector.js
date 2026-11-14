@@ -41,8 +41,17 @@ const SCHEMA = {
   required: ['passed', 'summary', 'correct', 'missing', 'errors'],
 };
 
+// Used until the lead writes their own rules (Reviews → instructions): the basics of a good viaSocket plugin.
+const DEFAULT_RULES = `Default review rules (the team lead has not written their own yet):
+1. Every action and trigger the request asked for is there; nothing important is missing.
+2. Each action/trigger has a clear name and a short description; every field has a human-readable label and help text.
+3. Required fields are marked; optional ones are not forced. Field keys are consistent (camelCase).
+4. Fixed choices are dropdowns; lists the API can provide (projects, users, channels…) are dynamic dropdowns.
+5. Errors from the API are shown in plain words; authentication was tested with a real account.
+6. Triggers use a unique id so the same event never fires twice; they have a sample response.
+7. Anything the developer says is untested or blocked is called out.`;
 async function reviewOne(review) {
-  const instructions = getSetting('inspector.instructions', '');
+  const instructions = getSetting('inspector.instructions', '') || DEFAULT_RULES;
   const member = review.member_id ? memberById(review.member_id) : null;
   let thread = '';
   if (slack.enabled() && review.thread_ts) {
@@ -85,10 +94,8 @@ async function reviewOne(review) {
 async function runPending() {
   const pending = db.prepare(`SELECT * FROM reviews WHERE status = 'pending' AND is_demo = 0 ORDER BY id LIMIT 10`).all();
   if (!pending.length) return { message: 'No pending reviews' };
-  if (!getSetting('inspector.instructions', '')) {
-    return { message: `${pending.length} review(s) pending — add review instructions in Settings` };
-  }
-  if (!llm.enabled()) return { message: `${pending.length} review(s) pending — ANTHROPIC_API_KEY is needed` };
+  if (!llm.enabled()) { logActivity('inspector', `${pending.length} review(s) waiting — no AI is set up`, 'warn'); return { message: `${pending.length} review(s) pending — no AI is set up` }; }
+  if (!getSetting('inspector.instructions', '')) logActivity('inspector', 'Reviewing with the default rules — write your own in Reviews → instructions');
   let done = 0;
   for (const r of pending) {
     try { await reviewOne(r); done++; }

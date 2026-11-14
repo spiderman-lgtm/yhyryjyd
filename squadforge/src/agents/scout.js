@@ -105,7 +105,10 @@ function simMember(key) {
   }
   return m;
 }
+const FOOTER = /\n?\s*_?\*?sent (using|from|via)\*?_?\s+[^\n]*$/i;
+function clean(msg) { return msg && msg.text && FOOTER.test(msg.text) ? { ...msg, text: msg.text.replace(FOOTER, '').trim() } : msg; }
 function asSim(msg) {
+  msg = clean(msg);
   if (!msg || !msg.user || msg.user !== leadId()) return msg;
   const mm = String(msg.text || '').match(/^\s*\[(aarav|meera|kabir|isha)\]\s*/i);
   if (!mm) return msg;
@@ -266,7 +269,7 @@ async function syncNow(viaVs, manual) {
     }
   }
   setSetting('scout.last_ts', now.toFixed(6));
-  const reviewResult = stats.reviews ? await inspector.runPending() : null;
+  const reviewResult = await inspector.runPending(); // also picks up reviews that were waiting
   const parts = [];
   if (stats.updates) parts.push(`${stats.updates} updates`);
   if (stats.requests) parts.push(`${stats.requests} new requests`);
