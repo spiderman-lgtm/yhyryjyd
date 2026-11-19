@@ -34,6 +34,7 @@ Secrets (deploy token, viaSocket embed secret, admin password, API keys) are **n
   - **Manager view:** a read-only page for the boss. It gives the week in sentences, what the lead did, shipped, blocked with reasons, in progress and a 4-week trend, and can be saved as a PDF. Invite the boss with the **Manager** role in Settings → Workspace.
   - **History:** every change, with who and why.
   - **Workspaces:** one per team, with separate data. Create one with "Create account" and switch from the top bar.
+- **Company view (Everyone):** departments sit above the team workspaces. A company admin (an `ADMIN_EMAILS` account) uses **Company setup** to add departments, put each team in one, add people who are not in a team (CEO, other departments), and set titles and who reports to whom. **Everyone** shows each person's card: what they are on right now, their week in numbers and recent work. A card opens the person's page, with who they report to, their team, their peer group and the week day by day. The page is open to everyone in a company team and to everyone added by email. People added by email can sign up without a team and post their own "right now" line. Code: `src/company.js`, `public/company.js`.
 - **Test teammates:** start a Slack message with `[Aarav]` and it counts as Aarav's. This lets one person test everything.
 
 ## Principles agreed with the lead

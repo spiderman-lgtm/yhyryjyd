@@ -7,17 +7,17 @@ const GROWTH_LABEL = { support_request: 'Support request', app_listing: 'App lis
 
 let state = null;
 let members = [];
-const VIEWER_TABS = ['now', 'leaderboard', 'analysis', 'flow', 'village'];
-const MANAGER_TABS = ['manager', 'now', 'leaderboard', 'analysis', 'live', 'flow', 'village'];
+const VIEWER_TABS = ['company', 'now', 'leaderboard', 'analysis', 'flow', 'village'];
+const MANAGER_TABS = ['company', 'manager', 'now', 'leaderboard', 'analysis', 'live', 'flow', 'village'];
 const TEAM_TABS = ['now', 'leaderboard', 'analysis'];
 const LIVE_TABS = ['flow', 'village'];
 const lastLive = () => { try { return localStorage.getItem('sf_live') === 'village' ? 'village' : 'flow'; } catch { return 'flow'; } };
-const ALL_TABS = ['team', 'manager', 'requests', 'reviews', 'growth', 'reports', 'history', 'now', 'leaderboard', 'analysis', 'commander', 'flow', 'village', 'integrations', 'settings'];
+const ALL_TABS = ['company', 'orgsetup', 'team', 'manager', 'requests', 'reviews', 'growth', 'reports', 'history', 'now', 'leaderboard', 'analysis', 'commander', 'flow', 'village', 'integrations', 'settings'];
 let tab = ALL_TABS.includes(location.hash.replace('#', '')) ? location.hash.replace('#', '') : 'team'; // viewers are sent to 'flow' in markTab
 let role = 'admin';
 let myEmail = null;
 let myName = null;
-const PAGE_TITLES = { team: 'Dashboard', manager: 'Manager view', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'Reports · History', now: 'Live Team · Right now', leaderboard: 'Live Team · Leaderboard', analysis: 'Live Team · Analysis', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
+const PAGE_TITLES = { company: 'Everyone', orgsetup: 'Company setup', team: 'Dashboard', manager: 'Manager view', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'Reports · History', now: 'Live Team · Right now', leaderboard: 'Live Team · Leaderboard', analysis: 'Live Team · Analysis', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
 let pollTimer = null;
 let lastActivityId = 0;
 
@@ -129,6 +129,7 @@ document.addEventListener('click', (e) => {
 // ---------- workspace switcher ----------
 let myWorkspaces = [];
 let myWorkspace = null;
+let myCompany = null; // { admin, member } — the company view (departments + Everyone)
 function renderWsSwitch() {
   const sel = $('#wsSwitch');
   if (!myEmail || !myWorkspace) { sel.classList.add('hidden'); return; }
@@ -157,14 +158,17 @@ $('#tabs').addEventListener('click', (e) => {
 function markTab() {
   const liveOn = !!(state && state.live_views);
   if (LIVE_TABS.includes(tab) && state && !liveOn) tab = role === 'admin' ? 'team' : role === 'manager' ? 'manager' : 'now';
-  if (role === 'viewer' && !VIEWER_TABS.includes(tab)) tab = 'now';
+  if ((tab === 'company' && !(myCompany && myCompany.member)) || (tab === 'orgsetup' && !(myCompany && myCompany.admin))) tab = role === 'admin' ? 'team' : role === 'manager' ? 'manager' : 'now';
+  if (tab === 'orgsetup' && myCompany && myCompany.admin) { /* company admins may open setup from any role */ } else if (role === 'viewer' && !VIEWER_TABS.includes(tab)) tab = 'now';
+
   if (role === 'manager' && !MANAGER_TABS.includes(tab)) tab = 'manager';
   document.querySelectorAll('#tabs button').forEach((b) => {
     const t = b.dataset.tab;
     b.classList.toggle('active', t === tab || (t === 'live' && LIVE_TABS.includes(tab)) || (t === 'reports' && tab === 'history') || (t === 'now' && TEAM_TABS.includes(tab)));
+    if (t === 'company' || t === 'orgsetup') { b.classList.toggle('hidden', !(myCompany && (t === 'company' ? myCompany.member : myCompany.admin))); return; }
     b.classList.toggle('hidden', (t === 'live' && !liveOn) || (role === 'viewer' && (b.dataset.admin !== undefined || b.dataset.mgr !== undefined)) || (role === 'manager' && !MANAGER_TABS.includes(t)));
   });
-  document.querySelectorAll('#tabs .nav-label').forEach((l) => l.classList.toggle('hidden', (role === 'viewer' && l.textContent !== 'Live') || (role === 'manager' && l.textContent === 'Workspace')));
+  document.querySelectorAll('#tabs .nav-label').forEach((l) => l.classList.toggle('hidden', l.textContent === 'Company' ? !(myCompany && myCompany.member) : (role === 'viewer' && l.textContent !== 'Live') || (role === 'manager' && l.textContent === 'Workspace')));
   if (window.innerWidth <= 720) { const a = document.querySelector('#tabs button.active'); if (a) a.scrollIntoView({ inline: 'center', block: 'nearest' }); }
   $('#pageTitle').textContent = PAGE_TITLES[tab] || 'SquadForge';
   document.title = `${PAGE_TITLES[tab] || 'Dashboard'} · SquadForge`;
@@ -684,7 +688,7 @@ async function render() {
   try {
     if (role === 'admin' && (!members.length || tab === 'settings')) members = await api('/api/members');
     const shown = tab;
-    Promise.resolve(({ flow: renderFlow, integrations: renderIntegrations, village: renderVillage, team: renderTeam, manager: renderManager, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, history: renderHistory, now: renderNow, leaderboard: renderLeaderboard, analysis: renderAnalysis, commander: renderCommander, settings: renderSettings }[tab] || renderNow)())
+    Promise.resolve(({ company: renderCompany, orgsetup: renderCompanySetup, flow: renderFlow, integrations: renderIntegrations, village: renderVillage, team: renderTeam, manager: renderManager, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, history: renderHistory, now: renderNow, leaderboard: renderLeaderboard, analysis: renderAnalysis, commander: renderCommander, settings: renderSettings }[tab] || renderNow)())
       .then(() => { if (tab === shown) subTabs(); }).catch(() => {});
     if (tab === 'village') lastActivityId = state.activity[0] ? state.activity[0].id : 0;
   } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; }
@@ -698,6 +702,7 @@ async function boot() {
   myName = me.name || null;
   myWorkspaces = me.workspaces || [];
   myWorkspace = me.workspace || null;
+  myCompany = me.company || null;
   if (myWorkspace) saveWs(myWorkspace.id);
   renderWsSwitch();
   state = await api('/api/state');

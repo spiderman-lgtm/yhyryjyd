@@ -5,6 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { db, getSetting, setSetting, withWorkspace } = require('./db');
 const workspaces = require('./workspaces');
+const company = require('./company');
 const history = require('./history');
 const checklist = require('./checklist');
 const manager = require('./manager');
@@ -81,6 +82,7 @@ async function api(req, res, url) {
       workspace: cx ? { id: cx.ws, name: (workspaces.get(cx.ws) || {}).name, role: cx.wsRole } : null,
       workspaces: list.map((w) => ({ id: w.id, name: w.name, role: w.role })),
       password_set: !!process.env.ADMIN_PASSWORD, admin_emails_set: adminEmails().length > 0,
+      company: cx ? { admin: company.isAdmin(cx), member: company.canSee(cx) } : null,
     });
   }
   const issue = (role, email, extra = {}) => {
@@ -92,7 +94,7 @@ async function api(req, res, url) {
   // A new account owns its own workspace; someone invited can leave the workspace name empty and join.
   const finishSignup = (email, wsName) => {
     const invited = workspaces.forEmail(email);
-    const ws = wsName ? workspaces.create(wsName, email) : invited[0];
+    const ws = wsName ? workspaces.create(wsName, email) : invited[0] || (company.personForEmail(email) ? workspaces.get(company.homeWorkspace()) : null);
     if (!ws) return send(res, 400, { error: 'Give your workspace a name (for example, your team name)' });
     console.log(wsName ? `[workspace] created #${ws.id}` : `[signup] joined invited workspace #${ws.id}`);
     return issue(adminEmails().includes(email) ? 'admin' : 'viewer', email, { created: true, workspace: ws.id, joined: !wsName });
@@ -104,8 +106,9 @@ async function api(req, res, url) {
     const wsName = String(body.workspace || '').trim().slice(0, 60);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { error: 'Please enter a valid email' });
     const invited = workspaces.forEmail(email);
-    if (!mayCreateAccount(email, invited.length > 0)) return send(res, 403, { error: 'Accounts are invite-only here — ask your team lead to add your email in Settings → Workspace' });
-    if (!wsName && !invited.length) return send(res, 400, { error: 'Give your workspace a name (for example, your team name)' });
+    const inCompany = !invited.length && !!company.personForEmail(email); // added in Company setup (e.g. the CEO)
+    if (!mayCreateAccount(email, invited.length > 0 || inCompany)) return send(res, 403, { error: 'Accounts are invite-only here — ask your team lead to add your email in Settings → Workspace' });
+    if (!wsName && !invited.length && !inCompany) return send(res, 400, { error: 'Give your workspace a name (for example, your team name)' });
     const acct = accounts.find(email);
     if (acct && acct.verified) {
       if (!wsName) return send(res, 409, { error: 'An account with this email already exists — sign in instead' });
@@ -270,6 +273,22 @@ async function routes(req, res, url, p, m, body, cx) {
       from: teams[0] ? teams[0].from : null, to: teams[0] ? teams[0].to : null, teams,
       totals: { teams: teams.length, shipped: add((t) => t.kpis.delivered), prev_shipped: add((t) => t.kpis.prev_delivered), verified: add((t) => t.kpis.verified), blockers_cleared: add((t) => t.kpis.blockers_cleared), blocked_now: add((t) => t.kpis.blocked_now), moving: add((t) => t.moving), waiting: add((t) => t.waiting), people: add((t) => t.today.people), posted: add((t) => t.today.posted), on_leave: add((t) => t.today.on_leave), at_target: add((t) => t.today.at_target), tech: add((t) => t.today.tech), reviews: add((t) => t.lead_work.reviews) },
     });
+  }
+  // ---------- company: departments + "Everyone" (open to everyone in a company team) ----------
+  if (p.startsWith('/api/company')) {
+    if (!company.canSee(cx)) return send(res, 403, { error: 'Your team is not part of the company view yet — a company admin adds it to a department in Company setup' });
+    const adminOnly = () => (company.isAdmin(cx) ? null : send(res, 403, { error: 'Only company admins can change the company setup' }));
+    const ok = (fn) => { try { return send(res, 200, fn()); } catch (e) { return send(res, 400, { error: e.message }); } };
+    if (p === '/api/company/everyone' && m === 'GET') return send(res, 200, company.everyone(cx));
+    if (p === '/api/company/person' && m === 'GET') { const d = company.person(url.searchParams.get('key')); return d ? send(res, 200, d) : send(res, 404, { error: 'Person not found' }); }
+    if (p === '/api/company/status' && m === 'POST') return ok(() => ({ key: company.postStatus(cx.email, body.text) }));
+    if (p === '/api/company/setup' && m === 'GET') return adminOnly() || send(res, 200, { departments: company.departments(), teams: company.teams(), people: company.directory() });
+    if (p === '/api/company/departments' && m === 'POST') return adminOnly() || ok(() => company.saveDepartment(body));
+    if (p === '/api/company/departments' && m === 'DELETE') return adminOnly() || ok(() => company.deleteDepartment(body.id));
+    if (p === '/api/company/teams' && m === 'POST') return adminOnly() || ok(() => company.setTeamDepartment(body.ws_id, body.department_id));
+    if (p === '/api/company/people' && m === 'POST') return adminOnly() || ok(() => ({ key: company.savePerson(body) }));
+    if (p === '/api/company/people' && m === 'DELETE') return adminOnly() || ok(() => { company.deletePerson(body.key); return { ok: true }; });
+    return send(res, 404, { error: 'Not found' });
   }
   if (role === 'manager' && !(m === 'GET' && (['/api/state', '/api/requests', '/api/logs', '/api/workspaces', '/api/now', '/api/manager/all', '/api/leaderboard', '/api/digest'].includes(p) || /^\/api\/member\/\d+\/profile$/.test(p)))) return send(res, 403, { error: 'Managers have a read-only view' });
   // ---------- history & test checklist ----------

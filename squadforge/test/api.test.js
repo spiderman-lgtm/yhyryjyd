@@ -145,3 +145,39 @@ test('Live Team: everyone sees the leaderboard and the day analysis; urgent requ
   assert.equal(P.isUrgent('@Aarav this is urgent, aaj hi chahiye'), true);
   assert.equal(P.isUrgent('normal request'), false);
 });
+
+test('company: departments, Everyone page open to the company, own "right now" line, setup for admins only', async () => {
+  const admin = await login('lead@viasocket.com', 'adminpass1');
+  assert.deepEqual((await call('/api/me', { token: admin })).data.company, { admin: true, member: true });
+  const lead = (await call('/api/company/departments', { method: 'POST', token: admin, body: { name: 'Leadership', emoji: '⭐' } })).data;
+  const plugins = (await call('/api/company/departments', { method: 'POST', token: admin, body: { name: 'Plugins' } })).data;
+  assert.equal(plugins.length, 2);
+  await call('/api/demo/load', { method: 'POST', token: admin });
+  assert.equal((await call('/api/company/teams', { method: 'POST', token: admin, body: { ws_id: 1, department_id: plugins[1].id } })).status, 200);
+  const ceo = (await call('/api/company/people', { method: 'POST', token: admin, body: { name: 'Asha', title: 'CEO', email: 'ceo@viasocket.com', department_id: lead[0].id } })).data.key;
+  const setup = (await call('/api/company/setup', { token: admin })).data;
+  const dev = setup.people.find((p) => p.kind === 'team' && p.role === 'tech');
+  assert.ok(dev && dev.department.name === 'Plugins', 'team members join through their team');
+  assert.equal((await call('/api/company/people', { method: 'POST', token: admin, body: { key: dev.key, title: 'Developer', reports_to: ceo } })).status, 200);
+  assert.equal((await call('/api/company/people', { method: 'POST', token: admin, body: { key: ceo, name: 'Asha', reports_to: ceo } })).status, 400, 'nobody reports to themselves');
+
+  // the CEO is in no team, but can sign up, see everyone and post what they are doing
+  const ceoTok = (await signup('ceo@viasocket.com')).data.token;
+  assert.ok(ceoTok, 'people added in Company setup can create an account');
+  const me = (await call('/api/me', { token: ceoTok })).data;
+  assert.equal(me.authed, true); assert.deepEqual(me.company, { admin: false, member: true });
+  assert.equal((await call('/api/company/status', { method: 'POST', token: ceoTok, body: { text: 'Partner calls all morning' } })).status, 200);
+  const all = (await call('/api/company/everyone', { token: ceoTok })).data;
+  const asha = all.people.find((p) => p.key === ceo);
+  assert.equal(asha.now.text, 'Partner calls all morning'); assert.equal(asha.leader, true); assert.equal(all.me, ceo);
+  const devCard = all.people.find((p) => p.key === dev.key);
+  assert.equal(devCard.reports_to_name, 'Asha'); assert.ok(devCard.stats.length && devCard.now.text);
+  const page = (await call('/api/company/person?key=' + ceo, { token: ceoTok })).data;
+  assert.ok(page.team.some((p) => p.key === dev.key), 'the CEO page lists who reports to them');
+  assert.equal((await call('/api/company/departments', { method: 'POST', token: ceoTok, body: { name: 'Mine' } })).status, 403, 'only company admins change the setup');
+
+  // someone with their own workspace outside the company cannot see it
+  const outsider = (await signup('out@gmail.com', { workspace: 'Side project' })).data.token;
+  assert.equal((await call('/api/me', { token: outsider })).data.company.member, false);
+  assert.equal((await call('/api/company/everyone', { token: outsider })).status, 403);
+});

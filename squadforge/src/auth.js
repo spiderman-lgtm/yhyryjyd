@@ -49,6 +49,11 @@ function contextOf(req) {
   const mine = workspaces.forEmail(se.email);
   let ws = asked && mine.find((w) => w.id === asked) ? asked : (mine[0] ? mine[0].id : 1);
   let wsRole = workspaces.roleIn(se.email, ws);
+  if (!wsRole && !mine.length) {
+    // in no team, but on the company page (added in Company setup): sees the company, read-only
+    const company = require('./company');
+    if (company.personForEmail(se.email)) return { ws: company.homeWorkspace(), role: 'viewer', email: se.email, wsRole: 'company', workspaces: [] };
+  }
   if (!wsRole) return null;
   return { ws, role: ['owner', 'admin'].includes(wsRole) ? 'admin' : wsRole === 'manager' ? 'manager' : 'viewer', email: se.email, wsRole, workspaces: mine };
 }
