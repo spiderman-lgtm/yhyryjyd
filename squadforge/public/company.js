@@ -271,8 +271,6 @@ function orgInto(el, d) {
       ${kpi('👥', 'People', T.people, '', `in ${live.length} department${live.length === 1 ? '' : 's'}`)}
       ${kpi('⚡', 'Active today', `${T.active}<small>/${avail}</small>`, '', `${avail ? Math.round((T.active / avail) * 100) : 0}% on something`)}
       ${kpi('📦', 'Built this week', w.built, dbDelta(w.built, w.last_built), 'vs last week')}
-      ${kpi('✅', 'Requests done', w.done, dbDelta(w.done, w.last_done), 'vs last week')}
-      ${kpi('🧱', 'Stuck now', T.stuck, '', T.stuck ? 'need help' : 'nobody blocked', T.stuck ? 'bad' : '')}
     </div>
     <div class="db-row1">
       <div class="card db-chart"><div class="db-ch"><div><h3>Work built</h3><span class="muted small">Actions + triggers per day · last 2 weeks</span></div><div class="db-big"><b>${w.built}</b><span class="muted small">this week</span></div></div>${dbLine(D.daily)}
