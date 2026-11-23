@@ -176,6 +176,13 @@ test('company: departments, Everyone page open to the company, own "right now" l
   assert.ok(page.team.some((p) => p.key === dev.key), 'the CEO page lists who reports to them');
   assert.equal((await call('/api/company/departments', { method: 'POST', token: ceoTok, body: { name: 'Mine' } })).status, 403, 'only company admins change the setup');
 
+  assert.ok(all.metrics && all.metrics.total.people === all.people.length, 'metrics count everyone shown');
+  // company admins see every team, even ones in no department
+  const side = (await call('/api/workspaces', { method: 'POST', token: admin, body: { name: 'No-dept team' } })).data.id;
+  await call('/api/demo/load', { method: 'POST', token: admin, ws: side });
+  const adminView = (await call('/api/company/everyone', { token: admin })).data;
+  assert.ok(adminView.people.some((p) => p.ws === side), 'admin sees teams outside any department');
+  assert.ok(!(await call('/api/company/everyone', { token: ceoTok })).data.people.some((p) => p.ws === side), 'others only see teams in a department');
   // someone with their own workspace outside the company cannot see it
   const outsider = (await signup('out@gmail.com', { workspace: 'Side project' })).data.token;
   assert.equal((await call('/api/me', { token: outsider })).data.company.member, false);

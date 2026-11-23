@@ -703,6 +703,9 @@ async function boot() {
   myWorkspaces = me.workspaces || [];
   myWorkspace = me.workspace || null;
   myCompany = me.company || null;
+  // company admins open on Everyone: who is doing what across every team
+  if (!location.hash && !boot.done && myCompany && myCompany.admin) tab = 'company';
+  boot.done = true;
   if (myWorkspace) saveWs(myWorkspace.id);
   renderWsSwitch();
   state = await api('/api/state');

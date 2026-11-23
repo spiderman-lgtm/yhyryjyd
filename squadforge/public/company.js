@@ -15,7 +15,7 @@ function coNow(n, note) {
     ${note ? `<div class="co-note">💬 ${esc(note.text)} <span class="muted small">· ${ago(note.since)}</span></div>` : ''}</div>`;
 }
 function coCard(p) {
-  const meta = [p.department ? `<b class="co-dept">${esc((p.department.emoji ? p.department.emoji + ' ' : '') + p.department.name)}</b>` : '', esc(p.title || ''), p.reports_to_name ? `reports to ${esc(p.reports_to_name)}` : ''].filter(Boolean).join(' · ');
+  const meta = [p.department ? `<b class="co-dept">${esc((p.department.emoji ? p.department.emoji + ' ' : '') + p.department.name)}</b>` : p.team ? `<b class="co-dept">👥 ${esc(p.team)}</b>` : '', esc(p.title || ''), p.reports_to_name ? `reports to ${esc(p.reports_to_name)}` : ''].filter(Boolean).join(' · ');
   return `<button class="card co-card${p.leader ? ' leader' : ''}" data-person="${esc(p.key)}">
     <div class="co-who">${coAvatar(p)}<div><b>${esc(p.name)}</b><span>${meta}</span></div></div>
     ${coNow(p.now, p.note)}
@@ -32,18 +32,19 @@ async function renderCompany() {
   coData = d;
   if (!d.people.length) {
     $('#view').innerHTML = `<div class="card empty co-empty"><h2>🏢 Everyone · who is doing what</h2>
-      <p>${d.admin ? 'No team is part of the company view yet. Add departments, put your teams in them, and add people who are not in a team (CEO, other departments).' : 'Nobody is in the company view yet — a company admin sets it up in Company setup.'}</p>
+      <p>${d.admin ? 'No team has members yet. Add team members in each team’s Settings (or import them from Slack), and add people who are not in a team (CEO, other departments) in Company setup.' : 'Nobody is in the company view yet — a company admin sets it up in Company setup.'}</p>
       ${d.admin ? '<button class="btn" data-goto-setup>Open Company setup</button>' : ''}</div>`;
     const g = document.querySelector('[data-goto-setup]'); if (g) g.onclick = () => { tab = 'orgsetup'; location.hash = tab; render(); };
     return;
   }
   const meCard = d.me ? d.people.find((p) => p.key === d.me) : null;
   $('#view').innerHTML = `<div class="co-top"><div><h2 style="margin:0">Everyone · who is doing what</h2>
-      <div class="muted small">Open to the whole company · ${d.people.length} people · updates from Slack and from everyone's own “right now” line</div></div>
+      <div class="muted small">${d.admin ? `All teams · ${d.people.length} people` : `Open to the whole company · ${d.people.length} people`} · updates from Slack and from everyone's own “right now” line</div></div>
       ${d.admin ? '<button class="btn ghost small" data-goto-setup>⚙️ Company setup</button>' : ''}</div>
     ${meCard ? `<form class="card co-mine" id="coStatus"><span class="co-who">${coAvatar(meCard)}</span><input id="coStatusText" maxlength="200" placeholder="What are you doing right now? (everyone sees this)" value=""><button class="btn">Post</button></form>` : ''}
+    ${coMetrics(d.metrics)}
     <div class="co-filters"><input id="coSearch" type="search" placeholder="🔍  Search a person, title, team or department…" value="${esc(coFilter.q)}">
-      <div class="seg co-chips"><button data-dept="all" class="${coFilter.dept === 'all' ? 'on' : ''}">All ${d.people.length}</button>${d.departments.filter((x) => x.people).map((x) => `<button data-dept="${x.id}" class="${String(coFilter.dept) === String(x.id) ? 'on' : ''}">${esc((x.emoji ? x.emoji + ' ' : '') + x.name)} ${x.people}</button>`).join('')}</div></div>
+      <div class="seg co-chips"><button data-dept="all" class="${coFilter.dept === 'all' ? 'on' : ''}">All ${d.people.length}</button>${(d.groups || []).map((x) => `<button data-dept="${esc(x.key)}" class="${coFilter.dept === x.key ? 'on' : ''}">${esc(x.emoji + ' ' + x.name)} ${x.people}</button>`).join('')}</div></div>
     <div id="coList"></div>`;
   coList();
   const g = document.querySelector('[data-goto-setup]'); if (g) g.onclick = () => { tab = 'orgsetup'; location.hash = tab; render(); };
@@ -52,10 +53,33 @@ async function renderCompany() {
   const f = $('#coStatus');
   if (f) f.onsubmit = async (e) => { e.preventDefault(); const t = $('#coStatusText').value.trim(); if (!t) return; try { await api('/api/company/status', { method: 'POST', body: { text: t } }); toast('Posted — everyone can see it'); renderCompany(); } catch (err) { toast(err.message); } };
 }
+function coMetrics(m) {
+  if (!m) return '';
+  const t = m.total;
+  const tile = (icon, label, value, sub, cls = '') => `<div class="co-kpi ${cls}"><span>${icon} ${label}</span><b>${value}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
+  return `<div class="co-kpis">
+      ${tile('👥', 'People', t.people, `${m.groups.length} team${m.groups.length === 1 ? '' : 's'}`)}
+      ${tile('🛠️', 'Building now', t.building, 'started or in R&D')}
+      ${tile('🧱', 'Stuck', t.stuck, t.stuck ? 'needs help' : 'nobody blocked', t.stuck ? 'bad' : 'good')}
+      ${tile('🌴', 'On leave', t.leave, 'today')}
+      ${tile('💤', 'No update', t.no_update, 'no plan or work today', t.no_update ? 'warn' : '')}
+      ${tile('📦', 'Built this week', t.built, 'actions + triggers')}
+      ${tile('✅', 'Requests done', t.shipped, 'this week')}
+      ${tile('🔍', 'Reviews passed', t.pass_rate === null ? '–' : t.pass_rate + '%', t.reviews ? `${t.passed} of ${t.reviews}` : 'no reviews yet')}
+    </div>
+    ${m.groups.length > 1 ? `<div class="card co-teams"><h3>By team</h3><div class="co-table-wrap"><table><thead><tr><th>Team / department</th><th>People</th><th>Building</th><th>Stuck</th><th>Leave</th><th>No update</th><th>Built (week)</th><th>Growth</th><th>Requests done</th><th>Reviews passed</th></tr></thead><tbody>
+      ${m.groups.map((g) => `<tr data-group="${esc(g.key)}"><td><b>${esc(g.emoji + ' ' + g.name)}</b></td><td>${g.people}</td><td>${g.building}</td><td class="${g.stuck ? 'bad' : ''}">${g.stuck}</td><td>${g.leave}</td><td class="${g.no_update ? 'warn' : ''}">${g.no_update}</td><td><b>${g.built}</b></td><td>${g.growth}</td><td>${g.shipped}</td><td>${g.pass_rate === null ? '–' : `${g.pass_rate}% <span class="muted small">(${g.passed}/${g.reviews})</span>`}</td></tr>`).join('')}
+    </tbody></table></div><div class="muted small">Click a row to see only that team’s people.</div></div>` : ''}`;
+}
+document.addEventListener('click', (e) => {
+  const row = e.target.closest('[data-group]'); if (!row || tab !== 'company') return;
+  coFilter.dept = row.dataset.group; document.querySelectorAll('[data-dept]').forEach((x) => x.classList.toggle('on', x.dataset.dept === coFilter.dept)); coList();
+  const l = $('#coList'); if (l) l.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 function coList() {
   const d = coData; if (!d) return;
   const q = coFilter.q.trim().toLowerCase();
-  const list = d.people.filter((p) => (coFilter.dept === 'all' || (p.department && String(p.department.id) === String(coFilter.dept)))
+  const list = d.people.filter((p) => (coFilter.dept === 'all' || (p.group && p.group.key === coFilter.dept))
     && (!q || [p.name, p.title, p.team, p.department && p.department.name, p.now.text].join(' ').toLowerCase().includes(q)));
   const leaders = list.filter((p) => p.leader), rest = list.filter((p) => !p.leader);
   $('#coList').innerHTML = list.length ? `${leaders.length ? `<div class="co-grid lead">${leaders.map(coCard).join('')}</div>` : ''}<div class="co-grid">${rest.map(coCard).join('')}</div>` : '<div class="card empty">Nobody matches that search.</div>';
@@ -102,7 +126,7 @@ async function renderCompanySetup() {
   if (tab !== 'orgsetup') return;
   const deptOpts = (sel) => `<option value="">— none —</option>${d.departments.map((x) => `<option value="${x.id}" ${String(sel) === String(x.id) ? 'selected' : ''}>${esc((x.emoji ? x.emoji + ' ' : '') + x.name)}</option>`).join('')}`;
   const repOpts = (self, sel) => `<option value="">— nobody —</option>${d.people.filter((x) => x.key !== self).map((x) => `<option value="${esc(x.key)}" ${sel === x.key ? 'selected' : ''}>${esc(x.name)}${x.title ? ' · ' + esc(x.title) : ''}</option>`).join('')}`;
-  $('#view').innerHTML = `<div class="co-setup"><h2>Company setup</h2><p class="muted">Departments sit above your teams. Everyone in a team that is in a department, and everyone added below, shows on the <a href="#company" data-goto-company>Everyone</a> page — and everyone there can see it.</p>
+  $('#view').innerHTML = `<div class="co-setup"><h2>Company setup</h2><p class="muted">As a company admin you see every team on the <a href="#company" data-goto-company>Everyone</a> page. Departments group teams; teams you put in a department, and people added below, can also open Everyone and see the whole company.</p>
     <div class="card"><h3>1 · Departments</h3>
       <div class="co-setup-list">${d.departments.map((x) => `<form class="co-row" data-dept-form="${x.id}"><input name="emoji" value="${esc(x.emoji || '')}" placeholder="🏢" class="co-emoji"><input name="name" value="${esc(x.name)}" required><button class="btn small">Save</button><button type="button" class="btn ghost small" data-dept-del="${x.id}">Delete</button></form>`).join('') || '<div class="muted small">No departments yet.</div>'}</div>
       <form class="co-row" id="coDeptNew"><input name="emoji" placeholder="🏢" class="co-emoji"><input name="name" placeholder="New department, e.g. Leadership, Plugins, Support" required><button class="btn small">Add department</button></form></div>

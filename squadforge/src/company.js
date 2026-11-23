@@ -70,12 +70,14 @@ function setTeamDepartment(wsId, deptId) {
 }
 
 // Everyone in the company: team members (from their workspace) and people added by hand.
-function directory() {
+// all: every team workspace (company admins see everyone, even before any setup);
+// otherwise only teams that sit in a department.
+function directory(all = false) {
   const depts = Object.fromEntries(departments().map((d) => [d.id, d]));
   const overrides = db.prepare('SELECT * FROM org_people WHERE ws_id IS NOT NULL').all();
   const ov = (ws, id) => overrides.find((o) => o.ws_id === ws && o.member_id === id) || {};
   const people = [];
-  for (const t of companyTeams()) {
+  for (const t of (all ? teams() : companyTeams())) {
     const ms = withWorkspace(t.id, () => require('./util').members());
     const lead = ms.find((m) => m.role === 'lead');
     for (const m of ms) {
@@ -92,6 +94,8 @@ function directory() {
   for (const p of db.prepare('SELECT * FROM org_people WHERE ws_id IS NULL ORDER BY name').all()) {
     people.push({ key: `p-${p.id}`, kind: 'manual', role: 'manual', name: p.name, title: p.title || '', email: p.email || null, department: depts[p.department_id] || null, team: null, reports_to: p.reports_to || null, org_id: p.id, now_text: p.now_text, now_at: p.now_at });
   }
+  // the group a person is filed under: their department, else their team
+  for (const p of people) p.group = p.department ? { key: 'd-' + p.department.id, name: p.department.name, emoji: p.department.emoji || '🏢' } : p.team ? { key: 't-' + p.ws, name: p.team, emoji: '👥' } : { key: 'none', name: 'No department', emoji: '·' };
   const byKey = Object.fromEntries(people.map((p) => [p.key, p]));
   for (const p of people) p.reports_to_name = p.reports_to && byKey[p.reports_to] ? byKey[p.reports_to].name : null;
   return people;
@@ -220,10 +224,10 @@ function feedOf(p, d, limit) {
 }
 
 // Build every person's card. feedLimit: how many recent items each card lists.
-function cards(feedLimit = 3) {
-  const people = directory();
+function cards(feedLimit = 3, all = false) {
+  const people = directory(all);
   const data = {};
-  for (const t of companyTeams()) data[t.id] = teamData(t.id);
+  for (const ws of new Set(people.filter((p) => p.kind === 'team').map((p) => p.ws))) data[ws] = teamData(ws);
   const updates = db.prepare("SELECT person_id, text, created_at FROM org_updates WHERE created_at >= datetime('now', '-7 days') ORDER BY created_at DESC").all();
   return people.map((p) => {
     let d;
@@ -242,20 +246,49 @@ function cards(feedLimit = 3) {
   });
 }
 
+// Numbers for the top of Everyone: the whole company, then each department / team.
+function metricsOf(list) {
+  const sum = (rows) => {
+    const t = (r) => (r._d.prof ? r._d.prof.totals : null);
+    const tot = rows.map(t).filter(Boolean);
+    const add = (f) => tot.reduce((n, x) => n + (x[f] || 0), 0);
+    const reviews = add('reviews'), passed = add('passed');
+    return {
+      people: rows.length,
+      building: rows.filter((r) => ['started', 'rnd'].includes(r.now.kind)).length,
+      stuck: rows.filter((r) => r.now.kind === 'stuck').length,
+      leave: rows.filter((r) => r.now.kind === 'leave').length,
+      no_update: rows.filter((r) => r.now.kind === 'none' && r.role !== 'lead').length,
+      built: add('built'), growth: add('growth'), shipped: add('shipped'),
+      reviews, passed, pass_rate: reviews ? Math.round((passed / reviews) * 100) : null,
+      updates: rows.filter((r) => r.kind === 'manual').reduce((n, r) => n + (r._d.updates || 0), 0),
+    };
+  };
+  const groups = [];
+  for (const p of list) { let g = groups.find((x) => x.key === p.group.key); if (!g) groups.push((g = { ...p.group, rows: [] })); g.rows.push(p); }
+  return { total: sum(list), groups: groups.map(({ rows, ...g }) => ({ ...g, ...sum(rows) })).sort((a, b) => b.people - a.people || a.name.localeCompare(b.name)) };
+}
+
 const LEADER = /\b(ceo|cto|coo|cfo|founder|co-founder|director|head|vp|chief)\b/i;
 function everyone(cx) {
-  const list = cards(3).map(({ _d, ...c }) => c);
+  const admin = isAdmin(cx);
+  const raw = cards(3, admin);
+  const metrics = metricsOf(raw);
+  const list = raw.map(({ _d, ...c }) => c);
   const me = cx.email ? list.find((p) => p.email === norm(cx.email)) : null;
   const depts = departments().map((d) => ({ ...d, people: list.filter((p) => p.department && p.department.id === d.id).length }));
+  const groups = [];
+  for (const p of list) { const g = groups.find((x) => x.key === p.group.key); if (g) g.people++; else groups.push({ ...p.group, people: 1 }); }
+  groups.sort((a, b) => (a.key[0] === b.key[0] ? 0 : a.key[0] === 'd' ? -1 : 1) || a.name.localeCompare(b.name));
   return {
-    departments: depts, people: list.map((p) => ({ ...p, leader: LEADER.test(p.title || '') })),
-    me: me ? me.key : null, admin: isAdmin(cx), teams: companyTeams().length,
+    departments: depts, groups, people: list.map((p) => ({ ...p, leader: LEADER.test(p.title || '') })),
+    metrics, me: me ? me.key : null, admin, teams: companyTeams().length,
   };
 }
 
 // One person, in full: what they are on, their week, who they work with, and their peer group.
-function person(key) {
-  const all = cards(20);
+function person(key, everyTeam = false) {
+  const all = cards(20, everyTeam);
   const p = all.find((x) => x.key === key);
   if (!p) return null;
   const strip = ({ _d, ...c }) => c;
