@@ -15,7 +15,7 @@ function coNow(n, note) {
     ${note ? `<div class="co-note">💬 ${esc(note.text)} <span class="muted small">· ${ago(note.since)}</span></div>` : ''}</div>`;
 }
 function coCard(p) {
-  const meta = [p.department ? `<b class="co-dept">${esc((p.department.emoji ? p.department.emoji + ' ' : '') + p.department.name)}</b>` : p.team ? `<b class="co-dept">👥 ${esc(p.team)}</b>` : '', esc(p.title || ''), p.reports_to_name ? `reports to ${esc(p.reports_to_name)}` : ''].filter(Boolean).join(' · ');
+  const meta = [p.department ? `<b class="co-dept">${esc((p.department.emoji ? p.department.emoji + ' ' : '') + p.department.name)}</b>` : '', esc(p.title || ''), p.reports_to_name ? `reports to ${esc(p.reports_to_name)}` : ''].filter(Boolean).join(' · ');
   return `<button class="card co-card${p.leader ? ' leader' : ''}" data-person="${esc(p.key)}">
     <div class="co-who">${coAvatar(p)}<div><b>${esc(p.name)}</b><span>${meta}</span></div></div>
     ${coNow(p.now, p.note)}
@@ -39,12 +39,12 @@ async function renderCompany() {
   }
   const meCard = d.me ? d.people.find((p) => p.key === d.me) : null;
   $('#view').innerHTML = `<div class="co-top"><div><h2 style="margin:0">Everyone · who is doing what</h2>
-      <div class="muted small">${d.admin ? `All teams · ${d.people.length} people` : `Open to the whole company · ${d.people.length} people`} · updates from Slack and from everyone's own “right now” line</div></div>
+      <div class="muted small">Whole company · ${d.people.length} people · updates from Slack and from everyone's own “right now” line</div></div>
       ${d.admin ? '<button class="btn ghost small" data-goto-setup>⚙️ Company setup</button>' : ''}</div>
     ${meCard ? `<form class="card co-mine" id="coStatus"><span class="co-who">${coAvatar(meCard)}</span><input id="coStatusText" maxlength="200" placeholder="What are you doing right now? (everyone sees this)" value=""><button class="btn">Post</button></form>` : ''}
     ${coMetrics(d.metrics)}
-    <div class="co-filters"><input id="coSearch" type="search" placeholder="🔍  Search a person, title, team or department…" value="${esc(coFilter.q)}">
-      <div class="seg co-chips"><button data-dept="all" class="${coFilter.dept === 'all' ? 'on' : ''}">All ${d.people.length}</button>${(d.groups || []).map((x) => `<button data-dept="${esc(x.key)}" class="${coFilter.dept === x.key ? 'on' : ''}">${esc(x.emoji + ' ' + x.name)} ${x.people}</button>`).join('')}</div></div>
+    <div class="co-filters"><input id="coSearch" type="search" placeholder="🔍  Search a person, title or department…" value="${esc(coFilter.q)}">
+      ${(d.groups || []).some((x) => x.key[0] === 'd') ? `<div class="seg co-chips"><button data-dept="all" class="${coFilter.dept === 'all' ? 'on' : ''}">All ${d.people.length}</button>${(d.groups || []).filter((x) => x.key[0] === 'd').map((x) => `<button data-dept="${esc(x.key)}" class="${coFilter.dept === x.key ? 'on' : ''}">${esc(x.emoji + ' ' + x.name)} ${x.people}</button>`).join('')}</div>` : ''}</div>
     <div id="coList"></div>`;
   coList();
   const g = document.querySelector('[data-goto-setup]'); if (g) g.onclick = () => { tab = 'orgsetup'; location.hash = tab; render(); };
@@ -58,7 +58,7 @@ function coMetrics(m) {
   const t = m.total;
   const tile = (icon, label, value, sub, cls = '') => `<div class="co-kpi ${cls}"><span>${icon} ${label}</span><b>${value}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
   return `<div class="co-kpis">
-      ${tile('👥', 'People', t.people, `${m.groups.length} team${m.groups.length === 1 ? '' : 's'}`)}
+      ${tile('👥', 'People', t.people, 'in the company')}
       ${tile('🛠️', 'Building now', t.building, 'started or in R&D')}
       ${tile('🧱', 'Stuck', t.stuck, t.stuck ? 'needs help' : 'nobody blocked', t.stuck ? 'bad' : 'good')}
       ${tile('🌴', 'On leave', t.leave, 'today')}
@@ -66,21 +66,13 @@ function coMetrics(m) {
       ${tile('📦', 'Built this week', t.built, 'actions + triggers')}
       ${tile('✅', 'Requests done', t.shipped, 'this week')}
       ${tile('🔍', 'Reviews passed', t.pass_rate === null ? '–' : t.pass_rate + '%', t.reviews ? `${t.passed} of ${t.reviews}` : 'no reviews yet')}
-    </div>
-    ${m.groups.length > 1 ? `<div class="card co-teams"><h3>By team</h3><div class="co-table-wrap"><table><thead><tr><th>Team / department</th><th>People</th><th>Building</th><th>Stuck</th><th>Leave</th><th>No update</th><th>Built (week)</th><th>Growth</th><th>Requests done</th><th>Reviews passed</th></tr></thead><tbody>
-      ${m.groups.map((g) => `<tr data-group="${esc(g.key)}"><td><b>${esc(g.emoji + ' ' + g.name)}</b></td><td>${g.people}</td><td>${g.building}</td><td class="${g.stuck ? 'bad' : ''}">${g.stuck}</td><td>${g.leave}</td><td class="${g.no_update ? 'warn' : ''}">${g.no_update}</td><td><b>${g.built}</b></td><td>${g.growth}</td><td>${g.shipped}</td><td>${g.pass_rate === null ? '–' : `${g.pass_rate}% <span class="muted small">(${g.passed}/${g.reviews})</span>`}</td></tr>`).join('')}
-    </tbody></table></div><div class="muted small">Click a row to see only that team’s people.</div></div>` : ''}`;
+    </div>`;
 }
-document.addEventListener('click', (e) => {
-  const row = e.target.closest('[data-group]'); if (!row || tab !== 'company') return;
-  coFilter.dept = row.dataset.group; document.querySelectorAll('[data-dept]').forEach((x) => x.classList.toggle('on', x.dataset.dept === coFilter.dept)); coList();
-  const l = $('#coList'); if (l) l.scrollIntoView({ behavior: 'smooth', block: 'start' });
-});
 function coList() {
   const d = coData; if (!d) return;
   const q = coFilter.q.trim().toLowerCase();
   const list = d.people.filter((p) => (coFilter.dept === 'all' || (p.group && p.group.key === coFilter.dept))
-    && (!q || [p.name, p.title, p.team, p.department && p.department.name, p.now.text].join(' ').toLowerCase().includes(q)));
+    && (!q || [p.name, p.title, p.department && p.department.name, p.now.text].join(' ').toLowerCase().includes(q)));
   const leaders = list.filter((p) => p.leader), rest = list.filter((p) => !p.leader);
   $('#coList').innerHTML = list.length ? `${leaders.length ? `<div class="co-grid lead">${leaders.map(coCard).join('')}</div>` : ''}<div class="co-grid">${rest.map(coCard).join('')}</div>` : '<div class="card empty">Nobody matches that search.</div>';
 }
@@ -90,7 +82,7 @@ async function renderCompanyPerson(key) {
   try { d = await api('/api/company/person?key=' + encodeURIComponent(key)); } catch (e) { coPerson = null; toast(e.message); return renderCompany(); }
   if (tab !== 'company' || coPerson !== key) return;
   const p = d.person;
-  const meta = [p.department ? (p.department.emoji ? p.department.emoji + ' ' : '') + p.department.name : '', p.title, p.team ? `team ${p.team}` : ''].filter(Boolean).map(esc).join(' · ');
+  const meta = [p.department ? (p.department.emoji ? p.department.emoji + ' ' : '') + p.department.name : '', p.title].filter(Boolean).map(esc).join(' · ');
   const peer = d.peers;
   const pmax = peer ? Math.max(peer.mine || 0, ...peer.names.map((x) => x.value || 0), 1) : 1;
   $('#view').innerHTML = `<button class="btn ghost small" id="coBack">← Everyone</button>
