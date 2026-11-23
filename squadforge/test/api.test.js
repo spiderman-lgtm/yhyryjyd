@@ -208,3 +208,17 @@ test('org chart: CEO on top, departments with projects linked to teams; admins e
   assert.equal((await call('/api/company/org', { token: ceoTok })).status, 200, 'everyone in the company can read the org chart');
   assert.equal((await call('/api/company/projects', { method: 'POST', token: ceoTok, body: { department_id: dept.id, name: 'X' } })).status, 403);
 });
+
+test('demo company: loads people in every department and a demo team, and clears them again', async () => {
+  const admin = await login('lead@viasocket.com', 'adminpass1');
+  const before = (await call('/api/company/org', { token: admin })).data;
+  assert.equal((await call('/api/company/demo', { method: 'POST', token: admin })).status, 200);
+  const on = (await call('/api/company/org', { token: admin })).data;
+  assert.equal(on.demo, true);
+  assert.ok(on.total.people > before.total.people + 10, 'demo people were added');
+  assert.ok(on.total.stuck >= 2 && on.dash.top.length > 0, 'the demo shows stuck work and builders');
+  assert.equal((await call('/api/company/demo', { method: 'DELETE', token: admin })).status, 200);
+  const off = (await call('/api/company/org', { token: admin })).data;
+  assert.equal(off.demo, false); assert.equal(off.total.people, before.total.people, 'everything demo is gone');
+  assert.ok(!(await call('/api/workspaces', { token: admin })).data.some((w) => /\(demo\)/.test(w.name)), 'the demo team is removed');
+});

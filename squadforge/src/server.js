@@ -281,6 +281,8 @@ async function routes(req, res, url, p, m, body, cx) {
     const ok = (fn) => { try { return send(res, 200, fn()); } catch (e) { return send(res, 400, { error: e.message }); } };
     if (p === '/api/company/everyone' && m === 'GET') return send(res, 200, company.everyone(cx));
     if (p === '/api/company/org' && m === 'GET') return send(res, 200, company.org(cx));
+    if (p === '/api/company/demo' && m === 'POST') return adminOnly() || ok(() => company.loadDemo(cx.email));
+    if (p === '/api/company/demo' && m === 'DELETE') return adminOnly() || ok(() => { company.clearDemo(); return { ok: true }; });
     if (p === '/api/company/projects' && m === 'POST') return adminOnly() || ok(() => { company.saveProject(body); return { ok: true }; });
     if (p === '/api/company/projects' && m === 'DELETE') return adminOnly() || ok(() => { company.deleteProject(body.id); return { ok: true }; });
     if (p === '/api/company/departments/head' && m === 'POST') return adminOnly() || ok(() => { company.setDepartmentHead(body.id, body.key); return { ok: true }; });

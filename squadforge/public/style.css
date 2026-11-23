@@ -1836,3 +1836,4 @@ html .login .qp-form input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 40
 @media (max-width: 640px) { .db-kpis { grid-template-columns: 1fr 1fr; } .db-row1, .db-row2, .db-banner { grid-template-columns: 1fr; } .db-dept { grid-template-columns: 24px 1fr 60px; } .db-dept .db-dpct, .db-dept .pill { display: none; } .db-donut { flex-direction: column; } .db-bi { border-left: 0; padding-left: 0; } }
 .db-dn { min-width: 0; } .db-dn b, .db-dn small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .db-ax { font-size: 12px; }
+.co-viewact { display: flex; gap: 8px; flex-wrap: wrap; }

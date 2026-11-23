@@ -37,6 +37,8 @@ db.exec(`CREATE TABLE IF NOT EXISTS org_updates (
 )`);
 try { db.exec('ALTER TABLE workspaces ADD COLUMN department_id INTEGER'); } catch { /* already there */ }
 try { db.exec('ALTER TABLE departments ADD COLUMN head_key TEXT'); } catch { /* already there */ }
+// a hand-added person's state (building / stuck / leave, or just a note) and demo rows
+for (const col of ['now_kind TEXT', 'now_reason TEXT', 'is_demo INTEGER NOT NULL DEFAULT 0']) { try { db.exec('ALTER TABLE org_people ADD COLUMN ' + col); } catch { /* already there */ } }
 // Projects inside a department (e.g. Development → Plugins, Memory). A project can be linked to a
 // team workspace; its people and Slack numbers then show under the project.
 db.exec(`CREATE TABLE IF NOT EXISTS projects (
@@ -104,7 +106,7 @@ function directory(all = false) {
     }
   }
   for (const p of db.prepare('SELECT * FROM org_people WHERE ws_id IS NULL ORDER BY name').all()) {
-    people.push({ key: `p-${p.id}`, kind: 'manual', role: 'manual', name: p.name, title: p.title || '', email: p.email || null, department: depts[p.department_id] || null, team: null, reports_to: p.reports_to || null, org_id: p.id, now_text: p.now_text, now_at: p.now_at });
+    people.push({ key: `p-${p.id}`, kind: 'manual', role: 'manual', name: p.name, title: p.title || '', email: p.email || null, department: depts[p.department_id] || null, team: null, reports_to: p.reports_to || null, org_id: p.id, now_text: p.now_text, now_at: p.now_at, now_kind: p.now_kind, now_reason: p.now_reason, demo: !!p.is_demo });
   }
   // the group a person is filed under: their department, else their team
   for (const p of people) p.group = p.department ? { key: 'd-' + p.department.id, name: p.department.name, emoji: p.department.emoji || '🏢' } : p.team ? { key: 't-' + p.ws, name: p.team, emoji: '👥' } : { key: 'none', name: 'No department', emoji: '·' };
@@ -166,7 +168,7 @@ function postStatus(email, text) {
   let id = p.org_id;
   if (!id) id = db.prepare('INSERT INTO org_people (ws_id, member_id, email) VALUES (?, ?, ?)').run(p.ws, p.member_id, p.email).lastInsertRowid;
   const now = new Date().toISOString();
-  db.prepare('UPDATE org_people SET now_text = ?, now_at = ? WHERE id = ?').run(t, now, id);
+  db.prepare('UPDATE org_people SET now_text = ?, now_at = ?, now_kind = NULL, now_reason = NULL WHERE id = ?').run(t, now, id);
   db.prepare('INSERT INTO org_updates (person_id, text, created_at) VALUES (?, ?, ?)').run(id, t, now);
   return p.key;
 }
@@ -194,7 +196,13 @@ function teamData(wsId) {
   });
 }
 function nowOf(p, d) {
-  if (p.kind === 'manual') return p.now_text ? { kind: 'note', text: p.now_text, since: p.now_at } : { kind: 'none', text: 'No update yet' };
+  if (p.kind === 'manual') {
+    if (p.now_kind === 'leave') return { kind: 'leave', text: 'On leave today' };
+    if (!p.now_text) return { kind: 'none', text: 'No update yet' };
+    if (p.now_kind === 'building') return { kind: 'started', label: 'Building', text: p.now_text, since: p.now_at };
+    if (p.now_kind === 'stuck') return { kind: 'stuck', label: 'Stuck', text: p.now_text, reason: p.now_reason || null, since: p.now_at };
+    return { kind: 'note', text: p.now_text, since: p.now_at };
+  }
   const n = d && d.now;
   if (p.role === 'lead') {
     const t = d && d.team;
@@ -423,9 +431,77 @@ function org(cx) {
     daily: Object.values(daily), today, top, todo,
   };
   return {
-    dash, company: setting('org.company') || 'viaSocket', admin, ceo: ceo ? mini(ceo) : null, departments: depts, total: stat(list),
+    dash, demo: !!setting('org.demo'), company: setting('org.company') || 'viaSocket', admin, ceo: ceo ? mini(ceo) : null, departments: depts, total: stat(list),
     teams: admin ? teams().map((t) => ({ id: t.id, name: t.name })) : [], people: admin ? list.map((p) => ({ key: p.key, name: p.name, title: p.title || '' })) : [],
   };
 }
 
-module.exports = { org, saveProject, deleteProject, setDepartmentHead, homeWorkspace, departments, teams, saveDepartment, deleteDepartment, setTeamDepartment, directory, savePerson, deletePerson, postStatus, personForEmail, isAdmin, canSee, everyone, person };
+// ---------- demo company: people in every department + a demo Plugins team, for trying it out ----------
+const DEMO = {
+  ceo: ['Rohan Mehta (demo)', 'CEO', 'note', 'Partner call with 2 new app makers, then Q4 plugin targets'],
+  depts: {
+    Development: [['Neha Kapoor (demo)', 'Head of Development', 'note', 'Reviewing the new plugin review rules'], ['Yash Malik (demo)', 'Backend developer', 'building', 'Memory: shared notes API'], ['Zoya Khan (demo)', 'Developer', 'building', 'Plugin API change automation']],
+    'Product Management': [['Arjun Rao (demo)', 'Head of Product', 'note', 'Q4 roadmap review with the CEO'], ['Kavya Iyer (demo)', 'Product manager', 'building', 'Agent Readiness spec v2'], ['Rahul Verma (demo)', 'Product manager', 'stuck', 'viaSocket Pass pricing', 'waiting on finance numbers']],
+    Marketing: [['Sana Khan (demo)', 'Marketing lead', 'building', 'Landing page B copy and screenshots'], ['Ishaan Malhotra (demo)', 'Content writer', 'note', ''], ['Tara Singh (demo)', 'Growth marketer', 'building', 'Launch email for 30 new plugs']],
+    Partnership: [['Vikram Jain (demo)', 'Partnerships head', 'note', 'Calls with 3 SaaS partners'], ['Ananya Das (demo)', 'Partner manager', 'stuck', 'Keka integration', 'API access still pending from Keka'], ['Rohit Sen (demo)', 'Partner manager', 'stuck', 'Outbound agent pilot', 'contract waiting on legal']],
+    Design: [['Mira Shah (demo)', 'Design lead', 'building', 'New dashboard icons'], ['Dev Patel (demo)', 'Product designer', 'note', '']],
+    'Motion Graphics': [['Arnav Gupta (demo)', 'Motion designer', 'building', 'Product tour video v3']],
+    Operations: [['Riya Sharma (demo)', 'Operations lead', 'building', 'Ticket 4821: Gmail trigger not firing'], ['Nikhil Joshi (demo)', 'Support engineer', 'leave', ''], ['Pooja Nair (demo)', 'Support engineer', 'building', 'Clearing the weekend ticket queue']],
+    Finance: [['Mohit Gupta (demo)', 'Finance lead', 'note', 'November close and invoices']],
+    HR: [['Sneha Reddy (demo)', 'HR lead', 'building', 'Hiring 2 plugin developers']],
+  },
+  history: ['Shared the weekly plan', 'Closed 3 open items', 'Synced with the team', 'Finished the draft', 'Review done, notes sent', 'Unblocked a teammate', 'Demo to the CEO', 'Planning next week'],
+};
+function clearDemo() {
+  const st = setting('org.demo');
+  const ids = db.prepare('SELECT id FROM org_people WHERE is_demo = 1').all().map((r) => r.id);
+  for (const id of ids) {
+    db.prepare('DELETE FROM org_updates WHERE person_id = ?').run(id);
+    db.prepare('UPDATE departments SET head_key = NULL WHERE head_key = ?').run('p-' + id);
+    db.prepare('UPDATE org_people SET reports_to = NULL WHERE reports_to = ?').run('p-' + id);
+  }
+  db.prepare('DELETE FROM org_people WHERE is_demo = 1').run();
+  if (st && st.ws) {
+    if (st.project_created) db.prepare('DELETE FROM projects WHERE id = ?').run(st.project);
+    else if (st.project) db.prepare('UPDATE projects SET ws_id = NULL WHERE id = ? AND ws_id = ?').run(st.project, st.ws);
+    db.prepare('DELETE FROM org_people WHERE ws_id = ?').run(st.ws);
+    db.prepare('DELETE FROM memberships WHERE ws_id = ?').run(st.ws);
+    db.prepare('DELETE FROM workspaces WHERE id = ?').run(st.ws);
+  }
+  setting('org.demo', null);
+}
+function loadDemo(email) {
+  seedOnce();
+  if (setting('org.demo') || db.prepare('SELECT 1 FROM org_people WHERE is_demo = 1').get()) clearDemo();
+  const D = Object.fromEntries(departments().map((d) => [d.name, d]));
+  // a demo Plugins team with real-looking Slack work, so the charts and numbers move
+  const ws = workspaces.create('Plugins team (demo)', email || 'demo@squadforge.app');
+  withWorkspace(ws.id, () => require('./demo').load());
+  const dev = D.Development ? D.Development.id : null;
+  let proj = dev ? db.prepare("SELECT * FROM projects WHERE department_id = ? AND name = 'Plugins' AND ws_id IS NULL").get(dev) : null, created = false;
+  if (!proj && dev) { const id = db.prepare("INSERT INTO projects (department_id, name, ws_id, sort) VALUES (?, 'Plugins (demo team)', ?, 0)").run(dev, ws.id).lastInsertRowid; proj = { id }; created = true; }
+  else if (proj) db.prepare('UPDATE projects SET ws_id = ? WHERE id = ?').run(ws.id, proj.id);
+  if (dev) db.prepare('UPDATE workspaces SET department_id = ? WHERE id = ?').run(dev, ws.id);
+  const now = Date.now();
+  const add = ([name, title, kind, text, reason], deptId, reportsTo) => {
+    const at = new Date(now - Math.floor(Math.random() * 3 * 3600e3)).toISOString();
+    const id = db.prepare('INSERT INTO org_people (name, title, department_id, reports_to, now_text, now_at, now_kind, now_reason, is_demo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)')
+      .run(name, title, deptId, reportsTo || null, text || null, text ? at : null, kind === 'note' ? null : kind, reason || null).lastInsertRowid;
+    // a few updates over the last days, for each person's recent work
+    for (let i = 1; i <= 2 + (id % 3); i++) db.prepare('INSERT INTO org_updates (person_id, text, created_at) VALUES (?, ?, ?)').run(id, DEMO.history[(id + i) % DEMO.history.length], new Date(now - i * 864e5 * 1.3).toISOString());
+    if (text) db.prepare('INSERT INTO org_updates (person_id, text, created_at) VALUES (?, ?, ?)').run(id, text, at);
+    return 'p-' + id;
+  };
+  const existingCeo = directory(true).find((p) => /\bceo\b/i.test(p.title || ''));
+  const ceo = existingCeo ? existingCeo.key : add(DEMO.ceo, null, null);
+  for (const [dn, people] of Object.entries(DEMO.depts)) {
+    const d = D[dn]; if (!d) continue;
+    const head = add(people[0], d.id, ceo);
+    if (!d.head_key) db.prepare('UPDATE departments SET head_key = ? WHERE id = ?').run(head, d.id);
+    for (const p of people.slice(1)) add(p, d.id, head);
+  }
+  setting('org.demo', { ws: ws.id, project: proj ? proj.id : null, project_created: created });
+  return { ok: true, team: ws.id };
+}
+
+module.exports = { loadDemo, clearDemo, org, saveProject, deleteProject, setDepartmentHead, homeWorkspace, departments, teams, saveDepartment, deleteDepartment, setTeamDepartment, directory, savePerson, deletePerson, postStatus, personForEmail, isAdmin, canSee, everyone, person };

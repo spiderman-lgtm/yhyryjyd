@@ -37,10 +37,12 @@ async function renderCompany() {
     ${meCard ? `<form class="card co-mine" id="coStatus"><span class="co-who">${coAvatar(meCard)}</span><input id="coStatusText" maxlength="200" placeholder="What are you doing right now? (everyone sees this)" value=""><button class="btn">Post</button></form>` : ''}
     ${coView === 'people' ? coMetrics(d.metrics) : ''}
     <div class="co-viewbar"><div class="seg" role="tablist"><button data-view="structure" class="${coView === 'structure' ? 'on' : ''}">🏢 Structure</button><button data-view="departments" class="${coView === 'departments' ? 'on' : ''}">🗂 Departments</button><button data-view="people" class="${coView === 'people' ? 'on' : ''}">👥 People ${d.people.length}</button></div>
-      ${coView !== 'people' && o.admin ? `<button class="btn ${orgEdit ? '' : 'ghost'} small" id="orgEdit">${orgEdit ? '✓ Done' : '✏️ Edit structure'}</button>` : ''}</div>
+      <div class="co-viewact">${o.admin ? `<button class="btn ghost small" id="coDemo">${o.demo ? '🧹 Clear demo company' : '🧪 Load demo company'}</button>` : ''}${coView !== 'people' && o.admin ? `<button class="btn ${orgEdit ? '' : 'ghost'} small" id="orgEdit">${orgEdit ? '✓ Done' : '✏️ Edit structure'}</button>` : ''}</div></div>
+    ${o.demo ? '<div class="banner">🧪 Demo company is on: people marked (demo) and the “Plugins team (demo)” are sample data. Use “Clear demo company” to remove them.</div>' : ''}
     <div id="coBody"></div>`;
   document.querySelectorAll('[data-view]').forEach((b) => (b.onclick = () => { coView = b.dataset.view; renderCompany(); }));
   const ed = $('#orgEdit'); if (ed) ed.onclick = () => { orgEdit = !orgEdit; renderCompany(); };
+  const dm = $('#coDemo'); if (dm) dm.onclick = async () => { if (o.demo && !confirm('Remove the demo people and the demo team?')) return; dm.disabled = true; try { await api('/api/company/demo', { method: o.demo ? 'DELETE' : 'POST' }); toast(o.demo ? 'Demo company removed' : 'Demo company loaded'); renderCompany(); } catch (e) { toast(e.message); dm.disabled = false; } };
   const f = $('#coStatus');
   if (f) f.onsubmit = async (e) => { e.preventDefault(); const t = $('#coStatusText').value.trim(); if (!t) return; try { await api('/api/company/status', { method: 'POST', body: { text: t } }); toast('Posted — everyone can see it'); renderCompany(); } catch (err) { toast(err.message); } };
   if (coView === 'structure') return orgInto($('#coBody'), o);
