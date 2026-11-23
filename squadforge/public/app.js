@@ -17,7 +17,7 @@ let tab = ALL_TABS.includes(location.hash.replace('#', '')) ? location.hash.repl
 let role = 'admin';
 let myEmail = null;
 let myName = null;
-const PAGE_TITLES = { company: 'Everyone', org: 'Org chart', orgsetup: 'Admin', team: 'Dashboard', manager: 'Manager view', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'Reports · History', now: 'Live Team · Right now', leaderboard: 'Live Team · Leaderboard', analysis: 'Live Team · Analysis', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
+const PAGE_TITLES = { company: 'Company', org: 'Company', orgsetup: 'Admin', team: 'Dashboard', manager: 'Manager view', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'Reports · History', now: 'Live Team · Right now', leaderboard: 'Live Team · Leaderboard', analysis: 'Live Team · Analysis', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
 let pollTimer = null;
 let lastActivityId = 0;
 
@@ -158,6 +158,7 @@ $('#tabs').addEventListener('click', (e) => {
 function markTab() {
   const liveOn = !!(state && state.live_views);
   if (LIVE_TABS.includes(tab) && state && !liveOn) tab = role === 'admin' ? 'team' : role === 'manager' ? 'manager' : 'now';
+  if (tab === 'org') tab = 'company'; // the org chart now lives inside Company
   if (((tab === 'company' || tab === 'org') && !(myCompany && myCompany.member)) || (tab === 'orgsetup' && !(myCompany && myCompany.admin))) tab = role === 'admin' ? 'team' : role === 'manager' ? 'manager' : 'now';
   if (tab === 'orgsetup' && myCompany && myCompany.admin) { /* company admins may open setup from any role */ } else if (role === 'viewer' && !VIEWER_TABS.includes(tab)) tab = 'now';
 

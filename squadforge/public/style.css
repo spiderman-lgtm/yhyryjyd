@@ -1737,3 +1737,5 @@ html .login .qp-form input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 40
 .org-tree:not(.editing) .org-sel, .org-tree:not(.editing) .org-admin, .org-tree:not(.editing) .org-x { display: none; }
 .org-tree.editing .org-dept { border-style: dashed; }
 .org-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.co-viewbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.co-viewbar .seg { margin-left: 0 !important; margin-right: auto; }

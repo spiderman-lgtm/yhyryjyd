@@ -24,34 +24,33 @@ function coCard(p) {
   </button>`;
 }
 
+let coView = 'structure'; // 'structure' (CEO → departments → projects) or 'people' (everyone's cards)
 async function renderCompany() {
   if (coPerson) return renderCompanyPerson(coPerson);
-  let d;
-  try { d = await api('/api/company/everyone'); } catch (e) { $('#view').innerHTML = `<div class="card empty">🏢 ${esc(e.message)}</div>`; return; }
+  let d, o;
+  try { [d, o] = await Promise.all([api('/api/company/everyone'), api('/api/company/org')]); } catch (e) { $('#view').innerHTML = `<div class="card empty">🏢 ${esc(e.message)}</div>`; return; }
   if (tab !== 'company' || coPerson) return;
   coData = d;
-  if (!d.people.length) {
-    $('#view').innerHTML = `<div class="card empty co-empty"><h2>🏢 Everyone · who is doing what</h2>
-      <p>${d.admin ? 'No team has members yet. Add team members in each team’s Settings, or import them from Slack.' : 'Nobody is in the company view yet.'}</p>
-      </div>`;
-    const g = document.querySelector('[data-goto-setup]'); if (g) g.onclick = () => { tab = 'orgsetup'; location.hash = tab; render(); };
-    return;
-  }
   const meCard = d.me ? d.people.find((p) => p.key === d.me) : null;
-  $('#view').innerHTML = `<div class="co-top"><div><h2 style="margin:0">Everyone · who is doing what</h2>
-      <div class="muted small">Whole company · ${d.people.length} people · updates from Slack and from everyone's own “right now” line</div></div>
-      </div>
+  $('#view').innerHTML = `<div class="co-top"><div><h2 style="margin:0">${esc(o.company)} · who is doing what</h2>
+      <div class="muted small">From the CEO to every team · ${d.people.length} people · live from Slack and everyone's own “right now” line</div></div></div>
     ${meCard ? `<form class="card co-mine" id="coStatus"><span class="co-who">${coAvatar(meCard)}</span><input id="coStatusText" maxlength="200" placeholder="What are you doing right now? (everyone sees this)" value=""><button class="btn">Post</button></form>` : ''}
     ${coMetrics(d.metrics)}
-    <div class="co-filters"><input id="coSearch" type="search" placeholder="🔍  Search a person, title or department…" value="${esc(coFilter.q)}">
+    <div class="co-viewbar"><div class="seg" role="tablist"><button data-view="structure" class="${coView === 'structure' ? 'on' : ''}">🏢 Structure</button><button data-view="people" class="${coView === 'people' ? 'on' : ''}">👥 People ${d.people.length}</button></div>
+      ${coView === 'structure' && o.admin ? `<button class="btn ${orgEdit ? '' : 'ghost'} small" id="orgEdit">${orgEdit ? '✓ Done' : '✏️ Edit structure'}</button>` : ''}</div>
+    <div id="coBody"></div>`;
+  document.querySelectorAll('[data-view]').forEach((b) => (b.onclick = () => { coView = b.dataset.view; renderCompany(); }));
+  const ed = $('#orgEdit'); if (ed) ed.onclick = () => { orgEdit = !orgEdit; renderCompany(); };
+  const f = $('#coStatus');
+  if (f) f.onsubmit = async (e) => { e.preventDefault(); const t = $('#coStatusText').value.trim(); if (!t) return; try { await api('/api/company/status', { method: 'POST', body: { text: t } }); toast('Posted — everyone can see it'); renderCompany(); } catch (err) { toast(err.message); } };
+  if (coView === 'structure') return orgInto($('#coBody'), o);
+  if (!d.people.length) { $('#coBody').innerHTML = `<div class="card empty">${d.admin ? 'No team has members yet. Add team members in each team’s Settings, or import them from Slack.' : 'Nobody is in the company view yet.'}</div>`; return; }
+  $('#coBody').innerHTML = `<div class="co-filters"><input id="coSearch" type="search" placeholder="🔍  Search a person, title or department…" value="${esc(coFilter.q)}">
       ${(d.groups || []).some((x) => x.key[0] === 'd') ? `<div class="seg co-chips"><button data-dept="all" class="${coFilter.dept === 'all' ? 'on' : ''}">All ${d.people.length}</button>${(d.groups || []).filter((x) => x.key[0] === 'd').map((x) => `<button data-dept="${esc(x.key)}" class="${coFilter.dept === x.key ? 'on' : ''}">${esc(x.emoji + ' ' + x.name)} ${x.people}</button>`).join('')}</div>` : ''}</div>
     <div id="coList"></div>`;
   coList();
-  const g = document.querySelector('[data-goto-setup]'); if (g) g.onclick = () => { tab = 'orgsetup'; location.hash = tab; render(); };
   $('#coSearch').oninput = (e) => { coFilter.q = e.target.value; coList(); };
   document.querySelectorAll('[data-dept]').forEach((b) => (b.onclick = () => { coFilter.dept = b.dataset.dept; document.querySelectorAll('[data-dept]').forEach((x) => x.classList.toggle('on', x === b)); coList(); }));
-  const f = $('#coStatus');
-  if (f) f.onsubmit = async (e) => { e.preventDefault(); const t = $('#coStatusText').value.trim(); if (!t) return; try { await api('/api/company/status', { method: 'POST', body: { text: t } }); toast('Posted — everyone can see it'); renderCompany(); } catch (err) { toast(err.message); } };
 }
 function coMetrics(m) {
   if (!m) return '';
@@ -85,7 +84,7 @@ async function renderCompanyPerson(key) {
   const meta = [p.department ? (p.department.emoji ? p.department.emoji + ' ' : '') + p.department.name : '', p.title].filter(Boolean).map(esc).join(' · ');
   const peer = d.peers;
   const pmax = peer ? Math.max(peer.mine || 0, ...peer.names.map((x) => x.value || 0), 1) : 1;
-  $('#view').innerHTML = `<button class="btn ghost small" id="coBack">← Everyone</button>
+  $('#view').innerHTML = `<button class="btn ghost small" id="coBack">← Company</button>
     <div class="card co-hero"><div class="co-who">${coAvatar(p, true)}<div><h2>${esc(p.name)}</h2><span>${meta}</span></div></div>
       ${coNow(p.now, p.note)}
       ${p.stats.length ? `<div class="co-stats big">${p.stats.map((s) => `<span>${esc(s.label)}<b>${esc(s.value)}</b></span>`).join('')}</div>` : ''}</div>
@@ -156,11 +155,9 @@ let orgEdit = false;
 function coGoPerson(key) { coPerson = key; tab = 'company'; location.hash = 'company'; window.scrollTo(0, 0); render(); }
 const orgStats = (s) => `<div class="org-stats"><span title="People">👥 ${s.people}</span><span title="Building now">🛠️ ${s.building}</span><span title="Stuck" class="${s.stuck ? 'bad' : ''}">🧱 ${s.stuck}</span><span title="Actions + triggers built this week">📦 ${s.built}</span></div>`;
 const orgFace = (p) => `<button class="org-face" data-oper="${esc(p.key)}" title="${esc(p.name)}${p.title ? ' · ' + esc(p.title) : ''} — ${esc(p.now.text)}">${coAvatar(p)}</button>`;
-async function renderOrg() {
-  let d;
-  try { d = await api('/api/company/org'); } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; return; }
-  if (tab !== 'org') return;
-  const A = d.admin, t = d.total;
+function renderOrg() { coView = 'structure'; tab = 'company'; location.hash = 'company'; return renderCompany(); }
+function orgInto(el, d) {
+  const A = d.admin;
   const ceo = d.ceo
     ? `<button class="card org-ceo" data-oper="${esc(d.ceo.key)}">${coAvatar(d.ceo, true)}<div><b>${esc(d.ceo.name)}</b><span>${esc(d.ceo.title)} · ${esc(d.company)}</span><div class="org-now">${esc(d.ceo.now.text)}</div></div></button>`
     : `<div class="card org-ceo empty-ceo"><span class="co-av big" style="background:#1f3b33">CEO</span><div><b>${esc(d.company)} CEO</b><span>Not added yet</span>${A ? '<button class="btn small" id="orgAddCeo">Add the CEO</button>' : ''}</div></div>`;
@@ -178,13 +175,10 @@ async function renderOrg() {
       ${!x.projects.length && !x.people.length ? '<div class="muted small org-emptyd">No projects or people yet</div>' : ''}
       ${A ? `<div class="org-admin"><button class="btn ghost small" data-addproj="${x.id}">+ Project</button><button class="btn ghost small" data-addperson="${x.id}" data-headkey="${esc(x.head ? x.head.key : '')}">+ Person</button></div>` : ''}
     </div>`;
-  $('#view').innerHTML = `<div class="co-top"><div><h2 style="margin:0">${esc(d.company)} · Org chart</h2>
-      <div class="muted small">CEO → departments → projects → people · tap anyone to see their work</div></div>
-      <div class="org-actions"><div class="org-total">${orgStats(t)}</div>${A ? `<button class="btn ${orgEdit ? '' : 'ghost'} small" id="orgEdit">${orgEdit ? '✓ Done' : '✏️ Edit structure'}</button>` : ''}</div></div>
-    <div class="org-tree ${orgEdit ? 'editing' : ''}"><div class="org-top">${ceo}</div><div class="org-line"></div>
+  el.innerHTML = `<div class="org-tree ${orgEdit ? 'editing' : ''}"><div class="org-top">${ceo}</div><div class="org-line"></div>
       <div class="org-depts">${d.departments.map(dept).join('')}</div></div>`;
   document.querySelectorAll('[data-oper]').forEach((el) => (el.onclick = (e) => { e.preventDefault(); coGoPerson(el.dataset.oper); }));
-  const call = async (path, method, body, msg) => { try { await api(path, { method, body }); toast(msg); renderOrg(); } catch (e) { toast(e.message); } };
+  const call = async (path, method, body, msg) => { try { await api(path, { method, body }); toast(msg); renderCompany(); } catch (e) { toast(e.message); } };
   document.querySelectorAll('[data-link]').forEach((s) => (s.onchange = () => call('/api/company/projects', 'POST', { id: Number(s.dataset.link), ws_id: s.value ? Number(s.value) : null }, s.value ? 'Team linked' : 'Team unlinked')));
   document.querySelectorAll('[data-head]').forEach((s) => (s.onchange = () => call('/api/company/departments/head', 'POST', { id: Number(s.dataset.head), key: s.value || null }, 'Head saved')));
   document.querySelectorAll('[data-pdel-proj]').forEach((b) => (b.onclick = () => { if (confirm('Remove this project from the org chart?')) call('/api/company/projects', 'DELETE', { id: Number(b.dataset.pdelProj) }, 'Project removed'); }));
@@ -195,10 +189,9 @@ async function renderOrg() {
       <div class="row"><button class="btn">Add</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>`);
     $('#orgPf').onsubmit = async (e) => {
       e.preventDefault(); const f = e.target.elements;
-      try { await api('/api/company/people', { method: 'POST', body: { name: f.name.value, title: f.title.value, email: f.email.value, department_id: deptId || null, reports_to: headKey || (d.ceo && !ceoMode ? d.ceo.key : null) } }); closeModal(); toast('Added'); renderOrg(); } catch (err) { toast(err.message); }
+      try { await api('/api/company/people', { method: 'POST', body: { name: f.name.value, title: f.title.value, email: f.email.value, department_id: deptId || null, reports_to: headKey || (d.ceo && !ceoMode ? d.ceo.key : null) } }); closeModal(); toast('Added'); renderCompany(); } catch (err) { toast(err.message); }
     };
   };
   document.querySelectorAll('[data-addperson]').forEach((b) => (b.onclick = () => personModal(Number(b.dataset.addperson), b.dataset.headkey)));
-  const ed = $('#orgEdit'); if (ed) ed.onclick = () => { orgEdit = !orgEdit; renderOrg(); };
   const ac = $('#orgAddCeo'); if (ac) ac.onclick = () => personModal(null, null, true);
 }
