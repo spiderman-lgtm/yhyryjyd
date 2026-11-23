@@ -468,11 +468,15 @@ function clearDemo() {
     db.prepare('DELETE FROM memberships WHERE ws_id = ?').run(st.ws);
     db.prepare('DELETE FROM workspaces WHERE id = ?').run(st.ws);
   }
+  if (st && st.depts) for (const id of st.depts) deleteDepartment(id);
   setting('org.demo', null);
 }
 function loadDemo(email) {
   seedOnce();
   if (setting('org.demo') || db.prepare('SELECT 1 FROM org_people WHERE is_demo = 1').get()) clearDemo();
+  // departments the demo needs but the company does not have yet (removed again on clear)
+  const have = new Set(departments().map((d) => d.name)), made = [];
+  for (const [name, emoji] of VIASOCKET) if (!have.has(name)) made.push(db.prepare('INSERT INTO departments (name, emoji, sort) VALUES (?, ?, (SELECT COALESCE(MAX(sort), 0) + 1 FROM departments))').run(name, emoji).lastInsertRowid);
   const D = Object.fromEntries(departments().map((d) => [d.name, d]));
   // a demo Plugins team with real-looking Slack work, so the charts and numbers move
   const ws = workspaces.create('Plugins team (demo)', email || 'demo@squadforge.app');
@@ -500,7 +504,7 @@ function loadDemo(email) {
     if (!d.head_key) db.prepare('UPDATE departments SET head_key = ? WHERE id = ?').run(head, d.id);
     for (const p of people.slice(1)) add(p, d.id, head);
   }
-  setting('org.demo', { ws: ws.id, project: proj ? proj.id : null, project_created: created });
+  setting('org.demo', { ws: ws.id, project: proj ? proj.id : null, project_created: created, depts: made });
   return { ok: true, team: ws.id };
 }
 
