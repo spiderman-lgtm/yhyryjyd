@@ -17,7 +17,7 @@ let tab = ALL_TABS.includes(location.hash.replace('#', '')) ? location.hash.repl
 let role = 'admin';
 let myEmail = null;
 let myName = null;
-const PAGE_TITLES = { company: 'Everyone', orgsetup: 'Company setup', team: 'Dashboard', manager: 'Manager view', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'Reports · History', now: 'Live Team · Right now', leaderboard: 'Live Team · Leaderboard', analysis: 'Live Team · Analysis', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
+const PAGE_TITLES = { company: 'Everyone', orgsetup: 'Admin', team: 'Dashboard', manager: 'Manager view', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'Reports · History', now: 'Live Team · Right now', leaderboard: 'Live Team · Leaderboard', analysis: 'Live Team · Analysis', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
 let pollTimer = null;
 let lastActivityId = 0;
 

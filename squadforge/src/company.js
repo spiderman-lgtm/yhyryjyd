@@ -150,7 +150,7 @@ function postStatus(email, text) {
   const t = clean(text, 200);
   if (!t) throw new Error('Write what you are doing');
   const p = personForEmail(email);
-  if (!p) throw new Error('Your email is not on anyone in the company yet — ask a company admin to add it in Company setup');
+  if (!p) throw new Error('Your email is not on anyone in the company yet — ask a company admin to add it in Admin');
   let id = p.org_id;
   if (!id) id = db.prepare('INSERT INTO org_people (ws_id, member_id, email) VALUES (?, ?, ?)').run(p.ws, p.member_id, p.email).lastInsertRowid;
   const now = new Date().toISOString();

@@ -276,7 +276,7 @@ async function routes(req, res, url, p, m, body, cx) {
   }
   // ---------- company: departments + "Everyone" (open to everyone in a company team) ----------
   if (p.startsWith('/api/company')) {
-    if (!company.canSee(cx)) return send(res, 403, { error: 'Your team is not part of the company view yet — a company admin adds it to a department in Company setup' });
+    if (!company.canSee(cx)) return send(res, 403, { error: 'Your team is not part of the company view yet — a company admin adds it to a department in Admin' });
     const adminOnly = () => (company.isAdmin(cx) ? null : send(res, 403, { error: 'Only company admins can change the company setup' }));
     const ok = (fn) => { try { return send(res, 200, fn()); } catch (e) { return send(res, 400, { error: e.message }); } };
     if (p === '/api/company/everyone' && m === 'GET') return send(res, 200, company.everyone(cx));
