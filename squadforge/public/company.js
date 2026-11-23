@@ -74,7 +74,7 @@ function coList() {
   const d = coData; if (!d) return;
   const q = coFilter.q.trim().toLowerCase();
   const list = d.people.filter((p) => (coFilter.dept === 'all' || (p.group && p.group.key === coFilter.dept))
-    && (!q || [p.name, p.title, p.department && p.department.name, p.now.text].join(' ').toLowerCase().includes(q)));
+    && (!q || [p.name, p.title, p.department && p.department.name, p.now.text, p.now.label, p.now.reason, p.now.kind === 'leave' ? 'leave' : ''].join(' ').toLowerCase().includes(q)));
   const leaders = list.filter((p) => p.leader), rest = list.filter((p) => !p.leader);
   $('#coList').innerHTML = list.length ? `${leaders.length ? `<div class="co-grid lead">${leaders.map(coCard).join('')}</div>` : ''}<div class="co-grid">${rest.map(coCard).join('')}</div>` : '<div class="card empty">Nobody matches that search.</div>';
 }
