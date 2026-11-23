@@ -12,7 +12,7 @@ const MANAGER_TABS = ['company', 'manager', 'now', 'leaderboard', 'analysis', 'l
 const TEAM_TABS = ['now', 'leaderboard', 'analysis'];
 const LIVE_TABS = ['flow', 'village'];
 const lastLive = () => { try { return localStorage.getItem('sf_live') === 'village' ? 'village' : 'flow'; } catch { return 'flow'; } };
-const ALL_TABS = ['company', 'orgsetup', 'team', 'manager', 'requests', 'reviews', 'growth', 'reports', 'history', 'now', 'leaderboard', 'analysis', 'commander', 'flow', 'village', 'integrations', 'settings'];
+const ALL_TABS = ['company', 'team', 'manager', 'requests', 'reviews', 'growth', 'reports', 'history', 'now', 'leaderboard', 'analysis', 'commander', 'flow', 'village', 'integrations', 'settings'];
 let tab = ALL_TABS.includes(location.hash.replace('#', '')) ? location.hash.replace('#', '') : 'team'; // viewers are sent to 'flow' in markTab
 let role = 'admin';
 let myEmail = null;

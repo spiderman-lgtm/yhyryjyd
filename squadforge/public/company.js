@@ -32,15 +32,15 @@ async function renderCompany() {
   coData = d;
   if (!d.people.length) {
     $('#view').innerHTML = `<div class="card empty co-empty"><h2>🏢 Everyone · who is doing what</h2>
-      <p>${d.admin ? 'No team has members yet. Add team members in each team’s Settings (or import them from Slack), and add people who are not in a team (CEO, other departments) in Admin.' : 'Nobody is in the company view yet — a company admin sets it up in Admin.'}</p>
-      ${d.admin ? '<button class="btn" data-goto-setup>Open Admin</button>' : ''}</div>`;
+      <p>${d.admin ? 'No team has members yet. Add team members in each team’s Settings, or import them from Slack.' : 'Nobody is in the company view yet.'}</p>
+      </div>`;
     const g = document.querySelector('[data-goto-setup]'); if (g) g.onclick = () => { tab = 'orgsetup'; location.hash = tab; render(); };
     return;
   }
   const meCard = d.me ? d.people.find((p) => p.key === d.me) : null;
   $('#view').innerHTML = `<div class="co-top"><div><h2 style="margin:0">Everyone · who is doing what</h2>
       <div class="muted small">Whole company · ${d.people.length} people · updates from Slack and from everyone's own “right now” line</div></div>
-      ${d.admin ? '<button class="btn ghost small" data-goto-setup>⚙️ Admin</button>' : ''}</div>
+      </div>
     ${meCard ? `<form class="card co-mine" id="coStatus"><span class="co-who">${coAvatar(meCard)}</span><input id="coStatusText" maxlength="200" placeholder="What are you doing right now? (everyone sees this)" value=""><button class="btn">Post</button></form>` : ''}
     ${coMetrics(d.metrics)}
     <div class="co-filters"><input id="coSearch" type="search" placeholder="🔍  Search a person, title or department…" value="${esc(coFilter.q)}">
