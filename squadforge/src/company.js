@@ -376,7 +376,9 @@ function org(cx) {
     building: rows.filter((r) => ['started', 'rnd'].includes(r.now.kind)).length,
     stuck: rows.filter((r) => r.now.kind === 'stuck').length,
     leave: rows.filter((r) => r.now.kind === 'leave').length,
+    active: rows.filter((r) => !['none', 'leave'].includes(r.now.kind)).length, // on something today
     built: rows.reduce((n, r) => n + (r._d.prof ? r._d.prof.totals.built : 0), 0),
+    done: rows.reduce((n, r) => n + (r._d.prof ? r._d.prof.totals.shipped : 0), 0),
   });
   const wsName = Object.fromEntries(teams().map((t) => [t.id, t.name]));
   const byKey = Object.fromEntries(list.map((p) => [p.key, p]));

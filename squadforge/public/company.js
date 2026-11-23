@@ -156,27 +156,39 @@ function coGoPerson(key) { coPerson = key; tab = 'company'; location.hash = 'com
 const orgStats = (s) => `<div class="org-stats"><span title="People">👥 ${s.people}</span><span title="Building now">🛠️ ${s.building}</span><span title="Stuck" class="${s.stuck ? 'bad' : ''}">🧱 ${s.stuck}</span><span title="Actions + triggers built this week">📦 ${s.built}</span></div>`;
 const orgFace = (p) => `<button class="org-face" data-oper="${esc(p.key)}" title="${esc(p.name)}${p.title ? ' · ' + esc(p.title) : ''} — ${esc(p.now.text)}">${coAvatar(p)}</button>`;
 function renderOrg() { coView = 'structure'; tab = 'company'; location.hash = 'company'; return renderCompany(); }
+// health from what is stuck: nobody → on track, one → watch, two or more → needs help
+const orgHealth = (st) => (!st.people ? { k: 'n', label: 'No people yet' } : st.stuck >= 2 ? { k: 'r', label: 'Needs help' } : st.stuck === 1 ? { k: 'y', label: 'Watch' } : { k: 'g', label: 'On track' });
+const orgBar = (st, k) => { const base = Math.max(0, st.people - st.leave); const pct = base ? Math.round((st.active / base) * 100) : 0; return { pct, html: `<div class="sc-bar"><u class="${k}" style="width:${pct}%"></u></div>` }; };
 function orgInto(el, d) {
   const A = d.admin;
-  const ceo = d.ceo
-    ? `<button class="card org-ceo" data-oper="${esc(d.ceo.key)}">${coAvatar(d.ceo, true)}<div><b>${esc(d.ceo.name)}</b><span>${esc(d.ceo.title)} · ${esc(d.company)}</span><div class="org-now">${esc(d.ceo.now.text)}</div></div></button>`
-    : `<div class="card org-ceo empty-ceo"><span class="co-av big" style="background:#1f3b33">CEO</span><div><b>${esc(d.company)} CEO</b><span>Not added yet</span>${A ? '<button class="btn small" id="orgAddCeo">Add the CEO</button>' : ''}</div></div>`;
+  const ceoHtml = d.ceo
+    ? `<button class="card sc-ceo" data-oper="${esc(d.ceo.key)}">${coAvatar(d.ceo, true)}<div><b>${esc(d.ceo.name)}</b><span>${esc(d.ceo.title)} · ${esc(d.company)} · ${d.departments.filter((x) => x.head).length} department heads</span><div class="sc-now">Right now: ${esc(d.ceo.now.text)}</div></div></button>`
+    : `<div class="card sc-ceo"><span class="co-av big" style="background:#1f3b33">CEO</span><div><b>${esc(d.company)} CEO</b><span>Not added yet</span>${A ? '<button class="btn small" id="orgAddCeo" style="margin-top:6px">Add the CEO</button>' : ''}</div></div>`;
+  const hs = d.departments.map((x) => orgHealth(x.stats).k);
+  const n = (k) => hs.filter((h) => h === k).length;
+  const summary = `<div class="card sc-sum"><div class="g"><b>${n('g')}</b>On track</div><div class="y"><b>${n('y')}</b>Watch</div><div class="r"><b>${n('r')}</b>Needs help</div><div><b>${d.total.people}</b>People</div><div class="${d.total.stuck ? 'rr' : ''}"><b>${d.total.stuck}</b>Stuck</div></div>`;
   const teamOpts = (sel) => `<option value="">— no team linked —</option>${d.teams.map((x) => `<option value="${x.id}" ${String(sel) === String(x.id) ? 'selected' : ''}>👥 ${esc(x.name)}</option>`).join('')}`;
   const headOpts = (sel) => `<option value="">— no head —</option>${d.people.map((x) => `<option value="${esc(x.key)}" ${sel === x.key ? 'selected' : ''}>${esc(x.name)}${x.title ? ' · ' + esc(x.title) : ''}</option>`).join('')}`;
-  const dept = (x) => `<div class="card org-dept">
-      <div class="org-dh"><b>${esc(x.emoji)} ${esc(x.name)}</b>${orgStats(x.stats)}</div>
-      <div class="org-head"><span class="muted small">Head</span>${x.head ? `<a href="#" data-oper="${esc(x.head.key)}">${esc(x.head.name)}</a>` : '<span class="muted small">—</span>'}${A ? `<select class="org-sel" data-head="${x.id}">${headOpts(x.head && x.head.key)}</select>` : ''}</div>
-      ${x.projects.map((pr) => `<div class="org-proj ${pr.team ? 'linked' : ''}">
-        <div class="org-ph"><b>${esc(pr.name)}</b>${pr.team ? `<span class="org-team">👥 ${esc(pr.team.name)}</span>` : ''}${A ? `<button class="org-x" data-pdel-proj="${pr.id}" title="Remove project">×</button>` : ''}</div>
-        ${pr.team ? `${orgStats(pr.stats)}<div class="org-faces">${pr.people.map(orgFace).join('') || '<span class="muted small">No members in this team yet</span>'}</div>` : `<div class="muted small">No team linked yet</div>`}
-        ${A ? `<select class="org-sel" data-link="${pr.id}">${teamOpts(pr.team && pr.team.id)}</select>` : ''}
-      </div>`).join('')}
-      ${x.people.length ? `<div class="org-proj"><div class="org-ph"><b>People</b></div><div class="org-faces">${x.people.map(orgFace).join('')}</div></div>` : ''}
-      ${!x.projects.length && !x.people.length ? '<div class="muted small org-emptyd">No projects or people yet</div>' : ''}
+  const dept = (x) => {
+    const h = orgHealth(x.stats), bar = orgBar(x.stats, h.k), st = x.stats;
+    return `<div class="card sc-card ${h.k}">
+      <div class="sc-dh"><span class="sc-emoji">${esc(x.emoji)}</span><b>${esc(x.name)}</b><span class="pill sc-${h.k}">${h.label}</span></div>
+      <div class="sc-head">${x.head ? `${coAvatar(x.head)}<span>Head: <a href="#" data-oper="${esc(x.head.key)}"><b>${esc(x.head.name)}</b></a></span>` : '<span class="muted small">No head yet</span>'}</div>
+      ${A ? `<select class="org-sel" data-head="${x.id}">${headOpts(x.head && x.head.key)}</select>` : ''}
+      <div class="sc-goal"><span>Active today · ${st.active}/${Math.max(0, st.people - st.leave)}${st.leave ? ` · 🌴 ${st.leave} on leave` : ''}</span>${bar.html}</div>
+      <div class="sc-nums"><span>People<b>${st.people}</b></span><span>Building<b>${st.building}</b></span><span>Stuck<b class="${st.stuck ? 'bad' : ''}">${st.stuck}</b></span>${st.built ? `<span>Built (week)<b>${st.built}</b></span>` : ''}</div>
+      ${x.projects.length ? `<div class="sc-projs">${x.projects.map((pr) => {
+        const ph = orgHealth(pr.stats), pb = orgBar(pr.stats, ph.k);
+        return `<div class="sc-proj"><span class="sc-pn">${esc(pr.name)}${pr.team ? '' : ' <i class="muted">· no team</i>'}</span>${pr.team ? `<span class="org-faces">${pr.people.slice(0, 5).map(orgFace).join('')}</span>${pb.html}<span class="muted">${pr.stats.active}/${Math.max(0, pr.stats.people - pr.stats.leave)}</span>` : '<span></span><span></span><span></span>'}
+          ${A ? `<button class="org-x" data-pdel-proj="${pr.id}" title="Remove project">×</button><select class="org-sel sc-link" data-link="${pr.id}">${teamOpts(pr.team && pr.team.id)}</select>` : ''}</div>`;
+      }).join('')}</div>` : ''}
+      ${x.people.length ? `<div class="sc-people"><span class="muted small">People</span><span class="org-faces">${x.people.map(orgFace).join('')}</span></div>` : ''}
       ${A ? `<div class="org-admin"><button class="btn ghost small" data-addproj="${x.id}">+ Project</button><button class="btn ghost small" data-addperson="${x.id}" data-headkey="${esc(x.head ? x.head.key : '')}">+ Person</button></div>` : ''}
     </div>`;
-  el.innerHTML = `<div class="org-tree ${orgEdit ? 'editing' : ''}"><div class="org-top">${ceo}</div><div class="org-line"></div>
-      <div class="org-depts">${d.departments.map(dept).join('')}</div></div>`;
+  };
+  el.innerHTML = `<div class="org-tree ${orgEdit ? 'editing' : ''}"><div class="sc-top">${ceoHtml}${summary}</div>
+      <div class="sc-grid">${d.departments.map(dept).join('')}</div>
+      <div class="muted small" style="margin-top:8px">Health: 🟢 nobody stuck · 🟡 one person stuck · 🔴 two or more stuck. Active today = on a request, a plan or a “right now” line today.</div></div>`;
   document.querySelectorAll('[data-oper]').forEach((el) => (el.onclick = (e) => { e.preventDefault(); coGoPerson(el.dataset.oper); }));
   const call = async (path, method, body, msg) => { try { await api(path, { method, body }); toast(msg); renderCompany(); } catch (e) { toast(e.message); } };
   document.querySelectorAll('[data-link]').forEach((s) => (s.onchange = () => call('/api/company/projects', 'POST', { id: Number(s.dataset.link), ws_id: s.value ? Number(s.value) : null }, s.value ? 'Team linked' : 'Team unlinked')));
