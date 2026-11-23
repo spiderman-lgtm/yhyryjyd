@@ -176,13 +176,9 @@ function postStatus(email, text) {
 // Who may open the company pages: company admins, and anyone in a team that is part of the company.
 function adminEmails() { return String(process.env.ADMIN_EMAILS || '').split(',').map(norm).filter(Boolean); }
 function isAdmin(cx) { return cx.email ? adminEmails().includes(norm(cx.email)) : cx.role === 'admin'; }
-function canSee(cx) {
-  if (isAdmin(cx)) return true;
-  const inDept = new Set(companyTeams().map((t) => t.id));
-  if (!cx.email) return inDept.has(1);
-  if (workspaces.forEmail(cx.email).some((w) => inDept.has(w.id))) return true;
-  return !!personForEmail(cx.email);
-}
+// The company page is open to everyone who is signed in: admins see every team; everyone else
+// sees the teams that sit in a department and the people added to the company.
+function canSee(cx) { return !!cx; }
 
 // ---------- what everyone is doing ----------
 function teamData(wsId) {

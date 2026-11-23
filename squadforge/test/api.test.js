@@ -183,10 +183,12 @@ test('company: departments, Everyone page open to the company, own "right now" l
   const adminView = (await call('/api/company/everyone', { token: admin })).data;
   assert.ok(adminView.people.some((p) => p.ws === side), 'admin sees teams outside any department');
   assert.ok(!(await call('/api/company/everyone', { token: ceoTok })).data.people.some((p) => p.ws === side), 'others only see teams in a department');
-  // someone with their own workspace outside the company cannot see it
+  // everyone signed in can open the company page, but only admins see teams outside a department
   const outsider = (await signup('out@gmail.com', { workspace: 'Side project' })).data.token;
-  assert.equal((await call('/api/me', { token: outsider })).data.company.member, false);
-  assert.equal((await call('/api/company/everyone', { token: outsider })).status, 403);
+  assert.equal((await call('/api/me', { token: outsider })).data.company.member, true);
+  const seen = (await call('/api/company/everyone', { token: outsider })).data;
+  assert.ok(!seen.people.some((p) => p.team === 'Side project'), 'a team outside any department stays out of the company view');
+  assert.equal((await call('/api/company/departments', { method: 'POST', token: outsider, body: { name: 'X' } })).status, 403, 'and they cannot change the setup');
 });
 
 test('org chart: CEO on top, departments with projects linked to teams; admins edit, others read', async () => {
