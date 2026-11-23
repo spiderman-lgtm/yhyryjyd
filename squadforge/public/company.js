@@ -32,10 +32,10 @@ async function renderCompany() {
   if (tab !== 'company' || coPerson) return;
   coData = d;
   const meCard = d.me ? d.people.find((p) => p.key === d.me) : null;
-  $('#view').innerHTML = `<div class="co-top"><div><h2 style="margin:0">${esc(o.company)} · who is doing what</h2>
-      <div class="muted small">From the CEO to every team · ${d.people.length} people · live from Slack and everyone's own “right now” line</div></div></div>
+  $('#view').innerHTML = `${coView === 'people' ? `<div class="co-top"><div><h2 style="margin:0">${esc(o.company)} · who is doing what</h2>
+      <div class="muted small">From the CEO to every team · ${d.people.length} people · live from Slack and everyone's own “right now” line</div></div></div>` : ''}
     ${meCard ? `<form class="card co-mine" id="coStatus"><span class="co-who">${coAvatar(meCard)}</span><input id="coStatusText" maxlength="200" placeholder="What are you doing right now? (everyone sees this)" value=""><button class="btn">Post</button></form>` : ''}
-    ${coMetrics(d.metrics)}
+    ${coView === 'people' ? coMetrics(d.metrics) : ''}
     <div class="co-viewbar"><div class="seg" role="tablist"><button data-view="structure" class="${coView === 'structure' ? 'on' : ''}">🏢 Structure</button><button data-view="people" class="${coView === 'people' ? 'on' : ''}">👥 People ${d.people.length}</button></div>
       ${coView === 'structure' && o.admin ? `<button class="btn ${orgEdit ? '' : 'ghost'} small" id="orgEdit">${orgEdit ? '✓ Done' : '✏️ Edit structure'}</button>` : ''}</div>
     <div id="coBody"></div>`;
@@ -159,7 +159,7 @@ function renderOrg() { coView = 'structure'; tab = 'company'; location.hash = 'c
 // health from what is stuck: nobody → on track, one → watch, two or more → needs help
 const orgHealth = (st) => (!st.people ? { k: 'n', label: 'No people yet' } : st.stuck >= 2 ? { k: 'r', label: 'Needs help' } : st.stuck === 1 ? { k: 'y', label: 'Watch' } : { k: 'g', label: 'On track' });
 const orgBar = (st, k) => { const base = Math.max(0, st.people - st.leave); const pct = base ? Math.round((st.active / base) * 100) : 0; return { pct, html: `<div class="sc-bar"><u class="${k}" style="width:${pct}%"></u></div>` }; };
-function orgInto(el, d) {
+function orgScorecards(el, d) {
   const A = d.admin;
   const ceoHtml = d.ceo
     ? `<button class="card sc-ceo" data-oper="${esc(d.ceo.key)}">${coAvatar(d.ceo, true)}<div><b>${esc(d.ceo.name)}</b><span>${esc(d.ceo.title)} · ${esc(d.company)} · ${d.departments.filter((x) => x.head).length} department heads</span><div class="sc-now">Right now: ${esc(d.ceo.now.text)}</div></div></button>`
@@ -206,4 +206,91 @@ function orgInto(el, d) {
   };
   document.querySelectorAll('[data-addperson]').forEach((b) => (b.onclick = () => personModal(Number(b.dataset.addperson), b.dataset.headkey)));
   const ac = $('#orgAddCeo'); if (ac) ac.onclick = () => personModal(null, null, true);
+}
+
+
+// ---------- Structure as a dashboard: welcome, KPI cards, charts, departments, rhythm, top builders ----------
+const DB_COL = { building: 'var(--db-c1)', stuck: 'var(--db-c2)', planned: 'var(--db-c3)', leave: 'var(--db-c4)', none: 'var(--panel-3)' };
+const DB_LABEL = { building: 'Building', stuck: 'Stuck', planned: 'Planned / on it', leave: 'On leave', none: 'No update yet' };
+const fmtDay = (iso, o) => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-IN', { timeZone: 'UTC', ...o });
+function dbDelta(now, last) {
+  if (!last && !now) return '<span class="db-delta flat">no change</span>';
+  if (!last) return '<span class="db-delta up">new this week</span>';
+  const pct = Math.round(((now - last) / last) * 100);
+  return `<span class="db-delta ${pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat'}">${pct > 0 ? '↑' : pct < 0 ? '↓' : '·'} ${Math.abs(pct)}%</span>`;
+}
+function dbLine(days) {
+  const W = 600, H = 190, P = { l: 30, r: 12, t: 14, b: 26 };
+  const max = Math.max(4, ...days.map((d) => d.built));
+  const x = (i) => P.l + (i * (W - P.l - P.r)) / Math.max(1, days.length - 1);
+  const y = (v) => H - P.b - (v / max) * (H - P.t - P.b);
+  const pts = days.map((d, i) => [x(i), y(d.built)]);
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const area = `${line} L${x(days.length - 1)},${H - P.b} L${x(0)},${H - P.b} Z`;
+  const ticks = [0, Math.round(max / 2), max];
+  return `<svg viewBox="0 0 ${W} ${H}" class="db-line" role="img" aria-label="Actions and triggers built per day, last two weeks">
+    <defs><linearGradient id="dbArea" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--db-c1)" stop-opacity=".28"/><stop offset="1" stop-color="var(--db-c1)" stop-opacity="0"/></linearGradient></defs>
+    ${ticks.map((v) => `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" class="db-grid"/><text x="${P.l - 6}" y="${y(v) + 4}" class="db-ax" text-anchor="end">${v}</text>`).join('')}
+    <path d="${area}" fill="url(#dbArea)"/><path d="${line}" class="db-stroke"/>
+    ${days.map((d, i) => `<g class="db-pt"><rect x="${x(i) - 18}" y="${P.t}" width="36" height="${H - P.t - P.b}" fill="transparent"/><circle cx="${x(i)}" cy="${y(d.built)}" r="4.5"/><title>${fmtDay(d.date, { weekday: 'short', day: 'numeric', month: 'short' })}: ${d.built} built · ${d.posted} posted</title></g>`).join('')}
+    ${days.map((d, i) => (i % 2 === 0 || i === days.length - 1 ? `<text x="${x(i)}" y="${H - 6}" class="db-ax" text-anchor="middle">${fmtDay(d.date, { day: 'numeric', month: 'short' })}</text>` : '')).join('')}
+  </svg>`;
+}
+function dbDonut(t) {
+  const keys = ['building', 'stuck', 'planned', 'leave', 'none'];
+  const total = keys.reduce((n, k) => n + t[k], 0) || 1, R = 54, C = 2 * Math.PI * R;
+  let off = 0;
+  const segs = keys.filter((k) => t[k]).map((k) => { const len = (t[k] / total) * C; const gap = Math.min(2, len / 3); const seg = `<circle r="${R}" cx="70" cy="70" fill="none" stroke="${DB_COL[k]}" stroke-width="18" stroke-dasharray="${Math.max(0, len - gap)} ${C}" stroke-dashoffset="${-off}"><title>${DB_LABEL[k]}: ${t[k]}</title></circle>`; off += len; return seg; }).join('');
+  const working = t.building + t.planned + t.stuck, base = total - t.leave;
+  return `<div class="db-donut"><svg viewBox="0 0 140 140" role="img" aria-label="Today across the company"><g transform="rotate(-90 70 70)">${segs}</g>
+      <text x="70" y="66" text-anchor="middle" class="db-dn-big">${base ? Math.round((working / base) * 100) : 0}%</text><text x="70" y="84" text-anchor="middle" class="db-dn-sm">on something</text></svg>
+    <div class="db-legend">${keys.map((k) => `<div><i style="background:${DB_COL[k]}"></i><span>${DB_LABEL[k]}</span><b>${t[k]}</b></div>`).join('')}</div></div>`;
+}
+function orgInto(el, d) {
+  if (orgEdit) return orgScorecards(el, d);
+  const D = d.dash, w = D.week, T = d.total;
+  const avail = Math.max(0, T.people - T.leave);
+  const first = ((myName || '').split(' ')[0] || (myEmail ? myEmail.split('@')[0].split(/[._\d]/)[0] : 'there')).replace(/^./, (c) => c.toUpperCase());
+  const kpi = (icon, label, value, delta, sub, cls = '') => `<div class="card db-kpi ${cls}"><span class="db-ic">${icon}</span><div><span class="db-kl">${label}</span><b>${value}</b><span class="db-ks">${delta || ''} ${sub}</span></div></div>`;
+  const live = d.departments.filter((x) => x.stats.people), empty = d.departments.filter((x) => !x.stats.people);
+  const deptRow = (x) => { const h = orgHealth(x.stats), b = orgBar(x.stats, h.k); return `<div class="db-dept"><span class="db-de">${esc(x.emoji)}</span><div class="db-dn"><b>${esc(x.name)}</b><small>${x.head ? `Head: ${esc(x.head.name)}` : 'No head yet'} · ${x.stats.people} people</small></div>${b.html}<span class="db-dpct">${b.pct}%</span><span class="pill sc-${h.k}">${h.label}</span></div>`; };
+  const dayCols = ['M', 'T', 'W', 'T', 'F', 'S'];
+  const weeks = [D.daily.filter((x) => x.date < w.from), D.daily.filter((x) => x.date >= w.from)];
+  const pmax = Math.max(1, ...D.daily.map((x) => x.posted));
+  const dot = (x) => { if (!x) return '<span class="db-dot future"></span>'; const lv = x.posted / pmax; return `<span class="db-dot" style="opacity:${(0.25 + lv * 0.75).toFixed(2)};transform:scale(${(0.7 + lv * 0.5).toFixed(2)})" title="${fmtDay(x.date, { weekday: 'short', day: 'numeric', month: 'short' })}: ${x.posted} people posted, ${x.built} built"></span>`; };
+  const ceoCard = d.ceo
+    ? `<button class="card db-ceo" data-oper="${esc(d.ceo.key)}"><span class="db-q">“</span><div class="db-cq">${esc(d.ceo.now.kind === 'none' ? 'No update yet today' : d.ceo.now.text)}</div><div class="db-cw">${coAvatar(d.ceo)}<div><b>${esc(d.ceo.name)}</b><small>${esc(d.ceo.title)} · ${esc(d.company)} · right now</small></div></div></button>`
+    : `<div class="card db-ceo"><span class="db-q">“</span><div class="db-cq">Who leads ${esc(d.company)}? Add the CEO so everyone sees their priorities.</div>${d.admin ? '<button class="btn small" id="orgAddCeo">Add the CEO</button>' : ''}</div>`;
+  el.innerHTML = `<div class="db">
+    <div class="db-welcome"><div><span class="muted">Welcome back,</span><h2>${esc(first)} <span class="db-co">· ${esc(d.company)}</span></h2><span class="muted small">Here's how ${esc(d.company)} is doing — from the CEO to every team.</span></div>
+      <span class="db-range">📅 This week · ${fmtDay(w.from, { day: 'numeric', month: 'short' })} – ${fmtDay(w.to, { day: 'numeric', month: 'short' })}</span></div>
+    <div class="db-kpis">
+      ${kpi('👥', 'People', T.people, '', `in ${live.length} department${live.length === 1 ? '' : 's'}`)}
+      ${kpi('⚡', 'Active today', `${T.active}<small>/${avail}</small>`, '', `${avail ? Math.round((T.active / avail) * 100) : 0}% on something`)}
+      ${kpi('📦', 'Built this week', w.built, dbDelta(w.built, w.last_built), 'vs last week')}
+      ${kpi('✅', 'Requests done', w.done, dbDelta(w.done, w.last_done), 'vs last week')}
+      ${kpi('🧱', 'Stuck now', T.stuck, '', T.stuck ? 'need help' : 'nobody blocked', T.stuck ? 'bad' : '')}
+    </div>
+    <div class="db-row1">
+      <div class="card db-chart"><div class="db-ch"><div><h3>Work built</h3><span class="muted small">Actions + triggers per day · last 2 weeks</span></div><div class="db-big"><b>${w.built}</b><span class="muted small">this week</span></div></div>${dbLine(D.daily)}
+        <div class="db-note">${w.built >= w.last_built ? '📈' : '📉'} ${w.last_built ? `${w.built >= w.last_built ? 'Up' : 'Down'} ${Math.abs(Math.round(((w.built - w.last_built) / w.last_built) * 100))}% on last week (${w.last_built})` : 'First week of numbers'}</div></div>
+      <div class="card db-today"><h3>Today across ${esc(d.company)}</h3>${dbDonut(D.today)}</div>
+      ${ceoCard}
+    </div>
+    <div class="db-row2">
+      <div class="card db-depts"><h3>Departments</h3>${live.map(deptRow).join('') || '<div class="muted small">No department has people yet — link a team to a project in Edit structure.</div>'}
+        ${empty.length ? `<div class="db-empty">Not set up yet: ${empty.map((x) => `${esc(x.emoji)} ${esc(x.name)}`).join(' · ')}</div>` : ''}</div>
+      <div class="card db-rhythm"><h3>Daily updates</h3><span class="muted small">People who posted a plan, an update or work each day</span>
+        <div class="db-dots"><span></span>${dayCols.map((c) => `<span class="db-dh">${c}</span>`).join('')}
+          ${weeks.map((wk, i) => `<span class="db-wl">${i ? 'This' : 'Last'}</span>${[1, 2, 3, 4, 5, 6].map((wd) => dot(wk.find((x) => new Date(x.date + 'T12:00:00Z').getUTCDay() === wd))).join('')}`).join('')}</div>
+        <div class="db-dkey"><span class="db-dot" style="opacity:1"></span> more people <span class="db-dot" style="opacity:.3;transform:scale(.75)"></span> fewer</div></div>
+      <div class="card db-top"><h3>Top builders this week</h3>${D.top.length ? D.top.map((p, i) => `<button class="db-tp" data-oper="${esc(p.key)}"><span class="db-rank">${i + 1}</span>${coAvatar(p)}<div><b>${esc(p.name)}</b><small>${esc(p.dept)}${p.title ? ' · ' + esc(p.title) : ''}</small></div><span class="db-tv"><b>${p.built}</b><small>built</small></span></button>`).join('') : '<div class="muted small">Nothing built yet this week.</div>'}
+        <button class="btn ghost small db-all" data-view-people>See everyone →</button></div>
+    </div>
+    <div class="db-banner"><div class="db-bh"><span class="db-trophy">${D.todo.length ? '🧭' : '🏆'}</span><div><b>${D.todo.length ? 'What needs you next' : 'Amazing work!'}</b><small>${D.todo.length ? 'The few things that would help the company most right now.' : 'Nobody is stuck and every team is moving.'}</small></div></div>
+      ${D.todo.map((x) => `<div class="db-bi"><span>${x.icon}</span><div><b>${esc(x.text)}</b><small>${esc(x.sub)}</small></div></div>`).join('')}</div>
+  </div>`;
+  el.querySelectorAll('[data-oper]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); coGoPerson(b.dataset.oper); }));
+  const vp = el.querySelector('[data-view-people]'); if (vp) vp.onclick = () => { coView = 'people'; renderCompany(); };
+  const ac = $('#orgAddCeo'); if (ac) ac.onclick = () => { orgEdit = true; renderCompany(); setTimeout(() => { const b = $('#orgAddCeo'); if (b) b.click(); }, 400); };
 }

@@ -396,8 +396,34 @@ function org(cx) {
       people: inDept.filter((p) => p.key !== d.head_key && !(p.kind === 'team' && linked.has(p.ws))).map(mini),
     };
   });
+  // ---- dashboard numbers: this week vs last week, the last two weeks day by day, today's mix ----
+  const U = require('./util');
+  const t = U.today(), thisWeek = U.weekStart(t), lastWeek = U.addDays(thisWeek, -7);
+  const builders = list.filter((p) => p.kind === 'team' && p.role !== 'lead');
+  const lastProfs = builders.map((p) => withWorkspace(p.ws, () => require('./agents/standup').memberProfile(p.member_id, lastWeek))).filter(Boolean);
+  const sum = (profs, f) => profs.reduce((n, x) => n + (x.totals[f] || 0), 0);
+  const nowProfs = builders.map((p) => p._d.prof).filter(Boolean);
+  const daily = {};
+  for (let d = lastWeek; d <= t; d = U.addDays(d, 1)) if (U.weekday(d) !== 0) daily[d] = { date: d, built: 0, posted: 0 };
+  for (const pr of [...lastProfs, ...nowProfs]) for (const d of pr.days) if (daily[d.date]) { daily[d.date].built += d.built; if (d.posted || d.built || d.growth) daily[d.date].posted++; }
+  const kinds = (k) => list.filter((p) => k.includes(p.now.kind)).length;
+  const today = { building: kinds(['started', 'rnd']), stuck: kinds(['stuck']), planned: kinds(['plan', 'note', 'lead', 'new']), leave: kinds(['leave']), none: kinds(['none']) };
+  const top = builders.filter((p) => p.built_week > 0).sort((a, b) => b.built_week - a.built_week).slice(0, 4)
+    .map((p) => ({ key: p.key, name: p.name, title: p.title || '', dept: p.department ? p.department.name : (p.team || ''), built: p.built_week }));
+  const projects = depts.flatMap((x) => x.projects);
+  const todo = [
+    today.stuck && { icon: '🧱', text: `Clear ${today.stuck} blocker${today.stuck === 1 ? '' : 's'}`, sub: 'people are waiting on something' },
+    today.none && { icon: '💤', text: `${today.none} without an update today`, sub: 'a plan or a “right now” line' },
+    depts.filter((x) => !x.head).length && { icon: '👤', text: `Add heads to ${depts.filter((x) => !x.head).length} departments`, sub: 'Edit structure → Head' },
+    projects.filter((x) => !x.team).length && { icon: '🔗', text: `Link ${projects.filter((x) => !x.team).length} projects to teams`, sub: 'so their work shows here' },
+    !ceo && { icon: '⭐', text: 'Add the CEO', sub: 'they sit at the top' },
+  ].filter(Boolean).slice(0, 3);
+  const dash = {
+    week: { from: thisWeek, to: U.addDays(thisWeek, 6), built: sum(nowProfs, 'built'), last_built: sum(lastProfs, 'built'), done: sum(nowProfs, 'shipped'), last_done: sum(lastProfs, 'shipped') },
+    daily: Object.values(daily), today, top, todo,
+  };
   return {
-    company: setting('org.company') || 'viaSocket', admin, ceo: ceo ? mini(ceo) : null, departments: depts, total: stat(list),
+    dash, company: setting('org.company') || 'viaSocket', admin, ceo: ceo ? mini(ceo) : null, departments: depts, total: stat(list),
     teams: admin ? teams().map((t) => ({ id: t.id, name: t.name })) : [], people: admin ? list.map((p) => ({ key: p.key, name: p.name, title: p.title || '' })) : [],
   };
 }
