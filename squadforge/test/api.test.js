@@ -188,3 +188,23 @@ test('company: departments, Everyone page open to the company, own "right now" l
   assert.equal((await call('/api/me', { token: outsider })).data.company.member, false);
   assert.equal((await call('/api/company/everyone', { token: outsider })).status, 403);
 });
+
+test('org chart: CEO on top, departments with projects linked to teams; admins edit, others read', async () => {
+  const admin = await login('lead@viasocket.com', 'adminpass1');
+  const o = (await call('/api/company/org', { token: admin })).data;
+  assert.equal(o.company, 'viaSocket');
+  assert.equal(o.ceo && o.ceo.title, 'CEO', 'the CEO sits on top');
+  const dept = o.departments.find((d) => d.name === 'Plugins');
+  assert.equal((await call('/api/company/projects', { method: 'POST', token: admin, body: { department_id: dept.id, name: 'Memory' } })).status, 200);
+  let d2 = (await call('/api/company/org', { token: admin })).data.departments.find((d) => d.id === dept.id);
+  const mem = d2.projects.find((p) => p.name === 'Memory');
+  assert.equal((await call('/api/company/projects', { method: 'POST', token: admin, body: { id: mem.id, ws_id: 1 } })).status, 200);
+  assert.equal((await call('/api/company/departments/head', { method: 'POST', token: admin, body: { id: dept.id, key: o.ceo.key } })).status, 200);
+  d2 = (await call('/api/company/org', { token: admin })).data.departments.find((d) => d.id === dept.id);
+  const linked = d2.projects.find((p) => p.name === 'Memory');
+  assert.equal(linked.team.id, 1); assert.ok(linked.people.length > 0, 'a linked team brings its people');
+  assert.equal(d2.head.key, o.ceo.key);
+  const ceoTok = await login('ceo@viasocket.com', 'password9');
+  assert.equal((await call('/api/company/org', { token: ceoTok })).status, 200, 'everyone in the company can read the org chart');
+  assert.equal((await call('/api/company/projects', { method: 'POST', token: ceoTok, body: { department_id: dept.id, name: 'X' } })).status, 403);
+});

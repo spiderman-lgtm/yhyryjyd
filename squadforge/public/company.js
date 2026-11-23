@@ -150,3 +150,55 @@ async function renderCompanySetup() {
   document.querySelectorAll('[data-pdel]').forEach((b) => (b.onclick = () => { if (confirm('Remove this person from the company view?')) call('/api/company/people', 'DELETE', { key: b.closest('tr').dataset.pkey }, 'Removed'); }));
   $('#coPersonNew').onsubmit = (e) => { e.preventDefault(); const f = e.target; call('/api/company/people', 'POST', { name: f.elements.name.value, title: f.elements.title.value, email: f.elements.email.value, department_id: f.elements.department_id.value || null, reports_to: f.elements.reports_to.value || null }, 'Person added'); };
 }
+
+// ---------- Org chart: CEO → departments → projects → people ----------
+let orgEdit = false;
+function coGoPerson(key) { coPerson = key; tab = 'company'; location.hash = 'company'; window.scrollTo(0, 0); render(); }
+const orgStats = (s) => `<div class="org-stats"><span title="People">👥 ${s.people}</span><span title="Building now">🛠️ ${s.building}</span><span title="Stuck" class="${s.stuck ? 'bad' : ''}">🧱 ${s.stuck}</span><span title="Actions + triggers built this week">📦 ${s.built}</span></div>`;
+const orgFace = (p) => `<button class="org-face" data-oper="${esc(p.key)}" title="${esc(p.name)}${p.title ? ' · ' + esc(p.title) : ''} — ${esc(p.now.text)}">${coAvatar(p)}</button>`;
+async function renderOrg() {
+  let d;
+  try { d = await api('/api/company/org'); } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; return; }
+  if (tab !== 'org') return;
+  const A = d.admin, t = d.total;
+  const ceo = d.ceo
+    ? `<button class="card org-ceo" data-oper="${esc(d.ceo.key)}">${coAvatar(d.ceo, true)}<div><b>${esc(d.ceo.name)}</b><span>${esc(d.ceo.title)} · ${esc(d.company)}</span><div class="org-now">${esc(d.ceo.now.text)}</div></div></button>`
+    : `<div class="card org-ceo empty-ceo"><span class="co-av big" style="background:#1f3b33">CEO</span><div><b>${esc(d.company)} CEO</b><span>Not added yet</span>${A ? '<button class="btn small" id="orgAddCeo">Add the CEO</button>' : ''}</div></div>`;
+  const teamOpts = (sel) => `<option value="">— no team linked —</option>${d.teams.map((x) => `<option value="${x.id}" ${String(sel) === String(x.id) ? 'selected' : ''}>👥 ${esc(x.name)}</option>`).join('')}`;
+  const headOpts = (sel) => `<option value="">— no head —</option>${d.people.map((x) => `<option value="${esc(x.key)}" ${sel === x.key ? 'selected' : ''}>${esc(x.name)}${x.title ? ' · ' + esc(x.title) : ''}</option>`).join('')}`;
+  const dept = (x) => `<div class="card org-dept">
+      <div class="org-dh"><b>${esc(x.emoji)} ${esc(x.name)}</b>${orgStats(x.stats)}</div>
+      <div class="org-head"><span class="muted small">Head</span>${x.head ? `<a href="#" data-oper="${esc(x.head.key)}">${esc(x.head.name)}</a>` : '<span class="muted small">—</span>'}${A ? `<select class="org-sel" data-head="${x.id}">${headOpts(x.head && x.head.key)}</select>` : ''}</div>
+      ${x.projects.map((pr) => `<div class="org-proj ${pr.team ? 'linked' : ''}">
+        <div class="org-ph"><b>${esc(pr.name)}</b>${pr.team ? `<span class="org-team">👥 ${esc(pr.team.name)}</span>` : ''}${A ? `<button class="org-x" data-pdel-proj="${pr.id}" title="Remove project">×</button>` : ''}</div>
+        ${pr.team ? `${orgStats(pr.stats)}<div class="org-faces">${pr.people.map(orgFace).join('') || '<span class="muted small">No members in this team yet</span>'}</div>` : `<div class="muted small">No team linked yet</div>`}
+        ${A ? `<select class="org-sel" data-link="${pr.id}">${teamOpts(pr.team && pr.team.id)}</select>` : ''}
+      </div>`).join('')}
+      ${x.people.length ? `<div class="org-proj"><div class="org-ph"><b>People</b></div><div class="org-faces">${x.people.map(orgFace).join('')}</div></div>` : ''}
+      ${!x.projects.length && !x.people.length ? '<div class="muted small org-emptyd">No projects or people yet</div>' : ''}
+      ${A ? `<div class="org-admin"><button class="btn ghost small" data-addproj="${x.id}">+ Project</button><button class="btn ghost small" data-addperson="${x.id}" data-headkey="${esc(x.head ? x.head.key : '')}">+ Person</button></div>` : ''}
+    </div>`;
+  $('#view').innerHTML = `<div class="co-top"><div><h2 style="margin:0">${esc(d.company)} · Org chart</h2>
+      <div class="muted small">CEO → departments → projects → people · tap anyone to see their work</div></div>
+      <div class="org-actions"><div class="org-total">${orgStats(t)}</div>${A ? `<button class="btn ${orgEdit ? '' : 'ghost'} small" id="orgEdit">${orgEdit ? '✓ Done' : '✏️ Edit structure'}</button>` : ''}</div></div>
+    <div class="org-tree ${orgEdit ? 'editing' : ''}"><div class="org-top">${ceo}</div><div class="org-line"></div>
+      <div class="org-depts">${d.departments.map(dept).join('')}</div></div>`;
+  document.querySelectorAll('[data-oper]').forEach((el) => (el.onclick = (e) => { e.preventDefault(); coGoPerson(el.dataset.oper); }));
+  const call = async (path, method, body, msg) => { try { await api(path, { method, body }); toast(msg); renderOrg(); } catch (e) { toast(e.message); } };
+  document.querySelectorAll('[data-link]').forEach((s) => (s.onchange = () => call('/api/company/projects', 'POST', { id: Number(s.dataset.link), ws_id: s.value ? Number(s.value) : null }, s.value ? 'Team linked' : 'Team unlinked')));
+  document.querySelectorAll('[data-head]').forEach((s) => (s.onchange = () => call('/api/company/departments/head', 'POST', { id: Number(s.dataset.head), key: s.value || null }, 'Head saved')));
+  document.querySelectorAll('[data-pdel-proj]').forEach((b) => (b.onclick = () => { if (confirm('Remove this project from the org chart?')) call('/api/company/projects', 'DELETE', { id: Number(b.dataset.pdelProj) }, 'Project removed'); }));
+  document.querySelectorAll('[data-addproj]').forEach((b) => (b.onclick = () => { const n = prompt('Project name:'); if (n && n.trim()) call('/api/company/projects', 'POST', { department_id: Number(b.dataset.addproj), name: n }, 'Project added'); }));
+  const personModal = (deptId, headKey, ceoMode) => {
+    modal(`<h3>${ceoMode ? `Add the ${esc(d.company)} CEO` : 'Add a person'}</h3><form id="orgPf" class="org-form">
+      <input name="name" placeholder="Name" required><input name="title" placeholder="Title" value="${ceoMode ? 'CEO' : ''}"><input name="email" type="email" placeholder="Email (they can then sign in and post what they are doing)">
+      <div class="row"><button class="btn">Add</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>`);
+    $('#orgPf').onsubmit = async (e) => {
+      e.preventDefault(); const f = e.target.elements;
+      try { await api('/api/company/people', { method: 'POST', body: { name: f.name.value, title: f.title.value, email: f.email.value, department_id: deptId || null, reports_to: headKey || (d.ceo && !ceoMode ? d.ceo.key : null) } }); closeModal(); toast('Added'); renderOrg(); } catch (err) { toast(err.message); }
+    };
+  };
+  document.querySelectorAll('[data-addperson]').forEach((b) => (b.onclick = () => personModal(Number(b.dataset.addperson), b.dataset.headkey)));
+  const ed = $('#orgEdit'); if (ed) ed.onclick = () => { orgEdit = !orgEdit; renderOrg(); };
+  const ac = $('#orgAddCeo'); if (ac) ac.onclick = () => personModal(null, null, true);
+}

@@ -280,6 +280,10 @@ async function routes(req, res, url, p, m, body, cx) {
     const adminOnly = () => (company.isAdmin(cx) ? null : send(res, 403, { error: 'Only company admins can change the company setup' }));
     const ok = (fn) => { try { return send(res, 200, fn()); } catch (e) { return send(res, 400, { error: e.message }); } };
     if (p === '/api/company/everyone' && m === 'GET') return send(res, 200, company.everyone(cx));
+    if (p === '/api/company/org' && m === 'GET') return send(res, 200, company.org(cx));
+    if (p === '/api/company/projects' && m === 'POST') return adminOnly() || ok(() => { company.saveProject(body); return { ok: true }; });
+    if (p === '/api/company/projects' && m === 'DELETE') return adminOnly() || ok(() => { company.deleteProject(body.id); return { ok: true }; });
+    if (p === '/api/company/departments/head' && m === 'POST') return adminOnly() || ok(() => { company.setDepartmentHead(body.id, body.key); return { ok: true }; });
     if (p === '/api/company/person' && m === 'GET') { const d = company.person(url.searchParams.get('key'), company.isAdmin(cx)); return d ? send(res, 200, d) : send(res, 404, { error: 'Person not found' }); }
     if (p === '/api/company/status' && m === 'POST') return ok(() => ({ key: company.postStatus(cx.email, body.text) }));
     if (p === '/api/company/setup' && m === 'GET') return adminOnly() || send(res, 200, { departments: company.departments(), teams: company.teams(), people: company.directory(true) });

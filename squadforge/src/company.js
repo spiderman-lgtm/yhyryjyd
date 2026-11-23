@@ -36,6 +36,17 @@ db.exec(`CREATE TABLE IF NOT EXISTS org_updates (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 )`);
 try { db.exec('ALTER TABLE workspaces ADD COLUMN department_id INTEGER'); } catch { /* already there */ }
+try { db.exec('ALTER TABLE departments ADD COLUMN head_key TEXT'); } catch { /* already there */ }
+// Projects inside a department (e.g. Development → Plugins, Memory). A project can be linked to a
+// team workspace; its people and Slack numbers then show under the project.
+db.exec(`CREATE TABLE IF NOT EXISTS projects (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  department_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  ws_id INTEGER,
+  sort INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+)`);
 
 const DEFAULT_TITLE = { tech: 'Developer', growth: 'Growth', lead: 'Team lead' };
 const clean = (s, n = 80) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
@@ -57,6 +68,7 @@ function saveDepartment({ id, name, emoji }) {
   return departments();
 }
 function deleteDepartment(id) {
+  db.prepare('DELETE FROM projects WHERE department_id = ?').run(Number(id));
   db.prepare('UPDATE workspaces SET department_id = NULL WHERE department_id = ?').run(Number(id));
   db.prepare('UPDATE org_people SET department_id = NULL WHERE department_id = ?').run(Number(id));
   db.prepare('DELETE FROM departments WHERE id = ?').run(Number(id));
@@ -305,4 +317,87 @@ function person(key, everyTeam = false) {
   };
 }
 
-module.exports = { homeWorkspace, departments, teams, saveDepartment, deleteDepartment, setTeamDepartment, directory, savePerson, deletePerson, postStatus, personForEmail, isAdmin, canSee, everyone, person };
+// ---------- org chart (viaSocket structure) ----------
+const VIASOCKET = [
+  ['Development', '💻', ['Plugins', 'Memory', 'Plugin API Change Automation', 'AI-Agent Skill Docs Review', 'Nolt Plugin']],
+  ['Product Management', '🧭', ['Agent Readiness', 'Sirius', 'Strategy', 'viaSocket Pass']],
+  ['Marketing', '📣', ['Landing Page B Version']],
+  ['Partnership', '🤝', ['Inbound Agent System', 'Outbound Agent System', 'Keka']],
+  ['Design', '🎨', []], ['Motion Graphics', '🎬', []],
+  ['Operations', '⚙️', []], ['Finance', '💰', []], ['HR', '🧑‍💼', []],
+];
+// company-wide settings live in the main database (workspace 1), whatever team the request is for
+const setting = (k, v) => withWorkspace(1, () => { const { getSetting, setSetting } = require('./db'); return v === undefined ? getSetting(k, null) : setSetting(k, v); });
+// The first time the org chart opens with no departments, lay out viaSocket's structure.
+// The Plugins project links to a team whose name mentions "plugin".
+function seedOnce() {
+  if (setting('org.seeded') || departments().length) return;
+  const plugTeam = teams().find((t) => /plugin/i.test(t.name));
+  VIASOCKET.forEach(([name, emoji, projects], i) => {
+    const d = db.prepare('INSERT INTO departments (name, emoji, sort) VALUES (?, ?, ?)').run(name, emoji, i + 1).lastInsertRowid;
+    projects.forEach((pr, j) => {
+      const ws = pr === 'Plugins' && plugTeam ? plugTeam.id : null;
+      db.prepare('INSERT INTO projects (department_id, name, ws_id, sort) VALUES (?, ?, ?, ?)').run(d, pr, ws, j + 1);
+      if (ws) db.prepare('UPDATE workspaces SET department_id = ? WHERE id = ?').run(d, ws);
+    });
+  });
+  setting('org.seeded', true);
+  if (!setting('org.company')) setting('org.company', 'viaSocket');
+}
+function saveProject({ id, department_id, name, ws_id }) {
+  const n = clean(name, 60);
+  const ws = ws_id ? Number(ws_id) : null;
+  if (ws && !workspaces.get(ws)) throw new Error('No such team');
+  if (id) {
+    const pr = db.prepare('SELECT * FROM projects WHERE id = ?').get(Number(id));
+    if (!pr) throw new Error('No such project');
+    db.prepare('UPDATE projects SET name = ?, ws_id = ? WHERE id = ?').run(n || pr.name, ws, pr.id);
+    if (ws) db.prepare('UPDATE workspaces SET department_id = ? WHERE id = ?').run(pr.department_id, ws);
+  } else {
+    if (!n) throw new Error('Give the project a name');
+    if (!db.prepare('SELECT 1 FROM departments WHERE id = ?').get(Number(department_id))) throw new Error('No such department');
+    db.prepare('INSERT INTO projects (department_id, name, ws_id, sort) VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort), 0) + 1 FROM projects WHERE department_id = ?))').run(Number(department_id), n, ws, Number(department_id));
+    if (ws) db.prepare('UPDATE workspaces SET department_id = ? WHERE id = ?').run(Number(department_id), ws);
+  }
+}
+function deleteProject(id) { db.prepare('DELETE FROM projects WHERE id = ?').run(Number(id)); }
+function setDepartmentHead(id, key) {
+  if (key && !parseKey(key)) throw new Error('Unknown person');
+  db.prepare('UPDATE departments SET head_key = ? WHERE id = ?').run(key || null, Number(id));
+}
+
+function org(cx) {
+  seedOnce();
+  const admin = isAdmin(cx);
+  const list = cards(1, admin);
+  const mini = (p) => ({ key: p.key, name: p.name, title: p.title || '', now: p.now, note: p.note });
+  const stat = (rows) => ({
+    people: rows.length,
+    building: rows.filter((r) => ['started', 'rnd'].includes(r.now.kind)).length,
+    stuck: rows.filter((r) => r.now.kind === 'stuck').length,
+    leave: rows.filter((r) => r.now.kind === 'leave').length,
+    built: rows.reduce((n, r) => n + (r._d.prof ? r._d.prof.totals.built : 0), 0),
+  });
+  const wsName = Object.fromEntries(teams().map((t) => [t.id, t.name]));
+  const byKey = Object.fromEntries(list.map((p) => [p.key, p]));
+  const ceo = list.find((p) => /\bceo\b/i.test(p.title || ''));
+  const depts = departments().map((d) => {
+    const projects = db.prepare('SELECT * FROM projects WHERE department_id = ? ORDER BY sort, id').all(d.id).map((pr) => {
+      const rows = pr.ws_id ? list.filter((p) => p.kind === 'team' && p.ws === pr.ws_id) : [];
+      return { id: pr.id, name: pr.name, team: pr.ws_id ? { id: pr.ws_id, name: wsName[pr.ws_id] || 'team' } : null, stats: stat(rows), people: rows.map(mini) };
+    });
+    const linked = new Set(projects.filter((x) => x.team).map((x) => x.team.id));
+    const inDept = list.filter((p) => p.department && p.department.id === d.id && (!ceo || p.key !== ceo.key));
+    const head = d.head_key && byKey[d.head_key] ? mini(byKey[d.head_key]) : null;
+    return {
+      id: d.id, name: d.name, emoji: d.emoji || '🏢', head, projects, stats: stat(inDept),
+      people: inDept.filter((p) => p.key !== d.head_key && !(p.kind === 'team' && linked.has(p.ws))).map(mini),
+    };
+  });
+  return {
+    company: setting('org.company') || 'viaSocket', admin, ceo: ceo ? mini(ceo) : null, departments: depts, total: stat(list),
+    teams: admin ? teams().map((t) => ({ id: t.id, name: t.name })) : [], people: admin ? list.map((p) => ({ key: p.key, name: p.name, title: p.title || '' })) : [],
+  };
+}
+
+module.exports = { org, saveProject, deleteProject, setDepartmentHead, homeWorkspace, departments, teams, saveDepartment, deleteDepartment, setTeamDepartment, directory, savePerson, deletePerson, postStatus, personForEmail, isAdmin, canSee, everyone, person };

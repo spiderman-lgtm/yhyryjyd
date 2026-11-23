@@ -7,17 +7,17 @@ const GROWTH_LABEL = { support_request: 'Support request', app_listing: 'App lis
 
 let state = null;
 let members = [];
-const VIEWER_TABS = ['company', 'now', 'leaderboard', 'analysis', 'flow', 'village'];
-const MANAGER_TABS = ['company', 'manager', 'now', 'leaderboard', 'analysis', 'live', 'flow', 'village'];
+const VIEWER_TABS = ['company', 'org', 'now', 'leaderboard', 'analysis', 'flow', 'village'];
+const MANAGER_TABS = ['company', 'org', 'manager', 'now', 'leaderboard', 'analysis', 'live', 'flow', 'village'];
 const TEAM_TABS = ['now', 'leaderboard', 'analysis'];
 const LIVE_TABS = ['flow', 'village'];
 const lastLive = () => { try { return localStorage.getItem('sf_live') === 'village' ? 'village' : 'flow'; } catch { return 'flow'; } };
-const ALL_TABS = ['company', 'team', 'manager', 'requests', 'reviews', 'growth', 'reports', 'history', 'now', 'leaderboard', 'analysis', 'commander', 'flow', 'village', 'integrations', 'settings'];
+const ALL_TABS = ['company', 'org', 'team', 'manager', 'requests', 'reviews', 'growth', 'reports', 'history', 'now', 'leaderboard', 'analysis', 'commander', 'flow', 'village', 'integrations', 'settings'];
 let tab = ALL_TABS.includes(location.hash.replace('#', '')) ? location.hash.replace('#', '') : 'team'; // viewers are sent to 'flow' in markTab
 let role = 'admin';
 let myEmail = null;
 let myName = null;
-const PAGE_TITLES = { company: 'Everyone', orgsetup: 'Admin', team: 'Dashboard', manager: 'Manager view', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'Reports · History', now: 'Live Team · Right now', leaderboard: 'Live Team · Leaderboard', analysis: 'Live Team · Analysis', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
+const PAGE_TITLES = { company: 'Everyone', org: 'Org chart', orgsetup: 'Admin', team: 'Dashboard', manager: 'Manager view', requests: 'Client requests', reviews: 'Reviews', growth: 'Growth', reports: 'Reports', history: 'Reports · History', now: 'Live Team · Right now', leaderboard: 'Live Team · Leaderboard', analysis: 'Live Team · Analysis', commander: 'Commander', flow: 'Live Flow', village: 'Village', integrations: 'Integrations', settings: 'Settings' };
 let pollTimer = null;
 let lastActivityId = 0;
 
@@ -158,14 +158,14 @@ $('#tabs').addEventListener('click', (e) => {
 function markTab() {
   const liveOn = !!(state && state.live_views);
   if (LIVE_TABS.includes(tab) && state && !liveOn) tab = role === 'admin' ? 'team' : role === 'manager' ? 'manager' : 'now';
-  if ((tab === 'company' && !(myCompany && myCompany.member)) || (tab === 'orgsetup' && !(myCompany && myCompany.admin))) tab = role === 'admin' ? 'team' : role === 'manager' ? 'manager' : 'now';
+  if (((tab === 'company' || tab === 'org') && !(myCompany && myCompany.member)) || (tab === 'orgsetup' && !(myCompany && myCompany.admin))) tab = role === 'admin' ? 'team' : role === 'manager' ? 'manager' : 'now';
   if (tab === 'orgsetup' && myCompany && myCompany.admin) { /* company admins may open setup from any role */ } else if (role === 'viewer' && !VIEWER_TABS.includes(tab)) tab = 'now';
 
   if (role === 'manager' && !MANAGER_TABS.includes(tab)) tab = 'manager';
   document.querySelectorAll('#tabs button').forEach((b) => {
     const t = b.dataset.tab;
     b.classList.toggle('active', t === tab || (t === 'live' && LIVE_TABS.includes(tab)) || (t === 'reports' && tab === 'history') || (t === 'now' && TEAM_TABS.includes(tab)));
-    if (t === 'company' || t === 'orgsetup') { b.classList.toggle('hidden', !(myCompany && (t === 'company' ? myCompany.member : myCompany.admin))); return; }
+    if (t === 'company' || t === 'org' || t === 'orgsetup') { b.classList.toggle('hidden', !(myCompany && (t === 'orgsetup' ? myCompany.admin : myCompany.member))); return; }
     b.classList.toggle('hidden', (t === 'live' && !liveOn) || (role === 'viewer' && (b.dataset.admin !== undefined || b.dataset.mgr !== undefined)) || (role === 'manager' && !MANAGER_TABS.includes(t)));
   });
   document.querySelectorAll('#tabs .nav-label').forEach((l) => l.classList.toggle('hidden', l.textContent === 'Company' ? !(myCompany && myCompany.member) : (role === 'viewer' && l.textContent !== 'Live') || (role === 'manager' && l.textContent === 'Workspace')));
@@ -688,7 +688,7 @@ async function render() {
   try {
     if (role === 'admin' && (!members.length || tab === 'settings')) members = await api('/api/members');
     const shown = tab;
-    Promise.resolve(({ company: renderCompany, orgsetup: renderCompanySetup, flow: renderFlow, integrations: renderIntegrations, village: renderVillage, team: renderTeam, manager: renderManager, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, history: renderHistory, now: renderNow, leaderboard: renderLeaderboard, analysis: renderAnalysis, commander: renderCommander, settings: renderSettings }[tab] || renderNow)())
+    Promise.resolve(({ company: renderCompany, org: renderOrg, orgsetup: renderCompanySetup, flow: renderFlow, integrations: renderIntegrations, village: renderVillage, team: renderTeam, manager: renderManager, requests: renderRequests, reviews: renderReviews, growth: renderGrowth, reports: renderReports, history: renderHistory, now: renderNow, leaderboard: renderLeaderboard, analysis: renderAnalysis, commander: renderCommander, settings: renderSettings }[tab] || renderNow)())
       .then(() => { if (tab === shown) subTabs(); }).catch(() => {});
     if (tab === 'village') lastActivityId = state.activity[0] ? state.activity[0].id : 0;
   } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; }
