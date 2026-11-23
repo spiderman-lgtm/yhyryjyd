@@ -1695,3 +1695,9 @@ html .login .qp-form input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 40
 .co-teams th { font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
 .co-teams tbody tr { cursor: pointer; } .co-teams tbody tr:hover { background: var(--panel-2); }
 .co-teams td.bad { color: #c0453a; font-weight: 700; } .co-teams td.warn { color: #b07a1c; font-weight: 700; }
+/* Front page: "Create an account" easy to see */
+.qp-hint { font-size: 13.5px !important; margin-top: 12px !important; line-height: 2.2; }
+.qp-hint a.qp-cta-link { display: inline-block; padding: 6px 18px; margin: 0 4px; border-radius: 999px; border: 2px solid #1f3b33; background: #fff; color: #1f3b33 !important; font-weight: 700; font-size: 14.5px; line-height: 1.5; text-decoration: none; box-shadow: 0 3px 10px rgba(23,48,39,.12); transition: background .2s, color .2s, transform .2s; }
+.qp-hint a.qp-cta-link:hover { background: #1f3b33; color: #fff !important; transform: translateY(-1px); text-decoration: none; }
+.qp-hint .qp-or { color: var(--ink-2); margin: 0 4px; }
+@media (max-width: 720px) { .qp-hint { font-size: 13px !important; } }

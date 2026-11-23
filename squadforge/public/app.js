@@ -62,8 +62,8 @@ function saveWs(id) { try { id ? localStorage.setItem('sf_ws', String(id)) : loc
 let authMode = 'signin';
 let codeFor = null; // { email, purpose } while waiting for an email code
 const AUTH = {
-  signin: { btn: 'Sign in →', pw: 'Password', hint: 'New here? <a href="#" data-auth="signup">Create an account</a> · <a href="#" data-auth="emailcode">Email me a sign-in code</a>' },
-  signup: { btn: 'Create account →', pw: 'Choose a password (8+ characters)', hint: 'Already have an account? <a href="#" data-auth="signin">Sign in</a>' },
+  signin: { btn: 'Sign in →', pw: 'Password', hint: 'New here? <a href="#" data-auth="signup" class="qp-cta-link">Create an account →</a> <span class="qp-or">or</span> <a href="#" data-auth="emailcode">Email me a sign-in code</a>' },
+  signup: { btn: 'Create account →', pw: 'Choose a password (8+ characters)', hint: 'Already have an account? <a href="#" data-auth="signin" class="qp-cta-link">Sign in →</a>' },
   emailcode: { btn: 'Email me a code →', hint: 'Remember your password? <a href="#" data-auth="signin">Sign in with it</a>' },
   code: { btn: 'Verify →', hint: '' },
 };
