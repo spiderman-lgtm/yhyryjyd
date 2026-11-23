@@ -629,8 +629,8 @@ async function renderSettings() {
   }
   api('/api/checklist').then((c) => {
     if (!c.hidden || !$('#view h2')) return;
-    $('#view h2').insertAdjacentHTML('afterend', `<div class="banner">🧪 The “Test it for real” checklist is hidden (${c.done} of ${c.total} done). <a href="#" id="ckShow">Show it on the Dashboard</a></div>`);
-    $('#ckShow').onclick = async (e) => { e.preventDefault(); await api('/api/checklist', { method: 'POST', body: { hidden: false } }); tab = 'team'; location.hash = 'team'; render(); };
+    $('#view h2').insertAdjacentHTML('afterend', `<div class="banner">🧪 The “Test it for real” checklist is hidden (${c.done} of ${c.total} done). <a href="#" id="ckShow">Show it on Integrations</a></div>`);
+    $('#ckShow').onclick = async (e) => { e.preventDefault(); await api('/api/checklist', { method: 'POST', body: { hidden: false } }); tab = 'integrations'; location.hash = 'integrations'; render(); };
   }).catch(() => {});
   $('#impMem').onclick = async () => { const r = await api('/api/members/import-slack', { method: 'POST' }); toast(`${r.added} members imported — please check their roles`); renderSettings(); };
   document.querySelectorAll('[data-edit]').forEach((b) => (b.onclick = () => memberModal(members.find((m) => m.id == b.dataset.edit))));

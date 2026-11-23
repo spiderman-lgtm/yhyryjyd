@@ -6,8 +6,8 @@ let vsListening = false;
 
 async function renderIntegrations() {
   $('#view').innerHTML = `<h2>Integrations</h2><div class="empty">Loading…</div>`;
-  let st;
-  try { st = await api('/api/integrations'); } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; return; }
+  let st, check = null;
+  try { [st, check] = await Promise.all([api('/api/integrations'), api('/api/checklist').catch(() => null)]); } catch (e) { $('#view').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; return; }
   if (st.configured && !vsInfo) { try { vsInfo = await api('/api/integrations/connect-info'); } catch (e) { toast(e.message); } }
   listenForConnect();
   $('#view').innerHTML = `
@@ -16,9 +16,11 @@ async function renderIntegrations() {
     ${st.configured ? '' : '<div class="banner red">viaSocket keys are not set on the server (VIASOCKET_ORG_ID, VIASOCKET_PROJECT_ID, VIASOCKET_EMBED_SECRET).</div>'}
     ${st.m91_link ? `<div class="card m91-link"><div class="row"><h3 style="margin:0">🔔 M91 — send link</h3><span class="pill ${st.m91_link.error ? 'stuck' : 'completed'}">${st.m91_link.error ? 'problem' : 'connected'}</span><span class="spacer"></span><button class="btn ghost small" id="m91LinkTest">🔔 Send a test alert</button></div>
       <p class="muted" style="margin:8px 0 0">${st.m91_link.error ? esc(st.m91_link.error) : `Alerts go to everyone in the M91 channel <b>${esc(st.m91_link.channel || '')}</b>: the 11 AM tally (quiet), the 7 PM “update missing” nudge, and important Commander messages (rings until answered; you see who tapped “Got it”). Add teammates to that channel in the M91 app.`}</p><div id="m91LinkOut"></div></div>` : ''}
+    ${check ? checklistCard(check) : ''}
     <div class="grid integ-grid">${st.apps.map(appCard).join('')}</div>
     <div class="card" style="margin-top:16px"><h3>➕ More apps</h3><p class="muted" style="margin:0">Jira, ClickUp, Trello, Notion, HubSpot… tell us what you need. Creating a task there when a client request arrives, or updating it when the request completes, plugs in the same way.</p></div>`;
   st.apps.forEach(wireCard);
+  wireChecklist();
   const lt = $('#m91LinkTest');
   if (lt) lt.onclick = async () => { lt.disabled = true; try { const r = await api('/api/m91/test', { method: 'POST' }); $('#m91LinkOut').innerHTML = `<div class="banner" style="margin-top:10px">✅ Test alert sent${r.delivered !== undefined ? ' to ' + r.delivered + ' phone(s)' : ''} — check the M91 app.</div>`; } catch (e) { $('#m91LinkOut').innerHTML = `<div class="banner red" style="margin-top:10px">${esc(e.message)}</div>`; } lt.disabled = false; };
 }
